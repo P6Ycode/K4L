@@ -283,7 +283,7 @@ static NSString *SCIBaseActionIdentifierForBulkChild(NSString *identifier) {
     if ([identifier isEqualToString:kSCIActionDownloadAllLibrary]) return kSCIActionDownloadLibrary;
     if ([identifier isEqualToString:kSCIActionDownloadAllShare]) return kSCIActionDownloadShare;
     if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) return kSCIActionDownloadGallery;
-    if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) return @"copy";
+    if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) return kSCIActionCopyMedia;
     if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) return kSCIActionCopyDownloadLink;
     return identifier;
 }
