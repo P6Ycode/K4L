@@ -57,7 +57,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 
 #define SCICONFIRMLIKE(prefKey, logText, titleText, messageText, orig) \
     if ([SCIUtils getBoolPref:prefKey]) {                              \
-        NSLog(@"[SCInsta] %@", logText);                               \
+        SCILog(@"General", @"[SCInsta] %@", logText);                               \
         [SCIUtils showConfirmation:^(void) { orig; }                   \
                                  title:titleText                       \
                                message:messageText];                   \
@@ -71,7 +71,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
         return orig; \
     } \
     if ([SCIUtils getBoolPref:@"like_confirm_feed_post_likes"]) { \
-        NSLog(@"[SCInsta] Confirm feed post like triggered"); \
+        SCILog(@"General", @"[SCInsta] Confirm feed post like triggered"); \
         [SCIUtils showConfirmation:^(void) { SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
                                  title:@"Confirm Post Like" \
                                message:@"Are you sure you want to like this post?"]; \
@@ -82,7 +82,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 
 #define CONFIRMFEEDDOUBLETAPLIKE(orig) \
     if ([SCIUtils getBoolPref:@"like_confirm_feed_double_tap_likes"]) { \
-        NSLog(@"[SCInsta] Confirm feed double-tap like triggered"); \
+        SCILog(@"General", @"[SCInsta] Confirm feed double-tap like triggered"); \
         [SCIUtils showConfirmation:^(void) { SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
                                  title:@"Confirm Post Like" \
                                message:@"Are you sure you want to like this post?"]; \

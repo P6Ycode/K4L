@@ -5,7 +5,7 @@
 %hook IGPendingRequestView
 - (void)_onApproveButtonTapped {
     if ([SCIUtils getBoolPref:@"follow_request_confirm"]) {
-        NSLog(@"[SCInsta] Confirm follow request triggered");
+        SCILog(@"General", @"[SCInsta] Confirm follow request triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Accept Request"
@@ -16,7 +16,7 @@
 }
 - (void)_onIgnoreButtonTapped {
     if ([SCIUtils getBoolPref:@"follow_request_confirm"]) {
-        NSLog(@"[SCInsta] Confirm follow request triggered");
+        SCILog(@"General", @"[SCInsta] Confirm follow request triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Decline Request"

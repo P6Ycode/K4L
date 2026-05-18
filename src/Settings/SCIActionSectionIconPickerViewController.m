@@ -69,7 +69,15 @@
     config.image = SCISettingsIcon(descriptor.iconName);
     config.imageProperties.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
     cell.contentConfiguration = config;
-    cell.accessoryType = [descriptor.iconName isEqualToString:self.selectedIconName] ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
+    BOOL selected = [descriptor.iconName isEqualToString:self.selectedIconName];
+    if (selected) {
+        UIImageView *checkmarkView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"circle_check_filled"]];
+        checkmarkView.tintColor = [SCIUtils SCIColor_Primary];
+        cell.accessoryView = checkmarkView;
+    } else {
+        cell.accessoryView = nil;
+        cell.accessoryType = UITableViewCellAccessoryNone;
+    }
     return cell;
 }
 

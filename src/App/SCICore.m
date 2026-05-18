@@ -27,6 +27,7 @@ static NSDictionary *SCIBootstrapDefaults(void) {
         @"gallery_long_press_tab": @"direct-inbox-tab",
         @"tweak_settings_app_launch": @(NO),
         @"tweak_master_disabled": @(NO),
+        @"sci_safe_startup_mode": @(NO),
     };
 }
 

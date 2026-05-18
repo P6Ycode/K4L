@@ -19,7 +19,7 @@
     ].count > 0;
 
     if (!hasLongPress) {
-        NSLog(@"[SCInsta] Adding feed header logo long press gesture recognizer");
+        SCILog(@"General", @"[SCInsta] Adding feed header logo long press gesture recognizer");
 
         UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
         [self addGestureRecognizer:longPress];

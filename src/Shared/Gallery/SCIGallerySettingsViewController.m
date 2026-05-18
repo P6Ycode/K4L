@@ -35,31 +35,6 @@ static void SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded(void) {
     [defaults setObject:value forKey:kGalleryLongPressTabKey];
 }
 
-static NSString *SCIGalleryResolvedShortcutTabIdentifier(NSString *identifier) {
-    NSString *resolved = identifier.length > 0 ? identifier : kGalleryQuickAccessDisabledValue;
-    if ([resolved isEqualToString:kGalleryQuickAccessDisabledValue]) return resolved;
-    BOOL usesClassic = [SCIUtils tabOrderSetTo:@"classic"];
-    if (usesClassic && [resolved isEqualToString:@"direct-inbox-tab"]) return @"camera-tab";
-    if (!usesClassic && [resolved isEqualToString:@"camera-tab"]) return @"direct-inbox-tab";
-    return resolved;
-}
-
-static NSArray<NSDictionary *> *SCIGalleryShortcutTargetItems(void) {
-    NSMutableArray<NSDictionary *> *items = [@[
-        @{@"title": @"None", @"value": kGalleryQuickAccessDisabledValue, @"icon": @"circle_off"},
-        @{@"title": @"Home", @"value": @"mainfeed-tab", @"icon": @"home"},
-        @{@"title": @"Reels", @"value": @"reels-tab", @"icon": @"reels"}
-    ] mutableCopy];
-
-    if ([SCIUtils tabOrderSetTo:@"classic"]) {
-        [items addObject:@{@"title": @"Create", @"value": @"camera-tab", @"icon": @"plus"}];
-    } else {
-        [items addObject:@{@"title": @"Messages", @"value": @"direct-inbox-tab", @"icon": @"messages"}];
-    }
-
-    [items addObject:@{@"title": @"Profile", @"value": @"profile-tab", @"icon": @"user_circle"}];
-    return items;
-}
 
 @interface SCIGalleryStorageStats : NSObject
 @property (nonatomic, assign) NSInteger totalFiles;
@@ -158,7 +133,7 @@ static NSArray<NSDictionary *> *SCIGalleryShortcutTargetItems(void) {
 
     [sections addObject:SCITopicSection(@"Lock", lockRows, @"Lock the Gallery with a passcode or biometrics.")];
 
-    SCISetting *shortcutTarget = SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Quick Gallery Access" icon:SCISettingsIcon(@"circle_off") menu:[self galleryShortcutTargetMenu]], SCISettingsIcon(@"circle_off"));
+    SCISetting *shortcutTarget = SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Quick Gallery Access" icon:SCISettingsIcon(@"circle_off") menu:SCIGalleryShortcutTargetMenu()], SCISettingsIcon(@"circle_off"));
 
     [sections addObject:SCITopicSection(@"Shortcuts", @[shortcutTarget], @"Choose the tab that opens Gallery on long press. None disables the action.")];
 
@@ -179,6 +154,7 @@ static NSArray<NSDictionary *> *SCIGalleryShortcutTargetItems(void) {
         [self.navigationController pushViewController:vc animated:YES];
     }];
     deleteRow.tintColor = [UIColor systemRedColor];
+    deleteRow.iconTintColor = [UIColor systemRedColor];
 
     [sections addObject:SCITopicSection(@"Delete", @[deleteRow], nil)];
 
@@ -219,22 +195,6 @@ static NSArray<NSDictionary *> *SCIGalleryShortcutTargetItems(void) {
         [self rebuildSections];
     }],
     ]];
-}
-
-- (UIMenu *)galleryShortcutTargetMenu {
-    NSArray<NSDictionary *> *items = SCIGalleryShortcutTargetItems();
-    NSMutableArray<UICommand *> *commands = [NSMutableArray array];
-    for (NSDictionary *item in items) {
-        NSString *title = item[@"title"];
-        NSString *value = item[@"value"];
-        NSString *iconName = item[@"icon"];
-        UICommand *command = [UICommand commandWithTitle:title
-                                                   image:[SCIAssetUtils instagramIconNamed:iconName pointSize:22.0]
-                                                  action:@selector(menuChanged:)
-                                            propertyList:@{@"defaultsKey": kGalleryLongPressTabKey, @"value": value, @"iconName": iconName, @"requiresRestart": @YES}];
-        [commands addObject:command];
-    }
-    return [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:commands];
 }
 
 @end

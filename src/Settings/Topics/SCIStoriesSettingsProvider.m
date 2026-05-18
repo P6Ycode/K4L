@@ -23,7 +23,7 @@ static NSString * const kSCIStoriesActionButtonDefaultActionKey = @"action_butto
            @"2. Mark the story as seen when you press like.\n"
            @"3. Mark the story as seen when you send a reply."),
         SCITopicSection(@"Story Navigation", @[
-            [SCISetting switchCellWithTitle:@"Stop Auto Advance" icon:SCISettingsIcon(@"autoscroll_off") defaultsKey:@"stop_story_auto_advance"],
+            [SCISetting switchCellWithTitle:@"Stop Auto Advance" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"stop_story_auto_advance"],
             [SCISetting switchCellWithTitle:@"Advance on Eye Button" icon:SCISettingsIcon(@"eye") defaultsKey:@"advance_story_when_marking_seen"],
             [SCISetting switchCellWithTitle:@"Advance on Story Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"advance_story_when_like_marked_seen"],
             [SCISetting switchCellWithTitle:@"Advance on Story Reply" icon:SCISettingsIcon(@"reply") defaultsKey:@"advance_story_when_reply_marked_seen"],

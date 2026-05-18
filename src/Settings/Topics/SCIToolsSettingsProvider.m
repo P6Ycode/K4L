@@ -5,7 +5,9 @@
 #import "SCIInterfaceSettingsProvider.h"
 #import "../SCISettingsTransferManager.h"
 #import "../../App/SCIFlexLoader.h"
+#import "../../App/SCIStabilityGuard.h"
 #import "../../Utils.h"
+#import "../../AssetUtils.h"
 
 @interface SCISettingsTransferSelectionViewController : SCISettingsViewController
 @property (nonatomic, assign) BOOL importMode;
@@ -27,23 +29,34 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:(self.importMode ? @"Import" : @"Export")
-                                                                              style:(UIBarButtonItemStyle)2 // done/prominent
-                                                                             target:self
-                                                                             action:@selector(runTransfer)];
+    [self setupTransferActionItem];
     [self rebuildSections];
     [self updateActionEnabled];
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self setupTransferActionItem];
+    [self updateActionEnabled];
+}
+
+- (void)setupTransferActionItem {
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[SCIAssetUtils instagramIconNamed:(self.importMode ? @"arrow_down" : @"arrow_up")]
+                                                                              style:(UIBarButtonItemStyle)2 // done/prominent
+                                                                             target:self
+                                                                             action:@selector(runTransfer)];
+    self.navigationItem.rightBarButtonItem.tintColor = [UIColor clearColor];
+}
+
 - (void)rebuildSections {
-    SCISetting *settingsRow = [SCISetting buttonCellWithTitle:@"Settings" subtitle:@"SCInsta preferences" icon:nil action:^{
+    SCISetting *settingsRow = [SCISetting buttonCellWithTitle:@"Settings" subtitle:@"" icon:SCISettingsIcon(@"settings") action:^{
         self.includeSettings = !self.includeSettings;
         [self rebuildSections];
         [self updateActionEnabled];
     }];
     settingsRow.userInfo = @{@"checkmarked": @(self.includeSettings)};
 
-    SCISetting *galleryRow = [SCISetting buttonCellWithTitle:@"Gallery" subtitle:@"Gallery media and metadata" icon:nil action:^{
+    SCISetting *galleryRow = [SCISetting buttonCellWithTitle:@"Gallery" subtitle:@"" icon:SCISettingsIcon(@"media") action:^{
         self.includeGallery = !self.includeGallery;
         [self rebuildSections];
         [self updateActionEnabled];
@@ -59,7 +72,14 @@
     SCISetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
     if (row.userInfo[@"checkmarked"]) {
         BOOL checked = [row.userInfo[@"checkmarked"] boolValue];
-        cell.accessoryType = checked ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
+        if (checked) {
+            UIImageView *checkmarkView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"circle_check_filled"]];
+            checkmarkView.tintColor = [SCIUtils SCIColor_Primary];
+            cell.accessoryView = checkmarkView;
+        } else {
+            cell.accessoryView = nil;
+            cell.accessoryType = UITableViewCellAccessoryNone;
+        }
     }
     return cell;
 }
@@ -84,19 +104,19 @@ static NSArray *SCIManageSettingsDataSections(void) {
     return @[
         SCITopicSection(@"", @[
             SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Export"
-                                                                subtitle:@"Choose settings, Gallery, or both"
+                                                                subtitle:@""
                                                                     icon:SCISettingsIcon(@"arrow_up")
                                                           viewController:[[SCISettingsTransferSelectionViewController alloc] initWithImportMode:NO]],
                                   [SCIUtils SCIColor_InstagramPrimaryText]),
             SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Import"
-                                                                subtitle:@"Choose settings, Gallery, or both"
+                                                                subtitle:@""
                                                                     icon:SCISettingsIcon(@"arrow_down")
                                                           viewController:[[SCISettingsTransferSelectionViewController alloc] initWithImportMode:YES]],
                                   [SCIUtils SCIColor_InstagramPrimaryText])
-        ], nil),
+        ], @"Choose to export or import settings, Gallery media or both."),
         SCITopicSection(@"Reset", @[
             SCISettingApplyIconTint([SCISetting buttonCellWithTitle:@"Reset All Settings"
-                                                            subtitle:@"Restore every preference to its default value"
+                                                            subtitle:@""
                                                                 icon:SCISettingsIcon(@"arrow_ccw")
                                                               action:^(void) {
                 UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
@@ -104,7 +124,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
                 while (presenter.presentedViewController) presenter = presenter.presentedViewController;
                 [[SCISettingsTransferManager sharedManager] resetAllSettingsFromController:presenter];
             }], [SCIUtils SCIColor_InstagramPrimaryText])
-        ], nil)
+        ], @"Restore every preference to its default value.")
     ];
 }
 
@@ -129,6 +149,10 @@ static NSArray *SCIManageSettingsDataSections(void) {
             [SCISetting switchCellWithTitle:@"Quick Settings Access" defaultsKey:@"settings_shortcut" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Show Settings on App Launch" defaultsKey:@"tweak_settings_app_launch"],
             [SCISetting switchCellWithTitle:@"Disable All Settings" defaultsKey:@"tweak_master_disabled" requiresRestart:YES],
+            [SCISetting buttonCellWithTitle:@"Reset Safe Startup Mode" subtitle:@"Clears failed-launch counters and temporary hook suppression." icon:nil action:^(void) {
+                SCIStabilityGuardReset();
+                [SCIUtils showRestartConfirmation];
+            }],
             [SCISetting buttonCellWithTitle:@"Reset Onboarding Completion State" subtitle:@"" icon:nil action:^(void) {
                 [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"SCInstaFirstRun"];
                 [SCIUtils showRestartConfirmation];

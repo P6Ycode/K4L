@@ -1,5 +1,6 @@
 #import "SCIGalleryCoreDataStack.h"
 #import "SCIGalleryPaths.h"
+#import "../../Utils.h"
 
 @interface SCIGalleryCoreDataStack ()
 @property (nonatomic, strong, readwrite) NSPersistentContainer *persistentContainer;
@@ -153,7 +154,7 @@ static NSString * const kSCIGalleryEntityName = @"SCIGalleryFile";
 
     [self.persistentContainer loadPersistentStoresWithCompletionHandler:^(NSPersistentStoreDescription *desc, NSError *error) {
         if (error) {
-            NSLog(@"[SCInsta Gallery] Failed to load Core Data store: %@", error);
+            SCILog(@"General", @"[SCInsta Gallery] Failed to load Core Data store: %@", error);
         }
     }];
 
@@ -170,7 +171,7 @@ static NSString * const kSCIGalleryEntityName = @"SCIGalleryFile";
 
     NSError *error;
     if (![ctx save:&error]) {
-        NSLog(@"[SCInsta Gallery] Failed to save context: %@", error);
+        SCILog(@"General", @"[SCInsta Gallery] Failed to save context: %@", error);
     }
 }
 
@@ -180,7 +181,7 @@ static NSString * const kSCIGalleryEntityName = @"SCIGalleryFile";
         NSError *removeError = nil;
         [coordinator removePersistentStore:store error:&removeError];
         if (removeError) {
-            NSLog(@"[SCInsta Gallery] Failed unloading persistent store: %@", removeError);
+            SCILog(@"General", @"[SCInsta Gallery] Failed unloading persistent store: %@", removeError);
         }
     }
 }

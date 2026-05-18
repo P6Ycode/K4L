@@ -30,36 +30,6 @@ static void SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded(void) {
     [defaults setObject:value forKey:kSCIGalleryLongPressTabKey];
 }
 
-static UICommand *SCIGalleryShortcutTargetCommand(NSString *title, NSString *value) {
-    NSDictionary<NSString *, NSString *> *iconNames = @{
-        kSCIGalleryQuickAccessDisabledValue: @"circle_off",
-        @"mainfeed-tab": @"home",
-        @"reels-tab": @"reels",
-        @"camera-tab": @"plus",
-        @"direct-inbox-tab": @"messages",
-        @"profile-tab": @"user_circle"
-    };
-
-    return [UICommand commandWithTitle:title
-                                 image:SCISettingsIcon(iconNames[value])
-                                action:@selector(menuChanged:)
-                          propertyList:@{
-        @"defaultsKey": kSCIGalleryLongPressTabKey,
-        @"value": value,
-        @"iconName": iconNames[value],
-        @"requiresRestart": @YES
-    }];
-}
-
-static UIMenu *SCIGalleryShortcutTargetMenu(void) {
-    return [UIMenu menuWithChildren:@[
-        SCIGalleryShortcutTargetCommand(@"None", kSCIGalleryQuickAccessDisabledValue),
-        SCIGalleryShortcutTargetCommand(@"Home", @"mainfeed-tab"),
-        SCIGalleryShortcutTargetCommand(@"Reels", @"reels-tab"),
-        SCIGalleryShortcutTargetCommand([SCIUtils tabOrderSetTo:@"classic"] ? @"Create" : @"Messages", [SCIUtils tabOrderSetTo:@"classic"] ? @"camera-tab" : @"direct-inbox-tab"),
-        SCIGalleryShortcutTargetCommand(@"Profile", @"profile-tab")
-    ]];
-}
 
 @implementation SCIGallerySettingsProvider
 

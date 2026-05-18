@@ -21,7 +21,7 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 // Voice Call
 - (void)_didTapAudioButton {
     if (SCIShouldConfirmCall(kSCIAudioCallConfirmKey)) {
-        NSLog(@"[SCInsta] Call confirm triggered");
+        SCILog(@"General", @"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Audio Call"
@@ -33,7 +33,7 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 
 - (void)_didTapAudioButton:(id)arg1 {
     if (SCIShouldConfirmCall(kSCIAudioCallConfirmKey)) {
-        NSLog(@"[SCInsta] Call confirm triggered");
+        SCILog(@"General", @"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Audio Call"
@@ -46,7 +46,7 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 // Video Call
 - (void)_didTapVideoButton {
     if (SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) {
-        NSLog(@"[SCInsta] Call confirm triggered");
+        SCILog(@"General", @"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Video Call"
@@ -58,7 +58,7 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 
 - (void)_didTapVideoButton:(id)arg1 {
     if (SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) {
-        NSLog(@"[SCInsta] Call confirm triggered");
+        SCILog(@"General", @"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Video Call"

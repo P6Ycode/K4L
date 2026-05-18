@@ -1689,13 +1689,15 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
         __weak UIButton *weakObservedButton = button;
         id token = [[NSNotificationCenter defaultCenter] addObserverForName:SCIActionButtonConfigurationDidChangeNotification
                                                                       object:nil
-                                                                       queue:[NSOperationQueue mainQueue]
+                                                                       queue:nil
                                                                   usingBlock:^(__unused NSNotification *note) {
-            UIButton *strongButton = weakObservedButton;
-            SCIActionButtonContext *storedContext = SCIActionButtonContextFromButton(strongButton);
-            if (!strongButton || !storedContext) return;
-            objc_setAssociatedObject(strongButton, kSCIActionButtonMenuSignatureAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
-            SCIConfigureActionButton(strongButton, storedContext);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                UIButton *strongButton = weakObservedButton;
+                SCIActionButtonContext *storedContext = SCIActionButtonContextFromButton(strongButton);
+                if (!strongButton || !storedContext) return;
+                objc_setAssociatedObject(strongButton, kSCIActionButtonMenuSignatureAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                SCIConfigureActionButton(strongButton, storedContext);
+            });
         }];
         objc_setAssociatedObject(button, kSCIActionButtonConfigurationObserverAssocKey, token, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
@@ -1796,10 +1798,32 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		if (groupElements.count == 0) continue;
         if (hasBulkMedia && [group.identifier isEqualToString:@"download"]) {
             UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, media, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
-            if (bulkElement) [groupElements addObject:bulkElement];
+            if (bulkElement) {
+                NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
+                [groupElements removeAllObjects];
+                
+                UIMenu *nonBulkInlineGroup = [UIMenu menuWithTitle:@""
+                                                            image:nil
+                                                       identifier:nil
+                                                          options:UIMenuOptionsDisplayInline
+                                                         children:nonBulkElements];
+                [groupElements addObject:nonBulkInlineGroup];
+                [groupElements addObject:bulkElement];
+            }
         } else if (hasBulkMedia && [group.identifier isEqualToString:@"copy"]) {
             UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, media, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
-            if (bulkElement) [groupElements addObject:bulkElement];
+            if (bulkElement) {
+                NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
+                [groupElements removeAllObjects];
+                
+                UIMenu *nonBulkInlineGroup = [UIMenu menuWithTitle:@""
+                                                            image:nil
+                                                       identifier:nil
+                                                          options:UIMenuOptionsDisplayInline
+                                                         children:nonBulkElements];
+                [groupElements addObject:nonBulkInlineGroup];
+                [groupElements addObject:bulkElement];
+            }
         }
 		if (!firstGroup) {
 			[menuElements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[]]];

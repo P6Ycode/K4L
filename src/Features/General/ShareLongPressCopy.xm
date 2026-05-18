@@ -362,9 +362,11 @@ extern "C" void SCIInstallShareLongPressCopyHooksIfNeeded(void) {
         %init(SCIShareLongPressCopyHooks);
         [[NSNotificationCenter defaultCenter] addObserverForName:NSUserDefaultsDidChangeNotification
                                                           object:nil
-                                                           queue:[NSOperationQueue mainQueue]
+                                                           queue:nil
                                                       usingBlock:^(__unused NSNotification *notification) {
-            SCIUpdateShareLongPressRecognizerStates();
+            dispatch_async(dispatch_get_main_queue(), ^{
+                SCIUpdateShareLongPressRecognizerStates();
+            });
         }];
     });
 }

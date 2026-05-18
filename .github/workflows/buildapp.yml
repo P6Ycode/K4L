@@ -23,6 +23,11 @@ on:
                 default: false
                 required: false
                 type: boolean
+            for_sidestore:
+                description: "Build for SideStore (Strips Extensions)"
+                default: false
+                required: false
+                type: boolean
   
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -122,11 +127,14 @@ jobs:
                 export PATH=.:$PATH
                 ls -la
 
-                if [ "${{ inputs.with_flex }}" = "true" ]; then
-                  ./build.sh sideload --release --flex
-                else
-                  ./build.sh sideload --release
+                FLAGS="--release"
+                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
+                  FLAGS="--sidestore"
                 fi
+                if [ "${{ inputs.with_flex }}" = "true" ]; then
+                  FLAGS="$FLAGS --flex"
+                fi
+                ./build.sh sideload $FLAGS
                 ls -la packages
                 
               env:
@@ -135,16 +143,32 @@ jobs:
             - name: Rename IPA to include version info
               run: |
                 cd main/packages
-                if [ "${{ inputs.with_flex }}" = "true" ]; then
-                  mv "SCInsta.ipa" "SCInsta_sideloaded_v${SCINSTA_VERSION}.ipa"
-                else
-                  mv "SCInsta-no-flex.ipa" "SCInsta_sideloaded_v${SCINSTA_VERSION}.ipa"
+                SUFFIX=""
+                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
+                  SUFFIX="-sidestore"
                 fi
+                
+                if [ "${{ inputs.with_flex }}" = "true" ]; then
+                  IPA_NAME="SCInsta${SUFFIX}.ipa"
+                else
+                  IPA_NAME="SCInsta-no-flex${SUFFIX}.ipa"
+                fi
+                
+                FINAL_SUFFIX=""
+                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
+                  FINAL_SUFFIX="_sidestore"
+                fi
+                
+                mv "$IPA_NAME" "SCInsta_sideloaded_v${SCINSTA_VERSION}${FINAL_SUFFIX}.ipa"
 
             - name: Pass package name to upload action
               id: package_name
               run: |
-                echo "package=SCInsta_sideloaded_v${SCINSTA_VERSION}.ipa" >> "$GITHUB_OUTPUT"
+                FINAL_SUFFIX=""
+                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
+                  FINAL_SUFFIX="_sidestore"
+                fi
+                echo "package=SCInsta_sideloaded_v${SCINSTA_VERSION}${FINAL_SUFFIX}.ipa" >> "$GITHUB_OUTPUT"
 
             - name: Upload Artifact
               if: ${{ inputs.upload_artifact }}

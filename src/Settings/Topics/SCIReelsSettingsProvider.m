@@ -22,7 +22,7 @@ static NSString * const kSCIReelsActionButtonDefaultActionKey = @"action_button_
             [SCISetting switchCellWithTitle:@"Disable Reels Tab Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"disable_reels_tab_refresh"]
         ], @"Tap Controls changes what happens when you tap on a reel. Auto-unmuting controls prevent reels from unmuting when volume or silent mode changes."),
         SCITopicSection(@"Limits", @[
-            [SCISetting switchCellWithTitle:@"Disable Scrolling Reels" icon:SCISettingsIcon(@"autoscroll_off") defaultsKey:@"disable_scrolling_reels" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Disable Scrolling Reels" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"disable_scrolling_reels" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Prevent Doom Scrolling" icon:SCISettingsIcon(@"arrow_down") defaultsKey:@"prevent_doom_scrolling"],
             [SCISetting stepperCellWithTitle:@"Doom Scrolling Limit" subtitle:@"Only loads %@ %@" defaultsKey:@"doom_scrolling_reel_count" min:1 max:100 step:1 label:@"reels" singularLabel:@"reel"]
         ], nil),

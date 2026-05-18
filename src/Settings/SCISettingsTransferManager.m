@@ -11,8 +11,10 @@
 
 @interface SCISettingsTransferManager () <UIDocumentPickerDelegate>
 @property (nonatomic, weak) UIViewController *presentingController;
+@property (nonatomic, strong) UIDocumentPickerViewController *activeDocumentPicker;
 @property (nonatomic, assign) BOOL pendingImportSettings;
 @property (nonatomic, assign) BOOL pendingImportGallery;
+@property (nonatomic, assign) BOOL isImportMode;
 @end
 
 static NSString *SCITemporaryTransferRoot(NSString *suffix) {
@@ -87,6 +89,21 @@ static BOOL SCICopyItemReplacingDestination(NSString *sourcePath, NSString *dest
     NSString *parent = [destinationPath stringByDeletingLastPathComponent];
     [fm createDirectoryAtPath:parent withIntermediateDirectories:YES attributes:nil error:nil];
     return [fm copyItemAtPath:sourcePath toPath:destinationPath error:error];
+}
+
+static UIViewController *SCIDocumentPickerPresenter(UIViewController *preferredController) {
+    UIViewController *presenter = preferredController;
+    if (!presenter || !presenter.view.window) {
+        presenter = topMostController();
+    }
+    while (presenter.presentedViewController) {
+        presenter = presenter.presentedViewController;
+    }
+    if ([presenter isKindOfClass:[UINavigationController class]]) {
+        UIViewController *visible = ((UINavigationController *)presenter).visibleViewController;
+        if (visible) presenter = visible;
+    }
+    return presenter ?: topMostController();
 }
 
 static BOOL SCIIsValidSettingsTransferBundleRoot(NSString *bundleRoot);
@@ -582,6 +599,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 - (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery {
     if (!includeSettings && !includeGallery) return;
     self.presentingController = controller;
+    self.isImportMode = NO;
 
     NSString *root = SCITemporaryTransferRoot(@"export");
     NSString *bundleRoot = [root stringByAppendingPathComponent:@"SCInstaExportBundle"];
@@ -600,7 +618,13 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 
     if (includeGallery) {
         NSError *copyError = nil;
-        if (![fm copyItemAtPath:[SCIGalleryPaths galleryDirectory] toPath:galleryDestination error:&copyError]) {
+        NSString *gallerySource = [SCIGalleryPaths galleryDirectory];
+        if ([fm fileExistsAtPath:gallerySource]) {
+            if (![fm copyItemAtPath:gallerySource toPath:galleryDestination error:&copyError]) {
+                SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                return;
+            }
+        } else if (![fm createDirectoryAtPath:galleryDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
             SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
             return;
         }
@@ -618,8 +642,20 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 
     NSURL *archiveURL = [NSURL fileURLWithPath:archivePath isDirectory:NO];
     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[archiveURL] asCopy:YES];
-    SCINotify(kSCINotificationSettingsExport, @"Opened export sheet", nil, @"arrow_up", SCINotificationToneForIconResource(@"arrow_up"));
-    [controller presentViewController:picker animated:YES completion:nil];
+    picker.delegate = self;
+    self.activeDocumentPicker = picker;
+    SCILog(@"Transfer", @"Presenting export document picker settings=%@ gallery=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no");
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *presenter = SCIDocumentPickerPresenter(controller);
+        if (!presenter || !presenter.view.window) {
+            SCINotify(kSCINotificationSettingsExport, @"Export ready", @"Unable to open Files; opening share sheet instead.", @"arrow_up", SCINotificationToneForIconResource(@"arrow_up"));
+            [SCIUtils showShareVC:archiveURL];
+            return;
+        }
+        [presenter presentViewController:picker animated:YES completion:^{
+            SCINotify(kSCINotificationSettingsExport, @"Opened export sheet", nil, @"arrow_up", SCINotificationToneForIconResource(@"arrow_up"));
+        }];
+    });
 }
 
 - (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery {
@@ -627,6 +663,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     self.presentingController = controller;
     self.pendingImportSettings = includeSettings;
     self.pendingImportGallery = includeGallery;
+    self.isImportMode = YES;
     UIDocumentPickerViewController *picker = nil;
     UTType *archiveType = SCISettingsTransferArchiveType();
     NSMutableArray<UTType *> *contentTypes = [NSMutableArray array];
@@ -636,20 +673,39 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     [contentTypes addObject:UTTypeData];
     picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:contentTypes asCopy:YES];
     picker.delegate = self;
-    SCINotify(kSCINotificationSettingsImport, @"Choose an export bundle", nil, @"arrow_down", SCINotificationToneForIconResource(@"arrow_down"));
-    [controller presentViewController:picker animated:YES completion:nil];
+    self.activeDocumentPicker = picker;
+    SCILog(@"Transfer", @"Presenting import document picker settings=%@ gallery=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no");
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *presenter = SCIDocumentPickerPresenter(controller);
+        if (!presenter || !presenter.view.window) {
+            SCINotify(kSCINotificationSettingsImport, @"Import failed", @"Unable to open Files picker.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+            self.activeDocumentPicker = nil;
+            return;
+        }
+        [presenter presentViewController:picker animated:YES completion:^{
+            SCINotify(kSCINotificationSettingsImport, @"Choose an export bundle", nil, @"arrow_down", SCINotificationToneForIconResource(@"arrow_down"));
+        }];
+    });
 }
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
     self.pendingImportSettings = NO;
     self.pendingImportGallery = NO;
     self.presentingController = nil;
+    self.activeDocumentPicker = nil;
+    self.isImportMode = NO;
 }
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     self.presentingController = nil;
+    self.activeDocumentPicker = nil;
     if (!url) return;
+    
+    if (!self.isImportMode) {
+        SCINotify(kSCINotificationSettingsExport, @"Export complete", @"SCInsta backup saved successfully.", @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
+        return;
+    }
 
     BOOL scoped = [url startAccessingSecurityScopedResource];
     NSError *archiveError = nil;

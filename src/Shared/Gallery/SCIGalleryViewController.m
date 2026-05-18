@@ -520,7 +520,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
     NSError *error;
     if (![_fetchedResultsController performFetch:&error]) {
-        NSLog(@"[SCInsta Gallery] Fetch failed: %@", error);
+        SCILog(@"General", @"[SCInsta Gallery] Fetch failed: %@", error);
     }
 }
 
@@ -558,7 +558,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
     NSError *error;
     if (![_fetchedResultsController performFetch:&error]) {
-        NSLog(@"[SCInsta Gallery] Refetch failed: %@", error);
+        SCILog(@"General", @"[SCInsta Gallery] Refetch failed: %@", error);
     }
     [self reloadSubfolders];
     [self.collectionView reloadData];

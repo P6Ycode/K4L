@@ -1,7 +1,19 @@
 #import <Foundation/Foundation.h>
+#import <os/log.h>
 
-extern NSString *accessGroupId;
-extern NSString *bundleId;
+static inline void SCISideloadLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+static inline void SCISideloadLog(NSString *format, ...) {
+	NSString *body = @"";
+	if (format.length > 0) {
+		va_list args;
+		va_start(args, format);
+		body = [[NSString alloc] initWithFormat:format arguments:args];
+		va_end(args);
+	}
+
+	NSString *line = [NSString stringWithFormat:@"[SCInsta SideloadFix]: %@", body ?: @""];
+	os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_DEFAULT, "%{public}s", line.UTF8String);
+}
 
 extern void rebindSecFuncs();
 

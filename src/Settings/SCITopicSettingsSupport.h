@@ -21,6 +21,7 @@ UIMenu *SCISwipeBetweenTabsMenu(void);
 UIMenu *SCICacheAutoClearMenu(void);
 UIMenu *SCIMediaVideoQualityMenu(void);
 UIMenu *SCIMediaPhotoQualityMenu(void);
+UIMenu *SCIGalleryShortcutTargetMenu(void);
 NSArray *SCIDevExampleSections(void);
 
 NS_ASSUME_NONNULL_END

@@ -86,7 +86,7 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
         }
     }
 
-    NSLog(@"[SCInsta] Adding tweak settings long press gesture recognizer");
+    SCILog(@"General", @"[SCInsta] Adding tweak settings long press gesture recognizer");
 
     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(sci_handleSettingsLongPress:)];
     longPress.minimumPressDuration = kSCIProfileMoreSettingsLongPressDuration;
@@ -104,7 +104,7 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 %new - (void)sci_handleSettingsLongPress:(UILongPressGestureRecognizer *)sender {
     if (sender.state != UIGestureRecognizerStateBegan) return;
     
-    NSLog(@"[SCInsta] Tweak settings gesture activated");
+    SCILog(@"General", @"[SCInsta] Tweak settings gesture activated");
 
     [SCIUtils showSettingsVC:[self window]];
 }

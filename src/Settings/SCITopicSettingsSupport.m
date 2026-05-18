@@ -241,6 +241,37 @@ UIMenu *SCIMediaPhotoQualityMenu(void) {
     ]];
 }
 
+UIMenu *SCIGalleryShortcutTargetMenu(void) {
+    NSString * const kGalleryLongPressTabKey = @"gallery_long_press_tab";
+    NSString * const kGalleryQuickAccessDisabledValue = @"none";
+
+    NSMutableArray<UIMenuElement *> *commands = [NSMutableArray array];
+
+    NSArray<NSDictionary *> *items = @[
+        @{@"title": @"None", @"value": kGalleryQuickAccessDisabledValue, @"icon": @"circle_off"},
+        @{@"title": @"Home", @"value": @"mainfeed-tab", @"icon": @"home"},
+        @{@"title": @"Reels", @"value": @"reels-tab", @"icon": @"reels"}
+    ];
+
+    NSMutableArray *allItems = [items mutableCopy];
+    if ([SCIUtils tabOrderSetTo:@"classic"]) {
+        [allItems addObject:@{@"title": @"Create", @"value": @"camera-tab", @"icon": @"plus"}];
+    } else {
+        [allItems addObject:@{@"title": @"Messages", @"value": @"direct-inbox-tab", @"icon": @"messages"}];
+    }
+    [allItems addObject:@{@"title": @"Profile", @"value": @"profile-tab", @"icon": @"user_circle"}];
+
+    for (NSDictionary *item in allItems) {
+        NSString *title = item[@"title"];
+        NSString *value = item[@"value"];
+        NSString *iconName = item[@"icon"];
+
+        [commands addObject:SCIMenuCommand(title, iconName, nil, kGalleryLongPressTabKey, value, YES)];
+    }
+
+    return [UIMenu menuWithChildren:commands];
+}
+
 NSArray *SCIDevExampleSections(void) {
     return @[
         SCITopicSection(@"_ Example", @[

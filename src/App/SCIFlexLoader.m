@@ -134,7 +134,7 @@ BOOL SCIFlexLoadIfNeeded(void) {
     NSString *path = SCIFlexBundledPath();
     if (path.length == 0) {
         sSCIFlexLoadError = @"libFLEX.dylib was not bundled";
-        SCILog(@"FLEX unavailable: %@", sSCIFlexLoadError);
+        SCILog(@"FLEX", @"FLEX unavailable: %@", sSCIFlexLoadError);
         return NO;
     }
 
@@ -142,7 +142,7 @@ BOOL SCIFlexLoadIfNeeded(void) {
     if (!handle) {
         const char *error = dlerror();
         sSCIFlexLoadError = error ? @(error) : @"dlopen failed";
-        SCILog(@"FLEX dlopen failed at %@: %@", path, sSCIFlexLoadError);
+        SCILog(@"FLEX", @"FLEX dlopen failed at %@: %@", path, sSCIFlexLoadError);
         return NO;
     }
 
@@ -153,7 +153,7 @@ BOOL SCIFlexLoadIfNeeded(void) {
 
     if (!sSCIFlexGetManager || !sSCIFlexRevealSEL) {
         sSCIFlexLoadError = @"libFLEX.dylib did not export required symbols";
-        SCILog(@"FLEX symbol resolution failed at %@", path);
+        SCILog(@"FLEX", @"FLEX symbol resolution failed at %@", path);
         return NO;
     }
 
@@ -164,7 +164,7 @@ BOOL SCIFlexLoadIfNeeded(void) {
 
     SCIInstallFlexLoadedCompatibilityHooksIfNeeded();
 
-    SCILog(@"FLEX loaded lazily from %@", sSCIFlexLoadedPath);
+    SCILog(@"FLEX", @"FLEX loaded lazily from %@", sSCIFlexLoadedPath);
     return SCIFlexIsLoaded();
 }
 
@@ -196,7 +196,7 @@ static void SCIFlexShowMissingPill(NSString *trigger) {
             subtitle = sSCIFlexLoadError;
         }
 
-        SCILog(@"FLEX show requested by %@ but unavailable: %@", trigger, subtitle);
+        SCILog(@"FLEX", @"FLEX show requested by %@ but unavailable: %@", trigger, subtitle);
         SCINotify(kSCINotificationFlexUnavailable, @"FLEX unavailable", subtitle, @"info_filled", SCINotificationToneInfo);
     });
 }
@@ -204,7 +204,7 @@ static void SCIFlexShowMissingPill(NSString *trigger) {
 void SCIFlexShowExplorer(NSString *trigger) {
     NSString *showTrigger = trigger ?: @"unknown";
     if (SCIFlexShouldSuppressDuplicateShow(showTrigger)) {
-        SCILog(@"Skipping duplicate FLEX show for trigger %@", showTrigger);
+        SCILog(@"FLEX", @"Skipping duplicate FLEX show for trigger %@", showTrigger);
         return;
     }
 

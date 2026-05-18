@@ -26,7 +26,7 @@
 
         // Refresh option picker
         if ([self respondsToSelector:@selector(reloadData)]) {
-            NSLog(@"[SCInsta] Enable all text effects: Reloading data...");
+            SCILog(@"General", @"[SCInsta] Enable all text effects: Reloading data...");
             [self reloadData];
         }
 

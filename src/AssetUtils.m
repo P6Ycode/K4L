@@ -129,7 +129,6 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"audio": @{@"candidates": @[@"ig_icon_audio_wave_outline_24"]},
             @"autoplay_off": @{@"candidates": @[@"ig_icon_auto_play_off_outline_24"]},
             @"autoscroll": @{@"candidates": @[@"ig_icon_auto_scroll_outline_24"]},
-            @"autoscroll_off": @{@"candidates": @[@"ig_icon_auto_scroll_off_outline_24"]},
             @"backspace": @{@"candidates": @[@"ig_icon_backspace_outline_24"]},
             @"blend": @{@"candidates": @[@"ig_icon_blend_outline_24"]},
             @"calendar": @{@"candidates": @[@"ig_icon_calendar_outline_24"]},
@@ -207,7 +206,10 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"question": @{@"candidates": @[@"ig_icon_questions_outline_24"]},
             @"reactions": @{@"candidates": @[@"ig_icon_reactions_outline_24"]},
             @"reels": @{@"candidates": @[@"ig_icon_reels_prism_outline_24", @"ig_icon_reels_pano_prism_outline_24", @"ig_icon_reels_outline_24", @"ig_icon_reels_pano_outline_24"]},
-            @"reels_gallery": @{@"candidates": @[@"ig_icon_reels_gallery_outline_24"]},
+            @"reels_gallery": @{
+                @"candidates": @[@"ig_icon_reels_gallery_outline_24"],
+                @"alias": @"reels"
+            },
             @"reply": @{@"candidates": @[@"ig_icon_reply_outline_24"]},
             @"repost": @{@"candidates": @[@"ig_icon_reshare_pano_outline_24", @"ig_icon_reshare_outline_24"]},
             @"save": @{@"candidates": @[@"ig_icon_save_pano_outline_24", @"ig_icon_save_outline_24"]},
@@ -255,12 +257,35 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
     return overrides;
 }
 
+static SCIAssetDescriptor *SCIAssetResolvedDescriptor(NSString *name) {
+    SCIAssetDescriptor *descriptor = SCIAssetOverrides()[name];
+    if (!descriptor) return nil;
+    NSString *alias = descriptor[@"alias"];
+    if (alias.length > 0) {
+        SCIAssetDescriptor *aliasDescriptor = SCIAssetOverrides()[alias];
+        if (aliasDescriptor) {
+            NSMutableDictionary *merged = [aliasDescriptor mutableCopy];
+            for (NSString *key in descriptor) {
+                if ([key isEqualToString:@"candidates"]) {
+                    NSMutableOrderedSet *mergedCandidates = [NSMutableOrderedSet orderedSetWithArray:descriptor[@"candidates"]];
+                    [mergedCandidates addObjectsFromArray:aliasDescriptor[@"candidates"] ?: @[]];
+                    merged[@"candidates"] = mergedCandidates.array;
+                } else {
+                    merged[key] = descriptor[key];
+                }
+            }
+            return merged;
+        }
+    }
+    return descriptor;
+}
+
 static CGFloat SCIAssetResolvedPointSize(NSString *name, CGFloat pointSize) {
     if (pointSize <= 0) {
         return pointSize;
     }
 
-    SCIAssetDescriptor *descriptor = SCIAssetOverrides()[SCIAssetNormalizeInternalName(name)];
+    SCIAssetDescriptor *descriptor = SCIAssetResolvedDescriptor(SCIAssetNormalizeInternalName(name));
     NSDictionary *sizeMap = descriptor[@"size_map"];
     if (![sizeMap isKindOfClass:[NSDictionary class]]) {
         return pointSize;
@@ -315,7 +340,7 @@ static NSArray<NSString *> *SCIAssetHeuristicCandidates(NSString *name, CGFloat 
 
 static NSArray<NSString *> *SCIAssetCandidatesForInternalName(NSString *name, CGFloat pointSize) {
     NSString *normalized = SCIAssetNormalizeInternalName(name);
-    SCIAssetDescriptor *descriptor = SCIAssetOverrides()[normalized];
+    SCIAssetDescriptor *descriptor = SCIAssetResolvedDescriptor(normalized);
     NSMutableOrderedSet<NSString *> *candidates = [NSMutableOrderedSet orderedSet];
 
     NSArray<NSString *> *explicitCandidates = descriptor[@"candidates"];
@@ -327,7 +352,7 @@ static NSArray<NSString *> *SCIAssetCandidatesForInternalName(NSString *name, CG
 }
 
 static SCIAssetCatalogSource SCIAssetDefaultSourceForInternalName(NSString *name) {
-    SCIAssetDescriptor *descriptor = SCIAssetOverrides()[SCIAssetNormalizeInternalName(name)];
+    SCIAssetDescriptor *descriptor = SCIAssetResolvedDescriptor(SCIAssetNormalizeInternalName(name));
     NSNumber *sourceValue = descriptor[@"source"];
     if ([sourceValue isKindOfClass:[NSNumber class]]) {
         return (SCIAssetCatalogSource)sourceValue.integerValue;
@@ -373,7 +398,7 @@ static UIImage *SCIAssetSystemSymbolImage(NSString *name, CGFloat pointSize, UII
 }
 
 static BOOL SCIAssetHasExplicitOverride(NSString *name) {
-    return SCIAssetOverrides()[SCIAssetNormalizeInternalName(name)] != nil;
+    return SCIAssetResolvedDescriptor(SCIAssetNormalizeInternalName(name)) != nil;
 }
 
 static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, SCIAssetCatalogSource source, UIImageRenderingMode renderingMode) {

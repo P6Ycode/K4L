@@ -18,7 +18,7 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
     }
 
     if ([SCIUtils getBoolPref:@"no_seen_receipt"] && !forcedStoryMatches) {
-        NSLog(@"[SCInsta] Prevented automatic story seen marking");
+        SCILog(@"General", @"[SCInsta] Prevented automatic story seen marking");
         return;
     }
 

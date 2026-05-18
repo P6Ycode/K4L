@@ -9,14 +9,14 @@
 + (SCISetting *)rootSetting {
     return SCITopicNavigationSetting(@"About", @"info", 24.0, @[
         SCITopicSection(@"Support", @[
-            SCISettingApplyIconTint([SCISetting linkCellWithTitle:@"Donate to the original developer"
+            SCISettingApplyIconTint([SCISetting linkCellWithTitle:@"Donate to the Original Developer"
                                                          subtitle:@""
                                                              icon:SCISettingsIcon(@"heart_filled")
                                                               url:@"https://ko-fi.com/SoCuul"],
                                    [SCIUtils SCIColor_InstagramFavorite])
         ], @"Consider donating to support this tweak's development"),
         SCITopicSection(@"Credits", @[
-            [SCISetting linkCellWithTitle:@"Socuul"
+            [SCISetting linkCellWithTitle:@"SoCuul"
                                  subtitle:@"Original developer"
                                  imageUrl:@"https://i.imgur.com/c9CbytZ.png"
                                       url:@"https://socuul.dev"],
@@ -24,8 +24,8 @@
                                  subtitle:@"... developer"
                                  imageUrl:@"https://avatars.githubusercontent.com/u/117626247?v=4"
                                       url:@"https://example.com"],
-            [SCISetting linkCellWithTitle:@"View Repo"
-                                 subtitle:@"View the tweak's source code on GitHub"
+            [SCISetting linkCellWithTitle:@"View Source Code"
+                                 subtitle:@"Tap to open on GitHub"
                                  imageUrl:@"https://i.imgur.com/BBUNzeP.png"
                                       url:@"https://github.com/efibalogh/SCInsta"]
         ], nil),

@@ -2,6 +2,7 @@
 #import "SCIGalleryPaths.h"
 #import "SCIGalleryCoreDataStack.h"
 #import "SCIGalleryOriginController.h"
+#import "../../Utils.h"
 #import <AVFoundation/AVFoundation.h>
 #import <ImageIO/ImageIO.h>
 #import <ctype.h>
@@ -619,7 +620,7 @@ static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
 
     NSError *copyError;
     if (![fm copyItemAtPath:fileURL.path toPath:destPath error:&copyError]) {
-        NSLog(@"[SCInsta Gallery] Failed to copy file: %@", copyError);
+        SCILog(@"General", @"[SCInsta Gallery] Failed to copy file: %@", copyError);
         if (error) *error = copyError;
         return nil;
     }
@@ -643,7 +644,7 @@ static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
 
     NSError *saveError;
     if (![ctx save:&saveError]) {
-        NSLog(@"[SCInsta Gallery] Failed to save entity: %@", saveError);
+        SCILog(@"General", @"[SCInsta Gallery] Failed to save entity: %@", saveError);
         [fm removeItemAtPath:destPath error:nil];
         if (error) *error = saveError;
         return nil;
@@ -674,7 +675,7 @@ static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
 
     NSError *saveError;
     if (![ctx save:&saveError]) {
-        NSLog(@"[SCInsta Gallery] Failed to delete entity: %@", saveError);
+        SCILog(@"General", @"[SCInsta Gallery] Failed to delete entity: %@", saveError);
         if (error) *error = saveError;
         return NO;
     }

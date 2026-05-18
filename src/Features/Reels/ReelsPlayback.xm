@@ -40,7 +40,7 @@
     }
 
     if ([SCIUtils getBoolPref:@"refresh_reel_confirm"]) {
-        NSLog(@"[SCInsta] Reel refresh triggered");
+        SCILog(@"General", @"[SCInsta] Reel refresh triggered");
         
         [SCIUtils showConfirmation:^(void) { %orig(arg1, arg2); }
                      cancelHandler:^(void) {

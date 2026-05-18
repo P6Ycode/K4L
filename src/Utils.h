@@ -9,13 +9,14 @@
 
 #import "Settings/SCISettingsViewController.h"
 
-#define SCILog(fmt, ...) \
-    do { \
-        NSString *tmpStr = [NSString stringWithFormat:(fmt), ##__VA_ARGS__]; \
-        os_log(OS_LOG_DEFAULT, "[SCInsta Test] %{public}s", tmpStr.UTF8String); \
-    } while(0)
+FOUNDATION_EXPORT void SCILogMessage(NSString *category,
+                                     os_log_type_t type,
+                                     NSString *format, ...) NS_FORMAT_FUNCTION(3, 4);
 
-#define SCILogId(prefix, obj) os_log(OS_LOG_DEFAULT, "[SCInsta Test] %{public}@: %{public}@", prefix, obj);
+#define SCILog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
+#define SCIWarnLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
+#define SCIErrorLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)
+#define SCILogId(category, obj) SCILog((category), @"%@", (obj))
 
 @interface SCIUtils : NSObject
 

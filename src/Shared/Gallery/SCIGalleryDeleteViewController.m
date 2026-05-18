@@ -214,7 +214,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
         SCIGalleryDeleteUserItem *item = self.users[indexPath.row];
         cell.textLabel.text = item.displayName;
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%ld", (long)item.count];
-        cell.imageView.image = [SCIAssetUtils instagramIconNamed:@"user_circle" pointSize:22.0];
+        cell.imageView.image = [SCIAssetUtils instagramIconNamed:@"user" pointSize:22.0];
         return cell;
     }
 

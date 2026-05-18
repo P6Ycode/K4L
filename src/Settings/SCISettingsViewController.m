@@ -78,36 +78,6 @@ static UIImage *SCISettingsReorderCompositeImage(UIImage *iconImage, UIColor *ti
     }];
 }
 
-static NSString *SCITitleCaseString(NSString *string) {
-    if (string.length == 0) return string;
-
-    NSSet<NSString *> *lowercaseWords = [NSSet setWithArray:@[@"a", @"an", @"and", @"as", @"at", @"by", @"for", @"from", @"in", @"of", @"on", @"or", @"the", @"to", @"vs."]];
-    NSArray<NSString *> *parts = [string componentsSeparatedByString:@" "];
-    NSMutableArray<NSString *> *formatted = [NSMutableArray arrayWithCapacity:parts.count];
-
-    [parts enumerateObjectsUsingBlock:^(NSString *part, NSUInteger idx, BOOL *stop) {
-        if (part.length == 0) {
-            [formatted addObject:part];
-            return;
-        }
-
-        if ([part isEqualToString:part.uppercaseString]) {
-            [formatted addObject:part];
-            return;
-        }
-
-        NSString *lower = part.lowercaseString;
-        if (idx > 0 && [lowercaseWords containsObject:lower]) {
-            [formatted addObject:lower];
-            return;
-        }
-
-        [formatted addObject:part.capitalizedString];
-    }];
-
-    return [formatted componentsJoinedByString:@" "];
-}
-
 static NSMutableArray *SCIMutableSectionsCopy(NSArray *sections) {
     NSMutableArray *mutableSections = [NSMutableArray array];
     for (NSDictionary *section in sections) {
@@ -322,7 +292,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByWordWrapping;
     BOOL rowEnabled = row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES;
 
-    cellContentConfig.text = SCITitleCaseString(row.title);
+    cellContentConfig.text = row.title;
 
     // Subtitle
     if (row.subtitle.length) {
@@ -457,8 +427,13 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
             UIButtonConfiguration *config = menuButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
             config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
+            config.image = [UIImage systemImageNamed:@"chevron.up.chevron.down"];
+            config.imagePlacement = NSDirectionalRectEdgeTrailing;
+            config.imagePadding = 6.0;
+            config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
+            
             menuButton.configuration = config;
-            menuButton.tintColor = rowEnabled ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramTertiaryText];
+            menuButton.tintColor = rowEnabled ? [SCIUtils SCIColor_InstagramSecondaryText] : [SCIUtils SCIColor_InstagramTertiaryText];
             if (!rowEnabled) {
                 cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
                 cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramTertiaryText];
@@ -776,7 +751,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
         [[NSUserDefaults standardUserDefaults] setBool:NO forKey:row.mutuallyExclusiveDefaultsKey];
     }
 
-    NSLog(@"Switch changed: %@", sender.isOn ? @"ON" : @"OFF");
+    SCILog(@"General", @"Switch changed: %@", sender.isOn ? @"ON" : @"OFF");
     if (sender.isOn) {
         SCIInstallEnabledFeatureHooks();
     }
@@ -817,7 +792,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     sender.value = normalizedValue;
     [[NSUserDefaults standardUserDefaults] setDouble:normalizedValue forKey:row.defaultsKey];
 
-    NSLog(@"Stepper changed: %f", normalizedValue);
+    SCILog(@"General", @"Stepper changed: %f", normalizedValue);
 
     [self reloadCellForView:sender];
 }
@@ -831,7 +806,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
         [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
     }
 
-    NSLog(@"Menu changed: %@", command.propertyList[@"value"]);
+    SCILog(@"General", @"Menu changed: %@", command.propertyList[@"value"]);
 
     [self reloadCellForView:command.sender animated:YES];
 

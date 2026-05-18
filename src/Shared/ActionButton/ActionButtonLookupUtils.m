@@ -90,7 +90,7 @@ static void SCIDMTrace(NSString *format, ...) {
 	va_start(args, format);
 	NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
 	va_end(args);
-	os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_DEFAULT, "[SCInsta][DMTrace] %{public}@", message ?: @"(nil)");
+	SCILog(@"DMTrace", @"%@", message ?: @"(nil)");
 }
 
 static BOOL SCIRelationNameLooksRelevant(NSString *name) {

@@ -1,4 +1,5 @@
 #import "SCIGalleryPaths.h"
+#import "../../Utils.h"
 
 static NSString *_galleryDirectory;
 static NSString *_galleryMediaDirectory;
@@ -40,7 +41,7 @@ static NSString *_galleryThumbnailsDirectory;
         NSError *error;
         [fm createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:&error];
         if (error) {
-            NSLog(@"[SCInsta Gallery] Failed to create directory %@: %@", path, error);
+            SCILog(@"General", @"[SCInsta Gallery] Failed to create directory %@: %@", path, error);
         }
     }
 }

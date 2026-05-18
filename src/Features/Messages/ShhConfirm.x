@@ -17,7 +17,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
                         enableHapticFeedback:(BOOL)arg4
                                  launcherSet:(id)arg5 {
     if (SCIBlockDisappearingSwipeUpEnabled()) {
-        NSLog(@"[SCInsta] Blocking disappearing swipe-up initializer (launcherSet)");
+        SCILog(@"General", @"[SCInsta] Blocking disappearing swipe-up initializer (launcherSet)");
         return nil;
     }
 
@@ -29,7 +29,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
                             keyboardObserver:(id)arg3
                         enableHapticFeedback:(BOOL)arg4 {
     if (SCIBlockDisappearingSwipeUpEnabled()) {
-        NSLog(@"[SCInsta] Blocking disappearing swipe-up initializer");
+        SCILog(@"General", @"[SCInsta] Blocking disappearing swipe-up initializer");
         return nil;
     }
 
@@ -40,12 +40,12 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 %hook IGDirectThreadViewController
 - (void)swipeableScrollManagerDidEndDraggingAboveSwipeThreshold:(id)arg1 {
     if (SCIBlockDisappearingSwipeUpEnabled()) {
-        NSLog(@"[SCInsta] Blocking disappearing swipe-up threshold action");
+        SCILog(@"General", @"[SCInsta] Blocking disappearing swipe-up threshold action");
         return;
     }
 
     if ([SCIUtils getBoolPref:@"shh_mode_confirm"]) {
-        NSLog(@"[SCInsta] Confirm shh mode triggered");
+        SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Vanish Mode"
@@ -57,7 +57,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 
 - (id)bottomSwipeHandler {
     if (SCIBlockDisappearingSwipeUpEnabled()) {
-        NSLog(@"[SCInsta] Blocking disappearing swipe-up handler");
+        SCILog(@"General", @"[SCInsta] Blocking disappearing swipe-up handler");
         return nil;
     }
 
@@ -66,7 +66,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 
 - (void)shhModeTransitionButtonDidTap:(id)arg1 {
     if ([SCIUtils getBoolPref:@"shh_mode_confirm"]) {
-        NSLog(@"[SCInsta] Confirm shh mode triggered");
+        SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Vanish Mode"
@@ -78,7 +78,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 
 - (void)messageListViewControllerDidToggleShhMode:(id)arg1 {
     if ([SCIUtils getBoolPref:@"shh_mode_confirm"]) {
-        NSLog(@"[SCInsta] Confirm shh mode triggered");
+        SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Vanish Mode"
@@ -90,7 +90,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 
 - (void)messageListViewControllerDidTakeScreenshot:(id)arg1 isRecording:(BOOL)arg2 productType:(NSInteger)arg3 {
     if (SCIHideVanishScreenshotEnabled()) {
-        NSLog(@"[SCInsta] Suppressing vanish screenshot callback (thread controller)");
+        SCILog(@"General", @"[SCInsta] Suppressing vanish screenshot callback (thread controller)");
         return;
     }
 
@@ -101,7 +101,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 %hook IGDirectMessageListViewController
 - (void)screenshotObserverDidSeeScreenshotTaken:(id)arg1 {
     if (SCIHideVanishScreenshotEnabled()) {
-        NSLog(@"[SCInsta] Suppressing vanish screenshot callback (screenshot taken)");
+        SCILog(@"General", @"[SCInsta] Suppressing vanish screenshot callback (screenshot taken)");
         return;
     }
 
@@ -110,7 +110,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 
 - (void)screenshotObserverDidSeeActiveScreenCapture:(id)arg1 event:(NSInteger)arg2 {
     if (SCIHideVanishScreenshotEnabled()) {
-        NSLog(@"[SCInsta] Suppressing vanish screenshot callback (active capture)");
+        SCILog(@"General", @"[SCInsta] Suppressing vanish screenshot callback (active capture)");
         return;
     }
 

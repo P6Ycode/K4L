@@ -25,7 +25,7 @@ static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
 %hook IGMainFeedViewController
 - (void)refreshFeedWithFetchReason:(NSInteger)reason animated:(BOOL)animated {
     if (sciShouldBlockFeedRefresh() && reason == kSCIFeedRefreshReasonHomeButton) {
-        NSLog(@"[SCInsta] Blocking home-button feed refresh");
+        SCILog(@"General", @"[SCInsta] Blocking home-button feed refresh");
         return;
     }
 

@@ -202,21 +202,52 @@ copy_flex_library_into_ipa() {
     rm -rf "$temp_dir"
 }
 
+strip_appex_bundles() {
+    local input_ipa="$1"
+    local output_ipa="$2"
+    local temp_dir
+    local app_dir
+    local appex_count
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/scinsta-strip-appex.XXXXXX")"
+
+    unzip -q "$input_ipa" -d "$temp_dir"
+
+    app_dir="$(find "$temp_dir/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+    if [ -z "$app_dir" ]; then
+        echo -e '\033[1m\033[0;31mCould not find Payload/*.app in IPA.\033[0m'
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    appex_count="$(find "$app_dir" -type d -name "*.appex" | wc -l | tr -d ' ')"
+    find "$app_dir" -type d -name "*.appex" -prune -exec rm -rf {} +
+    echo -e "\033[1m\033[0;33mStripped ${appex_count} app extension bundle(s).\033[0m"
+
+    rm -f "$output_ipa"
+    (
+        cd "$temp_dir"
+        zip -qry "$output_ipa" Payload
+    )
+    rm -rf "$temp_dir"
+}
+
 # Args: instagram ipa basename without .ipa; globals OPT_* must be set
 scinsta_sideload_output_ipa() {
     local ig_base="$1"
+    local suffix=""
+    [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ] && suffix="-sidestore"
     if [ "${OPT_INJECT:-0}" -eq 1 ] && [ "${OPT_FFMPEG:-0}" -eq 1 ] && [ "${OPT_PATCH:-0}" -eq 1 ]; then
         if [ "${OPT_DEV:-0}" -eq 1 ]; then
             if [ "${OPT_FLEX:-0}" -eq 1 ]; then
-                echo "SCInsta-dev.ipa"
+                echo "SCInsta-dev${suffix}.ipa"
             else
-                echo "SCInsta-dev-no-flex.ipa"
+                echo "SCInsta-dev-no-flex${suffix}.ipa"
             fi
         else
             if [ "${OPT_FLEX:-0}" -eq 1 ]; then
-                echo "SCInsta.ipa"
+                echo "SCInsta${suffix}.ipa"
             else
-                echo "SCInsta-no-flex.ipa"
+                echo "SCInsta-no-flex${suffix}.ipa"
             fi
         fi
         return
@@ -226,6 +257,7 @@ scinsta_sideload_output_ipa() {
     [ "${OPT_FFMPEG:-0}" -eq 1 ] && parts+=(ffmpeg)
     [ "${OPT_FLEX:-0}" -eq 1 ] && parts+=(flex)
     [ "${OPT_PATCH:-0}" -eq 1 ] && parts+=(patch)
+    [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ] && parts+=(sidestore)
     [ "${OPT_DEV:-0}" -eq 1 ] && parts+=(dev)
     local joined
     joined=$(IFS=-; echo "${parts[*]}")
@@ -240,6 +272,7 @@ then
     OPT_FFMPEG=0
     OPT_FLEX=0
     OPT_PATCH=0
+    OPT_STRIP_EXTENSIONS=0
     OPT_DEV=0
     OPT_BUILDONLY=0
 
@@ -254,19 +287,26 @@ then
             --ffmpeg) OPT_FFMPEG=1 ;;
             --flex) OPT_FLEX=1 ;;
             --patch) OPT_PATCH=1 ;;
+            --no-ext) OPT_STRIP_EXTENSIONS=1 ;;
+            --sidestore)
+                OPT_INJECT=1
+                OPT_FFMPEG=1
+                OPT_PATCH=1
+                OPT_STRIP_EXTENSIONS=1
+                ;;
             --dev) OPT_DEV=1 ;;
             --buildonly) OPT_BUILDONLY=1 ;;
             *)
                 echo -e "\033[1m\033[0;31mUnknown sideload flag: $1\033[0m"
-                echo "Use: ./build.sh sideload [--release|--inject|--ffmpeg|--flex|--patch|--dev|--buildonly] ..."
+                echo "Use: ./build.sh sideload [--release|--inject|--ffmpeg|--flex|--patch|--no-ext|--sidestore|--dev|--buildonly] ..."
                 exit 1
                 ;;
         esac
         shift
     done
 
-    if [ "$OPT_INJECT" -eq 0 ] && [ "$OPT_FFMPEG" -eq 0 ] && [ "$OPT_FLEX" -eq 0 ]; then
-        echo -e '\033[1m\033[0;31msideload: specify at least one of --release, --inject, --ffmpeg, --flex\033[0m'
+    if [ "$OPT_INJECT" -eq 0 ] && [ "$OPT_FFMPEG" -eq 0 ] && [ "$OPT_FLEX" -eq 0 ] && [ "$OPT_STRIP_EXTENSIONS" -eq 0 ]; then
+        echo -e '\033[1m\033[0;31msideload: specify at least one of --release, --inject, --ffmpeg, --flex, --no-ext, --sidestore\033[0m'
         exit 1
     fi
 
@@ -290,10 +330,23 @@ then
     fi
 
     if [ "$OPT_BUILDONLY" -eq 0 ]; then
-        ipaFiles=($(ls packages/com.burbn.instagram*.ipa 2>/dev/null | sort -V))
-        if [ ${#ipaFiles[@]} -eq 0 ]; then
+        candidateIpaFiles=($(ls packages/com.burbn.instagram*.ipa 2>/dev/null | sort -V))
+        if [ ${#candidateIpaFiles[@]} -eq 0 ]; then
             echo -e '\033[1m\033[0;31m./packages/com.burbn.instagram.ipa not found.\nPlease put a decrypted Instagram IPA in its path.\033[0m'
             exit 1
+        fi
+        ipaFiles=()
+        for candidateIpa in "${candidateIpaFiles[@]}"; do
+            case "$(basename "$candidateIpa")" in
+                *-dev*.ipa|*-inject*.ipa|*-ffmpeg*.ipa|*-flex*.ipa|*-patch*.ipa|*-sidestore*.ipa)
+                    ;;
+                *)
+                    ipaFiles+=("$candidateIpa")
+                    ;;
+            esac
+        done
+        if [ ${#ipaFiles[@]} -eq 0 ]; then
+            ipaFiles=("${candidateIpaFiles[@]}")
         fi
 
         ipaFile="$(select_input_ipa "${ipaFiles[@]}")"
@@ -346,7 +399,8 @@ then
     ipa_ffmpeg_tmp="$ROOT_DIR/packages/.scinsta-build-tmp-ffmpeg.ipa"
     ipa_stage_input="$ROOT_DIR/packages/.scinsta-build-stage-input.ipa"
     ipa_flex_tmp="$ROOT_DIR/packages/.scinsta-build-tmp-flex.ipa"
-    rm -f "$ipa_out" "$ipa_ffmpeg_tmp" "$ipa_stage_input" "$ipa_flex_tmp"
+    ipa_strip_tmp="$ROOT_DIR/packages/.scinsta-build-tmp-strip.ipa"
+    rm -f "$ipa_out" "$ipa_ffmpeg_tmp" "$ipa_stage_input" "$ipa_flex_tmp" "$ipa_strip_tmp"
 
     if [ "$OPT_FFMPEG" -eq 1 ]; then
         echo -e '\033[1m\033[32mInjecting FFmpeg frameworks...\033[0m'
@@ -362,18 +416,34 @@ then
         mv -f "$ipa_flex_tmp" "$ipa_stage_input"
     fi
 
+    if [ "$OPT_STRIP_EXTENSIONS" -eq 1 ]; then
+        echo -e '\033[1m\033[32mStripping app extensions...\033[0m'
+        strip_appex_bundles "$ipa_stage_input" "$ipa_strip_tmp"
+        mv -f "$ipa_strip_tmp" "$ipa_stage_input"
+    fi
+
     echo -e '\033[1m\033[32mCreating the IPA file...\033[0m'
+    CYAN_FILES=()
     if [ "$OPT_INJECT" -eq 1 ]; then
-        cyan -i "$ipa_stage_input" -o "$ipa_out" -f "$SCINSTAPATH" -c "$COMPRESSION" -m 15.0 -duq
+        CYAN_FILES+=("$SCINSTAPATH")
+    fi
+    if [ "$OPT_PATCH" -eq 1 ] && [ "$OPT_STRIP_EXTENSIONS" -eq 1 ]; then
+        CYAN_FILES+=("$SIDELOADFIXPATH")
+    fi
+
+    if [ "${#CYAN_FILES[@]}" -gt 0 ]; then
+        cyan -i "$ipa_stage_input" -o "$ipa_out" -f "${CYAN_FILES[@]}" -c "$COMPRESSION" -m 15.0 -duq
     else
         cp "$ipa_stage_input" "$ipa_out"
     fi
 
     rm -f "$ipa_stage_input"
 
-    if [ "$OPT_PATCH" -eq 1 ]; then
+    if [ "$OPT_PATCH" -eq 1 ] && [ "$OPT_STRIP_EXTENSIONS" -eq 0 ]; then
         echo -e '\033[1m\033[32mPatching IPA for sideloading...\033[0m'
         ipapatch --input "$ipa_out" --inplace --noconfirm --dylib "$SIDELOADFIXPATH"
+    elif [ "$OPT_PATCH" -eq 1 ]; then
+        echo -e '\033[1m\033[32mSkipping ipapatch; SCISideloadFix was injected by cyan for SideStore/no-extension build.\033[0m'
     fi
 
     echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nOutput IPA: $ipa_out"
@@ -435,21 +505,26 @@ else
     echo '|SCInsta Build Script|'
     echo '+--------------------+'
     echo
-    echo 'Usage: ./build.sh <sideload|rootless|rootful>'
-    echo
-    echo '  sideload   - Build a patched IPA; flags (combine as needed):'
-    echo '    --release   equivalent to --inject --ffmpeg --patch'
-    echo '    --inject    include SCInsta.dylib'
-    echo '    --ffmpeg    include FFmpegKit frameworks'
-    echo '    --flex      include libFLEX.dylib'
-    echo '    --patch     run ipapatch'
-    echo '    --dev       DEV=1 build (use e.g. from build-dev.sh)'
-    echo '    --buildonly build dylibs only, skip IPA'
-    echo '  Example: ./build.sh sideload --release'
-    echo '           ./build.sh sideload --release --flex'
-    echo '           ./build.sh sideload --ffmpeg              (FFmpeg in IPA only)'
+    echo 'Usage: ./build.sh <rootless|rootful|sideload>'
     echo
     echo '  rootless   - Build a rootless .deb package'
     echo '  rootful    - Build a rootful .deb package'
+    echo '  sideload   - Build a patched IPA -- choose from the following flags:'
+    echo '      --release   equivalent to --inject --ffmpeg --patch'
+    echo '      --inject    include SCInsta.dylib'
+    echo '      --ffmpeg    include FFmpegKit frameworks'
+    echo '      --flex      include libFLEX.dylib'
+    echo '      --patch     run ipapatch'
+    echo '      --no-ext    remove all .appex bundles before final injection'
+    echo '      --sidestore equivalent to --release --no-ext'
+    echo '      --dev       DEV=1 build'
+    echo '      --buildonly build dylibs only, skip IPA'
+    echo
+    echo 'Examples:'
+    echo '    ./build.sh sideload --release'
+    echo '    ./build.sh sideload --release --flex'
+    echo '    ./build.sh sideload --sidestore'
+    echo '    ./build.sh sideload --ffmpeg    (FFmpeg in IPA only)'
+    echo
     exit 1
 fi

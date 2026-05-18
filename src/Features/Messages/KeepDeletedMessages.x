@@ -38,7 +38,7 @@
         // * It isn't very helpful to just replace the message contents, so this is still WIP
         /* NSString *messageId = [threadDelta valueForKey:@"removeItem_messageId"];
         if (messageId) {
-            // SCILog(@"idk");
+            // SCILog(@"Messages", @"idk");
             IGDirectMessageContentMutation *mutation = [%c(IGDirectMessageContentMutation) new];
             [mutation setValue:@(3) forKey:@"subtype"];
             [mutation setValue:@"[deleted]" forKey:@"editText_newContent"];

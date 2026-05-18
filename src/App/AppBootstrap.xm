@@ -3,13 +3,56 @@
 #import "../Utils.h"
 #import "SCICore.h"
 #import "SCIFlexLoader.h"
+#import "SCIStabilityGuard.h"
 #import "SCIStartupProfiler.h"
 
-static void SCIScheduleEnabledFeatureHooks(void) {
+static BOOL sSCIAppDidBecomeActive = NO;
+static BOOL sSCIStagedHooksFinished = NO;
+static BOOL sSCIStabilityCompletionScheduled = NO;
+
+static void SCIMarkLaunchStableIfReady(void) {
+    if (!sSCIAppDidBecomeActive || !sSCIStagedHooksFinished || sSCIStabilityCompletionScheduled) {
+        return;
+    }
+    sSCIStabilityCompletionScheduled = YES;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SCIStabilityGuardMarkHooksFinished();
+    });
+}
+
+static void SCIScheduleHookPhase(NSTimeInterval delay, NSString *name, dispatch_block_t block, BOOL finalPhase) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SCIStartupMark([NSString stringWithFormat:@"%@ hooks begin", name]);
+        if (block) block();
+        SCIStartupMark([NSString stringWithFormat:@"%@ hooks installed", name]);
+        if (finalPhase) {
+            sSCIStagedHooksFinished = YES;
+            SCIMarkLaunchStableIfReady();
+        }
+    });
+}
+
+static void SCIScheduleStagedFeatureHooks(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCICoreInstallEnabledFeatureHooks();
-        SCIStartupMark(@"enabled feature hooks installed");
+        SCIScheduleHookPhase(0.25, @"general UI", ^{
+            SCICoreInstallSurfaceHooks(SCISurfaceGeneralUI);
+        }, NO);
+        SCIScheduleHookPhase(0.35, @"feed", ^{
+            SCICoreInstallSurfaceHooks(SCISurfaceFeed);
+        }, NO);
+        SCIScheduleHookPhase(0.45, @"stories", ^{
+            SCICoreInstallSurfaceHooks(SCISurfaceStories);
+        }, NO);
+        SCIScheduleHookPhase(0.55, @"reels", ^{
+            SCICoreInstallSurfaceHooks(SCISurfaceReels);
+        }, NO);
+        SCIScheduleHookPhase(0.65, @"messages", ^{
+            SCICoreInstallSurfaceHooks(SCISurfaceMessages);
+        }, NO);
+        SCIScheduleHookPhase(0.75, @"profile", ^{
+            SCICoreInstallSurfaceHooks(SCISurfaceProfile);
+        }, YES);
     });
 }
 
@@ -17,6 +60,7 @@ static void SCIScheduleEnabledFeatureHooks(void) {
 - (_Bool)application:(UIApplication *)application willFinishLaunchingWithOptions:(id)arg2 {
     SCIStartupMark(@"willFinishLaunching begin");
     SCICoreRegisterBootstrapDefaults();
+    SCIStabilityGuardBeginLaunch();
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
     [SCIUtils sci_normalizeLiquidGlassPreferences];
@@ -43,9 +87,9 @@ static void SCIScheduleEnabledFeatureHooks(void) {
 
 - (_Bool)application:(UIApplication *)application didFinishLaunchingWithOptions:(id)arg2 {
     SCIStartupMark(@"didFinishLaunching begin");
-    SCIScheduleEnabledFeatureHooks();
-    %orig;
+    BOOL result = %orig;
     SCIStartupMark(@"didFinishLaunching orig returned");
+    SCIScheduleStagedFeatureHooks();
 
     double openDelay = [SCIUtils getBoolPref:@"tweak_settings_app_launch"] ? 0.0 : 5.0;
 
@@ -54,8 +98,8 @@ static void SCIScheduleEnabledFeatureHooks(void) {
             ![[[NSUserDefaults standardUserDefaults] objectForKey:@"SCInstaFirstRun"] isEqualToString:SCIVersionString]
             || [SCIUtils getBoolPref:@"tweak_settings_app_launch"]
         ) {
-            NSLog(@"[SCInsta] First run, initializing");
-            NSLog(@"[SCInsta] Displaying SCInsta first-time settings modal");
+            SCILog(@"Bootstrap", @"First run, initializing");
+            SCILog(@"Bootstrap", @"Displaying SCInsta first-time settings modal");
             SCICoreShowSettingsIfNeeded([self window]);
         }
     });
@@ -63,14 +107,15 @@ static void SCIScheduleEnabledFeatureHooks(void) {
         SCIFlexShowExplorer(@"launch");
     }
 
-    return true;
+    return result;
 }
 
 - (void)applicationDidBecomeActive:(id)arg1 {
     %orig;
+    sSCIAppDidBecomeActive = YES;
+    SCIMarkLaunchStableIfReady();
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        SCICoreRegisterDefaults();
         [SCIUtils evaluateAutomaticCacheClearIfNeeded];
     });
 

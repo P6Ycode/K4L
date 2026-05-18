@@ -51,25 +51,21 @@ static BOOL isAppExtensionProcess(void) {
 
 %hook NSUserDefaults
 - (id)_initWithSuiteName:(NSString *)suiteName container:(NSURL *)container {
-	NSLog(@"[SCISideloadFix] hooking NSUserDefaults init...");
-
 	if (!isAppExtensionProcess()) {
-		NSLog(@"[SCISideloadFix] main app process, defaulting to original defaults container");
 		return %orig(suiteName, container);
 	}
 
 	if (![suiteName hasPrefix:@"group"]) {
-		NSLog(@"[SCISideloadFix] suite name '%@' does not start with 'group' ,, defaulting to original container", suiteName);
 		return %orig(suiteName, container);
 	}
 
 	if (NSURL *customContainerURL = redirectedAppGroupURL(suiteName)) {
-		NSLog(@"[SCISideloadFix] using custom container URL: %@", customContainerURL);
 		createDirectoryIfNotExists(customContainerURL.path);
+		SCISideloadLog(@"Redirecting extension defaults suite=%@ to app group container", suiteName);
 		return %orig(suiteName, customContainerURL);
 	}
 
-	NSLog(@"[SCISideloadFix] failed to construct valid URL for suite '%@' in app group container", suiteName);
+	SCISideloadLog(@"Unable to construct app group container for suite=%@; using original container", suiteName);
 	return %orig(suiteName, container);
 }
 %end

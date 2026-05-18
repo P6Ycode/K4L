@@ -7,6 +7,50 @@
 #import "Shared/Gallery/SCIGalleryPaths.h"
 #import "Shared/UI/SCIIGAlertPresenter.h"
 
+static NSString *SCITrimmedLogBody(NSString *body) {
+    return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *SCINormalizedLogBody(NSString *category, NSString *body, NSString **outCategory) {
+    NSString *resolvedCategory = category.length ? category : @"General";
+    NSString *resolvedBody = body ?: @"";
+    NSArray<NSDictionary<NSString *, NSString *> *> *legacyPrefixes = @[
+        @{@"prefix": @"[SCInsta][startup]", @"category": @"Startup"},
+        @{@"prefix": @"[SCInsta Gallery]", @"category": @"Gallery"},
+        @{@"prefix": @"[SCInsta BulkDownload]", @"category": @"BulkDownload"},
+        @{@"prefix": @"[SCInsta]", @"category": resolvedCategory},
+    ];
+
+    for (NSDictionary<NSString *, NSString *> *entry in legacyPrefixes) {
+        NSString *prefix = entry[@"prefix"];
+        if ([resolvedBody hasPrefix:prefix]) {
+            resolvedCategory = entry[@"category"] ?: resolvedCategory;
+            resolvedBody = SCITrimmedLogBody([resolvedBody substringFromIndex:prefix.length]);
+            break;
+        }
+    }
+
+    if (outCategory) {
+        *outCategory = resolvedCategory;
+    }
+    return resolvedBody;
+}
+
+void SCILogMessage(NSString *category, os_log_type_t type, NSString *format, ...) {
+    NSString *body = @"";
+    if (format.length > 0) {
+        va_list args;
+        va_start(args, format);
+        body = [[NSString alloc] initWithFormat:format arguments:args];
+        va_end(args);
+    }
+
+    NSString *resolvedCategory = nil;
+    NSString *resolvedBody = SCINormalizedLogBody(category, body ?: @"", &resolvedCategory);
+    NSString *line = [NSString stringWithFormat:@"[SCInsta %@]: %@", resolvedCategory ?: @"General", resolvedBody ?: @""];
+    os_log_with_type(OS_LOG_DEFAULT, type, "%{public}s", line.UTF8String);
+}
+
 static NSNumber *SCINumericValueForSelector(id target, NSString *selectorName) {
     if (!target || !selectorName.length) return nil;
 
@@ -653,7 +697,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     if (deletionErrors.count > 1) {
 
         for (NSError *error in deletionErrors) {
-            NSLog(@"[SCInsta] File Deletion Error: %@", error);
+            SCILog(@"General", @"[SCInsta] File Deletion Error: %@", error);
         }
 
     }
@@ -689,7 +733,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 + (void)evaluateAutomaticCacheClearIfNeeded {
     if (![self shouldAutomaticallyClearCacheNow]) return;
-    NSLog(@"[SCInsta] Automatically clearing cache...");
+    SCILog(@"General", @"[SCInsta] Automatically clearing cache...");
     [self cleanCache];
 }
 

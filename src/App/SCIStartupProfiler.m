@@ -1,4 +1,5 @@
 #import "SCIStartupProfiler.h"
+#import "../Utils.h"
 
 #if STARTUP_PROFILING
 
@@ -16,7 +17,7 @@ __attribute__((constructor))
 static void SCIStartupProfilerConstructor(void) {
     sSCIStartupStartTime = CFAbsoluteTimeGetCurrent();
     if (SCIStartupProfilingEnabled()) {
-        NSLog(@"[SCInsta][startup] +0.000s constructor entry");
+        SCILog(@"General", @"[SCInsta][startup] +0.000s constructor entry");
     }
 }
 
@@ -30,7 +31,7 @@ void SCIStartupMark(NSString *event) {
     }
 
     NSTimeInterval elapsed = CFAbsoluteTimeGetCurrent() - sSCIStartupStartTime;
-    NSLog(@"[SCInsta][startup] +%.3fs %@", elapsed, event ?: @"mark");
+    SCILog(@"General", @"[SCInsta][startup] +%.3fs %@", elapsed, event ?: @"mark");
 }
 
 #endif

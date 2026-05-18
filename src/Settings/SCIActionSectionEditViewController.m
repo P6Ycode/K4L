@@ -202,13 +202,19 @@ static char kSCISectionEditSwitchAssocKey;
 
         NSString *owner = [self.configuration sectionIdentifierForAction:identifier];
         if ([owner isEqualToString:section.identifier]) {
-            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+            UIImageView *checkmarkView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"circle_check_filled"]];
+            checkmarkView.tintColor = [SCIUtils SCIColor_Primary];
+            cell.accessoryView = checkmarkView;
             config.secondaryText = nil;
-        } else if (owner.length > 0) {
-            SCIActionMenuSection *ownerSection = [self.configuration sectionWithIdentifier:owner];
-            config.secondaryText = ownerSection.title;
         } else {
-            config.secondaryText = @"Unassigned";
+            cell.accessoryView = nil;
+            cell.accessoryType = UITableViewCellAccessoryNone;
+            if (owner.length > 0) {
+                SCIActionMenuSection *ownerSection = [self.configuration sectionWithIdentifier:owner];
+                config.secondaryText = ownerSection.title;
+            } else {
+                config.secondaryText = @"Unassigned";
+            }
         }
     }
 

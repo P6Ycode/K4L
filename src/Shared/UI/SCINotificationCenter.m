@@ -504,7 +504,7 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
         [self insertPill:pill identifier:identifier progress:YES];
     };
     if (NSThread.isMainThread) create();
-    else dispatch_sync(dispatch_get_main_queue(), create);
+    else dispatch_async(dispatch_get_main_queue(), create);
     return pill;
 }
 

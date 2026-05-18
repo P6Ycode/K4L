@@ -14,7 +14,7 @@
         if (mode == 0) {
             mode = 1;
 
-            NSLog(@"[SCInsta] Modifying visual message from read-once to replayable");
+            SCILog(@"General", @"[SCInsta] Modifying visual message from read-once to replayable");
         }
     }
     

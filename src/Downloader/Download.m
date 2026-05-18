@@ -1,4 +1,5 @@
 #import "Download.h"
+#import "../Utils.h"
 #import "../Shared/Gallery/SCIGalleryFile.h"
 #import "../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../Shared/Gallery/SCIGalleryViewController.h"
@@ -160,7 +161,7 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
         });
     }
 
-    NSLog(@"[SCInsta] Download: Will start download for url \"%@\" with file extension: \".%@\"", url, fileExtension);
+    SCILog(@"General", @"[SCInsta] Download: Will start download for url \"%@\" with file extension: \".%@\"", url, fileExtension);
 
     // Start download using manager
     [self.downloadManager downloadFileWithURL:url fileExtension:fileExtension];
@@ -232,7 +233,7 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
 
 // Delegate methods
 - (void)downloadDidStart {
-    NSLog(@"[SCInsta] Download: Download started");
+    SCILog(@"General", @"[SCInsta] Download: Download started");
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.progressView setProgress:0.02f animated:NO];
     });
@@ -246,11 +247,11 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
     SCIInvokeDownloadCompletion(self, nil, [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]);
     SCIReleaseActiveDownloadDelegate(self);
 
-    NSLog(@"[SCInsta] Download: Download cancelled");
+    SCILog(@"General", @"[SCInsta] Download: Download cancelled");
 }
 
 - (void)downloadDidProgress:(float)progress {
-    NSLog(@"[SCInsta] Download: Download progress: %f", progress);
+    SCILog(@"General", @"[SCInsta] Download: Download progress: %f", progress);
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.progressView setProgress:progress animated:YES];
@@ -261,7 +262,7 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
     self.pendingGallerySaveMetadata = nil;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (error && error.code != NSURLErrorCancelled) {
-            NSLog(@"[SCInsta] Download: Download failed with error: \"%@\"", error);
+            SCILog(@"General", @"[SCInsta] Download: Download failed with error: \"%@\"", error);
             if (self.showProgress && self.progressView) {
                 void (^existingDismissHandler)(void) = [self.progressView.onDidDismiss copy];
                 __weak typeof(self) weakSelf = self;
@@ -308,7 +309,7 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
         NSFileManager *fileManager = [NSFileManager defaultManager];
         NSError *removeError = nil;
         if ([fileManager fileExistsAtPath:newURL.path] && ![fileManager removeItemAtURL:newURL error:&removeError]) {
-            NSLog(@"[SCInsta] Download: Failed removing existing file at \"%@\": %@", newURL.path, removeError);
+            SCILog(@"General", @"[SCInsta] Download: Failed removing existing file at \"%@\": %@", newURL.path, removeError);
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (self.showProgress && self.progressView) {
                     [self.progressView showError:@"Failed to prepare file"];
@@ -323,7 +324,7 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
 
         NSError *moveError = nil;
         if (![fileManager moveItemAtURL:fileURL toURL:newURL error:&moveError]) {
-            NSLog(@"[SCInsta] Download: Failed renaming downloaded file to \"%@\": %@", newURL.path, moveError);
+            SCILog(@"General", @"[SCInsta] Download: Failed renaming downloaded file to \"%@\": %@", newURL.path, moveError);
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (self.showProgress && self.progressView) {
                     [self.progressView showError:@"Failed to finalize file"];
@@ -340,8 +341,8 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSLog(@"[SCInsta] Download: Download finished with url: \"%@\"", [newURL absoluteString]);
-        NSLog(@"[SCInsta] Download: Completed with action %d", (int)self.action);
+        SCILog(@"General", @"[SCInsta] Download: Download finished with url: \"%@\"", [newURL absoluteString]);
+        SCILog(@"General", @"[SCInsta] Download: Completed with action %d", (int)self.action);
 
         if (self.action == downloadOnly) {
             SCIInvokeDownloadCompletion(self, newURL, nil);

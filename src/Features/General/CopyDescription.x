@@ -34,7 +34,7 @@
                                                    withTemplate:@""]
           stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
-    NSLog(@"[SCInsta] Copying description");
+    SCILog(@"General", @"[SCInsta] Copying description");
 
     // Copy text to system clipboard
     UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];

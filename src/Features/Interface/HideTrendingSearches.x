@@ -9,7 +9,7 @@
 
     if ([[self delegate] isKindOfClass:%c(IGSearchTypeaheadNavigationHeaderView)]) {
         if ([SCIUtils getBoolPref:@"hide_trending_searches"]) {
-            NSLog(@"[SCInsta] Hiding trending searches");
+            SCILog(@"General", @"[SCInsta] Hiding trending searches");
 
             [self removeFromSuperview];
         }

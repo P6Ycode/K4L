@@ -27,7 +27,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 %hook IGSuggestedUnitViewModel
 - (id)initWithAYMFModel:(id)arg1 headerViewModel:(id)arg2 {
     if (SCIHideFeedSuggestedUsers()) {
-        NSLog(@"[SCInsta] Hiding suggested users: main feed welcome section");
+        SCILog(@"General", @"[SCInsta] Hiding suggested users: main feed welcome section");
 
         return nil;
     }
@@ -39,7 +39,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 %hook IGSuggestionsUnitViewModel
 - (id)initWithAYMFModel:(id)arg1 headerViewModel:(id)arg2 {
     if (SCIHideFeedSuggestedUsers()) {
-        NSLog(@"[SCInsta] Hiding suggested users: main feed welcome section");
+        SCILog(@"General", @"[SCInsta] Hiding suggested users: main feed welcome section");
 
         return nil;
     }
@@ -59,7 +59,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 
         if (SCIHideProfileSuggestedUsers()) {
             if ([obj isKindOfClass:%c(IGProfileChainingModel)]) {
-                NSLog(@"[SCInsta] Hiding suggested users: profile header");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: profile header");
 
                 shouldHide = YES;
             }
@@ -89,7 +89,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
             // Suggested for you
             if ([[obj valueForKey:@"tag"] intValue] == 2) { // 2 == Suggested Users
                 if (SCIHideActivitySuggestedUsers()) {
-                    NSLog(@"[SCInsta] Hiding suggested users (header: activity feed)");
+                    SCILog(@"General", @"[SCInsta] Hiding suggested users (header: activity feed)");
 
                     shouldHide = YES;
                 }
@@ -99,7 +99,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
         // Suggested user
         else if ([obj isKindOfClass:%c(IGDiscoverPeopleItemConfiguration)]) {
             if (SCIHideActivitySuggestedUsers()) {
-                NSLog(@"[SCInsta] Hiding suggested users: (user: activity feed)");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: (user: activity feed)");
 
                 shouldHide = YES;
             }
@@ -108,7 +108,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
         // "See all" button
         else if ([obj isKindOfClass:%c(IGSeeAllItemConfiguration)]) {
             if (SCIHideActivitySuggestedUsers()) {
-                NSLog(@"[SCInsta] Hiding suggested users: (see all: activity feed)");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: (see all: activity feed)");
 
                 shouldHide = YES;
             }
@@ -137,7 +137,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 
             // Suggested user
             if ([obj isKindOfClass:%c(IGDiscoverPeopleItemConfiguration)]) {
-                NSLog(@"[SCInsta] Hiding suggested users: follow list suggested user");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: follow list suggested user");
 
                 shouldHide = YES;
             }
@@ -154,7 +154,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 
             // See all suggested users
             else if ([obj isKindOfClass:%c(IGSeeAllItemConfiguration)] && ((IGSeeAllItemConfiguration *)obj).destination == 4) {
-                NSLog(@"[SCInsta] Hiding suggested users: follow list suggested user");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: follow list suggested user");
 
                 shouldHide = YES;
             }
@@ -181,7 +181,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 
         if (SCIHideFollowListSuggestedUsers()) {
             if ([obj isKindOfClass:%c(IGFindUsersViewController)]) {
-                NSLog(@"[SCInsta] Hiding suggested users: find users segmented tab");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: find users segmented tab");
 
                 shouldHide = YES;
             }
@@ -222,7 +222,7 @@ static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
 
             // Suggested user
             if ([obj isKindOfClass:%c(IGDiscoverPeopleItemConfiguration)]) {
-                NSLog(@"[SCInsta] Hiding suggested users: follow list suggested user");
+                SCILog(@"General", @"[SCInsta] Hiding suggested users: follow list suggested user");
 
                 shouldHide = YES;
             }

@@ -21,7 +21,7 @@ static char targetStaticRef[] = "target";
             [support setValue:@(YES) forKey:@"enableAnimatedEmojisInCreation"];
         }
         @catch (NSException *exception) {
-            NSLog(@"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
+            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
         }
 
         // enableBubbleCustomization
@@ -29,7 +29,7 @@ static char targetStaticRef[] = "target";
             [support setValue:@(YES) forKey:@"enableBubbleCustomization"];
         }
         @catch (NSException *exception) {
-            NSLog(@"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
+            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
         }
 
         // enableRandomThemeGenerator
@@ -37,7 +37,7 @@ static char targetStaticRef[] = "target";
             [support setValue:@(YES) forKey:@"enableRandomThemeGenerator"];
         }
         @catch (NSException *exception) {
-            NSLog(@"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
+            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
         }
         
     }
@@ -253,7 +253,7 @@ static char targetStaticRef[] = "target";
         if (!model) return;
     }
 
-    //SCILog(@"Current note theme model: %@", model);
+    //SCILog(@"Messages", @"Current note theme model: %@", model);
     [model setValue:[composerVC valueForKey:@"_composerText"] forKey:@"customEmoji"];
 
     // Update saved color target
@@ -268,7 +268,7 @@ static char targetStaticRef[] = "target";
     // Always set emoji to prevent it being overwritten
     [model setValue:self.emojiText forKey:@"customEmoji"];  
 
-    //SCILog(@"Updated note theme model: %@", model);
+    //SCILog(@"Messages", @"Updated note theme model: %@", model);
 
     // Apply custom notes theme
     [composerVC notesBubbleEditorViewControllerDidUpdateWithCustomThemeCreationModel:model];

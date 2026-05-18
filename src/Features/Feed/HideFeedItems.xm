@@ -48,14 +48,14 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
                 ([obj isKindOfClass:%c(IGMedia)] && [((IGMedia *)obj).explorePostInFeed isEqual:@YES])
                 || ([obj isKindOfClass:%c(IGFeedGroupHeaderViewModel)] && [[obj title] isEqualToString:@"Suggested Posts"])
             ) {
-                NSLog(@"[SCInsta] Removing suggested posts");
+                SCILog(@"General", @"[SCInsta] Removing suggested posts");
 
                 continue;
             }
 
             // Suggested stories (carousel)
             if ([obj isKindOfClass:%c(IGInFeedStoriesTrayModel)]) {
-                NSLog(@"[SCInsta] Hiding suggested stories carousel");
+                SCILog(@"General", @"[SCInsta] Hiding suggested stories carousel");
 
                 continue;
             }
@@ -65,7 +65,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
         // Remove suggested reels (carousel)
         if (isFeed && [SCIUtils getBoolPref:@"no_suggested_reels"]) {
             if ([obj isKindOfClass:%c(IGFeedScrollableClipsModel)]) {
-                NSLog(@"[SCInsta] Hiding suggested reels carousel");
+                SCILog(@"General", @"[SCInsta] Hiding suggested reels carousel");
 
                 continue;
             }
@@ -76,14 +76,14 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
             
             // Feed
             if (isFeed && [obj isKindOfClass:%c(IGHScrollAYMFModel)]) {
-                NSLog(@"[SCInsta] Hiding accounts suggested for you (feed)");
+                SCILog(@"General", @"[SCInsta] Hiding accounts suggested for you (feed)");
 
                 continue;
             }
 
             // Reels
             if ([obj isKindOfClass:%c(IGSuggestedUserInReelsModel)]) {
-                NSLog(@"[SCInsta] Hiding accounts suggested for you (reels)");
+                SCILog(@"General", @"[SCInsta] Hiding accounts suggested for you (reels)");
 
                 continue;
             }
@@ -95,7 +95,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
             // Feed (carousel)
             if (isFeed) {
                 if ([obj isKindOfClass:%c(IGBloksFeedUnitModel)] || [obj isKindOfClass:objc_getClass("IGThreadsInFeedModels.IGThreadsInFeedModel")]) {
-                    NSLog(@"[SCInsta] Hiding suggested threads posts (carousel)");
+                    SCILog(@"General", @"[SCInsta] Hiding suggested threads posts (carousel)");
 
                     continue;
                 }
@@ -103,7 +103,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
 
             // Reels
             if ([obj isKindOfClass:%c(IGSundialNetegoItem)]) {
-                NSLog(@"[SCInsta] Hiding suggested threads posts (reels)");
+                SCILog(@"General", @"[SCInsta] Hiding suggested threads posts (reels)");
 
                 continue;
             }
@@ -113,7 +113,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
         // Remove story tray
         if (isFeed && [SCIUtils getBoolPref:@"hide_stories_tray"]) {
             if ([obj isKindOfClass:%c(IGStoryDataController)]) {
-                NSLog(@"[SCInsta] Hiding stories tray");
+                SCILog(@"General", @"[SCInsta] Hiding stories tray");
 
                 continue;
             }
@@ -122,7 +122,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
         // Hide entire feed
         if (isFeed && [SCIUtils getBoolPref:@"hide_entire_feed"]) {
             if ([obj isKindOfClass:%c(IGPostCreationManager)] || [obj isKindOfClass:%c(IGMedia)] || [obj isKindOfClass:%c(IGEndOfFeedDemarcatorModel)] || [obj isKindOfClass:%c(IGSpinnerLabelViewModel)]) {
-                NSLog(@"[SCInsta] Hiding entire feed");
+                SCILog(@"General", @"[SCInsta] Hiding entire feed");
 
                 continue;
             }
@@ -135,7 +135,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
                 || ([obj isKindOfClass:%c(IGDiscoveryGridItem)] && [[obj model] isKindOfClass:%c(IGAdItem)])
                 || [obj isKindOfClass:%c(IGAdItem)]
             ) {
-                NSLog(@"[SCInsta] Removing ads");
+                SCILog(@"General", @"[SCInsta] Removing ads");
 
                 continue;
             }
@@ -231,7 +231,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %hook IGStoryAdPool
 - (id)initWithUserSession:(id)arg1 {
     if ([SCIUtils getBoolPref:@"hide_ads_stories"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -242,7 +242,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %hook IGStoryAdsManager
 - (id)initWithUserSession:(id)arg1 storyViewerLoggingContext:(id)arg2 storyFullscreenSectionLoggingContext:(id)arg3 viewController:(id)arg4 {
     if ([SCIUtils getBoolPref:@"hide_ads_stories"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -253,7 +253,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %hook IGStoryAdsFetcher
 - (id)initWithUserSession:(id)arg1 delegate:(id)arg2 {
     if ([SCIUtils getBoolPref:@"hide_ads_stories"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -265,7 +265,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %hook IGStoryAdsResponseParser
 - (id)parsedObjectFromResponse:(id)arg1 {
     if ([SCIUtils getBoolPref:@"hide_ads_stories"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -274,7 +274,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 }
 - (id)initWithReelStore:(id)arg1 {
     if ([SCIUtils getBoolPref:@"hide_ads_stories"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -285,7 +285,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %hook IGStoryAdsOptInTextView
 - (id)initWithBrandedContentStyledString:(id)arg1 sponsoredPostLabel:(id)arg2 {
     if ([SCIUtils getBoolPref:@"hide_ads_stories"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -296,7 +296,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %hook IGSundialAdsResponseParser
 - (id)parsedObjectFromResponse:(id)arg1 {
     if ([SCIUtils getBoolPref:@"hide_ads_reels"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
 
         return nil;
     }
@@ -305,7 +305,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 }
 - (id)initWithMediaStore:(id)arg1 userStore:(id)arg2 {
     if ([SCIUtils getBoolPref:@"hide_ads_reels"]) {
-        NSLog(@"[SCInsta] Removing ads");
+        SCILog(@"General", @"[SCInsta] Removing ads");
         
         return nil;
     }
@@ -380,7 +380,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
     %orig;
 
     if ([SCIUtils getBoolPref:@"no_suggested_post"]) {
-        NSLog(@"[SCInsta] Hiding end of feed message");
+        SCILog(@"General", @"[SCInsta] Hiding end of feed message");
 
         // Hide suggested for you text
         UILabel *_titleLabel = MSHookIvar<UILabel *>(self, "_titleLabel");

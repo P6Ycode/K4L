@@ -168,7 +168,7 @@ static NSURL *SCIBulkPreparedFileURLForItem(SCIBulkDownloadItem *item, NSURL *fi
     if ([fm copyItemAtURL:fileURL toURL:targetURL error:&copyError]) {
         return targetURL;
     }
-    NSLog(@"[SCInsta BulkDownload] Failed preparing named file %@: %@", targetURL.path, copyError);
+    SCILog(@"General", @"[SCInsta BulkDownload] Failed preparing named file %@: %@", targetURL.path, copyError);
     return fileURL;
 }
 
