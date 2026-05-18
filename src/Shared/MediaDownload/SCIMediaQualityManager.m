@@ -9,6 +9,9 @@
 #import "../Gallery/SCIGallerySaveMetadata.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../UI/SCISwitch.h"
+#import "../../Settings/SCISetting.h"
+#import "../../Settings/SCISettingsViewController.h"
+#import "../../Settings/SCITopicSettingsSupport.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <AVKit/AVKit.h>
@@ -1054,285 +1057,158 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 
 @end
 
-@interface SCIMediaEncodingSettingsViewController : UITableViewController
+@interface SCIMediaEncodingSettingsViewController : SCISettingsViewController
 @end
 
 @implementation SCIMediaEncodingSettingsViewController
 
 - (instancetype)init {
-    self = [super initWithStyle:UITableViewStyleInsetGrouped];
-    if (!self) return nil;
-    self.title = @"Encoding Settings";
+    if ((self = [super initWithTitle:@"Encoding Settings" sections:[self buildSections] reduceMargin:NO])) {
+    }
     return self;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
+    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
 }
 
-- (NSArray<NSString *> *)activeRows {
-    NSMutableArray<NSString *> *rows = [NSMutableArray array];
+- (void)switchChanged:(UISwitch *)sender {
+    [super switchChanged:sender];
+    SCISetting *row = [self settingForSender:sender];
+    if ([row.defaultsKey isEqualToString:@"media_advanced_encoding_enabled"]) {
+        [self replaceSections:[self buildSections]];
+    }
+}
+
+- (NSArray *)buildSections {
+    NSMutableArray *sections = [NSMutableArray array];
+
+    [sections addObject:SCITopicSection(@"", @[
+        [SCISetting switchCellWithTitle:@"Advanced Encoding" defaultsKey:@"media_advanced_encoding_enabled"]
+    ], @"Advanced Encoding exposes codec, preset, bitrate, CRF, resolution, and audio overrides. In advanced mode, the selected video codec is used for DASH merges while audio remains copied.")];
+
     if ([SCIUtils getBoolPref:@"media_advanced_encoding_enabled"]) {
-        // Advanced mode: toggle first, then codec-specific controls.
-        [rows addObject:@"advanced"];
-        [rows addObjectsFromArray:@[
-            @"codec", @"preset", @"profile", @"level", @"crf", @"video_bitrate", @"max_resolution",
-            @"audio_bitrate", @"audio_channels", @"pixel_format", @"faststart"
-        ]];
+        [sections addObject:SCITopicSection(@"Video", @[
+            [SCISetting menuCellWithTitle:@"Video Codec" subtitle:nil menu:[self codecMenu]],
+            [SCISetting menuCellWithTitle:@"Preset" subtitle:nil menu:[self presetMenu]],
+            [SCISetting menuCellWithTitle:@"H.264 Profile" subtitle:nil menu:[self profileMenu]],
+            [SCISetting menuCellWithTitle:@"H.264 Level" subtitle:nil menu:[self levelMenu]]
+        ], nil)];
+
+        [sections addObject:SCITopicSection(@"Quality", @[
+            [SCISetting textFieldCellWithTitle:@"CRF" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"media_encoding_crf"],
+            [SCISetting textFieldCellWithTitle:@"Video Bitrate" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"media_encoding_video_bitrate_kbps"],
+            [SCISetting menuCellWithTitle:@"Max Resolution" subtitle:nil menu:[self maxResMenu]]
+        ], nil)];
+
+        [sections addObject:SCITopicSection(@"Audio", @[
+            [SCISetting textFieldCellWithTitle:@"Audio Bitrate" placeholder:@"128" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"media_encoding_audio_bitrate_kbps"],
+            [SCISetting menuCellWithTitle:@"Audio Channels" subtitle:nil menu:[self audioChannelsMenu]]
+        ], nil)];
+
+        [sections addObject:SCITopicSection(@"Advanced", @[
+            [SCISetting menuCellWithTitle:@"Pixel Format" subtitle:nil menu:[self pixelFormatMenu]],
+            [SCISetting switchCellWithTitle:@"Fast Start" defaultsKey:@"media_encoding_faststart"]
+        ], @"Fast Start moves MP4 metadata to the beginning of the file, allowing the video to start playing immediately when shared online or streamed.")];
+
+        SCISetting *ffmpegInfo = [SCISetting linkCellWithTitle:@"About FFmpeg Encoding" subtitle:@"Tap to learn more" imageUrl:@"https://ffmpeg.org/favicon.ico" url:@"https://trac.ffmpeg.org/wiki/Encode/H.264"];
+        ffmpegInfo.userInfo = @{@"remoteImageCircular": @NO};
+        [sections addObject:SCITopicSection(@"", @[ffmpegInfo], nil)];
     } else {
-        // Default mode: speed picker + advanced toggle
-        [rows addObject:@"speed"];
-        [rows addObject:@"advanced"];
+        [sections addObject:SCITopicSection(@"Video", @[
+            [SCISetting menuCellWithTitle:@"Encoding Speed" subtitle:nil menu:[self speedMenu]]
+        ], @"Controls the libx264 encoding effort. Slower presets take longer but produce smaller files at the same visual quality. Ultrafast is fastest but produces larger files.")];
     }
-    return rows;
+
+    return sections;
 }
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    (void)tableView;
-    return self.activeRows.count;
+- (UIMenu *)speedMenu {
+    return [self buildMenuForPref:@"media_encoding_speed" items:@[
+        @{@"value": @"ultrafast", @"label": @"Ultrafast"},
+        @{@"value": @"faster", @"label": @"Faster"},
+        @{@"value": @"medium", @"label": @"Medium"},
+        @{@"value": @"slower", @"label": @"Slower"}
+    ]];
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    (void)tableView;
-    return 1;
+- (UIMenu *)codecMenu {
+    return [self buildMenuForPref:@"media_encoding_video_codec" items:@[
+        @{@"value": @"videotoolbox", @"label": @"VideoToolbox"},
+        @{@"value": @"libx264", @"label": @"libx264"}
+    ]];
 }
 
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    (void)tableView;
-    (void)section;
-    if ([SCIUtils getBoolPref:@"media_advanced_encoding_enabled"]) {
-        return @"Advanced Encoding exposes codec, preset, bitrate, CRF, resolution, and audio overrides. In advanced mode, the selected video codec is used for DASH merges while audio remains copied.";
-    }
-    return @"Controls the libx264 encoding effort. Slower presets take longer but produce smaller files at the same visual quality. Ultrafast is fastest but produces larger files.";
+- (UIMenu *)presetMenu {
+    return [self buildMenuForPref:@"media_encoding_preset" items:@[
+        @{@"value": @"ultrafast", @"label": @"Ultrafast"},
+        @{@"value": @"superfast", @"label": @"Superfast"},
+        @{@"value": @"veryfast", @"label": @"Very Fast"},
+        @{@"value": @"faster", @"label": @"Faster"},
+        @{@"value": @"fast", @"label": @"Fast"},
+        @{@"value": @"medium", @"label": @"Medium"},
+        @{@"value": @"slow", @"label": @"Slow"},
+        @{@"value": @"slower", @"label": @"Slower"},
+        @{@"value": @"veryslow", @"label": @"Very Slow"}
+    ]];
 }
 
-- (NSString *)valueLabelForRow:(NSString *)row {
-    NSDictionary<NSString *, NSString *> *menuLabels = @{
-        @"medium": @"Medium",
-        @"low": @"Low",
-        @"high": @"High",
-        @"ultrafast": @"Ultrafast",
-        @"superfast": @"Superfast",
-        @"veryfast": @"Very Fast",
-        @"faster": @"Faster",
-        @"fast": @"Fast",
-        @"slow": @"Slow",
-        @"slower": @"Slower",
-        @"veryslow": @"Very Slow",
-        @"videotoolbox": @"VideoToolbox",
-        @"libx264": @"libx264",
-        @"auto": @"Auto",
-        @"baseline": @"Baseline",
-        @"main": @"Main",
-        @"original": @"Original",
-        @"480": @"480p",
-        @"720": @"720p",
-        @"1080": @"1080p",
-        @"default": @"Default",
-        @"yuv420p": @"yuv420p",
-        @"nv12": @"nv12",
-        @"mono": @"Mono",
-        @"stereo": @"Stereo"
-    };
-
-    if ([row isEqualToString:@"advanced"]) {
-        return [SCIUtils getBoolPref:@"media_advanced_encoding_enabled"] ? @"On" : @"Off";
-    }
-    if ([row isEqualToString:@"faststart"]) {
-        return [SCIUtils getBoolPref:@"media_encoding_faststart"] ? @"On" : @"Off";
-    }
-    if ([row isEqualToString:@"crf"]) {
-        NSString *value = [SCIUtils getStringPref:@"media_encoding_crf"];
-        return value.length > 0 ? value : @"Auto";
-    }
-    if ([row isEqualToString:@"video_bitrate"]) {
-        NSString *value = [SCIUtils getStringPref:@"media_encoding_video_bitrate_kbps"];
-        return value.length > 0 ? [NSString stringWithFormat:@"%@ kbps", value] : @"Auto";
-    }
-    if ([row isEqualToString:@"audio_bitrate"]) {
-        NSString *value = [SCIUtils getStringPref:@"media_encoding_audio_bitrate_kbps"];
-        return value.length > 0 ? [NSString stringWithFormat:@"%@ kbps", value] : @"128 kbps";
-    }
-
-    NSDictionary<NSString *, NSString *> *prefKeys = @{
-        @"speed": @"media_encoding_speed",
-        @"codec": @"media_encoding_video_codec",
-        @"preset": @"media_encoding_preset",
-        @"profile": @"media_encoding_h264_profile",
-        @"level": @"media_encoding_h264_level",
-        @"max_resolution": @"media_encoding_max_resolution",
-        @"audio_channels": @"media_encoding_audio_channels",
-        @"pixel_format": @"media_encoding_pixel_format"
-    };
-
-    NSString *value = [SCIUtils getStringPref:prefKeys[row]];
-    NSString *label = menuLabels[value];
-    return label.length > 0 ? label : value.capitalizedString;
+- (UIMenu *)profileMenu {
+    return [self buildMenuForPref:@"media_encoding_h264_profile" items:@[
+        @{@"value": @"baseline", @"label": @"Baseline"},
+        @{@"value": @"main", @"label": @"Main"},
+        @{@"value": @"high", @"label": @"High"}
+    ]];
 }
 
-- (UIMenu *)menuForRow:(NSString *)row {
-    NSArray<NSDictionary *> *items = nil;
-    NSString *prefKey = nil;
-    if ([row isEqualToString:@"speed"]) {
-        prefKey = @"media_encoding_speed";
-        items = @[
-            @{@"value": @"ultrafast", @"label": @"Ultrafast"},
-            @{@"value": @"faster", @"label": @"Faster"},
-            @{@"value": @"medium", @"label": @"Medium"},
-            @{@"value": @"slower", @"label": @"Slower"},
-        ];
-    } else if ([row isEqualToString:@"codec"]) {
-        prefKey = @"media_encoding_video_codec";
-        items = @[@{@"value": @"videotoolbox", @"label": @"VideoToolbox"}, @{@"value": @"libx264", @"label": @"libx264"}];
-    } else if ([row isEqualToString:@"preset"]) {
-        prefKey = @"media_encoding_preset";
-        items = @[
-            @{@"value": @"ultrafast", @"label": @"Ultrafast"},
-            @{@"value": @"superfast", @"label": @"Superfast"},
-            @{@"value": @"veryfast", @"label": @"Very Fast"},
-            @{@"value": @"faster", @"label": @"Faster"},
-            @{@"value": @"fast", @"label": @"Fast"},
-            @{@"value": @"medium", @"label": @"Medium"},
-            @{@"value": @"slow", @"label": @"Slow"},
-            @{@"value": @"slower", @"label": @"Slower"},
-            @{@"value": @"veryslow", @"label": @"Very Slow"},
-        ];
-    } else if ([row isEqualToString:@"profile"]) {
-        prefKey = @"media_encoding_h264_profile";
-        items = @[@{@"value": @"baseline", @"label": @"Baseline"}, @{@"value": @"main", @"label": @"Main"}, @{@"value": @"high", @"label": @"High"}];
-    } else if ([row isEqualToString:@"level"]) {
-        prefKey = @"media_encoding_h264_level";
-        items = @[@{@"value": @"auto", @"label": @"Auto"}, @{@"value": @"3.1", @"label": @"3.1"}, @{@"value": @"4.0", @"label": @"4.0"}, @{@"value": @"4.1", @"label": @"4.1"}, @{@"value": @"5.0", @"label": @"5.0"}];
-    } else if ([row isEqualToString:@"max_resolution"]) {
-        prefKey = @"media_encoding_max_resolution";
-        items = @[@{@"value": @"original", @"label": @"Original"}, @{@"value": @"480", @"label": @"480p"}, @{@"value": @"720", @"label": @"720p"}, @{@"value": @"1080", @"label": @"1080p"}];
-    } else if ([row isEqualToString:@"audio_channels"]) {
-        prefKey = @"media_encoding_audio_channels";
-        items = @[@{@"value": @"original", @"label": @"Original"}, @{@"value": @"stereo", @"label": @"Stereo"}, @{@"value": @"mono", @"label": @"Mono"}];
-    } else if ([row isEqualToString:@"pixel_format"]) {
-        prefKey = @"media_encoding_pixel_format";
-        items = @[@{@"value": @"default", @"label": @"Default"}, @{@"value": @"yuv420p", @"label": @"yuv420p"}, @{@"value": @"nv12", @"label": @"nv12"}];
-    }
+- (UIMenu *)levelMenu {
+    return [self buildMenuForPref:@"media_encoding_h264_level" items:@[
+        @{@"value": @"auto", @"label": @"Auto"},
+        @{@"value": @"3.1", @"label": @"3.1"},
+        @{@"value": @"4.0", @"label": @"4.0"},
+        @{@"value": @"4.1", @"label": @"4.1"},
+        @{@"value": @"5.0", @"label": @"5.0"}
+    ]];
+}
 
-    if (items.count == 0 || prefKey.length == 0) return nil;
+- (UIMenu *)maxResMenu {
+    return [self buildMenuForPref:@"media_encoding_max_resolution" items:@[
+        @{@"value": @"original", @"label": @"Original"},
+        @{@"value": @"480", @"label": @"480p"},
+        @{@"value": @"720", @"label": @"720p"},
+        @{@"value": @"1080", @"label": @"1080p"}
+    ]];
+}
 
-    NSString *currentValue = [SCIUtils getStringPref:prefKey];
-    NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
+- (UIMenu *)audioChannelsMenu {
+    return [self buildMenuForPref:@"media_encoding_audio_channels" items:@[
+        @{@"value": @"original", @"label": @"Original"},
+        @{@"value": @"stereo", @"label": @"Stereo"},
+        @{@"value": @"mono", @"label": @"Mono"}
+    ]];
+}
+
+- (UIMenu *)pixelFormatMenu {
+    return [self buildMenuForPref:@"media_encoding_pixel_format" items:@[
+        @{@"value": @"default", @"label": @"Default"},
+        @{@"value": @"yuv420p", @"label": @"yuv420p"},
+        @{@"value": @"nv12", @"label": @"nv12"}
+    ]];
+}
+
+- (UIMenu *)buildMenuForPref:(NSString *)prefKey items:(NSArray<NSDictionary *> *)items {
+    NSMutableArray<UICommand *> *commands = [NSMutableArray array];
     for (NSDictionary *item in items) {
         NSString *value = item[@"value"];
         NSString *label = item[@"label"];
-        UIAction *action = [UIAction actionWithTitle:label image:nil identifier:nil handler:^(__unused UIAction *action) {
-            [[NSUserDefaults standardUserDefaults] setObject:value forKey:prefKey];
-            [self.tableView reloadData];
-        }];
-        action.state = [currentValue isEqualToString:value] ? UIMenuElementStateOn : UIMenuElementStateOff;
-        [children addObject:action];
+        UICommand *command = [UICommand commandWithTitle:label
+                                                   image:nil
+                                                  action:@selector(menuChanged:)
+                                            propertyList:@{@"defaultsKey": prefKey, @"value": value}];
+        [commands addObject:command];
     }
-    return [UIMenu menuWithChildren:children];
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSString *row = self.activeRows[indexPath.row];
-
-    // --- Toggle rows (advanced, faststart) ---
-    if ([row isEqualToString:@"advanced"] || [row isEqualToString:@"faststart"]) {
-        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
-        cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-        cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-        cell.detailTextLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
-        SCISwitch *toggle = [[SCISwitch alloc] init];
-        toggle.on = [row isEqualToString:@"advanced"] ? [SCIUtils getBoolPref:@"media_advanced_encoding_enabled"] : [SCIUtils getBoolPref:@"media_encoding_faststart"];
-        [toggle addTarget:self action:@selector(toggleChanged:) forControlEvents:UIControlEventValueChanged];
-        toggle.tag = [row isEqualToString:@"advanced"] ? 1 : 2;
-        cell.accessoryView = toggle;
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-        cell.textLabel.text = [row isEqualToString:@"advanced"] ? @"Advanced Encoding" : @"Fast Start";
-        cell.detailTextLabel.text = [row isEqualToString:@"advanced"]
-            ? @"Override the default merge tuning with manual codec and bitrate controls."
-            : @"Move MP4 metadata to the front for faster opening and sharing.";
-        return cell;
-    }
-
-    // --- Text input rows (CRF, video bitrate, audio bitrate) ---
-    if ([row isEqualToString:@"crf"] || [row isEqualToString:@"video_bitrate"] || [row isEqualToString:@"audio_bitrate"]) {
-        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-        cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-        NSDictionary<NSString *, NSString *> *titles = @{@"crf": @"CRF", @"video_bitrate": @"Video Bitrate", @"audio_bitrate": @"Audio Bitrate"};
-        NSDictionary<NSString *, NSString *> *prefKeys = @{@"crf": @"media_encoding_crf", @"video_bitrate": @"media_encoding_video_bitrate_kbps", @"audio_bitrate": @"media_encoding_audio_bitrate_kbps"};
-        NSDictionary<NSString *, NSString *> *placeholders = @{@"crf": @"Auto", @"video_bitrate": @"Auto", @"audio_bitrate": @"128"};
-
-        cell.textLabel.text = titles[row];
-
-        UITextField *textField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 100, 34)];
-        textField.textAlignment = NSTextAlignmentRight;
-        textField.font = [UIFont systemFontOfSize:16];
-        textField.textColor = [SCIUtils SCIColor_Primary];
-        textField.placeholder = placeholders[row];
-        textField.keyboardType = UIKeyboardTypeNumberPad;
-        textField.text = [SCIUtils getStringPref:prefKeys[row]];
-        textField.accessibilityIdentifier = prefKeys[row];
-        [textField addTarget:self action:@selector(textFieldDidChange:) forControlEvents:UIControlEventEditingDidEnd];
-        cell.accessoryView = textField;
-        return cell;
-    }
-
-    // --- Menu picker rows (no detailTextLabel — value shown only in the button to avoid duplicate) ---
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-    NSDictionary<NSString *, NSString *> *titles = @{
-        @"speed": @"Encoding Speed",
-        @"codec": @"Video Codec",
-        @"preset": @"Preset",
-        @"profile": @"H.264 Profile",
-        @"level": @"H.264 Level",
-        @"max_resolution": @"Max Resolution",
-        @"audio_channels": @"Audio Channels",
-        @"pixel_format": @"Pixel Format"
-    };
-    cell.textLabel.text = titles[row];
-
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    [button setTitle:[self valueLabelForRow:row] forState:UIControlStateNormal];
-    [button sizeToFit];
-    button.menu = [self menuForRow:row];
-    button.showsMenuAsPrimaryAction = YES;
-    cell.accessoryView = button;
-    return cell;
-}
-
-- (void)textFieldDidChange:(UITextField *)textField {
-    NSString *prefKey = textField.accessibilityIdentifier;
-    if (prefKey.length > 0) {
-        NSString *value = [textField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        [[NSUserDefaults standardUserDefaults] setObject:value ?: @"" forKey:prefKey];
-    }
-}
-
-- (void)toggleChanged:(UISwitch *)toggle {
-    if (toggle.tag == 1) {
-        [[NSUserDefaults standardUserDefaults] setBool:toggle.isOn forKey:@"media_advanced_encoding_enabled"];
-        [self.tableView reloadData];
-    } else if (toggle.tag == 2) {
-        [[NSUserDefaults standardUserDefaults] setBool:toggle.isOn forKey:@"media_encoding_faststart"];
-    }
-}
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-}
-
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self.tableView reloadData];
+    return [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:commands];
 }
 
 @end

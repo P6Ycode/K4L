@@ -17,11 +17,11 @@
 
 - (instancetype)initWithType:(SCITableCell)type {
     self = [super init];
-    
+
     if (self) {
         self.type = type;
     }
-    
+
     return self;
 }
 
@@ -33,7 +33,7 @@
                                icon:(nullable UIImage *)icon
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellStatic];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
     setting.icon = icon;
@@ -49,7 +49,7 @@
                               url:(NSString *)url
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellLink];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
     setting.icon = icon;
@@ -64,17 +64,47 @@
                               url:(NSString *)url
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellLink];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
-    
+
     setting.imageUrl = [NSURL URLWithString:imageUrl];
     setting.url = [NSURL URLWithString:url];
-    
+
     return setting;
 }
 
 // MARK: - + switchCellWithTitle
+
++ (instancetype)switchCellWithTitle:(NSString *)title
+                        defaultsKey:(NSString *)defaultsKey
+{
+    return [self switchCellWithTitle:title subtitle:@"" icon:nil defaultsKey:defaultsKey];
+}
+
++ (instancetype)switchCellWithTitle:(NSString *)title
+                        defaultsKey:(NSString *)defaultsKey
+                    requiresRestart:(BOOL)requiresRestart
+{
+    return [self switchCellWithTitle:title subtitle:@"" defaultsKey:defaultsKey requiresRestart:requiresRestart];
+}
+
++ (instancetype)switchCellWithTitle:(NSString *)title
+                               icon:(nullable UIImage *)icon
+                        defaultsKey:(NSString *)defaultsKey
+{
+    return [self switchCellWithTitle:title subtitle:@"" icon:icon defaultsKey:defaultsKey];
+}
+
++ (instancetype)switchCellWithTitle:(NSString *)title
+                               icon:(nullable UIImage *)icon
+                        defaultsKey:(NSString *)defaultsKey
+                    requiresRestart:(BOOL)requiresRestart
+{
+    SCISetting *setting = [self switchCellWithTitle:title subtitle:@"" icon:icon defaultsKey:defaultsKey];
+    setting.requiresRestart = requiresRestart;
+    return setting;
+}
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
@@ -89,12 +119,12 @@
                         defaultsKey:(NSString *)defaultsKey
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellSwitch];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
     setting.icon = icon;
     setting.defaultsKey = defaultsKey;
-    
+
     return setting;
 }
 
@@ -117,13 +147,13 @@
        mutuallyExclusiveDefaultsKey:(NSString *)exclusiveDefaultsKey
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellSwitch];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
     setting.defaultsKey = defaultsKey;
     setting.requiresRestart = requiresRestart;
     setting.mutuallyExclusiveDefaultsKey = [exclusiveDefaultsKey copy];
-    
+
     return setting;
 }
 
@@ -139,101 +169,136 @@
                        singularLabel:(NSString *)singularLabel
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellStepper];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
     setting.defaultsKey = defaultsKey;
-    
+
     setting.min = min;
     setting.max = max;
     setting.step = step;
     setting.label = label;
     setting.singularLabel = singularLabel;
-    
+
     return setting;
 }
 
 // MARK: - + buttonCellWithTitle
 
 + (instancetype)buttonCellWithTitle:(NSString *)title
-                           subtitle:(NSString *)subtitle
+                           subtitle:(nullable NSString *)subtitle
                                icon:(nullable UIImage *)icon
                              action:(void (^)(void))action
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellButton];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
-    
+
     setting.icon = icon;
     setting.action = action;
-    
+
     return setting;
 }
 
 # pragma mark + menuCellWithTitle
 
 + (instancetype)menuCellWithTitle:(NSString *)title
-                         subtitle:(NSString *)subtitle
+                         subtitle:(nullable NSString *)subtitle
                              menu:(UIMenu *)menu
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellMenu];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
-    
+
     setting.baseMenu = menu;
-    
+
     return setting;
 }
 
 + (instancetype)menuCellWithTitle:(NSString *)title
-                         subtitle:(NSString *)subtitle
+                             icon:(nullable UIImage *)icon
+                             menu:(UIMenu *)menu
+{
+    return [self menuCellWithTitle:title subtitle:@"" icon:icon menu:menu];
+}
+
++ (instancetype)menuCellWithTitle:(NSString *)title
+                         subtitle:(nullable NSString *)subtitle
                              icon:(nullable UIImage *)icon
                              menu:(UIMenu *)menu
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellMenu];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
-    
+
     setting.icon = icon;
     setting.baseMenu = menu;
-    
+
     return setting;
 }
 
 // MARK: - + navigationCellWithTitle
 
 + (instancetype)navigationCellWithTitle:(NSString *)title
-                               subtitle:(NSString *)subtitle
+                               subtitle:(nullable NSString *)subtitle
                                    icon:(nullable UIImage *)icon
                             navSections:(NSArray *)navSections
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellNavigation];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
-    
+
     setting.icon = icon;
     setting.navSections = navSections;
-    
+
     return setting;
 }
 
 + (instancetype)navigationCellWithTitle:(NSString *)title
-                               subtitle:(NSString *)subtitle
+                               subtitle:(nullable NSString *)subtitle
                                    icon:(nullable UIImage *)icon
                          viewController:(UIViewController *)viewController
 {
     SCISetting *setting = [[self alloc] initWithType:SCITableCellNavigation];
-    
+
     setting.title = title;
     setting.subtitle = subtitle;
-    
+
     setting.icon = icon;
     setting.navViewController = viewController;
-    
+
+    return setting;
+}
+
++ (instancetype)textFieldCellWithTitle:(NSString *)title
+                           placeholder:(nullable NSString *)placeholder
+                          keyboardType:(UIKeyboardType)keyboardType
+                           defaultsKey:(NSString *)defaultsKey
+{
+    SCISetting *setting = [[self alloc] initWithType:SCITableCellTextField];
+
+    setting.title = title;
+    setting.placeholder = placeholder;
+    setting.keyboardType = keyboardType;
+    setting.defaultsKey = defaultsKey;
+
+    return setting;
+}
+
++ (instancetype)valueCellWithTitle:(NSString *)title
+                          subtitle:(nullable NSString *)subtitle
+                              icon:(nullable UIImage *)icon
+{
+    SCISetting *setting = [[self alloc] initWithType:SCITableCellValue];
+
+    setting.title = title;
+    setting.subtitle = subtitle;
+    setting.icon = icon;
+
     return setting;
 }
 
@@ -265,16 +330,16 @@
                                                    image:child.image
                                                   action:child.action
                                             propertyList:child.propertyList];
-        
+
         if ([child.propertyList[@"value"] isEqualToString:saved]) {
             command.state = YES;
-            
+
             [button setTitle:command.title forState:UIControlStateNormal];
         }
         else {
             command.state = NO;
         }
-        
+
         [children addObject:command];
     }
 

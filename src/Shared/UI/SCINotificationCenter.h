@@ -23,6 +23,8 @@ FOUNDATION_EXPORT NSString * const kSCINotificationRepost;
 FOUNDATION_EXPORT NSString * const kSCINotificationStoryMarkSeen;
 FOUNDATION_EXPORT NSString * const kSCINotificationDirectVisualMarkSeen;
 FOUNDATION_EXPORT NSString * const kSCINotificationThreadMessagesMarkSeen;
+FOUNDATION_EXPORT NSString * const kSCINotificationUnsentMessage;
+FOUNDATION_EXPORT NSString * const kSCINotificationUnsentReaction;
 
 FOUNDATION_EXPORT NSString * const kSCINotificationProfileCopyInfo;
 FOUNDATION_EXPORT NSString * const kSCINotificationProfileViewPicture;

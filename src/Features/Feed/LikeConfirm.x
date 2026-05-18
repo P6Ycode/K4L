@@ -43,6 +43,18 @@ static void SCIStoryReplySideEffects(void) {
 
 // Confirmation handlers
 
+static BOOL SCIBypassFeedPostLikeConfirm = NO;
+
+#define SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig) \
+    do {                                                 \
+        SCIBypassFeedPostLikeConfirm = YES;              \
+        @try {                                           \
+            orig;                                        \
+        } @finally {                                     \
+            SCIBypassFeedPostLikeConfirm = NO;           \
+        }                                                \
+    } while (0)
+
 #define SCICONFIRMLIKE(prefKey, logText, titleText, messageText, orig) \
     if ([SCIUtils getBoolPref:prefKey]) {                              \
         NSLog(@"[SCInsta] %@", logText);                               \
@@ -55,10 +67,29 @@ static void SCIStoryReplySideEffects(void) {
     }                                                                  \
 
 #define CONFIRMFEEDPOSTLIKE(orig) \
-    SCICONFIRMLIKE(@"like_confirm_feed_post_likes", @"Confirm feed post like triggered", @"Confirm Post Like", @"Are you sure you want to like this post?", orig)
+    if (SCIBypassFeedPostLikeConfirm) { \
+        return orig; \
+    } \
+    if ([SCIUtils getBoolPref:@"like_confirm_feed_post_likes"]) { \
+        NSLog(@"[SCInsta] Confirm feed post like triggered"); \
+        [SCIUtils showConfirmation:^(void) { SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
+                                 title:@"Confirm Post Like" \
+                               message:@"Are you sure you want to like this post?"]; \
+    } \
+    else { \
+        return orig; \
+    }
 
 #define CONFIRMFEEDDOUBLETAPLIKE(orig) \
-    SCICONFIRMLIKE(@"like_confirm_feed_double_tap_likes", @"Confirm feed double-tap like triggered", @"Confirm Post Like", @"Are you sure you want to like this post?", orig)
+    if ([SCIUtils getBoolPref:@"like_confirm_feed_double_tap_likes"]) { \
+        NSLog(@"[SCInsta] Confirm feed double-tap like triggered"); \
+        [SCIUtils showConfirmation:^(void) { SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
+                                 title:@"Confirm Post Like" \
+                               message:@"Are you sure you want to like this post?"]; \
+    } \
+    else { \
+        SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); \
+    }
 
 #define CONFIRMCOMMENTLIKE(orig) \
     SCICONFIRMLIKE(@"like_confirm_comment_likes", @"Confirm comment like triggered", @"Confirm Comment Like", @"Are you sure you want to like this comment?", orig)
@@ -76,6 +107,19 @@ static void SCIStoryReplySideEffects(void) {
     CONFIRMFEEDPOSTLIKE(%orig);
 }
 - (void)_onLikeButtonPressed:(id)arg1 {
+    CONFIRMFEEDPOSTLIKE(%orig);
+}
+%end
+%hook IGFeedItemUFICell
+- (void)UFIButtonBarDidTapOnLike:(id)arg1 {
+    CONFIRMFEEDPOSTLIKE(%orig);
+}
+%end
+%hook IGFeedItemUFICellConfigurableDelegateImpl
+- (void)feedItemUFICellDidTapLikeButton:(id)arg1 {
+    CONFIRMFEEDPOSTLIKE(%orig);
+}
+- (void)_performSingleTapLikeToggle {
     CONFIRMFEEDPOSTLIKE(%orig);
 }
 %end

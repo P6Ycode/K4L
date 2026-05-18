@@ -307,48 +307,26 @@ static NSString *SCIResolvedSettingsTitleForContext(SCIActionButtonContext *cont
 }
 
 static UIImage *SCIIconForActionIdentifier(NSString *identifier, SCIActionButtonSource source, CGFloat size, SCIActionButtonContext *context) {
-	NSString *append = (source == SCIActionButtonSourceReels) ? @"_reels" : @"";
-	NSString *iconName = SCIActionDescriptorIconName(identifier);
-    if ([identifier isEqualToString:@"copy"]) {
-        return [SCIAssetUtils instagramIconNamed:@"copy" pointSize:size];
-    }
-	if ([identifier isEqualToString:kSCIActionDownloadLibrary]) {
-		return [SCIAssetUtils instagramIconNamed:[NSString stringWithFormat:@"download%@", append] pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionDownloadShare]) {
-		return [SCIAssetUtils instagramIconNamed:[NSString stringWithFormat:@"share%@", append] pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionCopyDownloadLink]) {
-		return [SCIAssetUtils instagramIconNamed:[NSString stringWithFormat:@"link%@", append] pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionCopyMedia]) {
-		return [SCIAssetUtils instagramIconNamed:@"copy" pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionDownloadGallery]) {
-		return [SCIAssetUtils instagramIconNamed:@"media" pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionDownloadAll]) {
-		return [SCIAssetUtils instagramIconNamed:@"more" pointSize:size];
-	}
 	if (SCIIsBulkChildActionIdentifier(identifier)) {
 		return SCIIconForActionIdentifier(SCIBaseActionIdentifierForBulkChild(identifier), source, size, context);
 	}
-	if ([identifier isEqualToString:kSCIActionExpand]) {
-		return [SCIAssetUtils instagramIconNamed:[NSString stringWithFormat:@"expand%@", append] pointSize:size];
+
+	NSString *iconName = SCIActionDescriptorIconName(identifier);
+	
+	if (source == SCIActionButtonSourceReels) {
+		NSString *reelsIconName = [NSString stringWithFormat:@"%@_reels", iconName];
+		UIImage *reelsImage = [SCIAssetUtils resolvedImageNamed:reelsIconName
+		                                     fallbackSystemName:nil
+		                                              pointSize:size
+		                                                 weight:UIImageSymbolWeightUnspecified
+		                                                 source:SCIResolvedImageSourceInstagramIcon
+		                                          renderingMode:UIImageRenderingModeAlwaysTemplate];
+		if (reelsImage) {
+			return reelsImage;
+		}
 	}
-	if ([identifier isEqualToString:kSCIActionViewThumbnail]) {
-		return [SCIAssetUtils instagramIconNamed:@"photo_gallery" pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionCopyCaption]) {
-		return [SCIAssetUtils instagramIconNamed:@"caption" pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) {
-		return [SCIAssetUtils instagramIconNamed:@"settings" pointSize:size];
-	}
-	if ([identifier isEqualToString:kSCIActionRepost]) {
-		return [SCIAssetUtils instagramIconNamed:@"repost" pointSize:size];
-	}
-	return [SCIAssetUtils instagramIconNamed:[NSString stringWithFormat:@"%@%@", iconName, append] pointSize:size];
+	
+	return [SCIAssetUtils instagramIconNamed:iconName pointSize:size];
 }
 
 static SCIFullScreenPlaybackSource SCIPlaybackSourceForActionSource(SCIActionButtonSource source) {
@@ -895,12 +873,6 @@ static UIImage *SCIButtonDefaultImage(NSString *identifier, SCIActionButtonSourc
 		size = 23.0;
 	}
 
-	if ([identifier isEqualToString:kSCIActionNone]) {
-		return source == SCIActionButtonSourceReels
-			? [SCIAssetUtils instagramIconNamed:@"action_reels" pointSize:size]
-			: [SCIAssetUtils instagramIconNamed:@"action" pointSize:size];
-	}
-
 	return SCIIconForActionIdentifier(identifier, source, size, context);
 }
 
@@ -911,7 +883,8 @@ static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButt
     CGFloat height = image.size.height;
 
     if (source == SCIActionButtonSourceReels &&
-        ([identifier isEqualToString:kSCIActionDownloadShare] ||
+        ([identifier isEqualToString:kSCIActionNone] ||
+		 [identifier isEqualToString:kSCIActionDownloadShare] ||
          [identifier isEqualToString:kSCIActionViewThumbnail] ||
          [identifier isEqualToString:kSCIActionDownloadGallery] ||
 		 [identifier isEqualToString:kSCIActionCopyMedia])) {

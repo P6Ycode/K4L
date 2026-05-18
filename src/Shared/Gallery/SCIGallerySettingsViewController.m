@@ -6,15 +6,38 @@
 #import "SCIGalleryFile.h"
 #import "SCIGalleryCoreDataStack.h"
 #import "../UI/SCIIGAlertPresenter.h"
-#import "../UI/SCISwitch.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
+#import "../../Settings/SCITopicSettingsSupport.h"
 
 static NSString * const kFavoritesAtTopKey = @"show_favorites_at_top";
 static NSString * const kGalleryLongPressTabKey = @"gallery_long_press_tab";
+/// TODO: remove
+static NSString * const kGalleryLegacyLongPressEnabledKey = @"header_long_press_gallery";
+static NSString * const kGalleryQuickAccessDisabledValue = @"none";
+
+/// TODO: remove
+static void SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded(void) {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *existingValue = [defaults stringForKey:kGalleryLongPressTabKey];
+    BOOL usesClassic = [SCIUtils tabOrderSetTo:@"classic"];
+    if (existingValue.length > 0) {
+        if (usesClassic && [existingValue isEqualToString:@"direct-inbox-tab"]) {
+            [defaults setObject:@"camera-tab" forKey:kGalleryLongPressTabKey];
+        } else if (!usesClassic && [existingValue isEqualToString:@"camera-tab"]) {
+            [defaults setObject:@"direct-inbox-tab" forKey:kGalleryLongPressTabKey];
+        }
+        return;
+    }
+
+    BOOL enabled = [defaults objectForKey:kGalleryLegacyLongPressEnabledKey] && [defaults boolForKey:kGalleryLegacyLongPressEnabledKey];
+    NSString *value = enabled ? (usesClassic ? @"camera-tab" : @"direct-inbox-tab") : kGalleryQuickAccessDisabledValue;
+    [defaults setObject:value forKey:kGalleryLongPressTabKey];
+}
 
 static NSString *SCIGalleryResolvedShortcutTabIdentifier(NSString *identifier) {
-    NSString *resolved = identifier.length > 0 ? identifier : @"direct-inbox-tab";
+    NSString *resolved = identifier.length > 0 ? identifier : kGalleryQuickAccessDisabledValue;
+    if ([resolved isEqualToString:kGalleryQuickAccessDisabledValue]) return resolved;
     BOOL usesClassic = [SCIUtils tabOrderSetTo:@"classic"];
     if (usesClassic && [resolved isEqualToString:@"direct-inbox-tab"]) return @"camera-tab";
     if (!usesClassic && [resolved isEqualToString:@"camera-tab"]) return @"direct-inbox-tab";
@@ -23,46 +46,20 @@ static NSString *SCIGalleryResolvedShortcutTabIdentifier(NSString *identifier) {
 
 static NSArray<NSDictionary *> *SCIGalleryShortcutTargetItems(void) {
     NSMutableArray<NSDictionary *> *items = [@[
-        @{@"title": @"Home", @"value": @"mainfeed-tab"},
-        @{@"title": @"Reels", @"value": @"reels-tab"}
+        @{@"title": @"None", @"value": kGalleryQuickAccessDisabledValue, @"icon": @"circle_off"},
+        @{@"title": @"Home", @"value": @"mainfeed-tab", @"icon": @"home"},
+        @{@"title": @"Reels", @"value": @"reels-tab", @"icon": @"reels"}
     ] mutableCopy];
 
     if ([SCIUtils tabOrderSetTo:@"classic"]) {
-        [items addObject:@{@"title": @"Create", @"value": @"camera-tab"}];
+        [items addObject:@{@"title": @"Create", @"value": @"camera-tab", @"icon": @"plus"}];
     } else {
-        [items addObject:@{@"title": @"Messages", @"value": @"direct-inbox-tab"}];
+        [items addObject:@{@"title": @"Messages", @"value": @"direct-inbox-tab", @"icon": @"messages"}];
     }
 
-    [items addObject:@{@"title": @"Profile", @"value": @"profile-tab"}];
+    [items addObject:@{@"title": @"Profile", @"value": @"profile-tab", @"icon": @"user_circle"}];
     return items;
 }
-
-static NSString *SCIGalleryShortcutTargetTitle(NSString *identifier) {
-    NSString *resolved = SCIGalleryResolvedShortcutTabIdentifier(identifier);
-    for (NSDictionary *item in SCIGalleryShortcutTargetItems()) {
-        if ([item[@"value"] isEqualToString:resolved]) {
-            return item[@"title"];
-        }
-    }
-    return [SCIUtils tabOrderSetTo:@"classic"] ? @"Create" : @"Messages";
-}
-
-typedef NS_ENUM(NSInteger, SCIGalleryStatsRow) {
-    SCIGalleryStatsRowImages = 0,
-    SCIGalleryStatsRowVideos,
-    SCIGalleryStatsRowTotal,
-    SCIGalleryStatsRowCount
-};
-
-typedef NS_ENUM(NSInteger, SCIGallerySettingsSection) {
-    SCIGallerySettingsSectionStats = 0,
-    SCIGallerySettingsSectionBrowsing,
-    SCIGallerySettingsSectionLock,
-    SCIGallerySettingsSectionShortcuts,
-    SCIGallerySettingsSectionImport,
-    SCIGallerySettingsSectionDelete,
-    SCIGallerySettingsSectionCount
-};
 
 @interface SCIGalleryStorageStats : NSObject
 @property (nonatomic, assign) NSInteger totalFiles;
@@ -80,31 +77,24 @@ typedef NS_ENUM(NSInteger, SCIGallerySettingsSection) {
 
 @implementation SCIGallerySettingsViewController
 
-- (UIView *)selectionBackgroundView {
-    UIView *view = [[UIView alloc] initWithFrame:CGRectZero];
-    view.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
-    return view;
-}
-
 - (instancetype)init {
-    return [super initWithStyle:UITableViewStyleInsetGrouped];
+    if ((self = [super initWithTitle:@"Gallery Settings" sections:@[] reduceMargin:NO])) {
+        /// TODO: remove
+        SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded();
+    }
+    return self;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Gallery Settings";
-    self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.tintColor = [SCIUtils SCIColor_Primary];
-    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"cell"];
     [self reloadStats];
+    [self rebuildSections];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self reloadStats];
-    [self.tableView reloadData];
+    [self rebuildSections];
 }
 
 - (void)reloadStats {
@@ -129,222 +119,91 @@ typedef NS_ENUM(NSInteger, SCIGallerySettingsSection) {
     return [NSByteCountFormatter stringFromByteCount:bytes countStyle:NSByteCountFormatterCountStyleFile];
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return SCIGallerySettingsSectionCount;
-}
+- (void)rebuildSections {
+    NSMutableArray *sections = [NSMutableArray array];
 
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    switch (section) {
-        case SCIGallerySettingsSectionStats: return @"Storage";
-        case SCIGallerySettingsSectionBrowsing: return @"Browsing";
-        case SCIGallerySettingsSectionLock: return @"Lock";
-        case SCIGallerySettingsSectionShortcuts: return @"Shortcuts";
-        case SCIGallerySettingsSectionImport: return @"Import";
-        case SCIGallerySettingsSectionDelete: return @"Delete";
-    }
-    return nil;
-}
+    [sections addObject:SCITopicSection(@"Storage", @[
+        [SCISetting valueCellWithTitle:@"Total" subtitle:[NSString stringWithFormat:@"%ld files • %@", (long)self.stats.totalFiles, [self formattedSize:self.stats.totalSize]] icon:SCISettingsIcon(@"info")],
+        [SCISetting valueCellWithTitle:@"Images" subtitle:[NSString stringWithFormat:@"%ld", (long)self.stats.imageCount] icon:SCISettingsIcon(@"photo")],
+        [SCISetting valueCellWithTitle:@"Videos" subtitle:[NSString stringWithFormat:@"%ld", (long)self.stats.videoCount] icon:SCISettingsIcon(@"video")]
+    ], nil)];
 
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    switch (section) {
-        case SCIGallerySettingsSectionBrowsing:
-            return @"Pin favorites above other files inside the current sort and folder context.";
-        case SCIGallerySettingsSectionLock:
-            return @"Lock the Gallery with a passcode or biometrics.";
-        case SCIGallerySettingsSectionShortcuts:
-            return @"Choose which tab opens Gallery on long press.";
-        case SCIGallerySettingsSectionImport:
-            return @"Import from the Files app with full editable metadata.";
-        default:
-            return nil;
-    }
-}
+    SCISetting *favoritesRow = [SCISetting switchCellWithTitle:@"Show Favorites at Top" icon:SCISettingsIcon(@"heart") defaultsKey:kFavoritesAtTopKey];
+    favoritesRow.action = ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
+    };
+    [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow], @"Pin favorites above other files inside the current sort and folder context.")];
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    switch (section) {
-        case SCIGallerySettingsSectionStats:
-            return SCIGalleryStatsRowCount;
-        case SCIGallerySettingsSectionBrowsing:
-            return 1;
-        case SCIGallerySettingsSectionLock:
-            return [SCIGalleryManager sharedManager].isLockEnabled ? 2 : 1;
-        case SCIGallerySettingsSectionShortcuts:
-            return 2;
-        case SCIGallerySettingsSectionImport:
-            return 1;
-        case SCIGallerySettingsSectionDelete:
-            return 1;
-    }
-    return 0;
-}
-
-- (UITableViewCell *)valueCellWithTitle:(NSString *)title icon:(UIImage *)icon value:(NSString *)value {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.selectedBackgroundView = [self selectionBackgroundView];
-    cell.textLabel.text = title;
-    cell.imageView.image = icon;
-    cell.imageView.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.detailTextLabel.text = value;
-    cell.detailTextLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
-    return cell;
-}
-
-- (UITableViewCell *)statsCellForRow:(NSInteger)row {
-    switch (row) {
-        case SCIGalleryStatsRowTotal:
-            return [self valueCellWithTitle:@"Total" icon:[SCIAssetUtils instagramIconNamed:@"info" pointSize:24.0] value:[NSString stringWithFormat:@"%ld files • %@", (long)self.stats.totalFiles, [self formattedSize:self.stats.totalSize]]];
-        case SCIGalleryStatsRowImages:
-            return [self valueCellWithTitle:@"Images" icon:[SCIAssetUtils instagramIconNamed:@"photo" pointSize:24.0] value:[NSString stringWithFormat:@"%ld", (long)self.stats.imageCount]];
-        case SCIGalleryStatsRowVideos:
-            return [self valueCellWithTitle:@"Videos" icon:[SCIAssetUtils instagramIconNamed:@"video" pointSize:24.0] value:[NSString stringWithFormat:@"%ld", (long)self.stats.videoCount]];
-    }
-    return [self valueCellWithTitle:@"" icon:nil value:@""];
-}
-
-- (void)configureBrowsingCell:(UITableViewCell *)cell {
-    cell.textLabel.text = @"Show Favorites at Top";
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.imageView.image = [SCIAssetUtils instagramIconNamed:@"heart" pointSize:24.0];
-    cell.imageView.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
-
-    SCISwitch *sw = [[SCISwitch alloc] init];
-    sw.on = [[NSUserDefaults standardUserDefaults] boolForKey:kFavoritesAtTopKey];
-    [sw addTarget:self action:@selector(favoritesAtTopSwitchChanged:) forControlEvents:UIControlEventValueChanged];
-    cell.accessoryView = sw;
-}
-
-- (void)configureLockCell:(UITableViewCell *)cell atRow:(NSInteger)row {
     SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
-    if (row == 0) {
-        cell.textLabel.text = @"Enable Passcode Lock";
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-        SCISwitch *sw = [[SCISwitch alloc] init];
-        sw.on = mgr.isLockEnabled;
-        [sw addTarget:self action:@selector(lockSwitchChanged:) forControlEvents:UIControlEventValueChanged];
-        cell.accessoryView = sw;
-        return;
-    }
+    NSMutableArray *lockRows = [NSMutableArray array];
 
-    cell.textLabel.text = @"Change Passcode";
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-}
+    __weak typeof(self) weakSelf = self;
+    SCISetting *lockSwitch = [SCISetting switchCellWithTitle:@"Enable Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""];
+    lockSwitch.switchValueProvider = ^BOOL{
+        return [SCIGalleryManager sharedManager].isLockEnabled;
+    };
+    lockSwitch.switchChangeHandler = ^(BOOL isOn) {
+        [weakSelf handleLockToggleEnabled:isOn];
+    };
+    [lockRows addObject:lockSwitch];
 
-- (void)configureShortcutsCell:(UITableViewCell *)cell {
-    cell.textLabel.text = @"Quick Gallery Access";
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-    SCISwitch *sw = [[SCISwitch alloc] init];
-    sw.on = [[NSUserDefaults standardUserDefaults] boolForKey:@"header_long_press_gallery"];
-    [sw addTarget:self action:@selector(quickAccessSwitchChanged:) forControlEvents:UIControlEventValueChanged];
-    cell.accessoryView = sw;
-}
-
-- (UIMenu *)galleryShortcutTargetMenuForButton:(UIButton *)button {
-    NSString *saved = SCIGalleryResolvedShortcutTabIdentifier([[NSUserDefaults standardUserDefaults] stringForKey:kGalleryLongPressTabKey]);
-    NSArray<NSDictionary *> *items = SCIGalleryShortcutTargetItems();
-    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
-    for (NSDictionary *item in items) {
-        NSString *title = item[@"title"];
-        NSString *value = item[@"value"];
-        UIAction *action = [UIAction actionWithTitle:title image:nil identifier:nil handler:^(__unused UIAction *a) {
-            [[NSUserDefaults standardUserDefaults] setObject:value forKey:kGalleryLongPressTabKey];
-            [button setTitle:title forState:UIControlStateNormal];
-            [SCIUtils showRestartConfirmation];
+    if (mgr.isLockEnabled) {
+        SCISetting *changePasscode = [SCISetting buttonCellWithTitle:@"Change Passcode" subtitle:nil icon:SCISettingsIcon(@"key") action:^{
+            [SCIGalleryLockViewController presentMode:SCIGalleryLockModeChangePasscode
+                                 fromViewController:self
+                                         completion:^(BOOL success) {}];
         }];
-        action.state = [saved isEqualToString:value] ? UIMenuElementStateOn : UIMenuElementStateOff;
-        [actions addObject:action];
-    }
-    return [UIMenu menuWithChildren:actions];
-}
-
-- (void)configureShortcutTargetCell:(UITableViewCell *)cell {
-    cell.textLabel.text = @"Open from Tab";
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-    NSString *title = SCIGalleryShortcutTargetTitle([[NSUserDefaults standardUserDefaults] stringForKey:kGalleryLongPressTabKey]);
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    [button setTitle:title forState:UIControlStateNormal];
-    button.contentEdgeInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
-    button.showsMenuAsPrimaryAction = YES;
-    button.menu = [self galleryShortcutTargetMenuForButton:button];
-    [button sizeToFit];
-    cell.accessoryView = button;
-}
-
-- (void)configureImportCell:(UITableViewCell *)cell {
-    cell.textLabel.text = @"Import from Files…";
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-}
-
-- (void)configureDeleteCell:(UITableViewCell *)cell {
-    cell.textLabel.text = @"Delete Files";
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramDestructive];
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == SCIGallerySettingsSectionStats) {
-        return [self statsCellForRow:indexPath.row];
+        [lockRows addObject:changePasscode];
     }
 
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell" forIndexPath:indexPath];
-    cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.selectedBackgroundView = [self selectionBackgroundView];
-    cell.textLabel.text = nil;
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.detailTextLabel.text = nil;
-    cell.detailTextLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
-    cell.accessoryType = UITableViewCellAccessoryNone;
-    cell.accessoryView = nil;
-    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+    [sections addObject:SCITopicSection(@"Lock", lockRows, @"Lock the Gallery with a passcode or biometrics.")];
 
-    switch (indexPath.section) {
-        case SCIGallerySettingsSectionBrowsing:
-            [self configureBrowsingCell:cell];
-            break;
-        case SCIGallerySettingsSectionLock:
-            [self configureLockCell:cell atRow:indexPath.row];
-            break;
-        case SCIGallerySettingsSectionShortcuts:
-            if (indexPath.row == 0) {
-                [self configureShortcutsCell:cell];
-            } else {
-                [self configureShortcutTargetCell:cell];
-            }
-            break;
-        case SCIGallerySettingsSectionImport:
-            [self configureImportCell:cell];
-            break;
-        case SCIGallerySettingsSectionDelete:
-            [self configureDeleteCell:cell];
-            break;
-        default:
-            break;
-    }
-    return cell;
+    SCISetting *shortcutTarget = SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Quick Gallery Access" icon:SCISettingsIcon(@"circle_off") menu:[self galleryShortcutTargetMenu]], SCISettingsIcon(@"circle_off"));
+
+    [sections addObject:SCITopicSection(@"Shortcuts", @[shortcutTarget], @"Choose the tab that opens Gallery on long press. None disables the action.")];
+
+    SCISetting *importRow = [SCISetting buttonCellWithTitle:@"Import from Files…" subtitle:nil icon:SCISettingsIcon(@"arrow_down") action:^{
+        SCIGalleryImportViewController *vc = [[SCIGalleryImportViewController alloc] initWithDestinationFolderPath:self.importDestinationFolderPath];
+        [self.navigationController pushViewController:vc animated:YES];
+    }];
+    [sections addObject:SCITopicSection(@"Import", @[importRow], @"Import from the Files app with full editable metadata.")];
+
+    SCISetting *deleteRow = [SCISetting buttonCellWithTitle:@"Delete Files" subtitle:nil icon:SCISettingsIcon(@"trash") action:^{
+        SCIGalleryDeleteViewController *vc = [[SCIGalleryDeleteViewController alloc] initWithMode:SCIGalleryDeletePageModeRoot];
+        __weak typeof(self) weakSelf = self;
+        vc.onDidDelete = ^{
+            [weakSelf reloadStats];
+            [weakSelf rebuildSections];
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
+        };
+        [self.navigationController pushViewController:vc animated:YES];
+    }];
+    deleteRow.tintColor = [UIColor systemRedColor];
+
+    [sections addObject:SCITopicSection(@"Delete", @[deleteRow], nil)];
+
+    [self replaceSections:sections];
 }
 
-- (void)favoritesAtTopSwitchChanged:(UISwitch *)sw {
-    [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:kFavoritesAtTopKey];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
-}
-
-- (void)lockSwitchChanged:(UISwitch *)sw {
+- (void)handleLockToggleEnabled:(BOOL)enabled {
     SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
-    if (sw.on) {
+    if (enabled && !mgr.isLockEnabled) {
         __weak typeof(self) weakSelf = self;
         [SCIGalleryLockViewController presentMode:SCIGalleryLockModeSetPasscode
                              fromViewController:self
                                      completion:^(BOOL success) {
-            if (!success) {
-                sw.on = NO;
-            }
-            [weakSelf.tableView reloadData];
+            [weakSelf rebuildSections];
         }];
+        return;
+    }
+
+    if (enabled && mgr.isLockEnabled) {
+        [self rebuildSections];
+        return;
+    }
+
+    if (!enabled && !mgr.isLockEnabled) {
+        [self rebuildSections];
         return;
     }
 
@@ -353,46 +212,29 @@ typedef NS_ENUM(NSInteger, SCIGallerySettingsSection) {
                                                 message:@"The gallery will no longer require authentication to open."
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:^{
-        sw.on = YES;
+        [self rebuildSections];
     }],
         [SCIIGAlertAction actionWithTitle:@"Disable" style:SCIIGAlertActionStyleDestructive handler:^{
         [mgr removePasscode];
-        [self.tableView reloadData];
+        [self rebuildSections];
     }],
     ]];
 }
 
-- (void)quickAccessSwitchChanged:(UISwitch *)sw {
-    [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:@"header_long_press_gallery"];
-    [SCIUtils showRestartConfirmation];
-}
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-
-    if (indexPath.section == SCIGallerySettingsSectionLock && indexPath.row == 1) {
-        [SCIGalleryLockViewController presentMode:SCIGalleryLockModeChangePasscode
-                             fromViewController:self
-                                     completion:^(BOOL success) {}];
-        return;
+- (UIMenu *)galleryShortcutTargetMenu {
+    NSArray<NSDictionary *> *items = SCIGalleryShortcutTargetItems();
+    NSMutableArray<UICommand *> *commands = [NSMutableArray array];
+    for (NSDictionary *item in items) {
+        NSString *title = item[@"title"];
+        NSString *value = item[@"value"];
+        NSString *iconName = item[@"icon"];
+        UICommand *command = [UICommand commandWithTitle:title
+                                                   image:[SCIAssetUtils instagramIconNamed:iconName pointSize:22.0]
+                                                  action:@selector(menuChanged:)
+                                            propertyList:@{@"defaultsKey": kGalleryLongPressTabKey, @"value": value, @"iconName": iconName, @"requiresRestart": @YES}];
+        [commands addObject:command];
     }
-
-    if (indexPath.section == SCIGallerySettingsSectionImport) {
-        SCIGalleryImportViewController *vc = [[SCIGalleryImportViewController alloc] initWithDestinationFolderPath:self.importDestinationFolderPath];
-        [self.navigationController pushViewController:vc animated:YES];
-        return;
-    }
-
-    if (indexPath.section == SCIGallerySettingsSectionDelete) {
-        SCIGalleryDeleteViewController *vc = [[SCIGalleryDeleteViewController alloc] initWithMode:SCIGalleryDeletePageModeRoot];
-        __weak typeof(self) weakSelf = self;
-        vc.onDidDelete = ^{
-            [weakSelf reloadStats];
-            [weakSelf.tableView reloadData];
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
-        };
-        [self.navigationController pushViewController:vc animated:YES];
-    }
+    return [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:commands];
 }
 
 @end

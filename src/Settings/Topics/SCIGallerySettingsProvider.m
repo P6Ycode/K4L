@@ -3,27 +3,60 @@
 #import "../SCISetting.h"
 
 #import "../../Utils.h"
-#import "../../AssetUtils.h"
-
 #import "../../Shared/Gallery/SCIGallerySettingsViewController.h"
 #import "../../Shared/Gallery/SCIGalleryViewController.h"
 
+static NSString * const kSCIGalleryQuickAccessDisabledValue = @"none";
+/// TODO: remove
+static NSString * const kSCIGalleryLegacyQuickAccessEnabledKey = @"header_long_press_gallery";
+static NSString * const kSCIGalleryLongPressTabKey = @"gallery_long_press_tab";
+
+/// TODO: remove
+static void SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded(void) {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *existingValue = [defaults stringForKey:kSCIGalleryLongPressTabKey];
+    BOOL usesClassic = [SCIUtils tabOrderSetTo:@"classic"];
+    if (existingValue.length > 0) {
+        if (usesClassic && [existingValue isEqualToString:@"direct-inbox-tab"]) {
+            [defaults setObject:@"camera-tab" forKey:kSCIGalleryLongPressTabKey];
+        } else if (!usesClassic && [existingValue isEqualToString:@"camera-tab"]) {
+            [defaults setObject:@"direct-inbox-tab" forKey:kSCIGalleryLongPressTabKey];
+        }
+        return;
+    }
+
+    BOOL enabled = [defaults objectForKey:kSCIGalleryLegacyQuickAccessEnabledKey] && [defaults boolForKey:kSCIGalleryLegacyQuickAccessEnabledKey];
+    NSString *value = enabled ? (usesClassic ? @"camera-tab" : @"direct-inbox-tab") : kSCIGalleryQuickAccessDisabledValue;
+    [defaults setObject:value forKey:kSCIGalleryLongPressTabKey];
+}
+
 static UICommand *SCIGalleryShortcutTargetCommand(NSString *title, NSString *value) {
+    NSDictionary<NSString *, NSString *> *iconNames = @{
+        kSCIGalleryQuickAccessDisabledValue: @"circle_off",
+        @"mainfeed-tab": @"home",
+        @"reels-tab": @"reels",
+        @"camera-tab": @"plus",
+        @"direct-inbox-tab": @"messages",
+        @"profile-tab": @"user_circle"
+    };
+
     return [UICommand commandWithTitle:title
-                                 image:nil
+                                 image:SCISettingsIcon(iconNames[value])
                                 action:@selector(menuChanged:)
                           propertyList:@{
-        @"defaultsKey": @"gallery_long_press_tab",
+        @"defaultsKey": kSCIGalleryLongPressTabKey,
         @"value": value,
+        @"iconName": iconNames[value],
         @"requiresRestart": @YES
     }];
 }
 
 static UIMenu *SCIGalleryShortcutTargetMenu(void) {
     return [UIMenu menuWithChildren:@[
+        SCIGalleryShortcutTargetCommand(@"None", kSCIGalleryQuickAccessDisabledValue),
         SCIGalleryShortcutTargetCommand(@"Home", @"mainfeed-tab"),
         SCIGalleryShortcutTargetCommand(@"Reels", @"reels-tab"),
-        SCIGalleryShortcutTargetCommand([SCIUtils tabOrderSetTo:@"classic"] ? @"Create" : @"Messages", @"direct-inbox-tab"),
+        SCIGalleryShortcutTargetCommand([SCIUtils tabOrderSetTo:@"classic"] ? @"Create" : @"Messages", [SCIUtils tabOrderSetTo:@"classic"] ? @"camera-tab" : @"direct-inbox-tab"),
         SCIGalleryShortcutTargetCommand(@"Profile", @"profile-tab")
     ]];
 }
@@ -31,29 +64,30 @@ static UIMenu *SCIGalleryShortcutTargetMenu(void) {
 @implementation SCIGallerySettingsProvider
 
 + (SCISetting *)rootSetting {
+    /// TODO: remove
+    SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded();
+
     return SCITopicNavigationSetting(@"Gallery", @"media", 24.0, @[
         SCITopicSection(@"Access", @[
             [SCISetting buttonCellWithTitle:@"Open Gallery"
                                    subtitle:@""
-                                       icon:nil
+                                       icon:SCISettingsIcon(@"media")
                                      action:^(void) {
                 [SCIGalleryViewController presentGallery];
             }],
-            [SCISetting switchCellWithTitle:@"Quick Gallery Access" subtitle:@"Long press the selected tab" defaultsKey:@"header_long_press_gallery" requiresRestart:YES],
-            [SCISetting menuCellWithTitle:@"Open from Tab" subtitle:@"Choose which tab opens Gallery" menu:SCIGalleryShortcutTargetMenu()]
-        ], nil),
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Quick Gallery Access" icon:SCISettingsIcon(@"circle_off") menu:SCIGalleryShortcutTargetMenu()], SCISettingsIcon(@"circle_off"))
+        ], @"Choose the tab that opens Gallery on long press. None disables the action."),
         SCITopicSection(@"Browsing", @[
             [SCISetting switchCellWithTitle:@"Show Favorites at Top"
-                                   subtitle:@"Pin favorites above other files in the current sort and folder context"
-                                       icon:[SCIAssetUtils instagramIconNamed:@"heart" pointSize:24.0]
+                                       icon:SCISettingsIcon(@"heart")
                                 defaultsKey:@"show_favorites_at_top"]
-        ], nil),
+        ], @"Pin favorites above other files in the current sort and folder context."),
         SCITopicSection(@"Lock & Maintenance", @[
             [SCISetting navigationCellWithTitle:@"Gallery Settings"
-                                       subtitle:@"Manage passcode, import files, view storage, delete with options"
-                                           icon:[SCIAssetUtils instagramIconNamed:@"settings" pointSize:24.0]
+                                       subtitle:nil
+                                           icon:SCISettingsIcon(@"settings")
                                  viewController:[[SCIGallerySettingsViewController alloc] init]]
-        ], nil)
+        ], @"Manage passcode, import files, view storage, and delete with options.")
     ]);
 }
 

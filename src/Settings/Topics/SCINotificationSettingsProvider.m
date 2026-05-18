@@ -1,7 +1,6 @@
 #import "SCINotificationSettingsProvider.h"
 #import "../SCITopicSettingsSupport.h"
 #import "../../Utils.h"
-#import "../../AssetUtils.h"
 #import "../../Shared/UI/SCINotificationCenter.h"
 
 @implementation SCINotificationSettingsProvider
@@ -88,7 +87,7 @@
         SCITopicSection(@"Haptics", @[
             [SCISetting navigationCellWithTitle:@"Haptics"
                                        subtitle:@""
-                                           icon:nil
+                                           icon:SCISettingsIcon(@"haptics")
                                     navSections:[self sci_featureSectionsForHaptics:YES]]
         ], nil)
     ]];

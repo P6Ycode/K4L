@@ -871,7 +871,7 @@ static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
         case SCIGallerySourceFeed:    return @"feed";
         case SCIGallerySourceStories: return @"story";
         case SCIGallerySourceReels:   return @"reels";
-        case SCIGallerySourceProfile: return @"profile";
+        case SCIGallerySourceProfile: return @"user_circle";
         case SCIGallerySourceDMs:     return @"messages";
         case SCIGallerySourceThumbnail: return @"photo_gallery";
         case SCIGallerySourceOther:

@@ -1,11 +1,26 @@
 #import "../../Utils.h"
 
+/// TODO: remove
+static NSString * const kSCILegacyCallConfirmKey = @"call_confirm";
+static NSString * const kSCIAudioCallConfirmKey = @"call_confirm_audio";
+static NSString * const kSCIVideoCallConfirmKey = @"call_confirm_video";
+
+static BOOL SCIShouldConfirmCall(NSString *key) {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    id value = [defaults objectForKey:key];
+    if (value) {
+        return [defaults boolForKey:key];
+    }
+    /// TODO: remove
+    return [defaults boolForKey:kSCILegacyCallConfirmKey];
+}
+
 %group SCICallConfirmHooks
 
 %hook IGDirectThreadCallButtonsCoordinator
 // Voice Call
 - (void)_didTapAudioButton {
-    if ([SCIUtils getBoolPref:@"call_confirm"]) {
+    if (SCIShouldConfirmCall(kSCIAudioCallConfirmKey)) {
         NSLog(@"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -17,7 +32,7 @@
 }
 
 - (void)_didTapAudioButton:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"call_confirm"]) {
+    if (SCIShouldConfirmCall(kSCIAudioCallConfirmKey)) {
         NSLog(@"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -30,7 +45,7 @@
 
 // Video Call
 - (void)_didTapVideoButton {
-    if ([SCIUtils getBoolPref:@"call_confirm"]) {
+    if (SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) {
         NSLog(@"[SCInsta] Call confirm triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -42,9 +57,9 @@
 }
 
 - (void)_didTapVideoButton:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"call_confirm"]) {
+    if (SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) {
         NSLog(@"[SCInsta] Call confirm triggered");
-        
+
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Video Call"
                                message:@"Are you sure you want to start a video call?"];
@@ -57,7 +72,7 @@
 %end
 
 void SCIInstallCallConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"call_confirm"]) return;
+    if (!SCIShouldConfirmCall(kSCIAudioCallConfirmKey) && !SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

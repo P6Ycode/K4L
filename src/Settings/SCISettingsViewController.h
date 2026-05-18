@@ -6,12 +6,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface SCISettingsViewController : UIViewController
+@interface SCISettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 
 - (instancetype)initWithTitle:(NSString *)title sections:(NSArray *)sections reduceMargin:(BOOL)reduceMargin;
 - (instancetype)init;
 
+@property (nonatomic, strong, readonly) UITableView *tableView;
+@property (nonatomic, strong, readonly) NSArray *sections;
+
 @property (nonatomic, assign) BOOL searchesAllSettings;
+
+- (void)switchChanged:(UISwitch *)sender;
+- (SCISetting *)settingForSender:(id)sender;
+- (void)replaceSections:(NSArray *)sections;
 
 @end
 

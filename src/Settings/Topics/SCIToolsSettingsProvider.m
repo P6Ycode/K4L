@@ -6,9 +6,8 @@
 #import "../SCISettingsTransferManager.h"
 #import "../../App/SCIFlexLoader.h"
 #import "../../Utils.h"
-#import "../../AssetUtils.h"
 
-@interface SCISettingsTransferSelectionViewController : UITableViewController
+@interface SCISettingsTransferSelectionViewController : SCISettingsViewController
 @property (nonatomic, assign) BOOL importMode;
 @property (nonatomic, assign) BOOL includeSettings;
 @property (nonatomic, assign) BOOL includeGallery;
@@ -18,70 +17,51 @@
 @implementation SCISettingsTransferSelectionViewController
 
 - (instancetype)initWithImportMode:(BOOL)importMode {
-    if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) {
+    if ((self = [super initWithTitle:(importMode ? @"Import" : @"Export") sections:@[] reduceMargin:NO])) {
         _importMode = importMode;
         _includeSettings = YES;
         _includeGallery = YES;
-        self.title = importMode ? @"Import" : @"Export";
     }
     return self;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:(self.importMode ? @"Import" : @"Export")
                                                                               style:(UIBarButtonItemStyle)2 // done/prominent
                                                                              target:self
                                                                              action:@selector(runTransfer)];
+    [self rebuildSections];
     [self updateActionEnabled];
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 1;
-}
+- (void)rebuildSections {
+    SCISetting *settingsRow = [SCISetting buttonCellWithTitle:@"Settings" subtitle:@"SCInsta preferences" icon:nil action:^{
+        self.includeSettings = !self.includeSettings;
+        [self rebuildSections];
+        [self updateActionEnabled];
+    }];
+    settingsRow.userInfo = @{@"checkmarked": @(self.includeSettings)};
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    (void)tableView; (void)section;
-    return 2;
-}
+    SCISetting *galleryRow = [SCISetting buttonCellWithTitle:@"Gallery" subtitle:@"Gallery media and metadata" icon:nil action:^{
+        self.includeGallery = !self.includeGallery;
+        [self rebuildSections];
+        [self updateActionEnabled];
+    }];
+    galleryRow.userInfo = @{@"checkmarked": @(self.includeGallery)};
 
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    (void)tableView; (void)section;
-    return self.importMode ? @"A restart prompt appears after a successful import." : nil;
+    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow], self.importMode ? @"A restart prompt appears after a successful import." : nil)];
+    [self replaceSections:sections];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
-    cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.selectedBackgroundView = [UIView new];
-    cell.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
-    UIListContentConfiguration *config = cell.defaultContentConfiguration;
-    config.textProperties.color = [SCIUtils SCIColor_InstagramPrimaryText];
-    config.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
-    BOOL selected = indexPath.row == 0 ? self.includeSettings : self.includeGallery;
-    config.text = indexPath.row == 0 ? @"Settings" : @"Gallery";
-    config.secondaryText = indexPath.row == 0 ? @"SCInsta preferences" : @"Gallery media and metadata";
-    config.image = indexPath.row == 0
-        ? SCISettingsIcon(@"settings")
-        : SCISettingsIcon(@"media");
-    config.imageProperties.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.contentConfiguration = config;
-    cell.accessoryType = selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
-    return cell;
-}
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.row == 0) {
-        self.includeSettings = !self.includeSettings;
-    } else {
-        self.includeGallery = !self.includeGallery;
+    UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+    SCISetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
+    if (row.userInfo[@"checkmarked"]) {
+        BOOL checked = [row.userInfo[@"checkmarked"] boolValue];
+        cell.accessoryType = checked ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
     }
-    [self updateActionEnabled];
-    [tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    return cell;
 }
 
 - (void)updateActionEnabled {
@@ -105,19 +85,19 @@ static NSArray *SCIManageSettingsDataSections(void) {
         SCITopicSection(@"", @[
             SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Export"
                                                                 subtitle:@"Choose settings, Gallery, or both"
-                                                                    icon:[SCIAssetUtils instagramIconNamed:@"arrow_up" pointSize:24.0]
+                                                                    icon:SCISettingsIcon(@"arrow_up")
                                                           viewController:[[SCISettingsTransferSelectionViewController alloc] initWithImportMode:NO]],
                                   [SCIUtils SCIColor_InstagramPrimaryText]),
             SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Import"
                                                                 subtitle:@"Choose settings, Gallery, or both"
-                                                                    icon:[SCIAssetUtils instagramIconNamed:@"arrow_down" pointSize:24.0]
+                                                                    icon:SCISettingsIcon(@"arrow_down")
                                                           viewController:[[SCISettingsTransferSelectionViewController alloc] initWithImportMode:YES]],
                                   [SCIUtils SCIColor_InstagramPrimaryText])
         ], nil),
         SCITopicSection(@"Reset", @[
             SCISettingApplyIconTint([SCISetting buttonCellWithTitle:@"Reset All Settings"
                                                             subtitle:@"Restore every preference to its default value"
-                                                                icon:[SCIAssetUtils instagramIconNamed:@"arrow_ccw" pointSize:24.0]
+                                                                icon:SCISettingsIcon(@"arrow_ccw")
                                                               action:^(void) {
                 UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
                 UIViewController *presenter = scene.windows.firstObject.rootViewController;
@@ -135,36 +115,36 @@ static NSArray *SCIManageSettingsDataSections(void) {
     NSString *flexFooter = flexInstalled
         ? @"The first time FLEX is opened in a session it can take a moment to initialize."
         : @"FLEX not installed. Rebuild with \"--flex\" flag or install libFLEX.dylib to enable these options.";
-    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Three-finger Gesture" subtitle:@"Hold three fingers anywhere for 1.5 seconds" defaultsKey:@"flex_instagram"];
-    SCISetting *flexLaunch = [SCISetting switchCellWithTitle:@"Open on App Launch" subtitle:@"" defaultsKey:@"flex_app_launch"];
-    SCISetting *flexFocus = [SCISetting switchCellWithTitle:@"Open on App Focus" subtitle:@"" defaultsKey:@"flex_app_start"];
+    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Three-finger Gesture" defaultsKey:@"flex_instagram"];
+    SCISetting *flexLaunch = [SCISetting switchCellWithTitle:@"Open on App Launch" defaultsKey:@"flex_app_launch"];
+    SCISetting *flexFocus = [SCISetting switchCellWithTitle:@"Open on App Focus" defaultsKey:@"flex_app_start"];
     if (!flexInstalled) {
         flexGesture.userInfo = @{@"enabled": @NO};
         flexLaunch.userInfo = @{@"enabled": @NO};
         flexFocus.userInfo = @{@"enabled": @NO};
     }
     NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
-        SCITopicSection(@"FLEX", @[flexGesture, flexLaunch, flexFocus], flexFooter),
+        SCITopicSection(@"FLEX", @[flexGesture, flexLaunch, flexFocus], [NSString stringWithFormat:@"Three-finger gesture opens FLEX after holding three fingers anywhere for 1.5 seconds. %@", flexFooter]),
         SCITopicSection(@"Tweak", @[
-            [SCISetting switchCellWithTitle:@"Quick Settings Access" subtitle:@"Long press the home tab" defaultsKey:@"settings_shortcut" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Show Settings on App Launch" subtitle:@"" defaultsKey:@"tweak_settings_app_launch"],
-            [SCISetting switchCellWithTitle:@"Disable All Settings" subtitle:@"" defaultsKey:@"tweak_master_disabled" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Quick Settings Access" defaultsKey:@"settings_shortcut" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Show Settings on App Launch" defaultsKey:@"tweak_settings_app_launch"],
+            [SCISetting switchCellWithTitle:@"Disable All Settings" defaultsKey:@"tweak_master_disabled" requiresRestart:YES],
             [SCISetting buttonCellWithTitle:@"Reset Onboarding Completion State" subtitle:@"" icon:nil action:^(void) {
                 [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"SCInstaFirstRun"];
                 [SCIUtils showRestartConfirmation];
             }]
-        ], nil),
+        ], @"Quick Settings Access opens settings when long pressing the Home tab."),
         SCITopicSection(@"Instagram", @[
-            [SCISetting switchCellWithTitle:@"Disable Safe Mode" subtitle:@"Makes Instagram not reset settings after subsequent crashes, at your own risk" defaultsKey:@"disable_safe_mode"]
-        ], nil),
+            [SCISetting switchCellWithTitle:@"Disable Safe Mode" defaultsKey:@"disable_safe_mode"]
+        ], @"Makes Instagram not reset settings after subsequent crashes. Use at your own risk."),
         SCITopicSection(@"Backup & Transfer", @[
-            [SCISetting navigationCellWithTitle:@"Manage Settings & Data" subtitle:@"" icon:[SCIAssetUtils instagramIconNamed:@"cloud" pointSize:24.0] navSections:SCIManageSettingsDataSections()]
+            [SCISetting navigationCellWithTitle:@"Manage Settings & Data" subtitle:@"" icon:SCISettingsIcon(@"cloud") navSections:SCIManageSettingsDataSections()]
         ], nil),
         SCITopicSection(@"Liquid Glass", @[
-            [SCISetting switchCellWithTitle:@"Enable Liquid Glass Buttons" subtitle:@"Enables experimental liquid glass buttons within the app" defaultsKey:@"liquid_glass_buttons" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Enable Liquid Glass Surfaces" subtitle:@"Enables liquid glass for menus and other surfaces, and updates Instagram's related liquid glass override defaults." defaultsKey:@"liquid_glass_surfaces" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Enable Liquid Glass Buttons" defaultsKey:@"liquid_glass_buttons" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Enable Liquid Glass Surfaces" defaultsKey:@"liquid_glass_surfaces" requiresRestart:YES],
             [SCIInterfaceSettingsProvider experimentalLiquidGlassSetting]
-        ], @"Experimental controls. Restart Instagram after changing Liquid Glass settings.")
+        ], @"Experimental controls. Buttons affect in-app buttons; surfaces affect menus and related Instagram liquid-glass override defaults. Restart Instagram after changes.")
     ]];
 
     [sections addObjectsFromArray:SCIDevExampleSections()];

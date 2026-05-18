@@ -11,38 +11,38 @@ static NSString * const kSCIReelsActionButtonDefaultActionKey = @"action_button_
 + (SCISetting *)rootSetting {
     return SCITopicNavigationSetting(@"Reels", @"reels", 24.0, @[
         SCITopicSection(@"Action Button", @[
-            [SCISetting switchCellWithTitle:@"Reels Action Button" subtitle:@"" defaultsKey:kSCIReelsActionButtonEnabledKey],
-            [SCISetting menuCellWithTitle:@"Default Tap Action" subtitle:@"Long press to open the full menu" menu:SCIActionButtonDefaultActionMenu(kSCIReelsActionButtonDefaultActionKey, @"Reels", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceReels))],
+            [SCISetting switchCellWithTitle:@"Reels Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIReelsActionButtonEnabledKey],
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(kSCIReelsActionButtonDefaultActionKey, @"Reels", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceReels))], SCISettingsIcon(@"action")),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceReels, @"Reels", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceReels), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceReels))
-        ], nil),
+        ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Behavior", @[
-            [SCISetting menuCellWithTitle:@"Tap Controls" subtitle:@"Change what happens when you tap on a reel" menu:SCIReelsTapControlMenu()],
-            [SCISetting switchCellWithTitle:@"Always Show Progress Scrubber" subtitle:@"Force the progress bar to appear on every reel" defaultsKey:@"reels_show_scrubber"],
-            [SCISetting switchCellWithTitle:@"Disable Auto-Unmuting Reels" subtitle:@"Prevent reels from unmuting when the volume or silent button is pressed" defaultsKey:@"disable_auto_unmuting_reels" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Disable Reels Tab Tap to Refresh" subtitle:@"Prevent reels refresh when re-tapping the reels tab button" defaultsKey:@"disable_reels_tab_refresh"]
-        ], nil),
+            [SCISetting menuCellWithTitle:@"Tap Controls" icon:SCISettingsIcon(@"play") menu:SCIReelsTapControlMenu()],
+            [SCISetting switchCellWithTitle:@"Show Progress Scrubber" icon:SCISettingsIcon(@"clock") defaultsKey:@"reels_show_scrubber"],
+            [SCISetting switchCellWithTitle:@"Disable Auto-Unmuting Reels" icon:SCISettingsIcon(@"volume_off") defaultsKey:@"disable_auto_unmuting_reels" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Disable Reels Tab Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"disable_reels_tab_refresh"]
+        ], @"Tap Controls changes what happens when you tap on a reel. Auto-unmuting controls prevent reels from unmuting when volume or silent mode changes."),
         SCITopicSection(@"Limits", @[
-            [SCISetting switchCellWithTitle:@"Disable Scrolling Reels" subtitle:@"" defaultsKey:@"disable_scrolling_reels" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Prevent Doom Scrolling" subtitle:@"" defaultsKey:@"prevent_doom_scrolling"],
+            [SCISetting switchCellWithTitle:@"Disable Scrolling Reels" icon:SCISettingsIcon(@"autoscroll_off") defaultsKey:@"disable_scrolling_reels" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Prevent Doom Scrolling" icon:SCISettingsIcon(@"arrow_down") defaultsKey:@"prevent_doom_scrolling"],
             [SCISetting stepperCellWithTitle:@"Doom Scrolling Limit" subtitle:@"Only loads %@ %@" defaultsKey:@"doom_scrolling_reel_count" min:1 max:100 step:1 label:@"reels" singularLabel:@"reel"]
         ], nil),
         SCITopicSection(@"Layout", @[
-            [SCISetting switchCellWithTitle:@"Hide Reels Header" subtitle:@"" defaultsKey:@"hide_reels_header"],
-            [SCISetting switchCellWithTitle:@"Hide Repost Button" subtitle:@"" defaultsKey:@"hide_repost_button_reels" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Suggested Accounts" subtitle:@"" defaultsKey:@"hide_suggested_users_reels"]
+            [SCISetting switchCellWithTitle:@"Hide Reels Header" icon:SCISettingsIcon(@"reels") defaultsKey:@"hide_reels_header"],
+            [SCISetting switchCellWithTitle:@"Hide Repost Button" icon:SCISettingsIcon(@"repost") defaultsKey:@"hide_repost_button_reels" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide Suggested Accounts" icon:SCISettingsIcon(@"users") defaultsKey:@"hide_suggested_users_reels"]
         ], nil),
         SCITopicSection(@"Metrics", @[
-            [SCISetting switchCellWithTitle:@"Hide Like Count" subtitle:@"" defaultsKey:@"hide_reels_like_count"],
-            [SCISetting switchCellWithTitle:@"Hide Comment Count" subtitle:@"" defaultsKey:@"hide_reels_comment_count"],
-            [SCISetting switchCellWithTitle:@"Hide Repost Count" subtitle:@"" defaultsKey:@"hide_reels_repost_count"],
-            [SCISetting switchCellWithTitle:@"Hide Reshare Count" subtitle:@"" defaultsKey:@"hide_reels_reshare_count"],
-            [SCISetting switchCellWithTitle:@"Hide Save Count" subtitle:@"" defaultsKey:@"hide_reels_save_count"]
+            [SCISetting switchCellWithTitle:@"Hide Like Count" icon:SCISettingsIcon(@"heart") defaultsKey:@"hide_reels_like_count"],
+            [SCISetting switchCellWithTitle:@"Hide Comment Count" icon:SCISettingsIcon(@"comment") defaultsKey:@"hide_reels_comment_count"],
+            [SCISetting switchCellWithTitle:@"Hide Repost Count" icon:SCISettingsIcon(@"repost") defaultsKey:@"hide_reels_repost_count"],
+            [SCISetting switchCellWithTitle:@"Hide Reshare Count" icon:SCISettingsIcon(@"messages") defaultsKey:@"hide_reels_reshare_count"],
+            [SCISetting switchCellWithTitle:@"Hide Save Count" icon:SCISettingsIcon(@"save") defaultsKey:@"hide_reels_save_count"]
         ], nil),
         SCITopicSection(@"Confirmation", @[
-            [SCISetting switchCellWithTitle:@"Confirm Like" subtitle:@"" defaultsKey:@"like_confirm_reels"],
-            [SCISetting switchCellWithTitle:@"Confirm Reel Refresh" subtitle:@"" defaultsKey:@"refresh_reel_confirm"],
-            [SCISetting switchCellWithTitle:@"Confirm Repost" subtitle:@"" defaultsKey:@"repost_confirm_reels"]
-        ], nil)
+            [SCISetting switchCellWithTitle:@"Confirm Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"like_confirm_reels"],
+            [SCISetting switchCellWithTitle:@"Confirm Reel Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"refresh_reel_confirm"],
+            [SCISetting switchCellWithTitle:@"Confirm Repost" icon:SCISettingsIcon(@"repost") defaultsKey:@"repost_confirm_reels"]
+        ], @"Shows confirmation alerts before the enabled reels actions are performed.")
     ]);
 }
 

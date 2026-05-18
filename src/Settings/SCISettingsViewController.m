@@ -4,9 +4,21 @@
 #import "../Shared/UI/SCIIGAlertPresenter.h"
 #import "../Shared/UI/SCIMediaChrome.h"
 #import "../Shared/UI/SCISwitch.h"
+#import "../AssetUtils.h"
 
 static char rowStaticRef[] = "row";
 static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
+static CGFloat const kSCISettingsRemoteImageSize = 45.0;
+
+static NSCache<NSString *, UIImage *> *SCISettingsRemoteImageCache(void) {
+    static NSCache<NSString *, UIImage *> *cache;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        cache = [NSCache new];
+        cache.countLimit = 64;
+    });
+    return cache;
+}
 
 static double SCINormalizedStepperValue(SCISetting *row, double value) {
     if (!row) return value;
@@ -107,6 +119,30 @@ static NSMutableArray *SCIMutableSectionsCopy(NSArray *sections) {
     return mutableSections;
 }
 
+static UIImage *SCISettingsSizedRemoteImage(UIImage *image, BOOL circular) {
+    if (!image) return nil;
+
+    CGSize targetSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+    format.scale = UIScreen.mainScreen.scale;
+
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:targetSize format:format];
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+        CGRect bounds = (CGRect){.origin = CGPointZero, .size = targetSize};
+        if (circular) {
+            [[UIBezierPath bezierPathWithOvalInRect:bounds] addClip];
+        }
+
+        CGFloat scale = MAX(targetSize.width / image.size.width, targetSize.height / image.size.height);
+        CGSize drawSize = CGSizeMake(image.size.width * scale, image.size.height * scale);
+        CGRect drawRect = CGRectMake((targetSize.width - drawSize.width) / 2.0,
+                                     (targetSize.height - drawSize.height) / 2.0,
+                                     drawSize.width,
+                                     drawSize.height);
+        [image drawInRect:drawRect];
+    }];
+}
+
 static NSString *SCISettingsNormalizedQuery(NSString *query) {
     return [[query ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
 }
@@ -134,16 +170,16 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
 - (instancetype)initWithTitle:(NSString *)title sections:(NSArray *)sections reduceMargin:(BOOL)reduceMargin {
     self = [super init];
-    
+
     if (self) {
         self.title = title;
         self.reduceMargin = reduceMargin;
-        
+
         // Exclude development cells from release builds
         NSMutableArray *mutableSections = SCIMutableSectionsCopy(sections);
-        
+
         [mutableSections enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(NSDictionary *section, NSUInteger index, BOOL *stop) {
-        
+
             if ([section[@"header"] hasPrefix:@"_"] && [section[@"footer"] hasPrefix:@"_"]) {
                 if (![[SCIUtils IGVersionString] isEqualToString:@"0.0.0"]) {
                     [mutableSections removeObjectAtIndex:index];
@@ -155,14 +191,14 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
                     [mutableSections removeObjectAtIndex:index];
                 }
             }
-            
+
         }];
-        
+
         self.originalSections = [mutableSections copy];
         self.sections = mutableSections;
     }
-    
-    
+
+
     return self;
 }
 
@@ -205,7 +241,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    
+
     if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"SCInstaFirstRun"] isEqualToString:SCIVersionString]) {
         UIViewController *presenter = self.presentingViewController;
         [SCIIGAlertPresenter presentAlertFromViewController:presenter
@@ -214,7 +250,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
                                                     actions:@[
             [SCIIGAlertAction actionWithTitle:@"I understand!" style:SCIIGAlertActionStyleDefault handler:nil],
         ]];
-        
+
         // Done with first-time setup for this version
         [[NSUserDefaults standardUserDefaults] setValue:SCIVersionString forKey:@"SCInstaFirstRun"];
     }
@@ -249,6 +285,9 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     self.searchController.searchResultsUpdater = self;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.searchController.hidesNavigationBarDuringPresentation = NO;
+    [self.searchController.searchBar setImage:[SCIAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
+                         forSearchBarIcon:UISearchBarIconSearch 
+                                    state:UIControlStateNormal];
     self.searchController.searchBar.placeholder = self.searchesAllSettings ? @"Search..." : [NSString stringWithFormat:@"Search %@", self.title ?: @"settings"];
     self.navigationItem.searchController = self.searchController;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
@@ -270,7 +309,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     SCISetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
     if (!row) return nil;
-    
+
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     UIListContentConfiguration *cellContentConfig = cell.defaultContentConfiguration;
     cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
@@ -282,62 +321,81 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     cellContentConfig.secondaryTextProperties.numberOfLines = 0;
     cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByWordWrapping;
     BOOL rowEnabled = row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES;
-    
+
     cellContentConfig.text = SCITitleCaseString(row.title);
-    
+
     // Subtitle
     if (row.subtitle.length) {
         cellContentConfig.secondaryText = row.subtitle;
         cellContentConfig.textToSecondaryTextVerticalPadding = 4.5;
     }
-    
+
     // Icon
-    if (row.icon != nil) {
-        cellContentConfig.image = row.icon;
+    UIImage *rowIcon = row.iconProvider ? row.iconProvider() : row.icon;
+    if (rowIcon != nil) {
+        cellContentConfig.image = rowIcon;
         cellContentConfig.imageProperties.tintColor = row.iconTintColor ?: [SCIUtils SCIColor_InstagramPrimaryText];
     }
 
-    if ([row.userInfo[@"showsReorderGrabber"] boolValue] && row.icon != nil) {
+    if ([row.userInfo[@"showsReorderGrabber"] boolValue] && rowIcon != nil) {
         UIColor *iconTintColor = row.iconTintColor ?: [SCIUtils SCIColor_InstagramPrimaryText];
-        cellContentConfig.image = SCISettingsReorderCompositeImage(row.icon, iconTintColor);
+        cellContentConfig.image = SCISettingsReorderCompositeImage(rowIcon, iconTintColor);
         cellContentConfig.imageProperties.tintColor = nil;
         cellContentConfig.imageToTextPadding = 12.0;
     }
-    
+
     // Image url
     if (row.imageUrl != nil) {
-        [self loadImageFromURL:row.imageUrl atIndexPath:indexPath forTableView:tableView];
-        
+        BOOL circular = ![row.userInfo[@"remoteImageCircular"] isEqual:@NO];
+        NSString *cacheKey = [NSString stringWithFormat:@"%@|%@", row.imageUrl.absoluteString, circular ? @"circle" : @"square"];
+        UIImage *cachedImage = [SCISettingsRemoteImageCache() objectForKey:cacheKey];
+        if (cachedImage) {
+            cellContentConfig.image = cachedImage;
+            cellContentConfig.imageProperties.maximumSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
+            cellContentConfig.imageProperties.reservedLayoutSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
+        } else {
+            [self loadImageFromURL:row.imageUrl atIndexPath:indexPath forTableView:tableView circular:circular];
+        }
+
         cellContentConfig.imageToTextPadding = 14;
     }
-    
+
+    // Custom Tint Color
+    if (row.tintColor != nil && rowEnabled) {
+        cellContentConfig.textProperties.color = row.tintColor;
+    }
+
     switch (row.type) {
         case SCITableCellStatic: {
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             break;
         }
-            
+
         case SCITableCellLink: {
             cellContentConfig.textProperties.color = [SCIUtils SCIColor_Primary];
             cellContentConfig.textProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
                                                                       weight:UIFontWeightMedium];
-            
+
             cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-            
-            UIImageView *imageView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"safari"]];
+
+            UIImageView *imageView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"compass"]];
             imageView.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
             cell.accessoryView = imageView;
-            
+
             break;
         }
-            
+
         case SCITableCellSwitch: {
             SCISwitch *toggle = [SCISwitch new];
             NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            id storedValue = [defaults objectForKey:row.defaultsKey];
-            NSNumber *defaultValue = row.userInfo[@"defaultValue"];
-            toggle.on = storedValue ? [defaults boolForKey:row.defaultsKey] : defaultValue.boolValue;
-            if (row.mutuallyExclusiveDefaultsKey.length) {
+            if (row.switchValueProvider) {
+                toggle.on = row.switchValueProvider();
+            } else {
+                id storedValue = [defaults objectForKey:row.defaultsKey];
+                NSNumber *defaultValue = row.userInfo[@"defaultValue"];
+                toggle.on = storedValue ? [defaults boolForKey:row.defaultsKey] : defaultValue.boolValue;
+            }
+            if (!row.switchValueProvider && row.mutuallyExclusiveDefaultsKey.length) {
                 BOOL otherOn = [defaults boolForKey:row.mutuallyExclusiveDefaultsKey];
                 toggle.enabled = toggle.isOn || !otherOn;
             }
@@ -346,45 +404,45 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
                 cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
                 cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramTertiaryText];
             }
-            
+
             objc_setAssociatedObject(toggle, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            
+
             [toggle addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
-            
+
             cell.accessoryView = toggle;
             cell.editingAccessoryView = toggle;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             break;
         }
-            
+
         case SCITableCellStepper: {
             UIStepper *stepper = [UIStepper new];
             stepper.minimumValue = row.min;
             stepper.maximumValue = row.max;
             stepper.stepValue = row.step;
             stepper.value = SCINormalizedStepperValue(row, [[NSUserDefaults standardUserDefaults] doubleForKey:row.defaultsKey]);
-            
+
             objc_setAssociatedObject(stepper, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            
+
             [stepper addTarget:self
                         action:@selector(stepperChanged:)
               forControlEvents:UIControlEventValueChanged];
-            
+
             // Template subtitle
             if (row.subtitle.length) {
                 cellContentConfig.secondaryText = [self formatString:row.subtitle withValue:stepper.value step:row.step label:row.label singularLabel:row.singularLabel];
             }
-            
+
             cell.accessoryView = stepper;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             break;
         }
-            
+
         case SCITableCellButton: {
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         }
-            
+
         case SCITableCellMenu: {
             UIButton *menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
             [menuButton setTitle:@"•••" forState:UIControlStateNormal];
@@ -396,7 +454,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
             menuButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
             [menuButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
             [menuButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-            
+
             UIButtonConfiguration *config = menuButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
             config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
             menuButton.configuration = config;
@@ -407,12 +465,12 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
             }
 
             [menuButton sizeToFit];
-            
+
             cell.accessoryView = menuButton;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             break;
         }
-            
+
         case SCITableCellNavigation: {
             cell.accessoryType = rowEnabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
             if (!rowEnabled) {
@@ -420,6 +478,35 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
                 cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
                 cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramTertiaryText];
             }
+            break;
+        }
+
+        case SCITableCellTextField: {
+            UITextField *textField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 150, 34)];
+            textField.textAlignment = NSTextAlignmentRight;
+            textField.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
+            textField.textColor = rowEnabled ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramTertiaryText];
+            textField.placeholder = row.placeholder;
+            textField.keyboardType = row.keyboardType;
+            textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:row.defaultsKey];
+            textField.enabled = rowEnabled;
+
+            if (!rowEnabled) {
+                cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
+            }
+
+            objc_setAssociatedObject(textField, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            [textField addTarget:self action:@selector(textFieldChanged:) forControlEvents:UIControlEventEditingDidEnd];
+
+            cell.accessoryView = textField;
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            break;
+        }
+
+        case SCITableCellValue: {
+            cellContentConfig.secondaryText = row.subtitle;
+            cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
             break;
         }
     }
@@ -668,22 +755,36 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
 // MARK: - Actions
 
+- (SCISetting *)settingForSender:(id)sender {
+    return objc_getAssociatedObject(sender, rowStaticRef);
+}
+
 - (void)switchChanged:(UISwitch *)sender {
     SCISetting *row = objc_getAssociatedObject(sender, rowStaticRef);
+    if (!row) return;
+
+    if (row.switchChangeHandler) {
+        row.switchChangeHandler(sender.isOn);
+        if (row.action) {
+            row.action();
+        }
+        return;
+    }
+
     [[NSUserDefaults standardUserDefaults] setBool:sender.isOn forKey:row.defaultsKey];
     if (sender.isOn && row.mutuallyExclusiveDefaultsKey.length) {
         [[NSUserDefaults standardUserDefaults] setBool:NO forKey:row.mutuallyExclusiveDefaultsKey];
     }
-    
+
     NSLog(@"Switch changed: %@", sender.isOn ? @"ON" : @"OFF");
     if (sender.isOn) {
         SCIInstallEnabledFeatureHooks();
     }
-    
+
     if (row.mutuallyExclusiveDefaultsKey.length) {
         [self.tableView reloadData];
     }
-    
+
     if (row.requiresRestart) {
         if (self.defersRestartPrompt) {
             self.hasPendingRestartChanges = YES;
@@ -692,6 +793,18 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
             [SCIUtils showRestartConfirmation];
         }
     }
+
+    if (row.action) {
+        row.action();
+    }
+}
+
+- (void)textFieldChanged:(UITextField *)sender {
+    SCISetting *row = objc_getAssociatedObject(sender, rowStaticRef);
+    if (!row) return;
+
+    NSString *value = [sender.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    [[NSUserDefaults standardUserDefaults] setObject:value ?: @"" forKey:row.defaultsKey];
 }
 
 - (void)applyRestartChanges {
@@ -703,25 +816,25 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     double normalizedValue = SCINormalizedStepperValue(row, sender.value);
     sender.value = normalizedValue;
     [[NSUserDefaults standardUserDefaults] setDouble:normalizedValue forKey:row.defaultsKey];
-    
+
     NSLog(@"Stepper changed: %f", normalizedValue);
-    
+
     [self reloadCellForView:sender];
 }
 
 - (void)menuChanged:(UICommand *)command {
     NSDictionary *properties = command.propertyList;
-    
+
     [[NSUserDefaults standardUserDefaults] setValue:properties[@"value"] forKey:properties[@"defaultsKey"]];
     NSString *defaultsKey = properties[@"defaultsKey"];
     if ([defaultsKey hasPrefix:@"action_button_"]) {
         [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
     }
-    
+
     NSLog(@"Menu changed: %@", command.propertyList[@"value"]);
-    
+
     [self reloadCellForView:command.sender animated:YES];
-    
+
     if (properties[@"requiresRestart"]) {
         [SCIUtils showRestartConfirmation];
     }
@@ -729,10 +842,17 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
 // MARK: - Helper
 
+- (void)replaceSections:(NSArray *)sections {
+    self.originalSections = [sections copy] ?: @[];
+    self.sections = SCIMutableSectionsCopy(self.originalSections);
+    self.tableView.dragInteractionEnabled = ![self isSearching] && [self pageAllowsReordering];
+    [self.tableView reloadData];
+}
+
 - (NSString *)formatString:(NSString *)template withValue:(double)value step:(double)step label:(NSString *)label singularLabel:(NSString *)singularLabel {
     // Singular or plural labels
     NSString *applicableLabel = fabs(value - 1.0) < 0.00001 ? singularLabel : label;
-    
+
     // Force value to 0 to prevent it being -0
     if (fabs(value) < 0.00001) {
         value = 0.0;
@@ -758,7 +878,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
     NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
     if (!indexPath) return;
-    
+
     [self.tableView reloadRowsAtIndexPaths:@[indexPath]
                           withRowAnimation:animated ? UITableViewRowAnimationAutomatic : UITableViewRowAnimationNone];
 }
@@ -776,17 +896,19 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     return NO;
 }
 
-- (void)loadImageFromURL:(NSURL *)url atIndexPath:(NSIndexPath *)indexPath forTableView:(UITableView *)tableView
+- (void)loadImageFromURL:(NSURL *)url atIndexPath:(NSIndexPath *)indexPath forTableView:(UITableView *)tableView circular:(BOOL)circular
 {
     if (!url) return;
 
+    NSString *cacheKey = [NSString stringWithFormat:@"%@|%@", url.absoluteString, circular ? @"circle" : @"square"];
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url
                                                              completionHandler:^(NSData *data, NSURLResponse *response, NSError *error)
     {
         if (!data || error) return;
 
-        UIImage *image = [UIImage imageWithData:data];
+        UIImage *image = SCISettingsSizedRemoteImage([UIImage imageWithData:data], circular);
         if (!image) return;
+        [SCISettingsRemoteImageCache() setObject:image forKey:cacheKey];
 
         dispatch_async(dispatch_get_main_queue(), ^{
             UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
@@ -794,7 +916,8 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
             UIListContentConfiguration *config = (UIListContentConfiguration *)cell.contentConfiguration;
             config.image = image;
-            config.imageProperties.maximumSize = CGSizeMake(45, 45);
+            config.imageProperties.maximumSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
+            config.imageProperties.reservedLayoutSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
             cell.contentConfiguration = config;
         });
     }];

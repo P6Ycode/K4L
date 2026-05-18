@@ -788,7 +788,7 @@ fromViewController:(UIViewController *)presenter {
     SCIGalleryFile *file = self.currentItem.galleryFile;
     if ([SCIGalleryOriginController openProfileForGalleryFile:file]) {
         [self dismissGalleryFlowForOriginOpenWithCompletion:^{
-            SCINotify(kSCINotificationGalleryOpenProfile, @"Opened profile", nil, @"profile", SCINotificationToneForIconResource(@"profile"));
+            SCINotify(kSCINotificationGalleryOpenProfile, @"Opened profile", nil, @"user_circle", SCINotificationToneForIconResource(@"user_circle"));
         }];
     } else {
         [self showGalleryOpenFailureMessage:@"Unable to open profile" actionIdentifier:kSCINotificationGalleryOpenProfile];
@@ -811,7 +811,7 @@ fromViewController:(UIViewController *)presenter {
 
     if (file.hasOpenableProfile) {
         [actions addObject:[UIAction actionWithTitle:@"Open Profile"
-                                               image:SCIGalleryPreviewMenuIcon(@"profile")
+                                               image:SCIGalleryPreviewMenuIcon(@"user_circle")
                                           identifier:nil
                                              handler:^(__unused UIAction *action) {
             [weakSelf openProfileForCurrentGalleryItem];
@@ -863,7 +863,7 @@ fromViewController:(UIViewController *)presenter {
     _galleryOriginButton.alpha = 1.0;
 
     if (actionCount == 1) {
-        NSString *resourceName = hasProfile ? @"profile" : @"external_link";
+        NSString *resourceName = hasProfile ? @"user_circle" : @"external_link";
         NSString *label = hasProfile ? @"Open Profile" : @"Open Original Post";
         [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(resourceName) forState:UIControlStateNormal];
         _galleryOriginButton.accessibilityLabel = label;

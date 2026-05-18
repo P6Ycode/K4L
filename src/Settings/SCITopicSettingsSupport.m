@@ -39,6 +39,41 @@ SCISetting *SCISettingApplyIconTint(SCISetting *setting, UIColor *tintColor) {
     return setting;
 }
 
+static UIImage *SCISelectedMenuIconInMenu(UIMenu *menu) {
+    for (UIMenuElement *element in menu.children) {
+        if ([element isKindOfClass:[UIMenu class]]) {
+            UIImage *icon = SCISelectedMenuIconInMenu((UIMenu *)element);
+            if (icon) return icon;
+            continue;
+        }
+
+        if (![element isKindOfClass:[UICommand class]]) continue;
+        UICommand *command = (UICommand *)element;
+        NSDictionary *propertyList = command.propertyList;
+        NSString *defaultsKey = propertyList[@"defaultsKey"];
+        NSString *value = propertyList[@"value"];
+        NSString *iconName = propertyList[@"iconName"];
+        if (defaultsKey.length == 0 || value.length == 0 || iconName.length == 0) continue;
+
+        NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:defaultsKey];
+        if ([saved isEqualToString:value]) {
+            return SCISettingsIcon(iconName);
+        }
+    }
+
+    return nil;
+}
+
+SCISetting *SCISettingApplySelectedMenuIcon(SCISetting *setting, UIImage *fallbackIcon) {
+    __weak SCISetting *weakSetting = setting;
+    setting.iconProvider = ^UIImage *{
+        SCISetting *strongSetting = weakSetting;
+        if (!strongSetting) return fallbackIcon;
+        return SCISelectedMenuIconInMenu(strongSetting.baseMenu) ?: fallbackIcon ?: strongSetting.icon;
+    };
+    return setting;
+}
+
 SCISetting *SCITopicNavigationSetting(NSString *title, NSString *iconName, CGFloat iconSize, NSArray *sections) {
     CGFloat resolvedIconSize = iconSize > 0.0 ? iconSize : SCISettingsCellIconPointSize;
     return SCISettingApplyIconTint([SCISetting navigationCellWithTitle:title
@@ -56,6 +91,9 @@ static UICommand *SCIMenuCommand(NSString *title, NSString *imageName, NSString 
 
     if (requiresRestart) {
         propertyList[@"requiresRestart"] = @YES;
+    }
+    if (imageName.length > 0) {
+        propertyList[@"iconName"] = imageName;
     }
 
     UIImage *image = [SCIAssetUtils resolvedImageNamed:imageName
@@ -127,9 +165,9 @@ SCISetting *SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSource 
     (void)supportedActions;
     (void)defaultSections;
     return [SCISetting navigationCellWithTitle:@"Configure Actions"
-                                      subtitle:@"Edit primary sections and bulk submenus"
-                                          icon:nil
-                                 viewController:controller];
+                                      subtitle:@""
+                                          icon:SCISettingsIcon(@"slider")
+                                viewController:controller];
 }
 
 UIMenu *SCIReelsTapControlMenu(void) {

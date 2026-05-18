@@ -29,6 +29,7 @@
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAllGallery title:@"Save All to Gallery" iconName:@"media"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAllClipboard title:@"Copy All Media" iconName:@"copy"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAllLinks title:@"Copy Download URLs" iconName:@"link"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAll title:@"Download All" iconName:@"more"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionExpand title:@"Expand" iconName:@"expand"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionViewThumbnail title:@"View Thumbnail" iconName:@"photo_gallery"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionCopyCaption title:@"Copy Caption" iconName:@"caption"],
@@ -66,7 +67,7 @@
         [SCIActionDescriptor descriptorWithIdentifier:@"reels" title:@"Reels" iconName:@"reels"],
         [SCIActionDescriptor descriptorWithIdentifier:@"story" title:@"Stories" iconName:@"story"],
         [SCIActionDescriptor descriptorWithIdentifier:@"messages" title:@"Messages" iconName:@"messages"],
-        [SCIActionDescriptor descriptorWithIdentifier:@"profile" title:@"Profile" iconName:@"profile"],
+        [SCIActionDescriptor descriptorWithIdentifier:@"profile" title:@"Profile" iconName:@"user_circle"],
         [SCIActionDescriptor descriptorWithIdentifier:@"settings" title:@"Settings" iconName:@"settings"],
         [SCIActionDescriptor descriptorWithIdentifier:@"more" title:@"More" iconName:@"more"]
     ];

@@ -23,6 +23,11 @@ BOOL isSurfaceShown(IGMainAppSurfaceIntent *surface) {
         isShown = NO;
     }
 
+    // Profile
+    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"PROFILE"] && [SCIUtils getBoolPref:@"hide_profile_tab"]) {
+        isShown = NO;
+    }
+
     // Create
     else if ([(NSNumber *)[surface valueForKey:@"_subtype"] unsignedIntegerValue] == 3 && [SCIUtils getBoolPref:@"hide_create_tab"]) {
         isShown = NO;
@@ -130,6 +135,7 @@ extern "C" void SCIInstallNavigationHooksIfNeeded(void) {
                          [SCIUtils getBoolPref:@"hide_reels_tab"] ||
                          [SCIUtils getBoolPref:@"hide_messages_tab"] ||
                          [SCIUtils getBoolPref:@"hide_explore_tab"] ||
+                         [SCIUtils getBoolPref:@"hide_profile_tab"] ||
                          [SCIUtils getBoolPref:@"hide_create_tab"];
     if (!shouldInstall) return;
 

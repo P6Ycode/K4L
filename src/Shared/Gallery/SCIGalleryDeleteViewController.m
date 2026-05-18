@@ -104,7 +104,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
             [self actionWithTitle:@"Delete Reels" iconName:@"reels" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceReels] successTitle:@"Reels deleted"],
             [self actionWithTitle:@"Delete Thumbnails" iconName:@"photo_gallery" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceThumbnail] successTitle:@"Thumbnails deleted"],
             [self actionWithTitle:@"Delete DM Media" iconName:@"messages" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceDMs] successTitle:@"DM media deleted"],
-            [self actionWithTitle:@"Delete Profile Pictures" iconName:@"profile" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceProfile] successTitle:@"Profile pictures deleted"]
+            [self actionWithTitle:@"Delete Profile Pictures" iconName:@"user_circle" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceProfile] successTitle:@"Profile pictures deleted"]
         ],
         @[]
     ];
@@ -214,7 +214,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
         SCIGalleryDeleteUserItem *item = self.users[indexPath.row];
         cell.textLabel.text = item.displayName;
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%ld", (long)item.count];
-        cell.imageView.image = [SCIAssetUtils instagramIconNamed:@"profile" pointSize:22.0];
+        cell.imageView.image = [SCIAssetUtils instagramIconNamed:@"user_circle" pointSize:22.0];
         return cell;
     }
 

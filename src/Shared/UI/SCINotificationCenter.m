@@ -22,6 +22,8 @@ SCI_NOTIF_CONST(kSCINotificationRepost, "repost");
 SCI_NOTIF_CONST(kSCINotificationStoryMarkSeen, "story_mark_seen");
 SCI_NOTIF_CONST(kSCINotificationDirectVisualMarkSeen, "direct_visual_mark_seen");
 SCI_NOTIF_CONST(kSCINotificationThreadMessagesMarkSeen, "thread_messages_mark_seen");
+SCI_NOTIF_CONST(kSCINotificationUnsentMessage, "unsent_message");
+SCI_NOTIF_CONST(kSCINotificationUnsentReaction, "unsent_reaction");
 
 SCI_NOTIF_CONST(kSCINotificationProfileCopyInfo, "profile_copy_info");
 SCI_NOTIF_CONST(kSCINotificationProfileViewPicture, "profile_view_picture");
@@ -129,10 +131,12 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
             SCINotificationItem(kSCINotificationOpenTopicSettings, @"Open Topic Settings", @"settings"),
             SCINotificationItem(kSCINotificationRepost, @"Repost", @"repost"),
         ]},
-        @{@"title": @"Stories & Messages", @"items": @[
+        @{@"title": @"Stories", @"items": @[
             SCINotificationItem(kSCINotificationStoryMarkSeen, @"Mark Story as Seen", @"story"),
-            SCINotificationItem(kSCINotificationDirectVisualMarkSeen, @"Mark Visual Message as Seen", @"messages"),
+            SCINotificationItem(kSCINotificationDirectVisualMarkSeen, @"Mark Visual Message as Seen", @"view_twice"),
             SCINotificationItem(kSCINotificationThreadMessagesMarkSeen, @"Mark Messages as Seen", @"messages"),
+            SCINotificationItem(kSCINotificationUnsentMessage, @"Unsent Message", @"undo"),
+            SCINotificationItem(kSCINotificationUnsentReaction, @"Removed Reaction", @"reactions"),
         ]},
         @{@"title": @"Profile", @"items": @[
             SCINotificationItem(kSCINotificationProfileCopyInfo, @"Copy Profile Info", @"copy"),
@@ -148,11 +152,11 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
             SCINotificationItem(kSCINotificationMediaPreviewCopy, @"Copy Media", @"copy"),
             SCINotificationItem(kSCINotificationMediaPreviewDeleteGallery, @"Delete Media", @"trash"),
             SCINotificationItem(kSCINotificationMediaPreviewOpenGallery, @"Open Media", @"media"),
-            SCINotificationItem(kSCINotificationMediaEncodingLogs, @"Encoding Logs", @"caption"),
+            SCINotificationItem(kSCINotificationMediaEncodingLogs, @"Encoding Logs", @"logs"),
         ]},
         @{@"title": @"Gallery", @"items": @[
             SCINotificationItem(kSCINotificationGalleryOpenOriginal, @"Open Original Post", @"external_link"),
-            SCINotificationItem(kSCINotificationGalleryOpenProfile, @"Open Profile", @"profile"),
+            SCINotificationItem(kSCINotificationGalleryOpenProfile, @"Open Profile", @"user_circle"),
             SCINotificationItem(kSCINotificationGalleryDeleteFile, @"Delete File", @"media"),
             SCINotificationItem(kSCINotificationGalleryDeleteSelected, @"Delete Selected Files", @"circle_check"),
             SCINotificationItem(kSCINotificationGalleryBulkDelete, @"Bulk Delete", @"trash"),
@@ -163,7 +167,7 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
             SCINotificationItem(kSCINotificationSettingsImport, @"Import Settings", @"arrow_down"),
             SCINotificationItem(kSCINotificationSettingsClearCache, @"Clear Cache", @"trash"),
             SCINotificationItem(kSCINotificationCopyDescription, @"Copy Description", @"copy"),
-            SCINotificationItem(kSCINotificationShareLongPressCopyLink, @"Long Press Send to Copy Link", @"link"),
+            SCINotificationItem(kSCINotificationShareLongPressCopyLink, @"Hold Send to Copy Link", @"link"),
             SCINotificationItem(kSCINotificationFlexUnavailable, @"FLEX Unavailable", @"warning"),
         ]},
     ];

@@ -2,7 +2,6 @@
 #import "SCINotificationSettingsProvider.h"
 #import "../SCITopicSettingsSupport.h"
 #import "../../Utils.h"
-#import "../../AssetUtils.h"
 
 @implementation SCIInterfaceSettingsProvider
 
@@ -39,24 +38,34 @@
     return SCITopicNavigationSetting(@"Interface", @"interface", 24.0, @[
         SCITopicSection(@"Notifications", @[
             [SCISetting navigationCellWithTitle:@"Notifications"
-                                       subtitle:@""
+                                       subtitle:nil
                                            icon:SCISettingsIcon(@"notification")
                                     navSections:[SCINotificationSettingsProvider sections]]
         ], nil),
         SCITopicSection(@"Tabs", @[
-            [SCISetting menuCellWithTitle:@"Tab Icon Order" subtitle:@"" menu:SCINavigationIconOrderingMenu()],
-            [SCISetting menuCellWithTitle:@"Swipe Between Tabs" subtitle:@"" menu:SCISwipeBetweenTabsMenu()],
-            [SCISetting switchCellWithTitle:@"Hide Feed Tab" subtitle:@"" defaultsKey:@"hide_feed_tab" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Explore Tab" subtitle:@"" defaultsKey:@"hide_explore_tab" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Messages Tab" subtitle:@"" defaultsKey:@"hide_messages_tab" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Reels Tab" subtitle:@"" defaultsKey:@"hide_reels_tab" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Create Tab" subtitle:@"" defaultsKey:@"hide_create_tab" requiresRestart:YES]
+            [SCISetting menuCellWithTitle:@"Tab Icon Order" icon:SCISettingsIcon(@"sort") menu:SCINavigationIconOrderingMenu()],
+            [SCISetting menuCellWithTitle:@"Swipe Between Tabs" icon:SCISettingsIcon(@"left_right") menu:SCISwipeBetweenTabsMenu()],
+        ], @"Control the order of the tabs:\n"
+           @"   - Default: Instagram default\n"
+           @"   - Standard: Home, Reels, Messages, Explore, Profile\n"
+           @"   - Classic: Messages in the top right corner\n"
+           @"   - Alternate: Home and Reels tabs swapped\n"
+           @"To get the old layout back, use Classic and disable swiping between tabs."),
+        SCITopicSection(@"", @[
+            [SCISetting switchCellWithTitle:@"Hide Feed Tab" icon:SCISettingsIcon(@"home") defaultsKey:@"hide_feed_tab" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide Explore Tab" icon:SCISettingsIcon(@"search") defaultsKey:@"hide_explore_tab" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide Messages Tab" icon:SCISettingsIcon(@"messages") defaultsKey:@"hide_messages_tab" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide Reels Tab" icon:SCISettingsIcon(@"reels") defaultsKey:@"hide_reels_tab" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide Create Tab" icon:SCISettingsIcon(@"plus") defaultsKey:@"hide_create_tab" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide Profile Tab" icon:SCISettingsIcon(@"user_circle") defaultsKey:@"hide_profile_tab" requiresRestart:YES]
         ], nil),
         SCITopicSection(@"Explore & Search", @[
-            [SCISetting switchCellWithTitle:@"Hide Explore Posts Grid" subtitle:@"Hide the grid of suggested posts on the explore tab" defaultsKey:@"hide_explore_grid"],
-            [SCISetting switchCellWithTitle:@"Hide Trending Searches" subtitle:@"Hide the trending searches under the explore search bar" defaultsKey:@"hide_trending_searches"],
-            [SCISetting switchCellWithTitle:@"Open Clipboard Link" subtitle:@"Long press the Explore tab to open the current clipboard URL" defaultsKey:@"search_bar_open_clipboard_link"]
-        ], nil)
+            [SCISetting switchCellWithTitle:@"Hide Explore Posts Grid" icon:SCISettingsIcon(@"explore_grid") defaultsKey:@"hide_explore_grid"],
+            [SCISetting switchCellWithTitle:@"Hide Trending Searches" icon:SCISettingsIcon(@"trending") defaultsKey:@"hide_trending_searches"],
+            [SCISetting switchCellWithTitle:@"Open Clipboard Link" icon:SCISettingsIcon(@"link") defaultsKey:@"search_bar_open_clipboard_link"]
+        ], @"1. Hide the grid of suggested posts on the explore tab.\n"
+           @"2. Hide the trending searches under the explore search bar.\n"
+           @"3. Long press the Explore tab to open the Instagram URL in your clipboard.")
     ]);
 }
 

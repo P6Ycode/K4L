@@ -29,7 +29,8 @@ static UICommand *SCIProfileActionDefaultCommand(NSString *title, NSString *reso
                                 action:@selector(menuChanged:)
                           propertyList:@{
         @"defaultsKey": @"action_button_profile_default_action",
-        @"value": value
+        @"value": value,
+        @"iconName": resourceName
     }];
 }
 
@@ -51,7 +52,8 @@ static UICommand *SCIProfileDefaultCopyInfoCommand(NSString *title, NSString *re
                                 action:@selector(menuChanged:)
                           propertyList:@{
         @"defaultsKey": kSCIProfileDefaultCopyInfoKey,
-        @"value": value
+        @"value": value,
+        @"iconName": resourceName
     }];
 }
 
@@ -68,22 +70,22 @@ static UIMenu *SCIProfileDefaultCopyInfoMenu(void) {
 @implementation SCIProfileSettingsProvider
 
 + (SCISetting *)rootSetting {
-    return SCITopicNavigationSetting(@"Profile", @"profile", 24.0, @[
+    return SCITopicNavigationSetting(@"Profile", @"user_circle", 24.0, @[
         SCITopicSection(@"Action Button", @[
-            [SCISetting switchCellWithTitle:@"Profile Action Button" subtitle:@"" defaultsKey:@"action_button_profile_enabled"],
-            [SCISetting menuCellWithTitle:@"Default Tap Action" subtitle:@"Long press to open the full menu" menu:SCIProfileActionDefaultMenu()],
-            [SCISetting menuCellWithTitle:@"Copy Info Default" subtitle:@"When Default Tap Action is set to Copy Info, choose what gets copied" menu:SCIProfileDefaultCopyInfoMenu()]
-        ], nil),
+            [SCISetting switchCellWithTitle:@"Profile Action Button" icon:SCISettingsIcon(@"action") defaultsKey:@"action_button_profile_enabled"],
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIProfileActionDefaultMenu()], SCISettingsIcon(@"action")),
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Copy Info Default" icon:SCISettingsIcon(@"copy") menu:SCIProfileDefaultCopyInfoMenu()], SCISettingsIcon(@"copy"))
+        ], @"Choose what tapping the action button does. Copy Info Default controls what gets copied when Default Tap Action is Copy Info."),
         SCITopicSection(@"Profile Picture", @[
-            [SCISetting switchCellWithTitle:@"Long Press to Expand" subtitle:@"Long press a profile picture to open it expanded" defaultsKey:@"profile_photo_zoom"]
-        ], nil),
+            [SCISetting switchCellWithTitle:@"Long Press to Expand" icon:SCISettingsIcon(@"expand") defaultsKey:@"profile_photo_zoom"]
+        ], @"Long press a profile picture to open it expanded."),
         SCITopicSection(@"Indicators", @[
-            [SCISetting switchCellWithTitle:@"Show Following Indicator" subtitle:@"" defaultsKey:@"follow_indicator"]
+            [SCISetting switchCellWithTitle:@"Show Following Indicator" icon:SCISettingsIcon(@"user_check") defaultsKey:@"follow_indicator"]
         ], nil),
         SCITopicSection(@"Confirmation", @[
-            [SCISetting switchCellWithTitle:@"Confirm Follow" subtitle:@"" defaultsKey:@"follow_confirm"],
-            [SCISetting switchCellWithTitle:@"Confirm Unfollow" subtitle:@"" defaultsKey:@"unfollow_confirm"]
-        ], nil)
+            [SCISetting switchCellWithTitle:@"Confirm Follow" icon:SCISettingsIcon(@"user_follow") defaultsKey:@"follow_confirm"],
+            [SCISetting switchCellWithTitle:@"Confirm Unfollow" icon:SCISettingsIcon(@"user_unfollow") defaultsKey:@"unfollow_confirm"]
+        ], @"Shows confirmation alerts before the enabled profile actions are performed.")
     ]);
 }
 

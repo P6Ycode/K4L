@@ -423,7 +423,7 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     subLabel.hidden = !fullName.length;
 
     // Default avatar
-    avatar.image = [SCIAssetUtils instagramIconNamed:@"profile" pointSize:24.0];
+    avatar.image = [SCIAssetUtils instagramIconNamed:@"user_circle" pointSize:24.0];
     avatar.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
 
     // Avatar fetch with session cache

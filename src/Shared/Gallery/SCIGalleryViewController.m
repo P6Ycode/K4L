@@ -245,6 +245,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     controller.obscuresBackgroundDuringPresentation = NO;
     controller.hidesNavigationBarDuringPresentation = NO;
     controller.searchResultsUpdater = self;
+    [controller.searchBar setImage:[SCIAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
+                         forSearchBarIcon:UISearchBarIconSearch 
+                                    state:UIControlStateNormal];
     controller.searchBar.placeholder = @"Search...";
     self.searchController = controller;
     self.navigationItem.searchController = controller;
@@ -762,7 +765,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 - (void)openProfileForFile:(SCIGalleryFile *)file {
     if ([SCIGalleryOriginController openProfileForGalleryFile:file]) {
         [self dismissGalleryForOriginOpenWithCompletion:^{
-            SCINotify(kSCINotificationGalleryOpenProfile, @"Opened profile", nil, @"profile", SCINotificationToneInfo);
+            SCINotify(kSCINotificationGalleryOpenProfile, @"Opened profile", nil, @"user_circle", SCINotificationToneForIconResource(@"user_circle"));
         }];
     } else {
         [self showGalleryOpenFailureMessage:@"Unable to open profile" actionIdentifier:kSCINotificationGalleryOpenProfile];
@@ -1026,7 +1029,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     UIAction *openProfileAction = nil;
     if (file.hasOpenableProfile) {
         openProfileAction = [UIAction actionWithTitle:@"Open Profile"
-                                                image:SCIGalleryMenuActionIcon(@"profile")
+                                                image:SCIGalleryMenuActionIcon(@"user_circle")
                                            identifier:nil
                                               handler:^(__unused UIAction *a) {
             [weakSelf openProfileForFile:file];
