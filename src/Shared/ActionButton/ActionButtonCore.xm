@@ -17,6 +17,7 @@
 #import "../Gallery/SCIGalleryOriginController.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
 #import "../UI/SCINotificationCenter.h"
+#import "../UI/SCIChrome.h"
 
 NSString * const kSCIActionNone = @"none";
 NSString * const kSCIActionDownloadLibrary = @"download_library";
@@ -67,7 +68,7 @@ SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button);
 @implementation SCIResolvedMediaEntry
 @end
 
-@interface SCIActionMenuButton : UIButton
+@interface SCIActionMenuButton : SCIChromeButton
 @end
 
 @implementation SCIActionMenuButton
@@ -928,16 +929,35 @@ static UIImageView *SCIEnsureCustomIconImageView(UIButton *button) {
 
 static void SCISetButtonVisualImage(UIButton *button, UIImage *image, SCIActionButtonSource source, NSString *identifier) {
 	UIImage *templatedImage = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-	if (source == SCIActionButtonSourceReels) {
-		UIImageView *customIconView = SCIEnsureCustomIconImageView(button);
-		NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIActionButtonIconWidthConstraintAssocKey);
-		NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIActionButtonIconHeightConstraintAssocKey);
-		CGSize displaySize = SCICustomButtonIconDisplaySize(identifier, source, templatedImage, button);
-		widthConstraint.constant = displaySize.width;
-		heightConstraint.constant = displaySize.height;
-		customIconView.hidden = NO;
-		customIconView.tintColor = button.tintColor ?: SCIActionButtonTintForSource(source);
-		customIconView.image = templatedImage;
+	if ([button isKindOfClass:[SCIChromeButton class]]) {
+		SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+		if (source == SCIActionButtonSourceReels) {
+			CGSize displaySize = SCICustomButtonIconDisplaySize(identifier, source, templatedImage, button);
+			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey);
+			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey);
+			if (!widthConstraint) {
+				widthConstraint = [chromeButton.iconView.widthAnchor constraintEqualToConstant:displaySize.width];
+				heightConstraint = [chromeButton.iconView.heightAnchor constraintEqualToConstant:displaySize.height];
+				widthConstraint.active = YES;
+				heightConstraint.active = YES;
+				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+			} else {
+				widthConstraint.constant = displaySize.width;
+				heightConstraint.constant = displaySize.height;
+			}
+		} else {
+			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey);
+			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey);
+			if (widthConstraint) {
+				widthConstraint.active = NO;
+				heightConstraint.active = NO;
+				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+			}
+		}
+		chromeButton.iconView.image = templatedImage;
+		chromeButton.iconTint = SCIActionButtonTintForSource(source);
 		[button setImage:nil forState:UIControlStateNormal];
 		return;
 	}
@@ -1637,12 +1657,14 @@ UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag) {
 	if ([existing isKindOfClass:[UIButton class]]) {
 		return (UIButton *)existing;
 	}
+	[existing removeFromSuperview];
 
-	UIButton *button = [SCIActionMenuButton buttonWithType:UIButtonTypeSystem];
+	SCIActionMenuButton *button = [[SCIActionMenuButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
 	button.tag = tag;
 	button.adjustsImageWhenHighlighted = YES;
 	button.showsMenuAsPrimaryAction = NO;
 	button.clipsToBounds = NO;
+	button.translatesAutoresizingMaskIntoConstraints = YES;
 	[container addSubview:button];
 	return button;
 }
@@ -1657,18 +1679,50 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 	button.layer.shadowOpacity = 0.0;
 	button.layer.shadowRadius = 0.0;
 	button.layer.shadowOffset = CGSizeZero;
+	button.clipsToBounds = NO;
+
+	BOOL isChrome = [button isKindOfClass:[SCIChromeButton class]];
+	if (isChrome) {
+		SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+		chromeButton.iconTint = SCIActionButtonTintForSource(source);
+		chromeButton.bubbleColor = UIColor.clearColor;
+
+		// Reset iconView shadow by default
+		chromeButton.iconView.layer.shadowColor = UIColor.clearColor.CGColor;
+		chromeButton.iconView.layer.shadowOpacity = 0.0;
+		chromeButton.iconView.layer.shadowRadius = 0.0;
+		chromeButton.iconView.layer.shadowOffset = CGSizeZero;
+		chromeButton.iconView.layer.masksToBounds = NO;
+	}
 
 	if (source == SCIActionButtonSourceReels) {
-		button.layer.cornerRadius = CGRectGetHeight(button.bounds) / 2.0;
-		button.layer.shadowColor = [UIColor blackColor].CGColor;
-		button.layer.shadowOpacity = 0.24;
-		button.layer.shadowRadius = 1.8;
+		if (isChrome) {
+			SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+			chromeButton.iconView.layer.shadowColor = [UIColor blackColor].CGColor;
+			chromeButton.iconView.layer.shadowOpacity = 0.24;
+			chromeButton.iconView.layer.shadowRadius = 1.8;
+			chromeButton.iconView.layer.shadowOffset = CGSizeMake(0.0, 1.0);
+		} else {
+			button.layer.cornerRadius = CGRectGetHeight(button.bounds) / 2.0;
+			button.layer.shadowColor = [UIColor blackColor].CGColor;
+			button.layer.shadowOpacity = 0.24;
+			button.layer.shadowRadius = 1.8;
+			button.layer.shadowOffset = CGSizeMake(0.0, 1.0);
+		}
 	} else if (source == SCIActionButtonSourceStories || source == SCIActionButtonSourceDirect) {
-		button.layer.cornerRadius = 8.0;
-		button.layer.shadowColor = [UIColor blackColor].CGColor;
-		button.layer.shadowOpacity = 0.5;
-		button.layer.shadowRadius = 2.0;
-		button.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+		if (isChrome) {
+			SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+			chromeButton.iconView.layer.shadowColor = [UIColor blackColor].CGColor;
+			chromeButton.iconView.layer.shadowOpacity = 0.5;
+			chromeButton.iconView.layer.shadowRadius = 2.0;
+			chromeButton.iconView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+		} else {
+			button.layer.cornerRadius = 8.0;
+			button.layer.shadowColor = [UIColor blackColor].CGColor;
+			button.layer.shadowOpacity = 0.5;
+			button.layer.shadowRadius = 2.0;
+			button.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+		}
 	}
 }
 

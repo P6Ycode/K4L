@@ -188,7 +188,7 @@ static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
     if ([button isKindOfClass:SCIChromeButton.class]) {
         SCIChromeButton *chromeButton = (SCIChromeButton *)button;
         chromeButton.iconView.image = templatedImage;
-        chromeButton.iconTint = button.tintColor ?: UIColor.whiteColor;
+        chromeButton.iconTint = UIColor.whiteColor;
         [button setImage:nil forState:UIControlStateNormal];
     } else {
         [button setImage:templatedImage forState:UIControlStateNormal];
