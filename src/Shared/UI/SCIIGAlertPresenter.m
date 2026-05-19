@@ -12,6 +12,7 @@ static const void *kSCIIGAlertNativeActionStyleKey = &kSCIIGAlertNativeActionSty
 static const void *kSCIIGAlertNativeActionStylesKey = &kSCIIGAlertNativeActionStylesKey;
 static const CGFloat kSCIIGAlertInputHeight = 44.0;
 static const CGFloat kSCIIGAlertInputVerticalPadding = 10.0;
+static const CGFloat kSCIIGAlertInputBottomPadding = 10.0;
 static const CGFloat kSCIIGAlertInputHorizontalInset = 24.0;
 
 static CGSize (*sSCIIGAlertOriginalSizeThatFits)(id, SEL, CGSize);
@@ -94,10 +95,7 @@ static long long SCIIGNativeAlertActionStyleForAction(SCIIGAlertAction *action, 
 }
 
 static NSString *SCIIGDescriptionTextForInputAlert(NSString *message) {
-    if (message.length > 0) {
-        return [message stringByAppendingString:@"\n \n "];
-    }
-    return @"\n \n ";
+    return message.length > 0 ? message : nil;
 }
 
 static void SCIIGPresentUIKitAlert(UIViewController *presenter,
@@ -282,7 +280,15 @@ static void SCIIGStyleAlertButtons(id alertView) {
 }
 
 static CGSize SCIIGAlertHookSizeThatFits(id self, SEL _cmd, CGSize size) {
-    return sSCIIGAlertOriginalSizeThatFits ? sSCIIGAlertOriginalSizeThatFits(self, _cmd, size) : CGSizeZero;
+    CGSize fittingSize = sSCIIGAlertOriginalSizeThatFits ? sSCIIGAlertOriginalSizeThatFits(self, _cmd, size) : CGSizeZero;
+    UIView *inputView = objc_getAssociatedObject(self, kSCIIGAlertInputViewKey);
+    if (!inputView) {
+        return fittingSize;
+    }
+
+    CGFloat extraHeight = kSCIIGAlertInputHeight + kSCIIGAlertInputVerticalPadding + kSCIIGAlertInputBottomPadding;
+    fittingSize.height += extraHeight;
+    return fittingSize;
 }
 
 static void SCIIGAlertHookLayoutSubviews(id self, SEL _cmd) {
@@ -307,23 +313,34 @@ static void SCIIGAlertHookLayoutSubviews(id self, SEL _cmd) {
     UIView *titleLabel = SCIIGGetIvarObject(self, "_titleLabel");
     CGRect descriptionFrame = descriptionLabel ? SCIIGFrameInView(descriptionLabel, container) : CGRectNull;
     CGRect titleFrame = titleLabel ? SCIIGFrameInView(titleLabel, container) : CGRectNull;
-    BOOL hasMessage = [objc_getAssociatedObject(self, kSCIIGAlertInputHasMessageKey) boolValue];
-
     CGFloat width = MIN(CGRectGetWidth(container.bounds) - (kSCIIGAlertInputHorizontalInset * 2.0), 280.0);
     width = MAX(width, 160.0);
 
     CGFloat y = 0.0;
     if (!CGRectIsNull(descriptionFrame)) {
-        if (hasMessage) {
-            y = CGRectGetMaxY(descriptionFrame) - kSCIIGAlertInputHeight;
-        } else {
-            y = CGRectGetMidY(descriptionFrame) - (kSCIIGAlertInputHeight / 2.0);
-        }
+        y = CGRectGetMaxY(descriptionFrame) + kSCIIGAlertInputVerticalPadding;
     } else if (!CGRectIsNull(titleFrame)) {
         y = CGRectGetMaxY(titleFrame) + kSCIIGAlertInputVerticalPadding;
     } else {
         y = kSCIIGAlertInputVerticalPadding;
     }
+
+    NSArray<UIView *> *buttons = SCIIGGetIvarObject(self, "_buttons");
+    if ([buttons isKindOfClass:[NSArray class]]) {
+        CGFloat maxAllowedY = CGFLOAT_MAX;
+        for (UIView *button in buttons) {
+            CGRect buttonFrame = SCIIGFrameInView(button, container);
+            if (CGRectIsNull(buttonFrame)) {
+                continue;
+            }
+            CGFloat candidateMaxY = CGRectGetMinY(buttonFrame) - kSCIIGAlertInputBottomPadding - kSCIIGAlertInputHeight;
+            maxAllowedY = MIN(maxAllowedY, candidateMaxY);
+        }
+        if (maxAllowedY != CGFLOAT_MAX) {
+            y = MIN(y, maxAllowedY);
+        }
+    }
+    y = MAX(y, kSCIIGAlertInputVerticalPadding);
 
     CGFloat x = floor((CGRectGetWidth(container.bounds) - width) / 2.0);
     inputView.frame = CGRectMake(x, y, width, kSCIIGAlertInputHeight);

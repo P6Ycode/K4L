@@ -135,16 +135,20 @@ static NSArray *SCIManageSettingsDataSections(void) {
     NSString *flexFooter = flexInstalled
         ? @"The first time FLEX is opened in a session it can take a moment to initialize."
         : @"FLEX not installed. Rebuild with \"--flex\" flag or install libFLEX.dylib to enable these options.";
-    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Three-finger Gesture" defaultsKey:@"flex_instagram"];
+    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Five-finger Hold" defaultsKey:@"flex_instagram"];
     SCISetting *flexLaunch = [SCISetting switchCellWithTitle:@"Open on App Launch" defaultsKey:@"flex_app_launch"];
     SCISetting *flexFocus = [SCISetting switchCellWithTitle:@"Open on App Focus" defaultsKey:@"flex_app_start"];
+    SCISetting *flexOpen = [SCISetting buttonCellWithTitle:@"Open FLEX Now" subtitle:@"" icon:nil action:^(void) {
+        SCIFlexShowExplorer(@"settings");
+    }];
     if (!flexInstalled) {
         flexGesture.userInfo = @{@"enabled": @NO};
         flexLaunch.userInfo = @{@"enabled": @NO};
         flexFocus.userInfo = @{@"enabled": @NO};
+        flexOpen.userInfo = @{@"enabled": @NO};
     }
     NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
-        SCITopicSection(@"FLEX", @[flexGesture, flexLaunch, flexFocus], [NSString stringWithFormat:@"Three-finger gesture opens FLEX after holding three fingers anywhere for 1.5 seconds. %@", flexFooter]),
+        SCITopicSection(@"FLEX", @[flexOpen, flexGesture, flexLaunch, flexFocus], [NSString stringWithFormat:@"Open FLEX directly here, or enable five-finger hold to open it from Instagram. %@", flexFooter]),
         SCITopicSection(@"Tweak", @[
             [SCISetting switchCellWithTitle:@"Quick Settings Access" defaultsKey:@"settings_shortcut" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Show Settings on App Launch" defaultsKey:@"tweak_settings_app_launch"],
@@ -163,12 +167,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
         ], @"Makes Instagram not reset settings after subsequent crashes. Use at your own risk."),
         SCITopicSection(@"Backup & Transfer", @[
             [SCISetting navigationCellWithTitle:@"Manage Settings & Data" subtitle:@"" icon:SCISettingsIcon(@"cloud") navSections:SCIManageSettingsDataSections()]
-        ], nil),
-        SCITopicSection(@"Liquid Glass", @[
-            [SCISetting switchCellWithTitle:@"Enable Liquid Glass Buttons" defaultsKey:@"liquid_glass_buttons" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Enable Liquid Glass Surfaces" defaultsKey:@"liquid_glass_surfaces" requiresRestart:YES],
-            [SCIInterfaceSettingsProvider experimentalLiquidGlassSetting]
-        ], @"Experimental controls. Buttons affect in-app buttons; surfaces affect menus and related Instagram liquid-glass override defaults. Restart Instagram after changes.")
+        ], nil)
     ]];
 
     [sections addObjectsFromArray:SCIDevExampleSections()];

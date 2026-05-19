@@ -49,7 +49,8 @@ static void SCIMigrateLegacyCallConfirmSettingIfNeeded(void) {
         SCITopicSection(@"", @[
             /// TODO: fix
             [SCISetting switchCellWithTitle:@"Keep Deleted Messages" icon:SCISettingsIcon(@"history") defaultsKey:@"keep_deleted_message"],
-            [SCISetting switchCellWithTitle:@"No Suggested Chats" icon:SCISettingsIcon(@"question") defaultsKey:@"no_suggested_chats"]
+            [SCISetting switchCellWithTitle:@"No Suggested Chats" icon:SCISettingsIcon(@"question") defaultsKey:@"no_suggested_chats"],
+            [SCISetting switchCellWithTitle:@"Confirm Inbox Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"dm_refresh_confirm"]
         ], nil),
         SCITopicSection(@"Visual Messages", @[
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"unlimited_replay"],

@@ -1,6 +1,7 @@
 #import <objc/runtime.h>
 
 #import "../../Shared/ActionButton/ActionButtonLookupUtils.h"
+#import "../../Shared/Stories/SCIStoryContext.h"
 #import "../../Utils.h"
 
 static const void *kSCIShareCopyLongPressAssocKey = &kSCIShareCopyLongPressAssocKey;
@@ -135,6 +136,9 @@ static id SCIShareStoryMediaFromOverlay(UIView *overlayView) {
 }
 
 static NSURL *SCIShareStoryURLFromOverlay(UIView *overlayView) {
+    SCIStoryContext *context = SCIStoryContextFromOverlay(overlayView);
+    NSURL *sharedURL = SCIStoryURLForContext(context);
+    if (sharedURL) return sharedURL;
     id media = SCIShareStoryMediaFromOverlay(overlayView);
     NSURL *url = SCIInstagramStoryURLForMedia(media);
     if (url) return url;
@@ -343,6 +347,7 @@ static void SCIInstallShareLongPressInContainer(UIView *container, NSArray<NSStr
 - (void)layoutSubviews {
     %orig;
     SCIShareActiveStoryOverlayView = (UIView *)self;
+    SCIStorySetActiveOverlay((UIView *)self);
     SCIInstallShareLongPressInContainer((UIView *)self, @[@"sendButton", @"shareButton", @"reshareButton"], NO);
 }
 %end

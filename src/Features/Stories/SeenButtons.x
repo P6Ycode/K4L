@@ -6,9 +6,20 @@
 #import "../../AssetUtils.h"
 #import "../../Tweak.h"
 #import "../../Utils.h"
+#import "../../Shared/Stories/SCIStoryContext.h"
+#import "../../Shared/UI/SCIChrome.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void SCIApplyButtonStyle(UIButton *button, NSInteger source);
+#ifdef __cplusplus
+}
+#endif
 
 static NSString * const kSCISeenMessagesBarIconResource = @"eye";
 static NSString * const kSCIStoryMentionsBarIconResource = @"mention";
+static NSInteger const kSCIActionButtonSourceDirect = 4;
 static NSInteger const kSCIStorySeenButtonTag = 926001;
 static NSInteger const kSCIStoryMentionsButtonTag = 926002;
 static NSInteger const kSCIStoriesActionButtonTag = 921343;
@@ -158,11 +169,12 @@ static void SCIPlayButtonTappedHaptic(void) {
 
 static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     UIView *existing = [container viewWithTag:tag];
-    if ([existing isKindOfClass:[UIButton class]]) {
+    if ([existing isKindOfClass:SCIChromeButton.class]) {
         return (UIButton *)existing;
     }
+    [existing removeFromSuperview];
 
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    SCIChromeButton *button = [[SCIChromeButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
     button.tag = tag;
     button.adjustsImageWhenHighlighted = YES;
     button.showsMenuAsPrimaryAction = NO;
@@ -171,16 +183,32 @@ static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     return button;
 }
 
+static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *logMessage) {
+    UIImage *templatedImage = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    if ([button isKindOfClass:SCIChromeButton.class]) {
+        SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+        chromeButton.iconView.image = templatedImage;
+        chromeButton.iconTint = button.tintColor ?: UIColor.whiteColor;
+        [button setImage:nil forState:UIControlStateNormal];
+    } else {
+        [button setImage:templatedImage forState:UIControlStateNormal];
+    }
+
+    SCILog(@"Capture", @"%@ tag=%ld button=%@<%p> subviews=%@ imageView=%@<%p> imageSuperview=%@<%p>",
+           logMessage,
+           (long)button.tag,
+           NSStringFromClass(button.class),
+           button,
+           button.subviews,
+           NSStringFromClass(button.imageView.class),
+           button.imageView,
+           NSStringFromClass(button.imageView.superview.class),
+           button.imageView.superview);
+}
+
 static void SCIApplyStorySeenButtonStyle(UIButton *button) {
     if (!button) return;
-
-    button.tintColor = UIColor.whiteColor;
-    button.backgroundColor = UIColor.clearColor;
-    button.layer.cornerRadius = 8.0;
-    button.layer.shadowColor = [UIColor blackColor].CGColor;
-    button.layer.shadowOpacity = 0.5;
-    button.layer.shadowRadius = 2.0;
-    button.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    SCIApplyButtonStyle(button, kSCIActionButtonSourceDirect);
 }
 
 static UIView *SCIStoryFooterContainerFromOverlay(UIView *overlayView) {
@@ -337,6 +365,14 @@ static id SCIStoryMediaFromAnyObject(id object) {
 }
 
 static BOOL SCIResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTarget, id *outSectionController, id *outMedia) {
+    SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+    if (sharedContext) {
+        if (outMarkTarget) *outMarkTarget = sharedContext.markSeenTarget;
+        if (outSectionController) *outSectionController = sharedContext.sectionController;
+        if (outMedia) *outMedia = sharedContext.media;
+        return (sharedContext.media != nil);
+    }
+
     if (!overlayView) return NO;
 
     SEL markSelector = NSSelectorFromString(@"fullscreenSectionController:didMarkItemAsSeen:");
@@ -408,6 +444,12 @@ static NSArray<NSDictionary *> *SCIStoryMentionsForOverlay(UIView *overlayView) 
 }
 
 static void SCIAdvanceStoryAfterManualSeenIfNeeded(UIView *overlayView, NSString *advancePrefKey) {
+    SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+    if (sharedContext) {
+        SCIStoryAdvanceContextIfNeeded(sharedContext, advancePrefKey);
+        return;
+    }
+
     if (advancePrefKey.length == 0 || ![SCIUtils getBoolPref:advancePrefKey]) return;
 
     id sectionController = SCIStorySectionControllerFromOverlayView(overlayView);
@@ -440,6 +482,21 @@ extern void SCIPresentStoryMentionsSheet(UIView *overlayView);
 
 static void SCIMarkCurrentStoryAsSeenFromOverlayWithAdvancePref(UIView *overlayView, NSString *advancePrefKey) {
     if (!overlayView) return;
+
+    SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+    if (sharedContext) {
+        if (!sharedContext.markSeenTarget || !sharedContext.sectionController || !sharedContext.media) {
+            SCINotify(kSCINotificationStoryMarkSeen, @"Unable to mark story as seen", nil, @"error_filled", SCINotificationToneError);
+            return;
+        }
+        if (!SCIStoryMarkContextAsSeen(sharedContext)) {
+            SCINotify(kSCINotificationStoryMarkSeen, @"Unable to mark story as seen", nil, @"error_filled", SCINotificationToneError);
+            return;
+        }
+        SCIStoryAdvanceContextIfNeeded(sharedContext, advancePrefKey);
+        SCINotify(kSCINotificationStoryMarkSeen, @"Marked story as seen", nil, @"circle_check_filled", SCINotificationToneSuccess);
+        return;
+    }
 
     id markTarget = nil;
     id sectionController = nil;
@@ -486,7 +543,7 @@ void SCIMarkStoryAsSeenForViewWithAdvancePref(UIView *view, NSString *advancePre
 }
 
 UIView *SCIActiveStoryOverlayForInteractions(void) {
-    return SCIActiveStoryOverlayView;
+    return SCIStoryActiveOverlay() ?: SCIActiveStoryOverlayView;
 }
 
 static UIView *SCIDirectOverlayViewFromController(UIViewController *controller) {
@@ -806,14 +863,14 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         return;
     }
 
-    if (![seenButton isKindOfClass:[UIButton class]]) {
-        seenButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    if (![seenButton isKindOfClass:SCIChromeButton.class]) {
+        [seenButton removeFromSuperview];
+        seenButton = SCIStorySeenButtonWithTag(overlay, kSCIDirectSeenButtonTag);
         seenButton.tag = kSCIDirectSeenButtonTag;
         seenButton.adjustsImageWhenHighlighted = YES;
         UIImage *seenImage = [SCIAssetUtils instagramIconNamed:kSCISeenMessagesBarIconResource pointSize:24.0];
-        [seenButton setImage:[seenImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+        SCISetSeenButtonImage(seenButton, seenImage, @"Direct seen custom icon assigned");
         [seenButton addTarget:controller action:@selector(sci_didTapDirectSeenButton:) forControlEvents:UIControlEventTouchUpInside];
-        [overlay addSubview:seenButton];
     }
 
     seenButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -898,7 +955,10 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
 %hook IGTallNavigationBarView
 - (void)setRightBarButtonItems:(NSArray <UIBarButtonItem *> *)items {
     NSMutableArray *new_items = [[items filteredArrayUsingPredicate:
-        [NSPredicate predicateWithBlock:^BOOL(UIView *value, NSDictionary *_) {
+        [NSPredicate predicateWithBlock:^BOOL(UIBarButtonItem *value, NSDictionary *_) {
+            if ([value.accessibilityIdentifier isEqualToString:@"sci-seen-btn"]) {
+                return false;
+            }
             if ([SCIUtils getBoolPref:@"hide_reels_blend"]) {
                 return ![value.accessibilityIdentifier isEqualToString:@"blend-button"];
             }
@@ -909,8 +969,12 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
 
     // Messages seen
     if (SCIManualMessageSeenEnabled()) {
-        UIImage *seenImg = [SCIAssetUtils instagramIconNamed:kSCISeenMessagesBarIconResource pointSize:24.0];
-        UIBarButtonItem *seenButton = [[UIBarButtonItem alloc] initWithImage:seenImg style:UIBarButtonItemStylePlain target:self action:@selector(seenButtonHandler:)];
+        SCIChromeButton *chromeButton = nil;
+        UIBarButtonItem *seenButton = SCIChromeBarButtonItem(@"", 24.0, self, @selector(seenButtonHandler:), &chromeButton);
+        [chromeButton setIconResource:kSCISeenMessagesBarIconResource pointSize:24.0];
+        seenButton.accessibilityIdentifier = @"sci-seen-btn";
+        chromeButton.bubbleColor = UIColor.clearColor;
+        chromeButton.iconTint = UIColor.labelColor;
         [new_items addObject:seenButton];
     }
 
@@ -960,6 +1024,7 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
 
     UIView *overlayView = (UIView *)self;
     SCIActiveStoryOverlayView = overlayView;
+    SCIStorySetActiveOverlay(overlayView);
     SCIEnsureStoryOverlayAlphaObserver(overlayView);
 
     UIButton *seenButton = (UIButton *)[(UIView *)self viewWithTag:kSCIStorySeenButtonTag];
@@ -974,23 +1039,37 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         return;
     }
 
-    BOOL showSeenButton = SCIManualStorySeenEnabled();
+    SCIStoryContext *storyContext = SCIStoryContextFromOverlay(overlayView);
+    BOOL showSeenButton = SCIStoryManualSeenAppliesToContext(storyContext);
+    if (!showSeenButton && SCIManualStorySeenEnabled() && SCIStoryManualSeenListContainsUsername(SCIStoryUsernameForContext(storyContext), YES)) {
+        static NSMutableSet<NSString *> *autoSeenMarked;
+        static dispatch_once_t autoSeenOnceToken;
+        dispatch_once(&autoSeenOnceToken, ^{
+            autoSeenMarked = [NSMutableSet set];
+        });
+        NSString *mediaIdentifier = SCIStoryMediaIdentifierForContext(storyContext);
+        if (mediaIdentifier.length > 0 && ![autoSeenMarked containsObject:mediaIdentifier]) {
+            [autoSeenMarked addObject:mediaIdentifier];
+            SCIStoryMarkContextAsSeen(storyContext);
+        }
+    }
     if (!showSeenButton) {
         [seenButton removeFromSuperview];
-        [mentionsButton removeFromSuperview];
         UIView *footerContainer = SCIStoryFooterContainerFromOverlay(overlayView);
         if (footerContainer) {
             SCIUpdateStoryButtonsAlpha(overlayView, footerContainer.alpha);
         }
-        return;
     }
 
     if (showSeenButton && !seenButton) {
         seenButton = SCIStorySeenButtonWithTag((UIView *)self, kSCIStorySeenButtonTag);
         [seenButton addTarget:self action:@selector(sci_storySeenButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(sci_storySeenButtonLongPressed:)];
+        longPress.minimumPressDuration = 0.5;
+        [seenButton addGestureRecognizer:longPress];
 
         UIImage *seenImage = [SCIAssetUtils instagramIconNamed:kSCISeenMessagesBarIconResource pointSize:24.0];
-        [seenButton setImage:[seenImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+        SCISetSeenButtonImage(seenButton, seenImage, @"Story seen custom icon assigned");
     }
     if (showSeenButton) SCIApplyStorySeenButtonStyle(seenButton);
 
@@ -1001,7 +1080,7 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         [mentionsButton addTarget:self action:@selector(sci_storyMentionsButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
 
         UIImage *mentionsImage = [SCIAssetUtils instagramIconNamed:kSCIStoryMentionsBarIconResource pointSize:24.0];
-        [mentionsButton setImage:[mentionsImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+        SCISetSeenButtonImage(mentionsButton, mentionsImage, @"Story mentions custom icon assigned");
     } else if (!showMentionsButton && mentionsButton) {
         [mentionsButton removeFromSuperview];
         mentionsButton = nil;
@@ -1024,13 +1103,13 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
 
     CGFloat y = actionVisible ? CGRectGetMinY(storyActionButton.frame) : CGRectGetMinY(baseFrame);
     CGFloat nextX = actionVisible
-        ? (CGRectGetMinX(storyActionButton.frame) - size - 5.0)
+        ? (CGRectGetMinX(storyActionButton.frame) - size)
         : CGRectGetMinX(baseFrame);
 
     if (showSeenButton && seenButton) {
         seenButton.frame = CGRectMake(nextX, y, size, size);
         [overlayView bringSubviewToFront:seenButton];
-        nextX -= (size + 5.0);
+        nextX -= size;
     } else if (seenButton) {
         [seenButton removeFromSuperview];
         seenButton = nil;
@@ -1072,6 +1151,30 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
     (void)sender;
     SCIPlayButtonTappedHaptic();
     SCIMarkCurrentStoryAsSeenFromOverlay((UIView *)self);
+}
+
+%new - (void)sci_storySeenButtonLongPressed:(UILongPressGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateBegan) return;
+    SCIPlayButtonTappedHaptic();
+    SCIStoryContext *context = SCIStoryContextFromOverlay((UIView *)self);
+    NSString *username = SCIStoryUsernameForContext(context);
+    if (username.length == 0) {
+        SCINotify(kSCINotificationStoryMarkSeen, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+        return;
+    }
+    BOOL manualSeenEnabled = SCIManualStorySeenEnabled();
+    BOOL listed = SCIStoryManualSeenListContainsUsername(username, manualSeenEnabled);
+    NSString *listTitle = SCIStoryManualSeenListTitle(manualSeenEnabled);
+    NSString *title = listed ? [NSString stringWithFormat:@"Confirm Removal from %@", listTitle] : [NSString stringWithFormat:@"Confirm Addition to %@", listTitle];
+    NSString *message = listed
+        ? [NSString stringWithFormat:@"Do you want to remove @%@ from %@?", username, listTitle]
+        : [NSString stringWithFormat:@"Do you want to add @%@ to %@?", username, listTitle];
+    [SCIUtils showConfirmation:^{
+        SCIStoryToggleUsernameForCurrentManualSeenMode(username);
+        NSString *verb = listed ? @"Removed" : @"Added";
+        SCINotify(kSCINotificationStoryMarkSeen, [NSString stringWithFormat:@"%@ @%@", verb, username], listTitle, @"circle_check_filled", SCINotificationToneSuccess);
+        [(UIView *)self setNeedsLayout];
+    } title:title message:message];
 }
 
 %new - (void)sci_storyMentionsButtonTapped:(UIButton *)sender {

@@ -605,6 +605,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 %group SCITweakGeneralMenuHooks
 
 // Modern IGDS app menus
+extern NSArray *SCIStoryAppendCurrentUserMenuItem(NSArray *items);
 %hook IGDSMenu
 - (id)initWithMenuItems:(NSArray<IGDSMenuItem *> *)originalObjs edr:(BOOL)edr headerLabelText:(id)headerLabelText {
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
@@ -633,7 +634,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
     }
 
-    return %orig([filteredObjs copy], edr, headerLabelText);
+    NSArray *finalItems = SCIStoryAppendCurrentUserMenuItem([filteredObjs copy]);
+    return %orig(finalItems, edr, headerLabelText);
 }
 %end
 
@@ -764,8 +766,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
     }
 
     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(sci_handleFlexGesture:)];
-    longPress.minimumPressDuration = 1.5;
-    longPress.numberOfTouchesRequired = 3;
+    longPress.minimumPressDuration = 1.0;
+    longPress.numberOfTouchesRequired = 5;
     longPress.cancelsTouchesInView = NO;
     longPress.delaysTouchesBegan = NO;
     longPress.delaysTouchesEnded = NO;

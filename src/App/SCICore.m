@@ -184,6 +184,8 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"show_favorites_at_top": @(NO),
         @"remove_user_from_copied_share_link": @(YES),
         @"hide_create_group_button": @(NO),
+        @"hide_ui_on_capture": @(NO),
+        @"disable_feed_autoplay": @(NO),
     } mutableCopy];
 
     [defaults addEntriesFromDictionary:SCINotificationDefaultPreferences()];

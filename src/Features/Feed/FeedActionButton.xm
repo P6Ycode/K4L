@@ -463,6 +463,7 @@ static void SCIInstallFeedActionButton(UIView *barView) {
 	}
 
 	button = SCIActionButtonWithTag(barView, kSCIFeedActionButtonTag);
+	button.translatesAutoresizingMaskIntoConstraints = YES;
 	SCIConfigureActionButton(button, SCIFeedActionContext(barView));
 	if (button.hidden) return;
 

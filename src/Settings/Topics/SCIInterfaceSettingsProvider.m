@@ -2,6 +2,7 @@
 #import "SCINotificationSettingsProvider.h"
 #import "../SCITopicSettingsSupport.h"
 #import "../../Utils.h"
+#import "../../Shared/UI/SCIChrome.h"
 
 @implementation SCIInterfaceSettingsProvider
 
@@ -35,6 +36,30 @@
 }
 
 + (SCISetting *)rootSetting {
+    SCISetting *liquidGlass = [SCISetting switchCellWithTitle:@"Liquid Glass"
+                                                     subtitle:@""
+                                                  defaultsKey:@"liquid_glass_buttons"
+                                              requiresRestart:YES];
+    liquidGlass.icon = SCISettingsIcon(@"warning_filled");
+    liquidGlass.switchValueProvider = ^BOOL{
+        return [SCIUtils getBoolPref:@"liquid_glass_buttons"] || [SCIUtils getBoolPref:@"liquid_glass_surfaces"];
+    };
+    liquidGlass.switchChangeHandler = ^(BOOL isOn) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults setBool:isOn forKey:@"liquid_glass_buttons"];
+        [defaults setBool:isOn forKey:@"liquid_glass_surfaces"];
+        [defaults setBool:isOn forKey:@"liquid_glass_core_class"];
+        [defaults setBool:isOn forKey:@"liquid_glass_nav_is_enabled"];
+        [defaults setBool:isOn forKey:@"liquid_glass_nav_default_value_set"];
+        [defaults setBool:isOn forKey:@"liquid_glass_nav_home_feed_header"];
+        [defaults setBool:isOn forKey:@"liquid_glass_swizzle_toggle"];
+        [defaults setBool:isOn forKey:@"liquid_glass_badged_nav_button"];
+        [defaults setBool:isOn forKey:@"liquid_glass_video_back_button"];
+        [defaults setBool:isOn forKey:@"liquid_glass_video_camera_button"];
+        [defaults setBool:isOn forKey:@"liquid_glass_alert_dialog_actions"];
+        [SCIUtils showRestartConfirmation];
+    };
+
     return SCITopicNavigationSetting(@"Interface", @"interface", 24.0, @[
         SCITopicSection(@"Notifications", @[
             [SCISetting navigationCellWithTitle:@"Notifications"
@@ -65,7 +90,21 @@
             [SCISetting switchCellWithTitle:@"Open Clipboard Link" icon:SCISettingsIcon(@"link") defaultsKey:@"search_bar_open_clipboard_link"]
         ], @"1. Hide the grid of suggested posts on the explore tab.\n"
            @"2. Hide the trending searches under the explore search bar.\n"
-           @"3. Long press the Explore tab to open the Instagram URL in your clipboard.")
+           @"3. Long press the Explore tab to open the Instagram URL in your clipboard."),
+        SCITopicSection(@"Capture", @[
+            ({  SCISetting *s = [SCISetting switchCellWithTitle:@"Hide UI on Capture"
+                                                          icon:SCISettingsIcon(@"camera")
+                                                   defaultsKey:@"hide_ui_on_capture"];
+                s.switchChangeHandler = ^(BOOL isOn) {
+                    [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"hide_ui_on_capture"];
+                    [[NSNotificationCenter defaultCenter] postNotificationName:SCIHideUIOnCapturePreferenceDidChangeNotification object:nil];
+                };
+                s;
+            })
+        ], @"Redacts SCInsta overlay buttons (action button, seen/mentions buttons, etc.) from screenshots, screen recordings, and mirroring."),
+        SCITopicSection(@"Liquid Glass", @[
+            SCISettingApplyIconTint(liquidGlass, [UIColor systemOrangeColor])
+        ], @"Force-enable Liquid Glass UI across Instagram.")
     ]);
 }
 

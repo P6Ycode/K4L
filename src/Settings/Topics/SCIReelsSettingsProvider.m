@@ -40,6 +40,7 @@ static NSString * const kSCIReelsActionButtonDefaultActionKey = @"action_button_
         ], nil),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"like_confirm_reels"],
+            [SCISetting switchCellWithTitle:@"Confirm Double Tap" icon:SCISettingsIcon(@"heart") defaultsKey:@"like_confirm_reels_double_tap"],
             [SCISetting switchCellWithTitle:@"Confirm Reel Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"refresh_reel_confirm"],
             [SCISetting switchCellWithTitle:@"Confirm Repost" icon:SCISettingsIcon(@"repost") defaultsKey:@"repost_confirm_reels"]
         ], @"Shows confirmation alerts before the enabled reels actions are performed.")

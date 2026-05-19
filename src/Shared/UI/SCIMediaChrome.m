@@ -10,6 +10,7 @@ CGFloat const SCIMediaChromeFloatingBottomBarBottomMargin = -12.0;
 static CGFloat const kSCIMediaChromeTopIconPointSize = 24.0;
 static CGFloat const kSCIMediaChromeBottomIconPointSize = 24.0;
 static CGFloat const kSCIMediaChromeFloatingBottomBarHorizontalMargin = 22.0;
+static NSInteger const kSCIMediaChromeBottomBarEffectViewTag = 0x53434942;
 
 UIBlurEffect *SCIMediaChromeBlurEffect(void) {
     return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
@@ -161,12 +162,13 @@ UIView *SCIMediaChromeInstallBottomBar(UIView *hostView) {
 
     UIVisualEffectView *effectView = [[UIVisualEffectView alloc] initWithEffect:SCIMediaChromeBottomBarEffect()];
     effectView.translatesAutoresizingMaskIntoConstraints = NO;
-    effectView.userInteractionEnabled = NO;
+    effectView.userInteractionEnabled = YES;
     effectView.clipsToBounds = YES;
     effectView.layer.cornerCurve = kCACornerCurveContinuous;
     effectView.layer.cornerRadius = SCIMediaChromeFloatingBottomBarHeight / 2.0;
     effectView.backgroundColor = [UIColor clearColor];
     effectView.contentView.backgroundColor = [UIColor clearColor];
+    effectView.tag = kSCIMediaChromeBottomBarEffectViewTag;
     [bar addSubview:effectView];
     [NSLayoutConstraint activateConstraints:@[
         [effectView.topAnchor constraintEqualToAnchor:bar.topAnchor],
@@ -189,24 +191,32 @@ UIButton *SCIMediaChromeBottomButton(NSString *resourceName, NSString *accessibi
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     [btn setImage:SCIMediaChromeBottomIcon(resourceName) forState:UIControlStateNormal];
-    btn.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    btn.tintColor = [UIColor labelColor];
     btn.accessibilityLabel = accessibilityLabel;
     return btn;
 }
 
 UIStackView *SCIMediaChromeInstallBottomRow(UIView *bottomBar, NSArray<UIView *> *row) {
+    UIView *contentHost = bottomBar;
+    for (UIView *subview in bottomBar.subviews) {
+        if (subview.tag == kSCIMediaChromeBottomBarEffectViewTag && [subview isKindOfClass:[UIVisualEffectView class]]) {
+            contentHost = ((UIVisualEffectView *)subview).contentView;
+            break;
+        }
+    }
+
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:row];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     stack.axis = UILayoutConstraintAxisHorizontal;
     stack.distribution = UIStackViewDistributionFillEqually;
     stack.alignment = UIStackViewAlignmentCenter;
-    [bottomBar addSubview:stack];
+    [contentHost addSubview:stack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:bottomBar.topAnchor],
-        [stack.leadingAnchor constraintEqualToAnchor:bottomBar.leadingAnchor],
-        [stack.trailingAnchor constraintEqualToAnchor:bottomBar.trailingAnchor],
-        [stack.bottomAnchor constraintEqualToAnchor:bottomBar.bottomAnchor],
+        [stack.topAnchor constraintEqualToAnchor:contentHost.topAnchor],
+        [stack.leadingAnchor constraintEqualToAnchor:contentHost.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:contentHost.trailingAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:contentHost.bottomAnchor],
     ]];
     for (UIView *v in row) {
         [v.heightAnchor constraintEqualToConstant:SCIMediaChromeFloatingBottomBarHeight].active = YES;

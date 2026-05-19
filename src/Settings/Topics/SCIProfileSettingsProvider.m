@@ -80,7 +80,9 @@ static UIMenu *SCIProfileDefaultCopyInfoMenu(void) {
             [SCISetting switchCellWithTitle:@"Long Press to Expand" icon:SCISettingsIcon(@"expand") defaultsKey:@"profile_photo_zoom"]
         ], @"Long press a profile picture to open it expanded."),
         SCITopicSection(@"Indicators", @[
-            [SCISetting switchCellWithTitle:@"Show Following Indicator" icon:SCISettingsIcon(@"user_check") defaultsKey:@"follow_indicator"]
+            [SCISetting switchCellWithTitle:@"Show Following Indicator" icon:SCISettingsIcon(@"user_check") defaultsKey:@"follow_indicator"],
+            [SCISetting switchCellWithTitle:@"Hide Notes Bubble" icon:SCISettingsIcon(@"notes") defaultsKey:@"hide_profile_notes_bubble"],
+            [SCISetting switchCellWithTitle:@"Hide Threads Button" icon:SCISettingsIcon(@"threads") defaultsKey:@"hide_profile_threads_button"]
         ], nil),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Follow" icon:SCISettingsIcon(@"user_follow") defaultsKey:@"follow_confirm"],

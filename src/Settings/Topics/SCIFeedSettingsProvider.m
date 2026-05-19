@@ -27,7 +27,7 @@ static NSString * const kSCIFeedActionButtonDefaultActionKey = @"action_button_f
         ], nil),
         SCITopicSection(@"Media", @[
             [SCISetting switchCellWithTitle:@"Long Press to Expand" icon:SCISettingsIcon(@"expand") defaultsKey:@"enable_long_press_expand"],
-            [SCISetting switchCellWithTitle:@"Disable Video Autoplay" icon:SCISettingsIcon(@"autoplay_off") defaultsKey:@"disable_feed_autoplay"],
+            [SCISetting switchCellWithTitle:@"Disable Video Autoplay" icon:SCISettingsIcon(@"autoplay_off") defaultsKey:@"disable_feed_autoplay" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Start Expanded Videos Muted" icon:SCISettingsIcon(@"volume_off") defaultsKey:@"expanded_video_start_muted"],
         ], @"Long press media in the feed to open it expanded. Autoplay controls prevent feed videos from playing automatically."),
         SCITopicSection(@"Refresh", @[

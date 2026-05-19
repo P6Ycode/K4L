@@ -3,10 +3,13 @@
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
+#import "../../Shared/Stories/SCIStoryContext.h"
 
 static NSInteger const kSCIStoriesActionButtonTag = 921343;
 
 static id SCIStorySectionControllerFromOverlay(UIView *overlayView) {
+	SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+	if (sharedContext.sectionController) return sharedContext.sectionController;
 	NSArray<NSString *> *delegateSelectors = @[@"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate"];
 	Class sectionControllerClass = NSClassFromString(@"IGStoryFullscreenSectionController");
 
@@ -20,6 +23,8 @@ static id SCIStorySectionControllerFromOverlay(UIView *overlayView) {
 }
 
 static id SCIStoryMediaFromOverlay(UIView *overlayView) {
+	SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+	if (sharedContext.media) return sharedContext.media;
 	id sectionController = SCIStorySectionControllerFromOverlay(overlayView);
 	id media = SCIObjectForSelector(sectionController, @"currentStoryItem");
 	if (media) return media;
@@ -30,6 +35,8 @@ static id SCIStoryMediaFromOverlay(UIView *overlayView) {
 }
 
 static UIViewController *SCIStoryControllerFromOverlay(UIView *overlayView) {
+	SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+	if (sharedContext.viewerController) return sharedContext.viewerController;
 	if (!overlayView) return nil;
 
 	id ancestorController = SCIObjectForSelector(overlayView, @"_viewControllerForAncestor");
@@ -74,6 +81,8 @@ static id SCIStoryMediaObjectFromCandidate(id candidate) {
 }
 
 static id SCIStoryBulkMediaFromOverlay(UIView *overlayView) {
+    SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+    if (sharedContext.allMedia.count > 1) return sharedContext.allMedia;
     id current = SCIStoryMediaFromOverlay(overlayView);
     id sectionController = SCIStorySectionControllerFromOverlay(overlayView);
     UIViewController *controller = SCIStoryControllerFromOverlay(overlayView);
@@ -107,9 +116,13 @@ static SCIActionButtonContext *SCIStoriesActionContext(UIView *overlayView) {
 	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
 		return SCIStoryMediaFromOverlay(resolvedContext.view);
 	};
-    context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
+	context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
         return SCIStoryBulkMediaFromOverlay(resolvedContext.view);
     };
+	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
+		SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(resolvedContext.view);
+		return sharedContext ? sharedContext.currentIndex : 0;
+	};
 	return context;
 }
 
@@ -129,6 +142,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 	}
 
 	button = SCIActionButtonWithTag(overlayView, kSCIStoriesActionButtonTag);
+	button.translatesAutoresizingMaskIntoConstraints = YES;
 	SCIConfigureActionButton(button, SCIStoriesActionContext(overlayView));
 	if (button.hidden) return;
 
@@ -141,7 +155,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		return;
 	}
 
-	CGFloat size = 38.0;
+	CGFloat size = 44.0;
 	CGFloat y = 0.0;
 	if (mediaView) {
 		CGRect mediaFrame = mediaView.frame;
@@ -168,8 +182,8 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		}
 	}
 
-	button.frame = CGRectMake(CGRectGetWidth(overlayView.frame) - size - 7.0, y, size, size);
-	SCIApplyButtonStyle(button, SCIActionButtonSourceStories);
+	button.frame = CGRectMake(CGRectGetWidth(overlayView.frame) - size - 10.0, y, size, size);
+	SCIApplyButtonStyle(button, SCIActionButtonSourceDirect);
 }
 
 %group SCIStoriesActionButtonHooks
@@ -177,6 +191,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 %hook IGStoryFullscreenOverlayView
 - (void)layoutSubviews {
 	%orig;
+	SCIStorySetActiveOverlay((UIView *)self);
 	SCIInstallStoriesActionButton((UIView *)self);
 }
 %end

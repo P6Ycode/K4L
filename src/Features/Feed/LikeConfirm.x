@@ -97,6 +97,9 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 #define CONFIRMREELSLIKE(orig) \
     SCICONFIRMLIKE(@"like_confirm_reels", @"Confirm reels like triggered", @"Confirm Reel Like", @"Are you sure you want to like this reel?", orig)
 
+#define CONFIRMREELSDOUBLETAPLIKE(orig) \
+    SCICONFIRMLIKE(@"like_confirm_reels_double_tap", @"Confirm reels double-tap like triggered", @"Confirm Reel Like", @"Are you sure you want to like this reel?", orig)
+
 ///////////////////////////////////////////////////////////
 
 // Liking posts
@@ -146,7 +149,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     CONFIRMREELSLIKE(%orig);
 }
 - (void)gestureController:(id)arg1 didObserveDoubleTap:(id)arg2 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(%orig);
 }
 %end
 %hook IGSundialViewerPhotoCell
@@ -154,10 +157,10 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     CONFIRMREELSLIKE(%orig);
 }
 - (void)gestureController:(id)arg1 didObserveDoubleTap:(id)arg2 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(%orig);
 }
 - (void)swift_photoCell:(id)arg1 didObserveDoubleTapWithLocationInfo:(id)arg2 gestureRecognizer:(id)arg3 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(%orig);
 }
 %end
 %hook IGSundialViewerCarouselCell
@@ -165,10 +168,10 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     CONFIRMREELSLIKE(%orig);
 }
 - (void)gestureController:(id)arg1 didObserveDoubleTap:(id)arg2 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(%orig);
 }
 - (void)carouselCell:(id)arg1 didObserveDoubleTapWithLocationInfo:(id)arg2 gestureRecognizer:(id)arg3 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(%orig);
 }
 %end
 
@@ -443,6 +446,7 @@ void SCIInstallLikeConfirmHooksIfNeeded(void) {
         ![SCIUtils getBoolPref:@"like_confirm_feed_double_tap_likes"] &&
         ![SCIUtils getBoolPref:@"like_confirm_comment_likes"] &&
         ![SCIUtils getBoolPref:@"like_confirm_reels"] &&
+        ![SCIUtils getBoolPref:@"like_confirm_reels_double_tap"] &&
         !SCIStoryInteractionHooksNeeded()) {
         return;
     }

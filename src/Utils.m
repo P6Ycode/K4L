@@ -760,24 +760,33 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 + (void)showSettingsForTopicTitle:(NSString *)title {
     NSArray *rootSections = [SCITweakSettings sections];
-    NSArray *topicRows = rootSections.count > 0 ? rootSections[0][@"rows"] : nil;
-    NSArray *targetSections = nil;
-    for (SCISetting *row in topicRows) {
-        if (![row isKindOfClass:[SCISetting class]]) continue;
-        if (![row.title isEqualToString:title]) continue;
-        if (row.navSections.count > 0) {
-            targetSections = row.navSections;
-            break;
+    SCISetting *matchedRow = nil;
+    for (NSDictionary *section in rootSections) {
+        NSArray *rows = section[@"rows"];
+        for (SCISetting *row in rows) {
+            if (![row isKindOfClass:[SCISetting class]]) continue;
+            if ([row.title isEqualToString:title]) {
+                matchedRow = row;
+                break;
+            }
+        }
+        if (matchedRow) break;
+    }
+
+    UIViewController *settingsViewController = nil;
+    if (matchedRow) {
+        if (matchedRow.navViewController) {
+            settingsViewController = matchedRow.navViewController;
+        } else if (matchedRow.navSections.count > 0) {
+            settingsViewController = [[SCISettingsViewController alloc] initWithTitle:title sections:matchedRow.navSections reduceMargin:NO];
+            settingsViewController.title = title;
         }
     }
 
-    SCISettingsViewController *settingsViewController = nil;
-    if (targetSections.count > 0) {
-        settingsViewController = [[SCISettingsViewController alloc] initWithTitle:title sections:targetSections reduceMargin:NO];
-        settingsViewController.title = title;
-    } else {
+    if (!settingsViewController) {
         settingsViewController = [SCISettingsViewController new];
     }
+
 
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:settingsViewController];
     navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
@@ -1000,7 +1009,8 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 + (NSURL *)getPhotoUrlForMedia:(IGMedia *)media {
     if (!media) return nil;
 
-    IGPhoto *photo = media.photo;
+    IGPhoto *photo = SCIObjectForSelector(media, @"photo");
+    if (!photo) return nil;
 
     return [SCIUtils getPhotoUrl:photo];
 }
@@ -1031,7 +1041,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 + (NSURL *)getVideoUrlForMedia:(IGMedia *)media {
     if (!media) return nil;
 
-    IGVideo *video = media.video;
+    IGVideo *video = SCIObjectForSelector(media, @"video");
     if (!video) return nil;
 
     return [SCIUtils getVideoUrl:video];

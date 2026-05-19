@@ -1,6 +1,7 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 #import "../../Tweak.h"
+#import "../../Shared/Stories/SCIStoryContext.h"
 
 static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
     return [SCIUtils getBoolPref:@"stop_story_auto_advance"] && !SCIForceStoryAutoAdvance;
@@ -17,7 +18,8 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
         forcedStoryMatches = [mediaPK isEqualToString:SCIForcedStorySeenMediaPK];
     }
 
-    if ([SCIUtils getBoolPref:@"no_seen_receipt"] && !forcedStoryMatches) {
+    BOOL shouldBlockSeen = SCIStoryManualSeenAppliesToContext(SCIStoryContextFromMedia(arg2));
+    if (shouldBlockSeen && !forcedStoryMatches) {
         SCILog(@"General", @"[SCInsta] Prevented automatic story seen marking");
         return;
     }
@@ -48,6 +50,7 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
 
 void SCIInstallDisableStorySeenHooksIfNeeded(void) {
     if (![SCIUtils getBoolPref:@"no_seen_receipt"] &&
+        SCIStoryManualSeenUserList(NO).count == 0 &&
         ![SCIUtils getBoolPref:@"stop_story_auto_advance"]) {
         return;
     }

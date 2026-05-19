@@ -68,6 +68,8 @@ FOUNDATION_EXPORT void SCIInstallDMAudioMsgConfirmHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallDMInteractionConfirmHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallNotesCustomizationHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDMRefreshConfirmHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallCaptureHidingHooksIfNeeded(void);
+FOUNDATION_EXPORT void SCIInstallProfileHeaderControlsHooksIfNeeded(void);
 
 // Master kill switch: when YES, suppress all feature hook installation, but
 // keep the home long-press shortcut so users can still reach Settings to turn
@@ -188,6 +190,7 @@ void SCIInstallProfileSurfaceHooksIfNeeded(void) {
     SCIInstallFollowConfirmHooksIfNeeded();
     SCIInstallNoSuggestedUsersHooksIfEnabled();
     SCIInstallFollowIndicatorHooksIfEnabled();
+    SCIInstallProfileHeaderControlsHooksIfNeeded();
     SCIInstallSettingsShortcutsHooksIfNeeded();
 }
 
@@ -210,6 +213,7 @@ void SCIInstallGeneralUIHooksIfNeeded(void) {
     SCIInstallCopyDescriptionHooksIfEnabled();
     SCIInstallNoRecentSearchesHooksIfEnabled();
     SCIInstallEnhancedMediaResolutionHooksIfEnabled();
+    SCIInstallCaptureHidingHooksIfNeeded();
 }
 
 void SCIInstallEnabledFeatureHooks(void) {

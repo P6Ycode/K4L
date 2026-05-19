@@ -46,11 +46,24 @@ static id SCIReelsFindMediaIvar(UIView *view) {
 	return found;
 }
 
-static id SCIReelsCurrentCarouselChildMedia(UIView *carouselCell, id parentMedia) {
-	if (!carouselCell || !parentMedia) return parentMedia;
+static NSArray *SCIReelsCarouselChildren(id parentMedia) {
+	if (!parentMedia) return nil;
+	NSArray *children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"carouselMedia"));
+	if (children.count == 0) children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"carouselChildren"));
+	if (children.count == 0) children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"children"));
+	if (children.count == 0) children = SCIArrayFromCollection(SCIKVCObject(parentMedia, @"carousel_media"));
+	return children;
+}
 
-	Ivar idxIvar = class_getInstanceVariable([carouselCell class], "_currentIndex");
+static NSInteger SCIReelsCarouselCurrentIndex(UIView *carouselCell, id parentMedia) {
+	if (!carouselCell || !parentMedia) return -1;
+
+	NSArray *children = SCIReelsCarouselChildren(parentMedia);
+	if (children.count == 0) return -1;
+	if (children.count == 1) return 0;
+
 	NSInteger currentIdx = 0;
+	Ivar idxIvar = class_getInstanceVariable([carouselCell class], "_currentIndex");
 	if (idxIvar) {
 		ptrdiff_t offset = ivar_getOffset(idxIvar);
 		currentIdx = *(NSInteger *)((char *)(__bridge void *)carouselCell + offset);
@@ -78,12 +91,42 @@ static id SCIReelsCurrentCarouselChildMedia(UIView *carouselCell, id parentMedia
 		}
 	}
 
-	NSArray *children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"carouselMedia"));
-	if (children.count == 0) children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"carouselChildren"));
-	if (children.count == 0) children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"children"));
-	if (children.count == 0) children = SCIArrayFromCollection(SCIKVCObject(parentMedia, @"carousel_media"));
+	if (currentIdx < 0) return 0;
+	if ((NSUInteger)currentIdx >= children.count) return (NSInteger)children.count - 1;
+	return currentIdx;
+}
 
-	return (currentIdx >= 0 && (NSUInteger)currentIdx < children.count) ? children[currentIdx] : parentMedia;
+static id SCIReelsCurrentCarouselChildMedia(UIView *carouselCell, id parentMedia) {
+	if (!carouselCell || !parentMedia) return parentMedia;
+
+	NSArray *children = SCIReelsCarouselChildren(parentMedia);
+	NSInteger currentIdx = SCIReelsCarouselCurrentIndex(carouselCell, parentMedia);
+	if (currentIdx < 0) return parentMedia;
+	return (children.count > 0 && (NSUInteger)currentIdx < children.count) ? children[currentIdx] : parentMedia;
+}
+
+static UIView *SCIReelsCarouselCellFromView(UIView *view) {
+	UIView *carouselCell = SCIReelsFindSuperviewOfClass(view, @"IGSundialViewerCarouselCell");
+	if (carouselCell) return carouselCell;
+
+	Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
+	if (!carouselClass) return nil;
+
+	NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:view ?: (id)NSNull.null];
+	NSMutableSet<UIView *> *visited = [NSMutableSet set];
+	while (queue.count > 0) {
+		UIView *candidate = queue.firstObject;
+		[queue removeObjectAtIndex:0];
+		if (candidate == (id)NSNull.null || !candidate || [visited containsObject:candidate]) continue;
+		[visited addObject:candidate];
+
+		if ([candidate isKindOfClass:carouselClass]) return candidate;
+
+		for (UIView *subview in candidate.subviews) [queue addObject:subview];
+		UIView *superview = candidate.superview;
+		if (superview && ![visited containsObject:superview]) [queue addObject:superview];
+	}
+	return nil;
 }
 
 static id SCIReelsMediaProvider(UIView *sourceView) {
@@ -99,16 +142,27 @@ static id SCIReelsMediaProvider(UIView *sourceView) {
 		if (media) return media;
 	}
 
-	UIView *carouselCell = SCIReelsFindSuperviewOfClass(sourceView, @"IGSundialViewerCarouselCell");
+	UIView *carouselCell = SCIReelsCarouselCellFromView(sourceView);
 	if (carouselCell) {
 		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
-		if (parentMedia) return parentMedia;
+		if (parentMedia) return SCIReelsCurrentCarouselChildMedia(carouselCell, parentMedia);
 	}
 
 	id delegate = SCIObjectForSelector(sourceView, @"delegate");
 	id media = SCIObjectForSelector(delegate, @"media");
 	if (!media) media = SCIKVCObject(delegate, @"media");
 	return media;
+}
+
+static id SCIReelsBulkMediaProvider(UIView *sourceView) {
+	UIView *carouselCell = SCIReelsCarouselCellFromView(sourceView);
+	if (carouselCell) {
+		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
+		if (parentMedia && SCIReelsCarouselChildren(parentMedia).count > 1) {
+			return parentMedia;
+		}
+	}
+	return SCIReelsMediaProvider(sourceView);
 }
 
 static NSInteger SCIReelsCurrentIndexFromVerticalUFI(UIView *verticalUFIView) {
@@ -170,11 +224,18 @@ static SCIActionButtonContext *SCIReelsActionContext(UIView *verticalUFIView) {
 	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
 		return SCIReelsMediaProvider(resolvedContext.view);
 	};
-    context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-        return SCIReelsMediaProvider(resolvedContext.view);
-    };
+	context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
+		return SCIReelsBulkMediaProvider(resolvedContext.view);
+	};
 	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
-		return SCIReelsCurrentIndexFromVerticalUFI(resolvedContext.view);
+		UIView *carouselCell = SCIReelsCarouselCellFromView(resolvedContext.view);
+		if (carouselCell) {
+			id parentMedia = SCIReelsFindMediaIvar(carouselCell);
+			NSInteger carouselIndex = SCIReelsCarouselCurrentIndex(carouselCell, parentMedia);
+			if (carouselIndex >= 0) return carouselIndex;
+		}
+		NSInteger ufiIndex = SCIReelsCurrentIndexFromVerticalUFI(resolvedContext.view);
+		return ufiIndex >= 0 ? ufiIndex : 0;
 	};
 	context.captionResolver = ^NSString * (SCIActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
 		return SCIReelsCaptionForContext(resolvedContext, media, entries, currentIndex);

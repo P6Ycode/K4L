@@ -11,6 +11,8 @@
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../../AssetUtils.h"
 
+/// TODO: fix hide UI on capture on profile action button
+
 static NSString * const kSCIProfileActionButtonDefaultKey = @"action_button_profile_default_action";
 static NSString * const kSCIProfileActionButtonDefaultCopyInfoKey = @"action_button_profile_default_copy_info_action";
 static NSString * const kSCIProfileActionNone = @"none";
