@@ -3,68 +3,56 @@
 #import <UIKit/UIKit.h>
 
 #import "../../Utils.h"
+#import "../../InstagramHeaders.h"
 
 static void (*orig_inboxRefreshControlArg)(id, SEL, id) = NULL;
 static void (*orig_inboxRefreshNoArg)(id, SEL) = NULL;
 static BOOL sSCIDMRefreshBypassing = NO;
 static BOOL sSCIDMRefreshAlertVisible = NO;
 
-static UIRefreshControl *SCIDMRefreshControlInView(UIView *view) {
-    if (!view) return nil;
-    if ([view isKindOfClass:UIRefreshControl.class]) return (UIRefreshControl *)view;
-    if ([view respondsToSelector:@selector(refreshControl)]) {
-        UIRefreshControl *refreshControl = ((UIRefreshControl *(*)(id, SEL))objc_msgSend)(view, @selector(refreshControl));
-        if ([refreshControl isKindOfClass:UIRefreshControl.class]) return refreshControl;
+static IGRefreshControl *SCIDMFindIGRefreshControl(id self, id arg) {
+    // Check if arg is an IGRefreshControl
+    Class igRefreshControlClass = NSClassFromString(@"IGRefreshControl");
+    if (arg && igRefreshControlClass && [arg isKindOfClass:igRefreshControlClass]) return (IGRefreshControl *)arg;
+
+    // Try to get _refreshControl ivar from the view controller
+    if ([self isKindOfClass:[UIViewController class]]) {
+        Ivar ivar = class_getInstanceVariable([self class], "_refreshControl");
+        if (ivar) {
+            id control = object_getIvar(self, ivar);
+            if (igRefreshControlClass && [control isKindOfClass:igRefreshControlClass]) return (IGRefreshControl *)control;
+        }
     }
-    for (UIView *subview in view.subviews) {
-        UIRefreshControl *found = SCIDMRefreshControlInView(subview);
-        if (found) return found;
-    }
+
     return nil;
 }
 
 static void SCIDMEndRefreshIfNeeded(id self, id arg) {
-    UIRefreshControl *refreshControl = [arg isKindOfClass:UIRefreshControl.class] ? (UIRefreshControl *)arg : nil;
-    if (!refreshControl && [self isKindOfClass:UIViewController.class]) {
-        refreshControl = SCIDMRefreshControlInView(((UIViewController *)self).view);
+    IGRefreshControl *refreshControl = SCIDMFindIGRefreshControl(self, arg);
+    if (refreshControl) {
+        [refreshControl finishLoading];
+        return;
     }
-    if (!refreshControl) return;
 
-    Ivar stateIvar = class_getInstanceVariable([refreshControl class], "_refreshState");
-    if (stateIvar) {
-        ptrdiff_t off = ivar_getOffset(stateIvar);
-        *(NSInteger *)((char *)(__bridge void *)refreshControl + off) = 0;
+    // Fallback: try UIRefreshControl in view hierarchy (older IG versions)
+    UIRefreshControl *uiRefreshControl = nil;
+    if ([arg isKindOfClass:UIRefreshControl.class]) {
+        uiRefreshControl = (UIRefreshControl *)arg;
+    } else if ([self isKindOfClass:UIViewController.class]) {
+        UIView *view = ((UIViewController *)self).view;
+        if ([view respondsToSelector:@selector(refreshControl)]) {
+            id rc = ((UIRefreshControl *(*)(id, SEL))objc_msgSend)(view, @selector(refreshControl));
+            if ([rc isKindOfClass:UIRefreshControl.class]) uiRefreshControl = rc;
+        }
     }
-    Ivar animIvar = class_getInstanceVariable([refreshControl class], "_swiftAnimationInfo");
-    if (animIvar) object_setIvar(refreshControl, animIvar, nil);
-    if ([refreshControl respondsToSelector:@selector(endRefreshing)]) [refreshControl endRefreshing];
+    if (!uiRefreshControl) return;
+
+    if ([uiRefreshControl respondsToSelector:@selector(endRefreshing)]) [uiRefreshControl endRefreshing];
 
     SEL didEnd = NSSelectorFromString(@"refreshControlDidEndFinishLoadingAnimation:");
     if ([self respondsToSelector:didEnd]) {
-        ((void (*)(id, SEL, id))objc_msgSend)(self, didEnd, refreshControl);
+        ((void (*)(id, SEL, id))objc_msgSend)(self, didEnd, uiRefreshControl);
     }
-
-    UIScrollView *scroll = nil;
-    UIView *cur = refreshControl.superview;
-    while (cur) {
-        if ([cur isKindOfClass:UIScrollView.class]) { scroll = (UIScrollView *)cur; break; }
-        cur = cur.superview;
-    }
-    if (!scroll) return;
-
-    CGFloat idleInset = scroll.contentInset.top;
-    SEL idleSel = NSSelectorFromString(@"idleTopContentInsetForRefreshControl:");
-    if ([self respondsToSelector:idleSel]) {
-        idleInset = ((CGFloat (*)(id, SEL, id))objc_msgSend)(self, idleSel, refreshControl);
-    }
-    UIEdgeInsets insets = scroll.contentInset;
-    insets.top = idleInset;
-    [UIView animateWithDuration:0.25 animations:^{
-        scroll.contentInset = insets;
-        CGPoint offset = scroll.contentOffset;
-        if (offset.y < -idleInset) offset.y = -idleInset;
-        scroll.contentOffset = offset;
-    }];
 }
 
 static void SCIConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
@@ -72,7 +60,6 @@ static void SCIConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
         if (confirmBlock) confirmBlock();
         return;
     }
-    SCIDMEndRefreshIfNeeded(self, arg);
     if (sSCIDMRefreshAlertVisible) return;
     sSCIDMRefreshAlertVisible = YES;
     [SCIUtils showConfirmation:^{

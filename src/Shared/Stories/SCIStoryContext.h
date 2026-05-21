@@ -38,7 +38,10 @@ BOOL SCIStoryManualSeenListContainsUsername(NSString *_Nullable username, BOOL m
 void SCIStoryToggleUsernameForCurrentManualSeenMode(NSString *username);
 NSString *SCIStoryManualSeenListTitle(BOOL manualSeenEnabled);
 UIViewController *SCIStoryManualSeenListViewController(void);
-NSArray *_Nullable SCIStoryAppendCurrentUserMenuItem(NSArray *_Nullable items);
+NSString *_Nullable SCIStoryCurrentUserRuleActionTitle(SCIStoryContext *_Nullable context);
+NSString *_Nullable SCIStoryCurrentUserRuleConfirmationTitle(SCIStoryContext *_Nullable context);
+NSString *_Nullable SCIStoryCurrentUserRuleConfirmationMessage(SCIStoryContext *_Nullable context);
+BOOL SCIStoryToggleCurrentUserRule(SCIStoryContext *_Nullable context, NSString *_Nullable *_Nullable notificationTitle, NSString *_Nullable *_Nullable notificationSubtitle);
 
 #ifdef __cplusplus
 }

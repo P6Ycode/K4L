@@ -479,6 +479,7 @@ fromViewController:(UIViewController *)presenter {
 
     if (_isFromGallery) {
         _galleryOriginButton = SCIMediaChromeBottomButton(@"more", @"More");
+        _galleryOriginButton.showsMenuAsPrimaryAction = YES;
 
         _deleteGalleryButton = SCIMediaChromeBottomButton(@"trash", @"Delete from Gallery");
         _deleteGalleryButton.tintColor = [UIColor systemRedColor];
@@ -698,6 +699,7 @@ fromViewController:(UIViewController *)presenter {
     if (self.bulkActionsButton) {
         self.bulkActionsButton.menu = [self bulkActionsMenu];
         self.bulkActionsButton.hidden = (self.bulkActionsButton.menu == nil);
+        self.bulkActionsButton.showsMenuAsPrimaryAction = (self.bulkActionsButton.menu != nil);
     }
 }
 
@@ -827,17 +829,6 @@ fromViewController:(UIViewController *)presenter {
     return [UIMenu menuWithTitle:@"" children:actions];
 }
 
-- (void)performSingleGalleryOriginAction {
-    SCIGalleryFile *file = self.currentItem.galleryFile;
-    if (file.hasOpenableProfile && !file.hasOpenableOriginalMedia) {
-        [self openProfileForCurrentGalleryItem];
-        return;
-    }
-    if (file.hasOpenableOriginalMedia && !file.hasOpenableProfile) {
-        [self openOriginalPostForCurrentGalleryItem];
-    }
-}
-
 - (void)updateGalleryOriginButton {
     if (!_galleryOriginButton) return;
 
@@ -847,7 +838,6 @@ fromViewController:(UIViewController *)presenter {
     NSInteger actionCount = (hasOriginal ? 1 : 0) + (hasProfile ? 1 : 0);
 
     _galleryOriginButton.hidden = !file;
-    [_galleryOriginButton removeTarget:self action:@selector(performSingleGalleryOriginAction) forControlEvents:UIControlEventTouchUpInside];
 
     if (actionCount <= 0) {
         [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(@"more") forState:UIControlStateNormal];
@@ -861,17 +851,6 @@ fromViewController:(UIViewController *)presenter {
 
     _galleryOriginButton.enabled = YES;
     _galleryOriginButton.alpha = 1.0;
-
-    if (actionCount == 1) {
-        NSString *resourceName = hasProfile ? @"user_circle" : @"external_link";
-        NSString *label = hasProfile ? @"Open Profile" : @"Open Original Post";
-        [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(resourceName) forState:UIControlStateNormal];
-        _galleryOriginButton.accessibilityLabel = label;
-        _galleryOriginButton.menu = nil;
-        _galleryOriginButton.showsMenuAsPrimaryAction = NO;
-        [_galleryOriginButton addTarget:self action:@selector(performSingleGalleryOriginAction) forControlEvents:UIControlEventTouchUpInside];
-        return;
-    }
 
     [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(@"more") forState:UIControlStateNormal];
     _galleryOriginButton.accessibilityLabel = @"More";

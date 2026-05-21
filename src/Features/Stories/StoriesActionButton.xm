@@ -126,6 +126,66 @@ static SCIActionButtonContext *SCIStoriesActionContext(UIView *overlayView) {
 	return context;
 }
 
+static UIView *SCIFindRightmostNativeButtonInView(UIView *view, UIView *overlayView) {
+	if (!view || view.hidden || view.alpha < 0.01) return nil;
+
+	UIView *rightmost = nil;
+	CGFloat maxCenterX = 0.0;
+
+	BOOL isCandidate = [view isKindOfClass:[UIButton class]] || [view isKindOfClass:[UIControl class]];
+	if (!isCandidate) {
+		NSString *className = NSStringFromClass(view.class);
+		if ([className containsString:@"Button"] || [className containsString:@"Share"] || [className containsString:@"Like"]) {
+			isCandidate = YES;
+		}
+	}
+
+	if (isCandidate && CGRectGetWidth(view.frame) > 0.0) {
+		CGRect rect = [view convertRect:view.bounds toView:overlayView];
+		CGFloat centerX = CGRectGetMidX(rect);
+		if (centerX > CGRectGetWidth(overlayView.frame) * 0.5) {
+			rightmost = view;
+			maxCenterX = centerX;
+		}
+	}
+
+	for (UIView *subview in view.subviews) {
+		UIView *candidate = SCIFindRightmostNativeButtonInView(subview, overlayView);
+		if (candidate) {
+			CGRect rect = [candidate convertRect:candidate.bounds toView:overlayView];
+			CGFloat centerX = CGRectGetMidX(rect);
+			if (centerX > maxCenterX) {
+				maxCenterX = centerX;
+				rightmost = candidate;
+			}
+		}
+	}
+
+	return rightmost;
+}
+
+static CGFloat SCIGetStoriesCustomButtonX(UIView *overlayView, CGFloat size) {
+	UIView *footerContainer = nil;
+	@try {
+		footerContainer = [SCIUtils getIvarForObj:overlayView name:"_footerContainerView"];
+		if (![footerContainer isKindOfClass:[UIView class]]) {
+			id selectorFooter = SCIObjectForSelector(overlayView, @"footerContainerView");
+			footerContainer = [selectorFooter isKindOfClass:[UIView class]] ? (UIView *)selectorFooter : nil;
+		}
+	} @catch (__unused id e) {}
+
+	if (footerContainer) {
+		UIView *nativeBtn = SCIFindRightmostNativeButtonInView(footerContainer, overlayView);
+		if (nativeBtn) {
+			CGRect rect = [nativeBtn convertRect:nativeBtn.bounds toView:overlayView];
+			CGFloat centerX = CGRectGetMidX(rect);
+			return centerX - size / 2.0;
+		}
+	}
+
+	return CGRectGetWidth(overlayView.frame) - size - 6.0;
+}
+
 static void SCIInstallStoriesActionButton(UIView *overlayView) {
 	if (!overlayView) return;
 
@@ -182,7 +242,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		}
 	}
 
-	button.frame = CGRectMake(CGRectGetWidth(overlayView.frame) - size - 10.0, y, size, size);
+	button.frame = CGRectMake(SCIGetStoriesCustomButtonX(overlayView, size), y, size, size);
 	SCIApplyButtonStyle(button, SCIActionButtonSourceDirect);
 }
 

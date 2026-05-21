@@ -5,7 +5,6 @@
 #import "../../Utils.h"
 
 static const void *kSCIShareCopyLongPressAssocKey = &kSCIShareCopyLongPressAssocKey;
-static __weak UIView *SCIShareActiveStoryOverlayView = nil;
 static NSHashTable<UIGestureRecognizer *> *SCIShareCopyLongPressRecognizers(void) {
     static NSHashTable<UIGestureRecognizer *> *recognizers;
     static dispatch_once_t onceToken;
@@ -19,30 +18,94 @@ static inline BOOL SCIShareLongPressCopyEnabled(void) {
     return [SCIUtils getBoolPref:@"share_button_long_press_copy_link"];
 }
 
+static NSString *SCIShareDebugViewName(UIView *view) {
+    return view ? [NSString stringWithFormat:@"%@<%p>", NSStringFromClass(view.class), view] : @"nil";
+}
+
 static NSString *SCIShareStringValue(id value) {
     NSString *string = SCIStringFromValue(value);
     return string.length > 0 ? string : nil;
 }
 
-static NSURL *SCIInstagramPostURLForCode(NSString *code, id object) {
-    if (code.length == 0) return nil;
-    NSString *path = @"p";
+static NSString *SCIShareStringForSelectorOrIvar(id object, NSString *name) {
+    NSString *value = SCIShareStringValue(SCIObjectForSelector(object, name));
+    if (value.length > 0) return value;
+
+    value = SCIShareStringValue(SCIKVCObject(object, name));
+    if (value.length > 0) return value;
+
+    NSString *ivarName = [NSString stringWithFormat:@"_%@", name];
+    return SCIShareStringValue([SCIUtils getIvarForObj:object name:ivarName.UTF8String]);
+}
+
+static NSString *SCIShareURLPathForObject(id object) {
+    NSString *className = NSStringFromClass([object class]).lowercaseString ?: @"";
+    if ([className containsString:@"reel"] || [className containsString:@"clips"] || [className containsString:@"sundial"]) {
+        return @"reel";
+    }
+
     for (NSString *selectorName in @[@"productType", @"mediaType", @"mediaSource", @"inventorySource"]) {
-        NSString *value = SCIShareStringValue(SCIObjectForSelector(object, selectorName));
-        if (value.length == 0) value = SCIShareStringValue(SCIKVCObject(object, selectorName));
-        value = value.lowercaseString;
+        NSString *value = SCIShareStringForSelectorOrIvar(object, selectorName).lowercaseString;
         if ([value containsString:@"reel"] || [value containsString:@"clips"]) {
-            path = @"reel";
-            break;
+            return @"reel";
         }
     }
+    return @"p";
+}
+
+static NSURL *SCIInstagramPostURLForCode(NSString *code, id object) {
+    if (code.length == 0) return nil;
+    NSString *path = SCIShareURLPathForObject(object);
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", path, code]];
+}
+
+static BOOL SCIShareObjectCanExposeMediaPK(id object, NSString *selectorName) {
+    if (!object || selectorName.length == 0) return NO;
+    NSString *className = NSStringFromClass([object class]).lowercaseString ?: @"";
+    if ([className containsString:@"user"] || [className containsString:@"session"] || [className containsString:@"account"]) return NO;
+    if ([selectorName isEqualToString:@"currentMediaPK"]) return YES;
+    if ([className containsString:@"media"] || [className containsString:@"feed"] || [className containsString:@"ufi"] ||
+        [className containsString:@"reel"] || [className containsString:@"sundial"] || [className containsString:@"clips"] ||
+        [className containsString:@"post"]) {
+        return YES;
+    }
+    return NO;
+}
+
+static NSString *SCIInstagramShortcodeForMediaPK(NSString *mediaPK) {
+    NSString *identifier = [mediaPK componentsSeparatedByString:@"_"].firstObject ?: mediaPK;
+    if (identifier.length == 0) return nil;
+    if ([identifier rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+
+    unsigned long long value = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:identifier];
+    if (![scanner scanUnsignedLongLong:&value] || !scanner.isAtEnd || value == 0) return nil;
+
+    static NSString *alphabet = @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    NSMutableString *shortcode = [NSMutableString string];
+    while (value > 0) {
+        NSUInteger index = (NSUInteger)(value % 64);
+        unichar character = [alphabet characterAtIndex:index];
+        [shortcode insertString:[NSString stringWithCharacters:&character length:1] atIndex:0];
+        value /= 64;
+    }
+    return shortcode.length > 0 ? shortcode : nil;
+}
+
+static NSURL *SCIInstagramPostURLForMediaPK(NSString *mediaPK, id object, NSString *selectorName) {
+    if (!SCIShareObjectCanExposeMediaPK(object, selectorName)) return nil;
+    NSString *code = SCIInstagramShortcodeForMediaPK(mediaPK);
+    NSURL *url = SCIInstagramPostURLForCode(code, object);
+    if (url) {
+        SCILog(@"General", @"[SCInsta ShareCopy] Using media PK fallback class=%@ selector=%@ mediaPK=%@ code=%@ url=%@",
+               NSStringFromClass([object class]), selectorName, mediaPK, code, url.absoluteString);
+    }
+    return url;
 }
 
 static NSString *SCIShareMediaIDFromObject(id object) {
     for (NSString *selectorName in @[@"pk", @"id", @"mediaID", @"mediaId", @"mediaIdentifier"]) {
-        NSString *identifier = SCIShareStringValue(SCIObjectForSelector(object, selectorName));
-        if (identifier.length == 0) identifier = SCIShareStringValue(SCIKVCObject(object, selectorName));
+        NSString *identifier = SCIShareStringForSelectorOrIvar(object, selectorName);
         if (identifier.length > 0) {
             NSArray<NSString *> *parts = [identifier componentsSeparatedByString:@"_"];
             NSString *mediaID = parts.firstObject ?: identifier;
@@ -63,6 +126,87 @@ static NSURL *SCIInstagramStoryURLForMedia(id media) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/stories/%@/%@/", encodedUsername, encodedIdentifier]];
 }
 
+static BOOL SCIShareURLIsStoryURL(NSURL *url) {
+    NSString *path = url.path.lowercaseString ?: @"";
+    return [path containsString:@"/stories/"];
+}
+
+static BOOL SCIShareURLIsPostOrReelURL(NSURL *url) {
+    NSString *path = url.path.lowercaseString ?: @"";
+    return [path containsString:@"/p/"] || [path containsString:@"/reel/"] || [path containsString:@"/reels/"];
+}
+
+static BOOL SCIShareObjectLooksStoryLike(id object) {
+    if (!object) return NO;
+    NSString *className = NSStringFromClass([object class]).lowercaseString ?: @"";
+    if ([className containsString:@"story"]) return YES;
+
+    for (NSString *selectorName in @[@"productType", @"mediaType", @"mediaSource", @"inventorySource", @"mediaSubtype"]) {
+        NSString *lower = SCIShareStringForSelectorOrIvar(object, selectorName).lowercaseString;
+        if ([lower containsString:@"story"]) return YES;
+    }
+    return NO;
+}
+
+static BOOL SCIShareViewGraphLooksStoryLike(UIView *view) {
+    for (UIView *walker = view; walker; walker = walker.superview) {
+        if (SCIShareObjectLooksStoryLike(walker)) return YES;
+
+        id delegate = SCIObjectForSelector(walker, @"delegate");
+        if (SCIShareObjectLooksStoryLike(delegate)) return YES;
+
+        unsigned int count = 0;
+        Ivar *ivars = class_copyIvarList(walker.class, &count);
+        for (unsigned int i = 0; i < count; i++) {
+            const char *type = ivar_getTypeEncoding(ivars[i]);
+            if (!type || type[0] != '@') continue;
+            id value = nil;
+            @try { value = object_getIvar(walker, ivars[i]); } @catch (__unused NSException *exception) {}
+            if (SCIShareObjectLooksStoryLike(value)) {
+                if (ivars) free(ivars);
+                return YES;
+            }
+        }
+        if (ivars) free(ivars);
+    }
+
+    UIViewController *controller = [SCIUtils nearestViewControllerForView:view];
+    return SCIShareObjectLooksStoryLike(controller);
+}
+
+static NSURL *SCIShareCanonicalPostOrReelURLFromObjectAtDepth(id object, NSInteger depth) {
+    if (!object || depth > 3) return nil;
+
+    for (NSString *selectorName in @[@"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl", @"url"]) {
+        NSURL *url = SCIURLFromValue(SCIObjectForSelector(object, selectorName));
+        if (!url) url = SCIURLFromValue(SCIKVCObject(object, selectorName));
+        if (SCIShareURLIsPostOrReelURL(url)) return url;
+    }
+
+    for (NSString *selectorName in @[@"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken"]) {
+        if (SCIShareObjectLooksStoryLike(object)) break;
+        NSString *code = SCIShareStringForSelectorOrIvar(object, selectorName);
+        NSURL *url = SCIInstagramPostURLForCode(code, object);
+        if (url) return url;
+    }
+
+    for (NSString *selectorName in @[@"currentMediaPK", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"mediaIdentifier", @"pk"]) {
+        if (SCIShareObjectLooksStoryLike(object)) break;
+        NSString *mediaPK = SCIShareStringForSelectorOrIvar(object, selectorName);
+        NSURL *url = SCIInstagramPostURLForMediaPK(mediaPK, object, selectorName);
+        if (url) return url;
+    }
+
+    for (NSString *selectorName in @[@"media", @"post", @"story", @"storyItem", @"storyMedia", @"mediaItem", @"reelMediaItem", @"item", @"currentStoryItem", @"visualMessage", @"model"]) {
+        id nested = SCIObjectForSelector(object, selectorName);
+        if (!nested) nested = SCIKVCObject(object, selectorName);
+        NSURL *url = SCIShareCanonicalPostOrReelURLFromObjectAtDepth(nested, depth + 1);
+        if (url) return url;
+    }
+
+    return nil;
+}
+
 static NSURL *SCIShareURLFromObjectAtDepth(id object, NSInteger depth) {
     if (!object || depth > 3) return nil;
 
@@ -74,9 +218,16 @@ static NSURL *SCIShareURLFromObjectAtDepth(id object, NSInteger depth) {
     }
 
     for (NSString *selectorName in @[@"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken"]) {
-        NSString *code = SCIShareStringValue(SCIObjectForSelector(object, selectorName));
-        if (code.length == 0) code = SCIShareStringValue(SCIKVCObject(object, selectorName));
+        if (SCIShareObjectLooksStoryLike(object)) break;
+        NSString *code = SCIShareStringForSelectorOrIvar(object, selectorName);
         NSURL *url = SCIInstagramPostURLForCode(code, object);
+        if (url) return url;
+    }
+
+    for (NSString *selectorName in @[@"currentMediaPK", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"mediaIdentifier", @"pk"]) {
+        if (SCIShareObjectLooksStoryLike(object)) break;
+        NSString *mediaPK = SCIShareStringForSelectorOrIvar(object, selectorName);
+        NSURL *url = SCIInstagramPostURLForMediaPK(mediaPK, object, selectorName);
         if (url) return url;
     }
 
@@ -137,37 +288,43 @@ static id SCIShareStoryMediaFromOverlay(UIView *overlayView) {
 
 static NSURL *SCIShareStoryURLFromOverlay(UIView *overlayView) {
     SCIStoryContext *context = SCIStoryContextFromOverlay(overlayView);
+    id media = SCIShareStoryMediaFromOverlay(overlayView);
+    NSURL *canonicalURL = SCIShareCanonicalPostOrReelURLFromObjectAtDepth(context.media ?: media, 0);
+    if (canonicalURL) return canonicalURL;
     NSURL *sharedURL = SCIStoryURLForContext(context);
     if (sharedURL) return sharedURL;
-    id media = SCIShareStoryMediaFromOverlay(overlayView);
     NSURL *url = SCIInstagramStoryURLForMedia(media);
     if (url) return url;
     return SCIShareURLFromObjectAtDepth(media, 0);
 }
 
-static NSURL *SCIShareStoryURLFromView(UIView *view) {
+static UIView *SCIShareStoryOverlayAncestorForView(UIView *view) {
     for (UIView *walker = view; walker; walker = walker.superview) {
-        if (![NSStringFromClass(walker.class) containsString:@"IGStoryFullscreenOverlayView"]) continue;
-        NSURL *url = SCIShareStoryURLFromOverlay(walker);
-        if (url) return url;
+        if ([NSStringFromClass(walker.class) containsString:@"IGStoryFullscreenOverlayView"]) return walker;
     }
-
-    NSURL *activeURL = SCIShareStoryURLFromOverlay(SCIShareActiveStoryOverlayView);
-    if (activeURL) return activeURL;
     return nil;
 }
 
-static NSURL *SCIShareURLFromViewHierarchy(UIView *view) {
-    NSURL *storyURL = SCIShareStoryURLFromView(view);
-    if (storyURL) return storyURL;
+static UIView *SCIShareStoryOverlayForView(UIView *view) {
+    UIView *overlay = SCIShareStoryOverlayAncestorForView(view);
+    if (overlay) return overlay;
 
+    UIView *activeOverlay = SCIStoryActiveOverlay();
+    if (!activeOverlay || !activeOverlay.window || activeOverlay.window != view.window) return nil;
+    if (!SCIShareViewGraphLooksStoryLike(view)) return nil;
+
+    SCILog(@"General", @"[SCInsta ShareCopy] Using active story overlay for detached story control view=%@ overlay=%@", SCIShareDebugViewName(view), SCIShareDebugViewName(activeOverlay));
+    return activeOverlay;
+}
+
+static NSURL *SCIShareURLFromViewHierarchy(UIView *view, BOOL canonicalOnly) {
     UIView *walker = view;
     for (NSInteger depth = 0; walker && depth < 24; depth++, walker = walker.superview) {
-        NSURL *url = SCIShareURLFromObjectAtDepth(walker, 0);
+        NSURL *url = canonicalOnly ? SCIShareCanonicalPostOrReelURLFromObjectAtDepth(walker, 0) : SCIShareURLFromObjectAtDepth(walker, 0);
         if (url) return url;
 
         id delegate = SCIObjectForSelector(walker, @"delegate");
-        url = SCIShareURLFromObjectAtDepth(delegate, 0);
+        url = canonicalOnly ? SCIShareCanonicalPostOrReelURLFromObjectAtDepth(delegate, 0) : SCIShareURLFromObjectAtDepth(delegate, 0);
         if (url) return url;
 
         unsigned int count = 0;
@@ -177,7 +334,7 @@ static NSURL *SCIShareURLFromViewHierarchy(UIView *view) {
             if (!type || type[0] != '@') continue;
             id value = nil;
             @try { value = object_getIvar(walker, ivars[i]); } @catch (__unused NSException *exception) {}
-            url = SCIShareURLFromObjectAtDepth(value, 0);
+            url = canonicalOnly ? SCIShareCanonicalPostOrReelURLFromObjectAtDepth(value, 0) : SCIShareURLFromObjectAtDepth(value, 0);
             if (url) {
                 if (ivars) free(ivars);
                 return url;
@@ -187,7 +344,39 @@ static NSURL *SCIShareURLFromViewHierarchy(UIView *view) {
     }
 
     UIViewController *controller = [SCIUtils nearestViewControllerForView:view];
-    return SCIShareURLFromObjectAtDepth(controller, 0);
+    return canonicalOnly ? SCIShareCanonicalPostOrReelURLFromObjectAtDepth(controller, 0) : SCIShareURLFromObjectAtDepth(controller, 0);
+}
+
+static NSURL *SCIShareURLFromView(UIView *view) {
+    UIView *storyOverlay = SCIShareStoryOverlayForView(view);
+    SCILog(@"General", @"[SCInsta ShareCopy] Resolving link for view=%@ storyOverlay=%@", SCIShareDebugViewName(view), SCIShareDebugViewName(storyOverlay));
+
+    if (storyOverlay) {
+        NSURL *storyURL = SCIShareStoryURLFromOverlay(storyOverlay);
+        if (storyURL) {
+            SCILog(@"General", @"[SCInsta ShareCopy] Using story-overlay URL: %@", storyURL.absoluteString);
+            return storyURL;
+        }
+        SCILog(@"General", @"[SCInsta ShareCopy] Story overlay present but no story URL resolved");
+    }
+
+    NSURL *canonicalURL = SCIShareURLFromViewHierarchy(view, YES);
+    if (canonicalURL) {
+        SCILog(@"General", @"[SCInsta ShareCopy] Using canonical post/reel URL: %@", canonicalURL.absoluteString);
+        return canonicalURL;
+    }
+
+    NSURL *url = SCIShareURLFromViewHierarchy(view, NO);
+    if (url && storyOverlay == nil && SCIShareURLIsStoryURL(url)) {
+        SCILog(@"General", @"[SCInsta ShareCopy] Rejected story URL outside story overlay: %@", url.absoluteString);
+        return nil;
+    }
+    if (url) {
+        SCILog(@"General", @"[SCInsta ShareCopy] Using generic hierarchy URL: %@", url.absoluteString);
+    } else {
+        SCILog(@"General", @"[SCInsta ShareCopy] No URL resolved for view=%@", SCIShareDebugViewName(view));
+    }
+    return url;
 }
 
 static NSString *SCICopiedShareLinkTitleForURL(NSURL *url) {
@@ -200,15 +389,21 @@ static NSString *SCICopiedShareLinkTitleForURL(NSURL *url) {
 
 static void SCICopyShareURLForView(UIView *view) {
     if (!SCIShareLongPressCopyEnabled()) return;
-    NSURL *url = SCIShareURLFromViewHierarchy(view);
+    NSURL *url = SCIShareURLFromView(view);
     if ([SCIUtils getBoolPref:@"remove_user_from_copied_share_link"]) {
-        url = [SCIUtils sanitizedInstagramShareURL:url] ?: url;
+        NSURL *sanitized = [SCIUtils sanitizedInstagramShareURL:url];
+        if (sanitized && ![sanitized.absoluteString isEqualToString:url.absoluteString]) {
+            SCILog(@"General", @"[SCInsta ShareCopy] Sanitized URL from %@ to %@", url.absoluteString, sanitized.absoluteString);
+        }
+        url = sanitized ?: url;
     }
     if (url.absoluteString.length == 0) {
+        SCILog(@"General", @"[SCInsta ShareCopy] Copy failed: no link found for view=%@", SCIShareDebugViewName(view));
         SCINotify(kSCINotificationShareLongPressCopyLink, @"No link found", nil, @"error_filled", SCINotificationToneError);
         return;
     }
     UIPasteboard.generalPasteboard.string = url.absoluteString;
+    SCILog(@"General", @"[SCInsta ShareCopy] Copied URL title=\"%@\" url=%@", SCICopiedShareLinkTitleForURL(url), url.absoluteString);
     SCINotify(kSCINotificationShareLongPressCopyLink, SCICopiedShareLinkTitleForURL(url), nil, @"copy_filled", SCINotificationToneSuccess);
 }
 
@@ -346,7 +541,6 @@ static void SCIInstallShareLongPressInContainer(UIView *container, NSArray<NSStr
 %hook IGStoryFullscreenOverlayView
 - (void)layoutSubviews {
     %orig;
-    SCIShareActiveStoryOverlayView = (UIView *)self;
     SCIStorySetActiveOverlay((UIView *)self);
     SCIInstallShareLongPressInContainer((UIView *)self, @[@"sendButton", @"shareButton", @"reshareButton"], NO);
 }

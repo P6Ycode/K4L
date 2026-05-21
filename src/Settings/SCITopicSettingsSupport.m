@@ -213,6 +213,15 @@ UIMenu *SCISwipeBetweenTabsMenu(void) {
     ]];
 }
 
+UIMenu *SCISwipeCloseCommentsDirectionMenu(void) {
+    static NSString * const kSCISwipeCloseCommentsDirectionKey = @"comments_swipe_to_close_direction";
+    return [UIMenu menuWithChildren:@[
+        SCIMenuCommand(@"Both", @"left_right", nil, kSCISwipeCloseCommentsDirectionKey, @"both", NO),
+        SCIMenuCommand(@"Left", @"arrow_left", nil, kSCISwipeCloseCommentsDirectionKey, @"left", NO),
+        SCIMenuCommand(@"Right", @"arrow_right", nil, kSCISwipeCloseCommentsDirectionKey, @"right", NO)
+    ]];
+}
+
 UIMenu *SCICacheAutoClearMenu(void) {
     return [UIMenu menuWithChildren:@[
         SCIMenuCommand(@"Never", nil, nil, @"cache_auto_clear_mode", @"never", NO),

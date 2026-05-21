@@ -32,20 +32,22 @@
 
 %hook IGSundialFeedViewController
 - (void)_refreshReelsWithParamsForNetworkRequest:(NSInteger)arg1 userDidPullToRefresh:(BOOL)arg2 {
-    if ([SCIUtils getBoolPref:@"prevent_doom_scrolling"]) {
+    if ([SCIUtils getBoolPref:@"prevent_doom_scrolling"] && arg2) {
         IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
-        [self refreshControlDidEndFinishLoadingAnimation:_refreshControl];
+        [_refreshControl finishLoading];
+        [self finishPullToRefreshLoading];
 
         return;
     }
 
-    if ([SCIUtils getBoolPref:@"refresh_reel_confirm"]) {
+    if ([SCIUtils getBoolPref:@"refresh_reel_confirm"] && arg2) {
         SCILog(@"General", @"[SCInsta] Reel refresh triggered");
         
         [SCIUtils showConfirmation:^(void) { %orig(arg1, arg2); }
                      cancelHandler:^(void) {
                          IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
-                         [self refreshControlDidEndFinishLoadingAnimation:_refreshControl];
+                         [_refreshControl finishLoading];
+                         [self finishPullToRefreshLoading];
                      }
                              title:@"Confirm Reels Refresh"
                            message:@"Are you sure you want to refresh the reels feed?"];

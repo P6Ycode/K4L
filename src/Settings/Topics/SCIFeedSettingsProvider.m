@@ -41,9 +41,11 @@ static NSString * const kSCIFeedActionButtonDefaultActionKey = @"action_button_f
             [SCISetting switchCellWithTitle:@"Confirm Posting Comment" icon:SCISettingsIcon(@"comment") defaultsKey:@"post_comment_confirm"]
         ], @"Shows confirmation alerts before the enabled feed actions are performed."),
         SCITopicSection(@"Comments", @[
+            [SCISetting switchCellWithTitle:@"Swipe to Close Comments" icon:SCISettingsIcon(@"left_right") defaultsKey:@"comments_swipe_to_close"],
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Swipe Direction" icon:SCISettingsIcon(@"left_right") menu:SCISwipeCloseCommentsDirectionMenu()], SCISettingsIcon(@"left_right")),
             [SCISetting switchCellWithTitle:@"Confirm Comment Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"like_confirm_comment_likes"],
             [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"hide_comment_commerce_carousel"]
-        ], @"Hide Comment Shopping removes commerce carousels in comment threads.")
+        ], @"Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads.")
     ]);
 }
 

@@ -817,19 +817,35 @@ static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
         if (url && ([scheme isEqualToString:@"http"] ||
                     [scheme isEqualToString:@"https"] ||
                     [scheme isEqualToString:@"instagram"])) {
+            SCILog(@"General", @"[SCInsta Gallery] Open original using stored URL source=%d url=%@", self.source, url.absoluteString);
             return url;
         }
+        SCILog(@"General", @"[SCInsta Gallery] Ignoring invalid stored original URL source=%d raw=%@", self.source, self.sourceMediaURLString);
     }
     if (self.sourceMediaCode.length > 0) {
-        NSString *pathComponent = (self.source == SCIGallerySourceReels) ? @"reel" : @"p";
-        return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, self.sourceMediaCode]];
+        NSString *pathComponent = nil;
+        if (self.source == SCIGallerySourceReels) {
+            pathComponent = @"reel";
+        } else if (self.source == SCIGallerySourceFeed || self.source == SCIGallerySourceProfile || self.source == SCIGallerySourceOther) {
+            pathComponent = @"p";
+        }
+        if (pathComponent.length == 0) {
+            SCILog(@"General", @"[SCInsta Gallery] Open original has code but no safe path source=%d code=%@", self.source, self.sourceMediaCode);
+            return nil;
+        }
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, self.sourceMediaCode]];
+        SCILog(@"General", @"[SCInsta Gallery] Open original generated from code source=%d code=%@ url=%@", self.source, self.sourceMediaCode, url.absoluteString);
+        return url;
     }
     if (self.sourceMediaPK.length > 0) {
         NSString *encodedPK = [self.sourceMediaPK stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
         if (encodedPK.length > 0) {
-            return [NSURL URLWithString:[NSString stringWithFormat:@"instagram://media?id=%@", encodedPK]];
+            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://media?id=%@", encodedPK]];
+            SCILog(@"General", @"[SCInsta Gallery] Open original falling back to media id source=%d mediaPK=%@ url=%@", self.source, self.sourceMediaPK, url.absoluteString);
+            return url;
         }
     }
+    SCILog(@"General", @"[SCInsta Gallery] Open original unavailable source=%d relativePath=%@", self.source, self.relativePath);
     return nil;
 }
 

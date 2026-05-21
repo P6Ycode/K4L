@@ -27,6 +27,160 @@ static inline BOOL SCIStoryInteractionHooksNeeded(void) {
         [SCIUtils getBoolPref:@"advance_story_when_reply_marked_seen"];
 }
 
+static inline id SCIObjectForSelectorIfAvailable(id target, NSString *selectorName) {
+    if (!target || !selectorName.length) return nil;
+    SEL selector = NSSelectorFromString(selectorName);
+    if (![target respondsToSelector:selector]) return nil;
+    return ((id (*)(id, SEL))objc_msgSend)(target, selector);
+}
+
+static BOOL SCIBoolValueForSelector(id target, NSString *selectorName, BOOL *resolved) {
+    if (resolved) *resolved = NO;
+    if (!target || !selectorName.length) return NO;
+
+    SEL selector = NSSelectorFromString(selectorName);
+    if (![target respondsToSelector:selector]) return NO;
+
+    NSMethodSignature *signature = [target methodSignatureForSelector:selector];
+    const char *returnType = signature.methodReturnType;
+    if (!returnType || !returnType[0]) return NO;
+
+    if (returnType[0] == '@') {
+        id value = ((id (*)(id, SEL))objc_msgSend)(target, selector);
+        if (!value) return NO;
+        if ([value respondsToSelector:@selector(boolValue)]) {
+            if (resolved) *resolved = YES;
+            return ((BOOL (*)(id, SEL))objc_msgSend)(value, @selector(boolValue));
+        }
+        if ([value respondsToSelector:@selector(doubleValue)]) {
+            if (resolved) *resolved = YES;
+            return ((double (*)(id, SEL))objc_msgSend)(value, @selector(doubleValue)) != 0.0;
+        }
+        if ([value respondsToSelector:@selector(integerValue)]) {
+            if (resolved) *resolved = YES;
+            return ((NSInteger (*)(id, SEL))objc_msgSend)(value, @selector(integerValue)) != 0;
+        }
+        return NO;
+    }
+
+    NSNumber *number = [SCIUtils numericValueForObj:target selectorName:selectorName];
+    if (!number) return NO;
+    if (resolved) *resolved = YES;
+    return [number boolValue];
+}
+
+static BOOL SCILikeStateFromControl(id control, BOOL *resolved) {
+    if (resolved) *resolved = NO;
+    if (!control) return NO;
+    if ([control isKindOfClass:[UIControl class]]) {
+        if (resolved) *resolved = YES;
+        return ((UIControl *)control).selected;
+    }
+    return NO;
+}
+
+static BOOL SCILikeStateFromModel(id model, BOOL *resolved) {
+    if (resolved) *resolved = NO;
+    if (!model) return NO;
+
+    for (NSString *selectorName in @[
+        @"hasLiked",
+        @"isLiked",
+        @"isLikedByCurrentUser",
+        @"viewerHasLiked",
+        @"isLikedByViewer",
+        @"liked"
+    ]) {
+        BOOL found = NO;
+        BOOL liked = SCIBoolValueForSelector(model, selectorName, &found);
+        if (found) {
+            if (resolved) *resolved = YES;
+            return liked;
+        }
+    }
+    return NO;
+}
+
+static void SCIPresentLikeToggleConfirmation(BOOL isUnlike,
+                                             NSString *likeTitle,
+                                             NSString *likeMessage,
+                                             NSString *unlikeTitle,
+                                             NSString *unlikeMessage,
+                                             void (^handler)(void)) {
+    [SCIUtils showConfirmation:handler
+                         title:(isUnlike ? unlikeTitle : likeTitle)
+                       message:(isUnlike ? unlikeMessage : likeMessage)];
+}
+
+static id SCILikeButtonFromContext(id context) {
+    if (!context) return nil;
+    id button = SCIObjectForSelectorIfAvailable(context, @"likeButton");
+    if (button) return button;
+
+    id ufiView = [SCIUtils getIvarForObj:context name:"_ufiButtonBarView"];
+    if (!ufiView) ufiView = SCIObjectForSelectorIfAvailable(context, @"ufiButtonBarView");
+    if (!ufiView) return nil;
+
+    return SCIObjectForSelectorIfAvailable(ufiView, @"likeButton");
+}
+
+static id SCIMediaFromContext(id context) {
+    if (!context) return nil;
+    id media = [SCIUtils getIvarForObj:context name:"_media"];
+    if (media) return media;
+
+    media = SCIObjectForSelectorIfAvailable(context, @"media");
+    if (media) return media;
+
+    id viewModel = [SCIUtils getIvarForObj:context name:"_cellViewModel_DO_NOT_USE"];
+    if (!viewModel) viewModel = SCIObjectForSelectorIfAvailable(context, @"cellViewModel");
+    if (!viewModel) return nil;
+
+    return SCIObjectForSelectorIfAvailable(viewModel, @"media");
+}
+
+static id SCICommentFromContext(id context) {
+    if (!context) return nil;
+    id comment = [SCIUtils getIvarForObj:context name:"_commentModel"];
+    if (comment) return comment;
+
+    comment = [SCIUtils getIvarForObj:context name:"_comment"];
+    if (comment) return comment;
+
+    comment = SCIObjectForSelectorIfAvailable(context, @"commentModel");
+    if (comment) return comment;
+
+    return SCIObjectForSelectorIfAvailable(context, @"comment");
+}
+
+static BOOL SCIFeedLikeIsUnlike(id button, id context) {
+    BOOL resolved = NO;
+    BOOL liked = SCILikeStateFromControl(button, &resolved);
+    if (!resolved) {
+        id likeButton = SCILikeButtonFromContext(context);
+        liked = SCILikeStateFromControl(likeButton, &resolved);
+    }
+    if (!resolved) {
+        id media = SCIMediaFromContext(context);
+        liked = SCILikeStateFromModel(media, &resolved);
+    }
+    return resolved && liked;
+}
+
+static BOOL SCICommentLikeIsUnlike(id button, id context) {
+    BOOL resolved = NO;
+    BOOL liked = SCILikeStateFromControl(button, &resolved);
+    if (!resolved) {
+        id likeButton = SCILikeButtonFromContext(context);
+        liked = SCILikeStateFromControl(likeButton, &resolved);
+    }
+    if (!resolved) {
+        id comment = SCICommentFromContext(context);
+        liked = SCILikeStateFromModel(comment, &resolved);
+    }
+    return resolved && liked;
+}
+
 static void SCIStoryMarkSeenForInteractionView(UIView *view, NSString *advancePrefKey) {
     if (!view) return;
     SCIMarkStoryAsSeenForViewWithAdvancePref(view, advancePrefKey);
@@ -66,39 +220,90 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
         return orig;                                                   \
     }                                                                  \
 
-#define CONFIRMFEEDPOSTLIKE(orig) \
+#define CONFIRMFEEDPOSTLIKE(context, button, orig) \
     if (SCIBypassFeedPostLikeConfirm) { \
         return orig; \
     } \
     if ([SCIUtils getBoolPref:@"like_confirm_feed_post_likes"]) { \
-        SCILog(@"General", @"[SCInsta] Confirm feed post like triggered"); \
-        [SCIUtils showConfirmation:^(void) { SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
-                                 title:@"Confirm Post Like" \
-                               message:@"Are you sure you want to like this post?"]; \
+        BOOL isUnlike = SCIFeedLikeIsUnlike((button), (context)); \
+        SCILog(@"General", @"[SCInsta] Confirm feed post %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SCIPresentLikeToggleConfirmation( \
+            isUnlike, \
+            @"Confirm Post Like", \
+            @"Are you sure you want to like this post?", \
+            @"Confirm Post Unlike", \
+            @"Are you sure you want to unlike this post?", \
+            ^{ SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
+        ); \
     } \
     else { \
         return orig; \
     }
 
-#define CONFIRMFEEDDOUBLETAPLIKE(orig) \
+#define CONFIRMFEEDDOUBLETAPLIKE(context, orig) \
     if ([SCIUtils getBoolPref:@"like_confirm_feed_double_tap_likes"]) { \
-        SCILog(@"General", @"[SCInsta] Confirm feed double-tap like triggered"); \
-        [SCIUtils showConfirmation:^(void) { SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
-                                 title:@"Confirm Post Like" \
-                               message:@"Are you sure you want to like this post?"]; \
+        BOOL isUnlike = SCIFeedLikeIsUnlike(nil, (context)); \
+        SCILog(@"General", @"[SCInsta] Confirm feed double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SCIPresentLikeToggleConfirmation( \
+            isUnlike, \
+            @"Confirm Post Like", \
+            @"Are you sure you want to like this post?", \
+            @"Confirm Post Unlike", \
+            @"Are you sure you want to unlike this post?", \
+            ^{ SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
+        ); \
     } \
     else { \
         SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); \
     }
 
-#define CONFIRMCOMMENTLIKE(orig) \
-    SCICONFIRMLIKE(@"like_confirm_comment_likes", @"Confirm comment like triggered", @"Confirm Comment Like", @"Are you sure you want to like this comment?", orig)
+#define CONFIRMCOMMENTLIKE(context, button, orig) \
+    if ([SCIUtils getBoolPref:@"like_confirm_comment_likes"]) { \
+        BOOL isUnlike = SCICommentLikeIsUnlike((button), (context)); \
+        SCILog(@"General", @"[SCInsta] Confirm comment %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SCIPresentLikeToggleConfirmation( \
+            isUnlike, \
+            @"Confirm Comment Like", \
+            @"Are you sure you want to like this comment?", \
+            @"Confirm Comment Unlike", \
+            @"Are you sure you want to unlike this comment?", \
+            ^{ orig; } \
+        ); \
+    } else { \
+        return orig; \
+    }
 
-#define CONFIRMREELSLIKE(orig) \
-    SCICONFIRMLIKE(@"like_confirm_reels", @"Confirm reels like triggered", @"Confirm Reel Like", @"Are you sure you want to like this reel?", orig)
+#define CONFIRMREELSLIKE(context, button, orig) \
+    if ([SCIUtils getBoolPref:@"like_confirm_reels"]) { \
+        BOOL isUnlike = SCIFeedLikeIsUnlike((button), (context)); \
+        SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SCIPresentLikeToggleConfirmation( \
+            isUnlike, \
+            @"Confirm Reel Like", \
+            @"Are you sure you want to like this reel?", \
+            @"Confirm Reel Unlike", \
+            @"Are you sure you want to unlike this reel?", \
+            ^{ orig; } \
+        ); \
+    } else { \
+        return orig; \
+    }
 
-#define CONFIRMREELSDOUBLETAPLIKE(orig) \
-    SCICONFIRMLIKE(@"like_confirm_reels_double_tap", @"Confirm reels double-tap like triggered", @"Confirm Reel Like", @"Are you sure you want to like this reel?", orig)
+#define CONFIRMREELSDOUBLETAPLIKE(context, orig) \
+    if ([SCIUtils getBoolPref:@"like_confirm_reels_double_tap"]) { \
+        BOOL isUnlike = SCIFeedLikeIsUnlike(nil, (context)); \
+        SCILog(@"General", @"[SCInsta] Confirm reels double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SCIPresentLikeToggleConfirmation( \
+            isUnlike, \
+            @"Confirm Reel Like", \
+            @"Are you sure you want to like this reel?", \
+            @"Confirm Reel Unlike", \
+            @"Are you sure you want to unlike this reel?", \
+            ^{ orig; } \
+        ); \
+    } else { \
+        return orig; \
+    }
 
 ///////////////////////////////////////////////////////////
 
@@ -107,95 +312,95 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 
 %hook IGUFIButtonBarView
 - (void)_onLikeButtonPressed {
-    CONFIRMFEEDPOSTLIKE(%orig);
+    CONFIRMFEEDPOSTLIKE(self, nil, %orig);
 }
 - (void)_onLikeButtonPressed:(id)arg1 {
-    CONFIRMFEEDPOSTLIKE(%orig);
+    CONFIRMFEEDPOSTLIKE(self, arg1, %orig);
 }
 %end
 %hook IGFeedItemUFICell
 - (void)UFIButtonBarDidTapOnLike:(id)arg1 {
-    CONFIRMFEEDPOSTLIKE(%orig);
+    CONFIRMFEEDPOSTLIKE(self, arg1, %orig);
 }
 %end
 %hook IGFeedItemUFICellConfigurableDelegateImpl
 - (void)feedItemUFICellDidTapLikeButton:(id)arg1 {
-    CONFIRMFEEDPOSTLIKE(%orig);
+    CONFIRMFEEDPOSTLIKE(self, arg1, %orig);
 }
 - (void)_performSingleTapLikeToggle {
-    CONFIRMFEEDPOSTLIKE(%orig);
+    CONFIRMFEEDPOSTLIKE(self, nil, %orig);
 }
 %end
 %hook IGFeedPhotoView
 - (void)_onDoubleTap {
-    CONFIRMFEEDDOUBLETAPLIKE(%orig);
+    CONFIRMFEEDDOUBLETAPLIKE(self, %orig);
 }
 - (void)_onDoubleTap:(id)arg1 {
-    CONFIRMFEEDDOUBLETAPLIKE(%orig);
+    CONFIRMFEEDDOUBLETAPLIKE(self, %orig);
 }
 %end
 %hook IGVideoPlayerOverlayContainerView
 - (void)_handleDoubleTapGesture:(id)arg1 {
-    CONFIRMFEEDDOUBLETAPLIKE(%orig);
+    CONFIRMFEEDDOUBLETAPLIKE(self, %orig);
 }
 %end
 
 // Liking reels
 %hook IGSundialViewerVideoCell
 - (void)controlsOverlayControllerDidTapLikeButton:(id)arg1 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSLIKE(self, arg1, %orig);
 }
 - (void)controlsOverlayControllerDidLongPressLikeButton:(id)arg1 gestureRecognizer:(id)arg2 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSLIKE(self, arg1, %orig);
 }
 - (void)gestureController:(id)arg1 didObserveDoubleTap:(id)arg2 {
-    CONFIRMREELSDOUBLETAPLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(self, %orig);
 }
 %end
 %hook IGSundialViewerPhotoCell
 - (void)controlsOverlayControllerDidTapLikeButton:(id)arg1 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSLIKE(self, arg1, %orig);
 }
 - (void)gestureController:(id)arg1 didObserveDoubleTap:(id)arg2 {
-    CONFIRMREELSDOUBLETAPLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(self, %orig);
 }
 - (void)swift_photoCell:(id)arg1 didObserveDoubleTapWithLocationInfo:(id)arg2 gestureRecognizer:(id)arg3 {
-    CONFIRMREELSDOUBLETAPLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(self, %orig);
 }
 %end
 %hook IGSundialViewerCarouselCell
 - (void)controlsOverlayControllerDidTapLikeButton:(id)arg1 {
-    CONFIRMREELSLIKE(%orig);
+    CONFIRMREELSLIKE(self, arg1, %orig);
 }
 - (void)gestureController:(id)arg1 didObserveDoubleTap:(id)arg2 {
-    CONFIRMREELSDOUBLETAPLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(self, %orig);
 }
 - (void)carouselCell:(id)arg1 didObserveDoubleTapWithLocationInfo:(id)arg2 gestureRecognizer:(id)arg3 {
-    CONFIRMREELSDOUBLETAPLIKE(%orig);
+    CONFIRMREELSDOUBLETAPLIKE(self, %orig);
 }
 %end
 
 // Liking comments
 %hook IGCommentCellController
 - (void)commentCell:(id)arg1 didTapLikeButton:(id)arg2 {
-    CONFIRMCOMMENTLIKE(%orig);
+    CONFIRMCOMMENTLIKE(arg1, arg2, %orig);
 }
 - (void)commentCell:(id)arg1 didTapLikedByButtonForUser:(id)arg2 {
-    CONFIRMCOMMENTLIKE(%orig);
+    CONFIRMCOMMENTLIKE(nil, nil, %orig);
 }
 - (void)commentCellDidLongPressOnLikeButton:(id)arg1 {
-    CONFIRMCOMMENTLIKE(%orig);
+    CONFIRMCOMMENTLIKE(nil, arg1, %orig);
 }
 - (void)commentCellDidEndLongPressOnLikeButton:(id)arg1 {
-    CONFIRMCOMMENTLIKE(%orig);
+    CONFIRMCOMMENTLIKE(nil, arg1, %orig);
 }
 - (void)commentCellDidDoubleTap:(id)arg1 {
-    CONFIRMCOMMENTLIKE(%orig);
+    CONFIRMCOMMENTLIKE(arg1, nil, %orig);
 }
 %end
 %hook IGFeedItemPreviewCommentCell
 - (void)_didTapLikeButton {
-    CONFIRMCOMMENTLIKE(%orig);
+    CONFIRMCOMMENTLIKE(self, nil, %orig);
 }
 %end
 
@@ -211,33 +416,30 @@ static void new_sciStoryLikeTap(id self, SEL _cmd, id button) {
     }
 
     BOOL isSelected = [button isKindOfClass:[UIButton class]] ? [(UIButton *)button isSelected] : NO;
-    if (!isSelected) {
-        orig_sciStoryLikeTap(self, _cmd, button);
-        return;
-    }
+    BOOL isUnlike = !isSelected;
 
     UIButton *btn = [button isKindOfClass:[UIButton class]] ? (UIButton *)button : nil;
     SEL setLikedSel = NSSelectorFromString(@"setIsLiked:animated:");
 
     [SCIUtils showConfirmation:^{
         if (btn) {
-            [btn setSelected:YES];
+            [btn setSelected:isSelected];
             if ([btn respondsToSelector:setLikedSel]) {
-                ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(btn, setLikedSel, YES, YES);
+                ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(btn, setLikedSel, isSelected, YES);
             }
         }
         orig_sciStoryLikeTap(self, _cmd, button);
-        if (SCIStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
+        if (!isUnlike && SCIStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
             SCIStoryMarkSeenForInteractionView((UIView *)button, @"advance_story_when_like_marked_seen");
         }
-    } title:@"Confirm Story Like"
-      message:@"Are you sure you want to like this story?"];
+    } title:(isUnlike ? @"Confirm Story Unlike" : @"Confirm Story Like")
+      message:(isUnlike ? @"Are you sure you want to unlike this story?" : @"Are you sure you want to like this story?")];
 
     if (btn) {
         [UIView performWithoutAnimation:^{
-            [btn setSelected:NO];
+            [btn setSelected:!isSelected];
             if ([btn respondsToSelector:setLikedSel]) {
-                ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(btn, setLikedSel, NO, NO);
+                ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(btn, setLikedSel, !isSelected, NO);
             }
         }];
     }
@@ -397,10 +599,18 @@ static void sciReelsLikeHandlerTap(id self, SEL _cmd, id context, id likeButton,
 
     __strong id strongContext = context;
     __strong id strongButton = likeButton;
-    [SCIUtils showConfirmation:^{
-        if (orig_sciReelsLikeHandlerTap) orig_sciReelsLikeHandlerTap(self, _cmd, strongContext, strongButton, willAnimate);
-    } title:@"Confirm Reel Like"
-      message:@"Are you sure you want to like this reel?"];
+    BOOL isUnlike = SCIFeedLikeIsUnlike(strongButton, strongContext);
+    SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like");
+    SCIPresentLikeToggleConfirmation(
+        isUnlike,
+        @"Confirm Reel Like",
+        @"Are you sure you want to like this reel?",
+        @"Confirm Reel Unlike",
+        @"Are you sure you want to unlike this reel?",
+        ^{
+            if (orig_sciReelsLikeHandlerTap) orig_sciReelsLikeHandlerTap(self, _cmd, strongContext, strongButton, willAnimate);
+        }
+    );
 }
 
 static void (*orig_sciReelsLikeHandlerTapCompletion)(id, SEL, id, id, BOOL, id) = NULL;
@@ -413,10 +623,18 @@ static void sciReelsLikeHandlerTapCompletion(id self, SEL _cmd, id context, id l
     __strong id strongContext = context;
     __strong id strongButton = likeButton;
     id strongCompletion = completion ? [completion copy] : nil;
-    [SCIUtils showConfirmation:^{
-        if (orig_sciReelsLikeHandlerTapCompletion) orig_sciReelsLikeHandlerTapCompletion(self, _cmd, strongContext, strongButton, willAnimate, strongCompletion);
-    } title:@"Confirm Reel Like"
-      message:@"Are you sure you want to like this reel?"];
+    BOOL isUnlike = SCIFeedLikeIsUnlike(strongButton, strongContext);
+    SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like");
+    SCIPresentLikeToggleConfirmation(
+        isUnlike,
+        @"Confirm Reel Like",
+        @"Are you sure you want to like this reel?",
+        @"Confirm Reel Unlike",
+        @"Are you sure you want to unlike this reel?",
+        ^{
+            if (orig_sciReelsLikeHandlerTapCompletion) orig_sciReelsLikeHandlerTapCompletion(self, _cmd, strongContext, strongButton, willAnimate, strongCompletion);
+        }
+    );
 }
 
 static void SCIInstallReelsSwiftLikeConfirmHookIfNeeded(void) {

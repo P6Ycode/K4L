@@ -414,9 +414,12 @@
 
 @interface IGSundialFeedViewController : UIViewController
 - (void)refreshControlDidEndFinishLoadingAnimation:(id)arg1;
+- (void)finishPullToRefreshLoading;
 @end
 
 @interface IGRefreshControl : UIControl
+@property (readonly, nonatomic) long long refreshState;
+- (void)finishLoading;
 @end
 
 @interface IGDirectThreadViewDrawingViewController : UIViewController

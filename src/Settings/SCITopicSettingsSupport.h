@@ -18,6 +18,7 @@ SCISetting *SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSource 
 UIMenu *SCIReelsTapControlMenu(void);
 UIMenu *SCINavigationIconOrderingMenu(void);
 UIMenu *SCISwipeBetweenTabsMenu(void);
+UIMenu *SCISwipeCloseCommentsDirectionMenu(void);
 UIMenu *SCICacheAutoClearMenu(void);
 UIMenu *SCIMediaVideoQualityMenu(void);
 UIMenu *SCIMediaPhotoQualityMenu(void);

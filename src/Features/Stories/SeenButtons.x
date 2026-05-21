@@ -277,6 +277,66 @@ static void SCIEnsureStoryOverlayAlphaObserver(UIView *overlayView) {
     }
 }
 
+static UIView *SCIFindRightmostNativeButtonInView(UIView *view, UIView *overlayView) {
+    if (!view || view.hidden || view.alpha < 0.01) return nil;
+
+    UIView *rightmost = nil;
+    CGFloat maxCenterX = 0.0;
+
+    BOOL isCandidate = [view isKindOfClass:[UIButton class]] || [view isKindOfClass:[UIControl class]];
+    if (!isCandidate) {
+        NSString *className = NSStringFromClass(view.class);
+        if ([className containsString:@"Button"] || [className containsString:@"Share"] || [className containsString:@"Like"]) {
+            isCandidate = YES;
+        }
+    }
+
+    if (isCandidate && CGRectGetWidth(view.frame) > 0.0) {
+        CGRect rect = [view convertRect:view.bounds toView:overlayView];
+        CGFloat centerX = CGRectGetMidX(rect);
+        if (centerX > CGRectGetWidth(overlayView.frame) * 0.5) {
+            rightmost = view;
+            maxCenterX = centerX;
+        }
+    }
+
+    for (UIView *subview in view.subviews) {
+        UIView *candidate = SCIFindRightmostNativeButtonInView(subview, overlayView);
+        if (candidate) {
+            CGRect rect = [candidate convertRect:candidate.bounds toView:overlayView];
+            CGFloat centerX = CGRectGetMidX(rect);
+            if (centerX > maxCenterX) {
+                maxCenterX = centerX;
+                rightmost = candidate;
+            }
+        }
+    }
+
+    return rightmost;
+}
+
+static CGFloat SCIGetStoriesCustomButtonX(UIView *overlayView, CGFloat size) {
+    UIView *footerContainer = nil;
+    @try {
+        footerContainer = [SCIUtils getIvarForObj:overlayView name:"_footerContainerView"];
+        if (![footerContainer isKindOfClass:[UIView class]]) {
+            id selectorFooter = SCIObjectForSelector(overlayView, @"footerContainerView");
+            footerContainer = [selectorFooter isKindOfClass:[UIView class]] ? (UIView *)selectorFooter : nil;
+        }
+    } @catch (__unused id e) {}
+
+    if (footerContainer) {
+        UIView *nativeBtn = SCIFindRightmostNativeButtonInView(footerContainer, overlayView);
+        if (nativeBtn) {
+            CGRect rect = [nativeBtn convertRect:nativeBtn.bounds toView:overlayView];
+            CGFloat centerX = CGRectGetMidX(rect);
+            return centerX - size / 2.0;
+        }
+    }
+
+    return CGRectGetWidth(overlayView.frame) - size - 6.0;
+}
+
 static CGRect SCIStorySeenBaseFrame(UIView *overlayView) {
     if (!overlayView) return CGRectZero;
 
@@ -320,7 +380,7 @@ static CGRect SCIStorySeenBaseFrame(UIView *overlayView) {
         }
     }
 
-    CGFloat x = CGRectGetWidth(overlayView.frame) - size - 7.0;
+    CGFloat x = SCIGetStoriesCustomButtonX(overlayView, size);
     return CGRectMake(x, y, size, size);
 }
 
@@ -1101,15 +1161,16 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
     }
     if (size <= 0.0) size = 38.0;
 
+    CGFloat spacingReduction = 2.0;
     CGFloat y = actionVisible ? CGRectGetMinY(storyActionButton.frame) : CGRectGetMinY(baseFrame);
     CGFloat nextX = actionVisible
-        ? (CGRectGetMinX(storyActionButton.frame) - size)
+        ? (CGRectGetMinX(storyActionButton.frame) - size + spacingReduction)
         : CGRectGetMinX(baseFrame);
 
     if (showSeenButton && seenButton) {
         seenButton.frame = CGRectMake(nextX, y, size, size);
         [overlayView bringSubviewToFront:seenButton];
-        nextX -= size;
+        nextX -= (size - spacingReduction);
     } else if (seenButton) {
         [seenButton removeFromSuperview];
         seenButton = nil;
@@ -1144,6 +1205,12 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
 
 - (void)dealloc {
     SCIRemoveStoryOverlayAlphaObserverIfNeeded((UIView *)self);
+    if (SCIStoryActiveOverlay() == (UIView *)self) {
+        SCIStorySetActiveOverlay(nil);
+    }
+    if (SCIActiveStoryOverlayView == (UIView *)self) {
+        SCIActiveStoryOverlayView = nil;
+    }
     %orig;
 }
 
@@ -1157,22 +1224,20 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
     if (gesture.state != UIGestureRecognizerStateBegan) return;
     SCIPlayButtonTappedHaptic();
     SCIStoryContext *context = SCIStoryContextFromOverlay((UIView *)self);
-    NSString *username = SCIStoryUsernameForContext(context);
-    if (username.length == 0) {
+    NSString *title = SCIStoryCurrentUserRuleConfirmationTitle(context);
+    NSString *message = SCIStoryCurrentUserRuleConfirmationMessage(context);
+    if (title.length == 0 || message.length == 0) {
         SCINotify(kSCINotificationStoryMarkSeen, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
         return;
     }
-    BOOL manualSeenEnabled = SCIManualStorySeenEnabled();
-    BOOL listed = SCIStoryManualSeenListContainsUsername(username, manualSeenEnabled);
-    NSString *listTitle = SCIStoryManualSeenListTitle(manualSeenEnabled);
-    NSString *title = listed ? [NSString stringWithFormat:@"Confirm Removal from %@", listTitle] : [NSString stringWithFormat:@"Confirm Addition to %@", listTitle];
-    NSString *message = listed
-        ? [NSString stringWithFormat:@"Do you want to remove @%@ from %@?", username, listTitle]
-        : [NSString stringWithFormat:@"Do you want to add @%@ to %@?", username, listTitle];
     [SCIUtils showConfirmation:^{
-        SCIStoryToggleUsernameForCurrentManualSeenMode(username);
-        NSString *verb = listed ? @"Removed" : @"Added";
-        SCINotify(kSCINotificationStoryMarkSeen, [NSString stringWithFormat:@"%@ @%@", verb, username], listTitle, @"circle_check_filled", SCINotificationToneSuccess);
+        NSString *notificationTitle = nil;
+        NSString *notificationSubtitle = nil;
+        if (!SCIStoryToggleCurrentUserRule(context, &notificationTitle, &notificationSubtitle)) {
+            SCINotify(kSCINotificationStoryMarkSeen, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+            return;
+        }
+        SCINotify(kSCINotificationStoryMarkSeen, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
         [(UIView *)self setNeedsLayout];
     } title:title message:message];
 }

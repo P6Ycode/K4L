@@ -433,37 +433,63 @@ UIViewController *SCIStoryManualSeenListViewController(void) {
     return [[SCIStoryManualSeenUsersViewController alloc] init];
 }
 
-NSArray *SCIStoryAppendCurrentUserMenuItem(NSArray *items) {
-    SCIStoryContext *context = SCIStoryContextFromOverlay(SCIStoryActiveOverlay());
-    if (!context) context = SCIStoryContextFromView(topMostController().view);
+static BOOL SCIStoryCurrentUserRuleState(SCIStoryContext *context, NSString **outUsername, NSString **outListTitle, BOOL *outListed, BOOL *outManualSeenEnabled) {
     NSString *username = SCIStoryUsernameForContext(context);
-    if (username.length == 0) return items;
+    if (username.length == 0) return NO;
 
     BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"no_seen_receipt"];
     BOOL listed = SCIStoryManualSeenListContainsUsername(username, manualSeenEnabled);
-    NSString *title = listed
-        ? [NSString stringWithFormat:@"Remove @%@ from %@", username, SCIStoryManualSeenListTitle(manualSeenEnabled)]
-        : [NSString stringWithFormat:@"Add @%@ to %@", username, SCIStoryManualSeenListTitle(manualSeenEnabled)];
+    NSString *listTitle = SCIStoryManualSeenListTitle(manualSeenEnabled);
 
-    Class menuItemCls = NSClassFromString(@"IGDSMenuItem");
-    if (!menuItemCls) return items;
-    void (^handler)(void) = ^{
-        SCIStoryToggleUsernameForCurrentManualSeenMode(username);
-        if (manualSeenEnabled && !listed) {
-            SCIStoryMarkContextAsSeen(context);
-        }
-        SCINotify(kSCINotificationStoryMarkSeen, listed ? @"Removed story user rule" : @"Added story user rule", nil, @"circle_check_filled", SCINotificationToneSuccess);
-    };
+    if (outUsername) *outUsername = username;
+    if (outListTitle) *outListTitle = listTitle;
+    if (outListed) *outListed = listed;
+    if (outManualSeenEnabled) *outManualSeenEnabled = manualSeenEnabled;
+    return YES;
+}
 
-    id item = nil;
-    @try {
-        SEL initSel = @selector(initWithTitle:image:handler:);
-        item = ((id (*)(id, SEL, id, id, id))objc_msgSend)([menuItemCls alloc], initSel, title, nil, handler);
-    } @catch (__unused NSException *exception) {
+NSString *SCIStoryCurrentUserRuleActionTitle(SCIStoryContext *context) {
+    NSString *listTitle = nil;
+    BOOL listed = NO;
+    if (!SCIStoryCurrentUserRuleState(context, NULL, &listTitle, &listed, NULL)) return nil;
+
+    return listed
+        ? [NSString stringWithFormat:@"Remove from %@", listTitle]
+        : [NSString stringWithFormat:@"Add to %@", listTitle];
+}
+
+NSString *SCIStoryCurrentUserRuleConfirmationTitle(SCIStoryContext *context) {
+    NSString *listTitle = nil;
+    BOOL listed = NO;
+    if (!SCIStoryCurrentUserRuleState(context, NULL, &listTitle, &listed, NULL)) return nil;
+
+    return listed
+        ? [NSString stringWithFormat:@"Confirm Removal from %@", listTitle]
+        : [NSString stringWithFormat:@"Confirm Addition to %@", listTitle];
+}
+
+NSString *SCIStoryCurrentUserRuleConfirmationMessage(SCIStoryContext *context) {
+    NSString *username = nil;
+    NSString *listTitle = nil;
+    BOOL listed = NO;
+    if (!SCIStoryCurrentUserRuleState(context, &username, &listTitle, &listed, NULL)) return nil;
+
+    return listed
+        ? [NSString stringWithFormat:@"Do you want to remove @%@ from %@?", username, listTitle]
+        : [NSString stringWithFormat:@"Do you want to add @%@ to %@?", username, listTitle];
+}
+
+BOOL SCIStoryToggleCurrentUserRule(SCIStoryContext *context, NSString **notificationTitle, NSString **notificationSubtitle) {
+    NSString *username = nil;
+    NSString *listTitle = nil;
+    BOOL listed = NO;
+    if (!SCIStoryCurrentUserRuleState(context, &username, &listTitle, &listed, NULL)) return NO;
+
+    SCIStoryToggleUsernameForCurrentManualSeenMode(username);
+    if (notificationTitle) {
+        NSString *verb = listed ? @"Removed" : @"Added";
+        *notificationTitle = [NSString stringWithFormat:@"%@ @%@", verb, username];
     }
-    if (!item) return items;
-
-    NSMutableArray *out = [items mutableCopy] ?: [NSMutableArray array];
-    [out addObject:item];
-    return out.copy;
+    if (notificationSubtitle) *notificationSubtitle = listTitle;
+    return YES;
 }

@@ -68,6 +68,7 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionDownloadGallery,
                 kSCIActionExpand,
                 kSCIActionViewThumbnail,
+                kSCIActionToggleStorySeenUserRule,
                 kSCIActionOpenTopicSettings
             ];
         case SCIActionButtonSourceDirect:
@@ -162,7 +163,9 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
         : @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia];
     NSArray<NSString *> *moreActions = (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
         ? @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings]
-        : @[kSCIActionExpand, kSCIActionOpenTopicSettings];
+        : ((source == SCIActionButtonSourceStories)
+            ? @[kSCIActionExpand, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings]
+            : @[kSCIActionExpand, kSCIActionOpenTopicSettings]);
 
     [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"download"
                                                               title:@"Download"

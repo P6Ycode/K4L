@@ -1,5 +1,6 @@
 #import "SCIActionSectionEditViewController.h"
 #import "SCIActionSectionIconPickerViewController.h"
+#import "SCIInstagramIconCatalog.h"
 #import "SCIBulkActionMenuEditViewController.h"
 #import "SCITopicSettingsSupport.h"
 #import "../Shared/UI/SCISwitch.h"
@@ -29,8 +30,12 @@ static char kSCISectionEditSwitchAssocKey;
 }
 
 - (NSString *)displayTitleForSectionIconName:(NSString *)iconName {
-    SCIActionDescriptor *descriptor = [SCIActionDescriptor descriptorForIdentifier:iconName];
-    return descriptor.title ?: iconName;
+    for (SCIActionDescriptor *descriptor in [SCIActionDescriptor availableSectionIconDescriptors]) {
+        if ([descriptor.iconName isEqualToString:iconName]) {
+            return descriptor.title ?: iconName;
+        }
+    }
+    return [SCIInstagramIconCatalog displayNameForIconName:iconName];
 }
 
 - (void)showIconPicker {

@@ -35,6 +35,7 @@
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionCopyCaption title:@"Copy Caption" iconName:@"caption"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionOpenTopicSettings title:@"Settings" iconName:@"settings"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionRepost title:@"Repost" iconName:@"repost"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionToggleStorySeenUserRule title:@"Toggle Story User Rule" iconName:@"eye"],
             [SCIActionDescriptor descriptorWithIdentifier:@"more" title:@"More" iconName:@"more"],
             [SCIActionDescriptor descriptorWithIdentifier:@"action" title:@"Actions" iconName:@"action"]
         ];

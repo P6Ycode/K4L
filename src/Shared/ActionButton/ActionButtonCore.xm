@@ -16,6 +16,7 @@
 #import "../Gallery/SCIGalleryFile.h"
 #import "../Gallery/SCIGalleryOriginController.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
+#import "../Stories/SCIStoryContext.h"
 #import "../UI/SCINotificationCenter.h"
 #import "../UI/SCIChrome.h"
 
@@ -36,6 +37,7 @@ NSString * const kSCIActionViewThumbnail = @"view_thumbnail";
 NSString * const kSCIActionCopyCaption = @"copy_caption";
 NSString * const kSCIActionOpenTopicSettings = @"open_topic_settings";
 NSString * const kSCIActionRepost = @"repost";
+NSString * const kSCIActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
 NSString * const SCIActionButtonConfigurationDidChangeNotification = @"SCIActionButtonConfigurationDidChangeNotification";
 
 static const void *kSCIActionButtonContextAssocKey = &kSCIActionButtonContextAssocKey;
@@ -289,9 +291,20 @@ static NSString *SCIBaseActionIdentifierForBulkChild(NSString *identifier) {
     return identifier;
 }
 
+static SCIStoryContext *SCIStoryContextForActionButtonContext(SCIActionButtonContext *context) {
+    if (context.source != SCIActionButtonSourceStories) return nil;
+    SCIStoryContext *storyContext = SCIStoryContextFromView(context.view);
+    if (storyContext) return storyContext;
+    return SCIStoryContextFromOverlay(SCIStoryActiveOverlay());
+}
+
 static NSString *SCIActionButtonDisplayTitleForContext(NSString *identifier,
                                                        SCIActionButtonContext *context,
                                                        SCIResolvedMediaEntry *currentEntry) {
+    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
+        NSString *title = SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context));
+        return title ?: SCIActionDescriptorDisplayTitle(identifier, context.settingsTitle);
+    }
     if ([identifier isEqualToString:kSCIActionCopyMedia]) {
         BOOL isVideo = (currentEntry.videoURL != nil);
         if (isVideo) {
@@ -1193,6 +1206,11 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 		return NO;
 	}
 
+    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
+        return context.source == SCIActionButtonSourceStories &&
+               SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context)).length > 0;
+    }
+
     if (entries.count == 0) return NO;
 
 	NSInteger idx = SCIClampedIndex(currentIndex, (NSInteger)entries.count);
@@ -1272,10 +1290,14 @@ static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
 											  SCIActionButtonConfiguration *configuration,
 											  NSArray<NSString *> *visibleActions,
 											  NSString *defaultIdentifier) {
-	return [NSString stringWithFormat:@"%@|%@|%@|%@",
+    NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleStorySeenUserRule]
+        ? SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context))
+        : @"";
+	return [NSString stringWithFormat:@"%@|%@|%@|%@|%@",
 			SCIActionButtonTopicKeyForSource(context.source),
 			defaultIdentifier ?: @"",
 			[visibleActions componentsJoinedByString:@","],
+            dynamicStoryRuleTitle ?: @"",
 			configuration.dictionaryRepresentation.description ?: @""];
 }
 
@@ -1514,7 +1536,8 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 			return YES;
 		}
 
-		NSInteger clampedIndex = SCIClampedIndex(resolvedIndex, (NSInteger)playerItems.count);
+		NSInteger previewIndex = SCIClampedIndex(SCIResolveCurrentIndexForContext(context), (NSInteger)previewEntries.count);
+		NSInteger clampedIndex = SCIClampedIndex(previewIndex, (NSInteger)playerItems.count);
 		SCINotify(identifier, @"Opened media viewer", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
 		[SCIFullScreenMediaPlayer showMediaItems:playerItems
                                 startingAtIndex:clampedIndex
@@ -1604,8 +1627,34 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 	return NO;
 }
 
+static BOOL SCIExecuteToggleStorySeenUserRuleAction(SCIActionButtonContext *context) {
+    SCIStoryContext *storyContext = SCIStoryContextForActionButtonContext(context);
+    NSString *title = SCIStoryCurrentUserRuleConfirmationTitle(storyContext);
+    NSString *message = SCIStoryCurrentUserRuleConfirmationMessage(storyContext);
+    if (title.length == 0 || message.length == 0) {
+        SCINotify(kSCIActionToggleStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+
+    [SCIUtils showConfirmation:^{
+        NSString *notificationTitle = nil;
+        NSString *notificationSubtitle = nil;
+        if (!SCIStoryToggleCurrentUserRule(storyContext, &notificationTitle, &notificationSubtitle)) {
+            SCINotify(kSCIActionToggleStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+            return;
+        }
+        SCINotify(kSCIActionToggleStorySeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
+        [storyContext.overlayView setNeedsLayout];
+    } title:title message:message];
+    return YES;
+}
+
 BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *context, BOOL isDefaultTap) {
 	if (identifier.length == 0 || !context) return NO;
+
+    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
+        return SCIExecuteToggleStorySeenUserRuleAction(context);
+    }
 
 	id media = SCIResolveMediaForContext(context);
 	NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);

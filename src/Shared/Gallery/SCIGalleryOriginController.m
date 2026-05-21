@@ -183,11 +183,26 @@ static NSString *SCIGalleryProfileURLStringForUsername(NSString *username) {
 }
 
 static NSString *SCIGalleryMediaURLStringFromMetadata(SCIGallerySaveMetadata *metadata) {
-    if (metadata.sourceMediaURLString.length > 0) return metadata.sourceMediaURLString;
-    if (metadata.sourceMediaCode.length > 0) {
-        NSString *pathComponent = (metadata.source == SCIGallerySourceReels) ? @"reel" : @"p";
-        return [NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, metadata.sourceMediaCode];
+    if (metadata.sourceMediaURLString.length > 0) {
+        SCILog(@"General", @"[SCInsta Gallery] Origin URL from stored metadata URL source=%d url=%@", metadata.source, metadata.sourceMediaURLString);
+        return metadata.sourceMediaURLString;
     }
+    if (metadata.sourceMediaCode.length > 0) {
+        NSString *pathComponent = nil;
+        if (metadata.source == SCIGallerySourceReels) {
+            pathComponent = @"reel";
+        } else if (metadata.source == SCIGallerySourceFeed || metadata.source == SCIGallerySourceProfile || metadata.source == SCIGallerySourceOther) {
+            pathComponent = @"p";
+        }
+        if (pathComponent.length == 0) {
+            SCILog(@"General", @"[SCInsta Gallery] Not generating origin URL for source=%d code=%@", metadata.source, metadata.sourceMediaCode);
+            return nil;
+        }
+        NSString *urlString = [NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, metadata.sourceMediaCode];
+        SCILog(@"General", @"[SCInsta Gallery] Origin URL generated from code source=%d code=%@ url=%@", metadata.source, metadata.sourceMediaCode, urlString);
+        return urlString;
+    }
+    SCILog(@"General", @"[SCInsta Gallery] No origin URL metadata available source=%d", metadata.source);
     return nil;
 }
 
@@ -237,6 +252,9 @@ static NSString *SCIGalleryMediaURLStringFromMetadata(SCIGallerySaveMetadata *me
     }
 
     NSURL *mediaURL = SCIGalleryRecursiveURLForSelectors(media, @[@"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl"], 0);
+    if (mediaURL) {
+        SCILog(@"General", @"[SCInsta Gallery] Populated origin URL from media object source=%d url=%@", metadata.source, mediaURL.absoluteString);
+    }
     if (!mediaURL) {
         NSString *generatedURLString = SCIGalleryMediaURLStringFromMetadata(metadata);
         if (generatedURLString.length > 0) {

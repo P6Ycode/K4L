@@ -605,7 +605,6 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 %group SCITweakGeneralMenuHooks
 
 // Modern IGDS app menus
-extern NSArray *SCIStoryAppendCurrentUserMenuItem(NSArray *items);
 %hook IGDSMenu
 - (id)initWithMenuItems:(NSArray<IGDSMenuItem *> *)originalObjs edr:(BOOL)edr headerLabelText:(id)headerLabelText {
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
@@ -634,8 +633,7 @@ extern NSArray *SCIStoryAppendCurrentUserMenuItem(NSArray *items);
 
     }
 
-    NSArray *finalItems = SCIStoryAppendCurrentUserMenuItem([filteredObjs copy]);
-    return %orig(finalItems, edr, headerLabelText);
+    return %orig([filteredObjs copy], edr, headerLabelText);
 }
 %end
 

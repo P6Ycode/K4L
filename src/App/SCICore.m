@@ -136,6 +136,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"hide_ads_stories": @(YES),
         @"hide_ads_reels": @(YES),
         @"hide_ads_explore": @(YES),
+        @"comments_swipe_to_close_direction": @"both",
         @"hide_comment_commerce_carousel": @(NO),
         @"hide_reels_shopping_cta": @(NO),
         @"hide_meta_ai_direct": @(NO),
