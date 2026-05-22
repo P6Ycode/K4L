@@ -140,10 +140,6 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
         ]},
         @{@"title": @"Profile", @"items": @[
             SCINotificationItem(kSCINotificationProfileCopyInfo, @"Copy Profile Info", @"copy"),
-            SCINotificationItem(kSCINotificationProfileViewPicture, @"View Picture", @"photo"),
-            SCINotificationItem(kSCINotificationProfileSharePicture, @"Share Picture", @"share"),
-            SCINotificationItem(kSCINotificationProfileGalleryPicture, @"Save Picture to Gallery", @"media"),
-            SCINotificationItem(kSCINotificationProfileOpenSettings, @"Open Profile Settings", @"settings"),
         ]},
         @{@"title": @"Media", @"items": @[
             SCINotificationItem(kSCINotificationMediaPreviewSavePhotos, @"Save to Photos", @"download"),

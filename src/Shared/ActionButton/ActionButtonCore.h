@@ -2,6 +2,7 @@
 
 #import <UIKit/UIKit.h>
 #import "ActionButtonLookupUtils.h"
+#import "../UI/SCIChrome.h"
 
 typedef NS_ENUM(NSInteger, SCIActionButtonSource) {
 	SCIActionButtonSourceFeed = 1,
@@ -29,7 +30,16 @@ FOUNDATION_EXPORT NSString * const kSCIActionCopyCaption;
 FOUNDATION_EXPORT NSString * const kSCIActionOpenTopicSettings;
 FOUNDATION_EXPORT NSString * const kSCIActionRepost;
 FOUNDATION_EXPORT NSString * const kSCIActionToggleStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyInfo;
+FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyID;
+FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyUsername;
+FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyName;
+FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyBio;
+FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyLink;
 FOUNDATION_EXPORT NSString * const SCIActionButtonConfigurationDidChangeNotification;
+
+@interface SCIActionMenuButton : SCIChromeButton
+@end
 
 typedef id _Nullable (^SCIActionButtonMediaResolver)(id context);
 typedef NSInteger (^SCIActionButtonIndexResolver)(id context);

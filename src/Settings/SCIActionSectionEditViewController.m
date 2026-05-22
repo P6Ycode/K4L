@@ -153,6 +153,7 @@ static char kSCISectionEditSwitchAssocKey;
     SCIActionMenuSection *section = [self currentSection];
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     UIListContentConfiguration *config = cell.defaultContentConfiguration;
+    UIImage *deferredIconAccessoryImage = nil;
     cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
     cell.tintColor = [SCIUtils SCIColor_Primary];
     cell.selectedBackgroundView = [self selectionBackgroundView];
@@ -172,11 +173,16 @@ static char kSCISectionEditSwitchAssocKey;
             cell.accessoryView = field;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
         } else if (indexPath.row == 1) {
-            config.text = @"Icon";
-            config.secondaryText = [self displayTitleForSectionIconName:section.iconName];
-            config.image = SCISettingsIcon(section.iconName);
-            config.imageProperties.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+            config.text = @"Choose Icon";
+            config.secondaryText = nil;
+            config.image = nil;
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+
+            UIImage *iconImage = SCISettingsIcon(section.iconName);
+            if (iconImage) {
+                deferredIconAccessoryImage = iconImage;
+            }
+
             cell.selectionStyle = UITableViewCellSelectionStyleDefault;
         } else if (indexPath.row == 2) {
             config.text = @"Collapsible";
@@ -224,6 +230,19 @@ static char kSCISectionEditSwitchAssocKey;
     }
 
     cell.contentConfiguration = config;
+    if (deferredIconAccessoryImage) {
+        UIImageView *iconView = [[UIImageView alloc] initWithImage:deferredIconAccessoryImage];
+        iconView.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+        iconView.contentMode = UIViewContentModeScaleAspectFit;
+        iconView.translatesAutoresizingMaskIntoConstraints = NO;
+        [cell.contentView addSubview:iconView];
+        [NSLayoutConstraint activateConstraints:@[
+            [iconView.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+            [iconView.trailingAnchor constraintEqualToAnchor:cell.contentView.layoutMarginsGuide.trailingAnchor],
+            [iconView.widthAnchor constraintEqualToConstant:24.0],
+            [iconView.heightAnchor constraintEqualToConstant:24.0]
+        ]];
+    }
     return cell;
 }
 

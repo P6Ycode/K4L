@@ -43,6 +43,8 @@ static __weak UIView *SCIActiveStoryOverlayView = nil;
 static void (*orig_setHasSentAMessageOrUpdate)(id, SEL, BOOL) = NULL;
 static void (*orig_setHasSentAMessage)(id, SEL, BOOL) = NULL;
 
+static id SCIKVCObject(id target, NSString *key);
+static id SCIDirectCurrentMessageFromController(UIViewController *controller);
 void SCIMarkStoryAsSeenForViewWithAdvancePref(UIView *view, NSString *advancePrefKey);
 
 static inline BOOL SCIManualMessageSeenEnabled(void) {
@@ -61,18 +63,79 @@ static inline BOOL SCIAutoSeenOnSendEnabled(void) {
     return SCIManualMessageSeenEnabled() && [SCIUtils getBoolPref:@"seen_auto_on_send"];
 }
 
-static void SCITriggerAutoSeenForThreadController(id controller) {
-    if (!SCIAutoSeenOnSendEnabled() || !controller) return;
-    if (![controller respondsToSelector:@selector(markLastMessageAsSeen)]) return;
+static id SCIFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited) {
+    if (!root) return nil;
+
+    NSValue *pointerValue = [NSValue valueWithNonretainedObject:root];
+    if ([visited containsObject:pointerValue]) return nil;
+    [visited addObject:pointerValue];
+
+    SEL markSelector = @selector(markLastMessageAsSeen);
+    if ([root respondsToSelector:markSelector]) return root;
+
+    if ([root isKindOfClass:[UIViewController class]]) {
+        for (UIViewController *child in [(UIViewController *)root childViewControllers]) {
+            id target = SCIFindDirectMarkSeenTarget(child, visited);
+            if (target) return target;
+        }
+    }
+
+    for (NSString *key in @[
+        @"_messageListViewController",
+        @"messageListViewController",
+        @"_directMessageListViewController",
+        @"directMessageListViewController",
+        @"_messageListController",
+        @"messageListController",
+        @"_messageList",
+        @"messageList"
+    ]) {
+        id candidate = [key hasPrefix:@"_"] ? [SCIUtils getIvarForObj:root name:key.UTF8String] : SCIKVCObject(root, key);
+        id target = SCIFindDirectMarkSeenTarget(candidate, visited);
+        if (target) return target;
+    }
+
+    return nil;
+}
+
+static BOOL SCIMarkDirectThreadMessagesAsSeen(id controller) {
+    id target = SCIFindDirectMarkSeenTarget(controller, [NSMutableSet set]);
+    if (!target) {
+        SCILog(@"General", @"[SCInsta MessagesSeen] No markLastMessageAsSeen target for controller=%@<%p>",
+               NSStringFromClass([controller class]),
+               controller);
+        return NO;
+    }
 
     kSCISeenAutoBypassCount++;
-    ((void (*)(id, SEL))objc_msgSend)(controller, @selector(markLastMessageAsSeen));
+    @try {
+        ((void (*)(id, SEL))objc_msgSend)(target, @selector(markLastMessageAsSeen));
+        SCILog(@"General", @"[SCInsta MessagesSeen] Marked via target=%@<%p> controller=%@<%p>",
+               NSStringFromClass([target class]),
+               target,
+               NSStringFromClass([controller class]),
+               controller);
+    } @catch (NSException *exception) {
+        if (kSCISeenAutoBypassCount > 0) kSCISeenAutoBypassCount--;
+        SCILog(@"General", @"[SCInsta MessagesSeen] markLastMessageAsSeen failed target=%@<%p> exception=%@",
+               NSStringFromClass([target class]),
+               target,
+               exception);
+        return NO;
+    }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (kSCISeenAutoBypassCount > 0) {
             kSCISeenAutoBypassCount--;
         }
     });
+
+    return YES;
+}
+
+static void SCITriggerAutoSeenForThreadController(id controller) {
+    if (!SCIAutoSeenOnSendEnabled() || !controller) return;
+    SCIMarkDirectThreadMessagesAsSeen(controller);
 }
 
 static void SCIHandleDidSendMessageState(id controller, BOOL sent) {
@@ -95,6 +158,19 @@ static void SCIHooked_setHasSentAMessage(id self, SEL _cmd, BOOL sent) {
         orig_setHasSentAMessage(self, _cmd, sent);
     }
     SCIHandleDidSendMessageState(self, sent);
+}
+
+static UIMenu *SCIDirectSeenButtonMenu(void) {
+    UIImage *settingsImage = [SCIAssetUtils instagramIconNamed:@"settings" pointSize:22.0];
+    UIAction *settingsAction = [UIAction actionWithTitle:@"Messages Settings"
+                                                   image:settingsImage
+                                              identifier:nil
+                                                 handler:^(__unused UIAction *action) {
+        SCINotify(kSCINotificationOpenTopicSettings, @"Opened settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
+        [SCIUtils showSettingsForTopicTitle:@"Messages"];
+    }];
+
+    return [UIMenu menuWithTitle:@"" children:@[settingsAction]];
 }
 
 static BOOL SCIOverlayIsDirectVisualOverlay(UIView *overlayView) {
@@ -1035,6 +1111,8 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         seenButton.accessibilityIdentifier = @"sci-seen-btn";
         chromeButton.bubbleColor = UIColor.clearColor;
         chromeButton.iconTint = UIColor.labelColor;
+        chromeButton.menu = SCIDirectSeenButtonMenu();
+        chromeButton.showsMenuAsPrimaryAction = NO;
         [new_items addObject:seenButton];
     }
 
@@ -1047,9 +1125,11 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
     SCIPlayButtonTappedHaptic();
     UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:self];
     if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)]) {
-        [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
-
-        SCINotify(kSCINotificationThreadMessagesMarkSeen, @"Marked messages as seen", nil, @"circle_check_filled", SCINotificationToneSuccess);
+        if (SCIMarkDirectThreadMessagesAsSeen(nearestVC)) {
+            SCINotify(kSCINotificationThreadMessagesMarkSeen, @"Marked messages as seen", nil, @"circle_check_filled", SCINotificationToneSuccess);
+        } else {
+            SCINotify(kSCINotificationThreadMessagesMarkSeen, @"Unable to mark messages as seen", nil, @"error_filled", SCINotificationToneError);
+        }
     }
 }
 %end
@@ -1131,7 +1211,9 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         UIImage *seenImage = [SCIAssetUtils instagramIconNamed:kSCISeenMessagesBarIconResource pointSize:24.0];
         SCISetSeenButtonImage(seenButton, seenImage, @"Story seen custom icon assigned");
     }
-    if (showSeenButton) SCIApplyStorySeenButtonStyle(seenButton);
+    if (showSeenButton) {
+        SCIApplyStorySeenButtonStyle(seenButton);
+    }
 
     NSArray<NSDictionary *> *storyMentions = SCIStoryMentionsForOverlay(overlayView);
     BOOL showMentionsButton = SCIStoryMentionsButtonEnabled() && storyMentions.count > 0;
@@ -1145,7 +1227,9 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         [mentionsButton removeFromSuperview];
         mentionsButton = nil;
     }
-    if (showMentionsButton) SCIApplyStorySeenButtonStyle(mentionsButton);
+    if (showMentionsButton) {
+        SCIApplyStorySeenButtonStyle(mentionsButton);
+    }
 
     UIButton *storyActionButton = (UIButton *)[overlayView viewWithTag:kSCIStoriesActionButtonTag];
     BOOL actionVisible = [storyActionButton isKindOfClass:[UIButton class]]
@@ -1153,7 +1237,6 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         && storyActionButton.superview == overlayView
         && CGRectGetWidth(storyActionButton.frame) > 0.0
         && CGRectGetHeight(storyActionButton.frame) > 0.0;
-
     CGRect baseFrame = SCIStorySeenBaseFrame(overlayView);
     CGFloat size = CGRectGetWidth(baseFrame);
     if (actionVisible) {

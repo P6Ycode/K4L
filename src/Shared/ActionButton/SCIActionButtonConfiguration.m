@@ -90,6 +90,7 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionCopyMedia,
                 kSCIActionDownloadGallery,
                 kSCIActionExpand,
+                kSCIActionProfileCopyInfo,
                 kSCIActionOpenTopicSettings
             ];
     }
@@ -152,15 +153,19 @@ void SCIActionButtonSetConfiguredBulkCopyActionsForSource(SCIActionButtonSource 
 
 NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActionButtonSource source) {
     NSMutableArray<SCIActionMenuSection *> *sections = [NSMutableArray array];
-    NSArray<NSString *> *downloadActions = @[
-        kSCIActionDownloadLibrary,
-        kSCIActionDownloadShare,
-        kSCIActionDownloadGallery,
-        kSCIActionViewThumbnail
-    ];
-    NSArray<NSString *> *copyActions = (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
-        ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionCopyCaption]
-        : @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia];
+    NSArray<NSString *> *downloadActions = (source == SCIActionButtonSourceProfile)
+        ? @[kSCIActionDownloadLibrary, kSCIActionDownloadShare, kSCIActionDownloadGallery]
+        : @[
+            kSCIActionDownloadLibrary,
+            kSCIActionDownloadShare,
+            kSCIActionDownloadGallery,
+            kSCIActionViewThumbnail
+        ];
+    NSArray<NSString *> *copyActions = (source == SCIActionButtonSourceProfile)
+        ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionProfileCopyInfo]
+        : ((source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
+            ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionCopyCaption]
+            : @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia]);
     NSArray<NSString *> *moreActions = (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
         ? @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings]
         : ((source == SCIActionButtonSourceStories)

@@ -28,6 +28,12 @@
         _listIcon.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
         _listIcon.contentMode = UIViewContentModeScaleAspectFit;
 
+        UIImageSymbolConfiguration *chevronConfig = [UIImageSymbolConfiguration configurationWithPointSize:14.0 weight:UIImageSymbolWeightRegular];
+        _listChevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right" withConfiguration:chevronConfig]];
+        _listChevron.translatesAutoresizingMaskIntoConstraints = NO;
+        _listChevron.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+        _listChevron.contentMode = UIViewContentModeScaleAspectFit;
+
         _listTitle = [[UILabel alloc] init];
         _listTitle.translatesAutoresizingMaskIntoConstraints = NO;
         _listTitle.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
@@ -52,22 +58,14 @@
         [_textStack setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
         [_textStack setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
-        UIImageSymbolConfiguration *chevCfg = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightSemibold];
-        _listChevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right" withConfiguration:chevCfg]];
-        _listChevron.translatesAutoresizingMaskIntoConstraints = NO;
-        _listChevron.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
-        _listChevron.contentMode = UIViewContentModeScaleAspectFit;
-        [_listChevron setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-        [_listChevron setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-
         _listStack = [[UIStackView alloc] initWithArrangedSubviews:@[_listIcon, _textStack, _listChevron]];
         _listStack.translatesAutoresizingMaskIntoConstraints = NO;
         _listStack.axis = UILayoutConstraintAxisHorizontal;
         _listStack.alignment = UIStackViewAlignmentCenter;
         _listStack.spacing = 12;
-        _listStack.layoutMargins = UIEdgeInsetsMake(0, 16, 0, 12);
+        _listStack.layoutMargins = UIEdgeInsetsMake(0, 16, 0, 24);
         _listStack.layoutMarginsRelativeArrangement = YES;
-        [_listStack setCustomSpacing:4 afterView:_textStack];
+        [_listStack setCustomSpacing:12.0 afterView:_textStack];
         [self.contentView addSubview:_listStack];
 
         UIView *sep = [[UIView alloc] init];
@@ -84,7 +82,7 @@
             [_listIcon.widthAnchor constraintEqualToConstant:32],
             [_listIcon.heightAnchor constraintEqualToConstant:32],
             [_listChevron.widthAnchor constraintEqualToConstant:12],
-            [_listChevron.heightAnchor constraintEqualToConstant:12],
+            [_listChevron.heightAnchor constraintEqualToConstant:20],
 
             [sep.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:60],
             [sep.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],

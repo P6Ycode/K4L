@@ -38,6 +38,12 @@ NSString * const kSCIActionCopyCaption = @"copy_caption";
 NSString * const kSCIActionOpenTopicSettings = @"open_topic_settings";
 NSString * const kSCIActionRepost = @"repost";
 NSString * const kSCIActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
+NSString * const kSCIActionProfileCopyInfo = @"profile_copy_info";
+NSString * const kSCIActionProfileCopyID = @"profile_copy_id";
+NSString * const kSCIActionProfileCopyUsername = @"profile_copy_username";
+NSString * const kSCIActionProfileCopyName = @"profile_copy_name";
+NSString * const kSCIActionProfileCopyBio = @"profile_copy_bio";
+NSString * const kSCIActionProfileCopyLink = @"profile_copy_link";
 NSString * const SCIActionButtonConfigurationDidChangeNotification = @"SCIActionButtonConfigurationDidChangeNotification";
 
 static const void *kSCIActionButtonContextAssocKey = &kSCIActionButtonContextAssocKey;
@@ -61,6 +67,7 @@ static NSDictionary<NSString *, NSString *> *SCIPendingRepostFeedback = nil;
 static void SCIPauseDirectPlaybackFromController(UIViewController *controller);
 static void SCIResumeDirectPlaybackFromController(UIViewController *controller);
 static BOOL SCIActionIdentifierOpensPreview(NSString *identifier);
+static id SCIResolveMediaForContext(SCIActionButtonContext *context);
 static UIViewController *SCIActionContextPresenter(SCIActionButtonContext *context);
 static UIView *SCIActionContextAnchorView(SCIActionButtonContext *context);
 void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
@@ -68,9 +75,6 @@ void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
 SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button);
 
 @implementation SCIResolvedMediaEntry
-@end
-
-@interface SCIActionMenuButton : SCIChromeButton
 @end
 
 @implementation SCIActionMenuButton
@@ -220,6 +224,187 @@ static NSString *SCICopiedDownloadURLTitleForSource(SCIActionButtonSource source
     return [NSString stringWithFormat:@"%@ download %@ copied", noun, urlWord];
 }
 
+static NSString *SCIProfileStringValue(id value) {
+    if (!value) return nil;
+    if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] > 0 ? value : nil;
+    if ([value respondsToSelector:@selector(stringValue)]) {
+        NSString *stringValue = [value stringValue];
+        return stringValue.length > 0 ? stringValue : nil;
+    }
+    return nil;
+}
+
+static NSString *SCIProfileUserPK(id user) {
+    NSString *pk = SCIProfileStringValue(SCIKVCObject(user, @"pk"));
+    if (pk.length == 0) pk = SCIProfileStringValue(SCIKVCObject(user, @"id"));
+    return pk;
+}
+
+static NSString *SCIProfileUsername(id user) {
+    return SCIProfileStringValue(SCIKVCObject(user, @"username"));
+}
+
+static NSString *SCIProfileFullName(id user) {
+    for (NSString *key in @[@"fullName", @"full_name", @"name"]) {
+        NSString *name = SCIProfileStringValue(SCIKVCObject(user, key));
+        if (name.length > 0) return name;
+    }
+    return nil;
+}
+
+static NSString *SCIProfileBiography(id user) {
+    for (NSString *key in @[@"biography", @"bio"]) {
+        NSString *bio = SCIProfileStringValue(SCIKVCObject(user, key));
+        if (bio.length > 0) return bio;
+    }
+    return nil;
+}
+
+static NSURL *SCIProfileURL(id user) {
+    NSString *username = SCIProfileUsername(user);
+    if (username.length == 0) return nil;
+    NSString *encoded = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
+    if (encoded.length == 0) return nil;
+    return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/", encoded]];
+}
+
+static NSNumber *SCIProfileNumberValue(id value) {
+    if (!value) return nil;
+    if ([value isKindOfClass:[NSNumber class]]) return value;
+    if ([value respondsToSelector:@selector(integerValue)]) return @([value integerValue]);
+    return nil;
+}
+
+static NSString *SCIProfileInfoString(NSNumber *value) {
+    if (!value) return nil;
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    return [formatter stringFromNumber:value];
+}
+
+static NSString *SCIProfilePrivacyText(id user) {
+    NSNumber *privacyStatus = SCIProfileNumberValue(SCIKVCObject(user, @"privacyStatus"));
+    if (privacyStatus) {
+        if (privacyStatus.integerValue == 2) return @"Private Profile";
+        if (privacyStatus.integerValue == 1) return @"Public Profile";
+    }
+
+    id privateValue = SCIKVCObject(user, @"isPrivate");
+    if (!privateValue) privateValue = SCIKVCObject(user, @"privateAccount");
+    if (!privateValue) privateValue = SCIKVCObject(user, @"isPrivateAccount");
+    if ([privateValue respondsToSelector:@selector(boolValue)]) {
+        return [privateValue boolValue] ? @"Private Profile" : @"Public Profile";
+    }
+
+    return nil;
+}
+
+static UIAction *SCIProfileDisabledInfoAction(NSString *title, NSString *resourceName) {
+    UIAction *action = [UIAction actionWithTitle:title
+                                           image:[SCIAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"info") pointSize:22.0]
+                                      identifier:nil
+                                         handler:^(__unused UIAction *menuAction) {}];
+    action.attributes = UIMenuElementAttributesDisabled;
+    return action;
+}
+
+static NSArray<UIMenuElement *> *SCIProfileInfoMenuElements(id user) {
+    if (!user) return @[];
+
+    NSMutableArray<UIMenuElement *> *infoItems = [NSMutableArray array];
+    NSString *privacyText = SCIProfilePrivacyText(user);
+    if (privacyText.length > 0) {
+        [infoItems addObject:SCIProfileDisabledInfoAction(privacyText, [privacyText containsString:@"Private"] ? @"lock" : @"unlock")];
+    }
+
+    NSString *followers = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followerCount")));
+    if (followers.length > 0) {
+        [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Followers: %@", followers], @"users")];
+    }
+
+    NSString *following = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followingCount")));
+    if (following.length > 0) {
+        [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Following: %@", following], @"users")];
+    }
+
+    return infoItems;
+}
+
+static NSString *SCIProfileInfoSignature(id user) {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    NSString *privacy = SCIProfilePrivacyText(user);
+    if (privacy.length > 0) [parts addObject:privacy];
+    NSString *followers = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followerCount")));
+    if (followers.length > 0) [parts addObject:[NSString stringWithFormat:@"followers:%@", followers]];
+    NSString *following = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followingCount")));
+    if (following.length > 0) [parts addObject:[NSString stringWithFormat:@"following:%@", following]];
+    return [parts componentsJoinedByString:@"|"];
+}
+
+static NSString *SCIProfileDefaultCopyInfoIdentifier(void) {
+    NSString *identifier = [SCIUtils getStringPref:@"action_button_profile_default_copy_info_action"] ?: kSCIActionProfileCopyUsername;
+    NSDictionary<NSString *, NSString *> *legacyMap = @{
+        @"id": kSCIActionProfileCopyID,
+        @"username": kSCIActionProfileCopyUsername,
+        @"name": kSCIActionProfileCopyName,
+        @"bio": kSCIActionProfileCopyBio,
+        @"link": kSCIActionProfileCopyLink
+    };
+    identifier = legacyMap[identifier] ?: identifier;
+    NSSet<NSString *> *supported = [NSSet setWithArray:@[
+        kSCIActionProfileCopyID,
+        kSCIActionProfileCopyUsername,
+        kSCIActionProfileCopyName,
+        kSCIActionProfileCopyBio,
+        kSCIActionProfileCopyLink
+    ]];
+    return [supported containsObject:identifier] ? identifier : kSCIActionProfileCopyUsername;
+}
+
+static NSString *SCIProfileCopyValueForIdentifier(id user, NSString *identifier) {
+    if ([identifier isEqualToString:kSCIActionProfileCopyID]) return SCIProfileUserPK(user);
+    if ([identifier isEqualToString:kSCIActionProfileCopyName]) return SCIProfileFullName(user);
+    if ([identifier isEqualToString:kSCIActionProfileCopyBio]) return SCIProfileBiography(user);
+    if ([identifier isEqualToString:kSCIActionProfileCopyLink]) return SCIProfileURL(user).absoluteString;
+    return SCIProfileUsername(user);
+}
+
+static NSString *SCIProfileCopySuccessTitleForIdentifier(NSString *identifier) {
+    if ([identifier isEqualToString:kSCIActionProfileCopyID]) return @"ID copied";
+    if ([identifier isEqualToString:kSCIActionProfileCopyName]) return @"Name copied";
+    if ([identifier isEqualToString:kSCIActionProfileCopyBio]) return @"Bio copied";
+    if ([identifier isEqualToString:kSCIActionProfileCopyLink]) return @"Profile link copied";
+    return @"Username copied";
+}
+
+static BOOL SCIIsProfileCopyActionIdentifier(NSString *identifier) {
+    return [@[
+        kSCIActionProfileCopyInfo,
+        kSCIActionProfileCopyID,
+        kSCIActionProfileCopyUsername,
+        kSCIActionProfileCopyName,
+        kSCIActionProfileCopyBio,
+        kSCIActionProfileCopyLink
+    ] containsObject:identifier];
+}
+
+static BOOL SCIExecuteProfileCopyAction(NSString *identifier, SCIActionButtonContext *context) {
+    id user = SCIResolveMediaForContext(context);
+    if (!user) {
+        SCINotify(kSCIActionProfileCopyInfo, @"Profile unavailable", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+    NSString *copyIdentifier = [identifier isEqualToString:kSCIActionProfileCopyInfo] ? SCIProfileDefaultCopyInfoIdentifier() : identifier;
+    NSString *value = SCIProfileCopyValueForIdentifier(user, copyIdentifier);
+    if (value.length == 0) {
+        SCINotify(kSCIActionProfileCopyInfo, @"Nothing to copy", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+    UIPasteboard.generalPasteboard.string = value;
+    SCINotify(kSCIActionProfileCopyInfo, SCIProfileCopySuccessTitleForIdentifier(copyIdentifier), nil, @"circle_check_filled", SCINotificationToneSuccess);
+    return YES;
+}
+
 static BOOL SCIActionMediaLooksLikeReel(id media) {
     if (!media) return NO;
     for (NSString *selectorName in @[@"isReelMedia", @"isClipsMedia", @"isClipsItem", @"isReel", @"isInstagramReel"]) {
@@ -245,7 +430,11 @@ static SCIGallerySaveMetadata *SCIGalleryMetadata(SCIActionButtonSource source, 
 	if (username.length > 0) {
 		meta.sourceUsername = username;
 	}
-    [SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+    if (source == SCIActionButtonSourceProfile) {
+        [SCIGalleryOriginController populateProfileMetadata:meta username:username user:media];
+    } else {
+        [SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+    }
 	return meta;
 }
 
@@ -1210,6 +1399,12 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
         return context.source == SCIActionButtonSourceStories &&
                SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context)).length > 0;
     }
+    if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
+        return media != nil;
+    }
+    if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionOpenTopicSettings]) {
+        return SCIResolvedSettingsTitleForContext(context).length > 0;
+    }
 
     if (entries.count == 0) return NO;
 
@@ -1276,12 +1471,23 @@ static NSString *SCIResolvedDefaultActionIdentifier(NSArray<NSString *> *visible
 	if (visibleIdentifiers.count == 0) return nil;
 
 	NSString *saved = [SCIUtils getStringPref:SCIDefaultActionPrefKeyForSource(source)];
+    if (source == SCIActionButtonSourceProfile && saved.length > 0) {
+        NSDictionary<NSString *, NSString *> *legacyMap = @{
+            @"copy_info": kSCIActionProfileCopyInfo,
+            @"view_picture": kSCIActionExpand,
+            @"share_picture": kSCIActionDownloadShare,
+            @"save_picture_gallery": kSCIActionDownloadGallery,
+            @"profile_settings": kSCIActionOpenTopicSettings
+        };
+        saved = legacyMap[saved] ?: saved;
+    }
 	if ([saved isEqualToString:kSCIActionNone]) return kSCIActionNone;
 	if ([saved isEqualToString:kSCIActionDownloadAll] && [visibleIdentifiers containsObject:kSCIActionDownloadAllLibrary]) {
         return kSCIActionDownloadAllLibrary;
     }
 	if (saved.length > 0 && [visibleIdentifiers containsObject:saved]) return saved;
 	if (saved.length > 0) return kSCIActionNone;
+    if (source == SCIActionButtonSourceProfile) return kSCIActionNone;
 	if ([visibleIdentifiers containsObject:kSCIActionDownloadLibrary]) return kSCIActionDownloadLibrary;
 	return visibleIdentifiers.firstObject;
 }
@@ -1293,11 +1499,15 @@ static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
     NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleStorySeenUserRule]
         ? SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context))
         : @"";
-	return [NSString stringWithFormat:@"%@|%@|%@|%@|%@",
+    NSString *profileInfoSignature = (context.source == SCIActionButtonSourceProfile)
+        ? SCIProfileInfoSignature(SCIResolveMediaForContext(context))
+        : @"";
+	return [NSString stringWithFormat:@"%@|%@|%@|%@|%@|%@",
 			SCIActionButtonTopicKeyForSource(context.source),
 			defaultIdentifier ?: @"",
 			[visibleActions componentsJoinedByString:@","],
             dynamicStoryRuleTitle ?: @"",
+            profileInfoSignature ?: @"",
 			configuration.dictionaryRepresentation.description ?: @""];
 }
 
@@ -1655,6 +1865,19 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
     if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
         return SCIExecuteToggleStorySeenUserRuleAction(context);
     }
+    if (context.source == SCIActionButtonSourceProfile && SCIIsProfileCopyActionIdentifier(identifier)) {
+        return SCIExecuteProfileCopyAction(identifier, context);
+    }
+    if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) {
+        NSString *settingsTitle = SCIResolvedSettingsTitleForContext(context);
+        if (settingsTitle.length == 0) {
+            SCINotify(identifier, @"Settings unavailable", nil, @"error_filled", SCINotificationToneError);
+            return YES;
+        }
+        SCINotify(identifier, @"Opened settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
+        [SCIUtils showSettingsForTopicTitle:settingsTitle];
+        return YES;
+    }
 
 	id media = SCIResolveMediaForContext(context);
 	NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);
@@ -1885,17 +2108,38 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		for (NSString *identifier in identifiers) {
 			if (![visibleActions containsObject:identifier]) continue;
 
-			UIAction *menuAction = [UIAction actionWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
-													   image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
-												  identifier:nil
-													 handler:^(__unused UIAction *action) {
-				UIButton *strongButton = weakButton;
-				if (strongButton) {
-					objc_setAssociatedObject(strongButton, kSCIActionButtonLastMenuActionAssocKey, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
-				}
-				SCIExecuteActionIdentifier(identifier, context, NO);
-			}];
-			[groupElements addObject:menuAction];
+            if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
+                NSMutableArray<UIMenuElement *> *copyChildren = [NSMutableArray array];
+                for (NSString *copyIdentifier in @[kSCIActionProfileCopyID, kSCIActionProfileCopyUsername, kSCIActionProfileCopyName, kSCIActionProfileCopyBio, kSCIActionProfileCopyLink]) {
+                    [copyChildren addObject:[UIAction actionWithTitle:SCIActionButtonTitleForIdentifier(copyIdentifier)
+                                                                image:SCIActionButtonMenuIconForContext(copyIdentifier, context, 22.0)
+                                                           identifier:nil
+                                                              handler:^(__unused UIAction *action) {
+                        UIButton *strongButton = weakButton;
+                        if (strongButton) {
+                            objc_setAssociatedObject(strongButton, kSCIActionButtonLastMenuActionAssocKey, copyIdentifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                        }
+                        SCIExecuteActionIdentifier(copyIdentifier, context, NO);
+                    }]];
+                }
+                [groupElements addObject:[UIMenu menuWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
+                                                         image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
+                                                    identifier:nil
+                                                       options:0
+                                                      children:copyChildren]];
+            } else {
+                UIAction *menuAction = [UIAction actionWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
+                                                           image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
+                                                      identifier:nil
+                                                         handler:^(__unused UIAction *action) {
+                    UIButton *strongButton = weakButton;
+                    if (strongButton) {
+                        objc_setAssociatedObject(strongButton, kSCIActionButtonLastMenuActionAssocKey, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                    }
+                    SCIExecuteActionIdentifier(identifier, context, NO);
+                }];
+                [groupElements addObject:menuAction];
+            }
 		}
 
 		if (groupElements.count == 0) continue;
@@ -1951,6 +2195,17 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		}
 		firstGroup = NO;
 	}
+
+    if (context.source == SCIActionButtonSourceProfile) {
+        NSArray<UIMenuElement *> *profileInfoItems = SCIProfileInfoMenuElements(media);
+        if (profileInfoItems.count > 0) {
+            [menuElements addObject:[UIMenu menuWithTitle:@""
+                                                    image:nil
+                                               identifier:nil
+                                                  options:UIMenuOptionsDisplayInline
+                                                 children:profileInfoItems]];
+        }
+    }
 
 	if (menuElements.count == 0) {
 		for (NSString *identifier in visibleActions) {

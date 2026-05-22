@@ -3,6 +3,7 @@
 #import "../SCITopicSettingsSupport.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 
 static NSString * const kSCIProfileActionNone = @"none";
 static NSString * const kSCIProfileActionCopyInfo = @"copy_info";
@@ -73,7 +74,8 @@ static UIMenu *SCIProfileDefaultCopyInfoMenu(void) {
     return SCITopicNavigationSetting(@"Profile", @"user_circle", 24.0, @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Profile Action Button" icon:SCISettingsIcon(@"action") defaultsKey:@"action_button_profile_enabled"],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIProfileActionDefaultMenu()], SCISettingsIcon(@"action")),
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(@"action_button_profile_default_action", @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile))], SCISettingsIcon(@"action")),
+            SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceProfile, @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceProfile)),
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Copy Info Default" icon:SCISettingsIcon(@"copy") menu:SCIProfileDefaultCopyInfoMenu()], SCISettingsIcon(@"copy"))
         ], @"Choose what tapping the action button does. Copy Info Default controls what gets copied when Default Tap Action is Copy Info."),
         SCITopicSection(@"Profile Picture", @[

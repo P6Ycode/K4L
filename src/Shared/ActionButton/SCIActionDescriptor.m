@@ -36,6 +36,12 @@
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionOpenTopicSettings title:@"Settings" iconName:@"settings"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionRepost title:@"Repost" iconName:@"repost"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionToggleStorySeenUserRule title:@"Toggle Story User Rule" iconName:@"eye"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyInfo title:@"Copy Info" iconName:@"info"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyID title:@"Copy ID" iconName:@"key"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyUsername title:@"Copy Username" iconName:@"username"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyName title:@"Copy Name" iconName:@"text"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyBio title:@"Copy Bio" iconName:@"caption"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyLink title:@"Copy Profile URL" iconName:@"link"],
             [SCIActionDescriptor descriptorWithIdentifier:@"more" title:@"More" iconName:@"more"],
             [SCIActionDescriptor descriptorWithIdentifier:@"action" title:@"Actions" iconName:@"action"]
         ];
@@ -56,6 +62,7 @@
     return @[
         [SCIActionDescriptor descriptorWithIdentifier:@"action" title:@"Actions" iconName:@"action"],
         [SCIActionDescriptor descriptorWithIdentifier:@"copy" title:@"Copy" iconName:@"copy"],
+        [SCIActionDescriptor descriptorWithIdentifier:@"key" title:@"Key" iconName:@"key"],
         [SCIActionDescriptor descriptorWithIdentifier:@"caption" title:@"Caption" iconName:@"caption"],
         [SCIActionDescriptor descriptorWithIdentifier:@"download" title:@"Download" iconName:@"download"],
         [SCIActionDescriptor descriptorWithIdentifier:@"share" title:@"Share" iconName:@"share"],

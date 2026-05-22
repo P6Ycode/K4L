@@ -9,9 +9,9 @@
 #import "../../Shared/Gallery/SCIGalleryFile.h"
 #import "../../Shared/Gallery/SCIGalleryOriginController.h"
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
+#import "../../Shared/ActionButton/ActionButtonCore.h"
+#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 #import "../../AssetUtils.h"
-
-/// TODO: fix hide UI on capture on profile action button
 
 static NSString * const kSCIProfileActionButtonDefaultKey = @"action_button_profile_default_action";
 static NSString * const kSCIProfileActionButtonDefaultCopyInfoKey = @"action_button_profile_default_copy_info_action";
@@ -131,130 +131,6 @@ static NSURL *SCIProfileURL(id user) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/", encoded]];
 }
 
-static NSURL *SCIProfilePictureURL(id user) {
-    return [SCIUtils getBestProfilePictureURLForUser:user];
-}
-
-static NSString *SCIProfilePictureExtension(NSURL *url) {
-    NSString *extension = url.pathExtension.lowercaseString;
-    return extension.length > 0 ? extension : @"jpg";
-}
-
-static NSString *SCIProfileInfoString(NSNumber *value) {
-    if (!value) return nil;
-    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
-    formatter.numberStyle = NSNumberFormatterDecimalStyle;
-    return [formatter stringFromNumber:value];
-}
-
-static NSString *SCIProfileResolvedDefaultActionIdentifier(void) {
-    NSString *identifier = [SCIUtils getStringPref:kSCIProfileActionButtonDefaultKey] ?: kSCIProfileActionNone;
-    NSSet<NSString *> *supported = [NSSet setWithArray:@[
-        kSCIProfileActionNone,
-        kSCIProfileActionCopyInfo,
-        kSCIProfileActionViewPicture,
-        kSCIProfileActionSharePicture,
-        kSCIProfileActionSavePictureToGallery,
-        kSCIProfileActionOpenSettings
-    ]];
-    return [supported containsObject:identifier] ? identifier : kSCIProfileActionNone;
-}
-
-static NSString *SCIProfileResolvedDefaultCopyInfoIdentifier(void) {
-    NSString *identifier = [SCIUtils getStringPref:kSCIProfileActionButtonDefaultCopyInfoKey] ?: kSCIProfileCopyInfoUsername;
-    NSSet<NSString *> *supported = [NSSet setWithArray:@[
-        kSCIProfileCopyInfoID,
-        kSCIProfileCopyInfoUsername,
-        kSCIProfileCopyInfoName,
-        kSCIProfileCopyInfoBio,
-        kSCIProfileCopyInfoLink
-    ]];
-    return [supported containsObject:identifier] ? identifier : kSCIProfileCopyInfoUsername;
-}
-
-static NSString *SCIProfilePrivacyText(id user) {
-    NSNumber *privacyStatus = SCIProfileNumberValue(SCIProfileSafeValue(user, @"privacyStatus"));
-    if (privacyStatus) {
-        if (privacyStatus.integerValue == 2) return @"Private Profile";
-        if (privacyStatus.integerValue == 1) return @"Public Profile";
-    }
-
-    id privateValue = SCIProfileSafeValue(user, @"isPrivate");
-    if (!privateValue) privateValue = SCIProfileSafeValue(user, @"privateAccount");
-    if (!privateValue) privateValue = SCIProfileSafeValue(user, @"isPrivateAccount");
-    if ([privateValue respondsToSelector:@selector(boolValue)]) {
-        return [privateValue boolValue] ? @"Private Profile" : @"Public Profile";
-    }
-
-    return nil;
-}
-
-static void SCIProfileCopyValue(NSString *value, NSString *successTitle) {
-    if (value.length == 0) {
-        SCINotify(kSCINotificationProfileCopyInfo, @"Nothing to copy", nil, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-        return;
-    }
-    UIPasteboard.generalPasteboard.string = value;
-    SCINotify(kSCINotificationProfileCopyInfo, successTitle, nil, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
-}
-
-static void SCIProfileExecuteCopyInfoAction(id user, NSString *identifier) {
-    if ([identifier isEqualToString:kSCIProfileCopyInfoID]) {
-        SCIProfileCopyValue(SCIProfileUserPK(user), @"ID copied");
-    } else if ([identifier isEqualToString:kSCIProfileCopyInfoName]) {
-        SCIProfileCopyValue(SCIProfileFullName(user), @"Name copied");
-    } else if ([identifier isEqualToString:kSCIProfileCopyInfoBio]) {
-        SCIProfileCopyValue(SCIProfileBiography(user), @"Bio copied");
-    } else if ([identifier isEqualToString:kSCIProfileCopyInfoLink]) {
-        SCIProfileCopyValue(SCIProfileURL(user).absoluteString, @"Profile link copied");
-    } else {
-        SCIProfileCopyValue(SCIProfileUsername(user), @"Username copied");
-    }
-}
-
-static SCIGallerySaveMetadata *SCIProfilePictureMetadata(id user) {
-    SCIGallerySaveMetadata *metadata = [[SCIGallerySaveMetadata alloc] init];
-    metadata.source = (int16_t)SCIGallerySourceProfile;
-    [SCIGalleryOriginController populateProfileMetadata:metadata username:SCIProfileUsername(user) user:user];
-    return metadata;
-}
-
-static void SCIProfileSharePicture(id user) {
-    NSURL *url = SCIProfilePictureURL(user);
-    if (!url) {
-        SCINotify(kSCINotificationProfileSharePicture, @"Picture not found", nil, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-        return;
-    }
-    SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:share showProgress:SCINotificationIsEnabled(kSCINotificationProfileSharePicture)];
-    delegate.notificationIdentifier = kSCINotificationProfileSharePicture;
-    delegate.pendingGallerySaveMetadata = SCIProfilePictureMetadata(user);
-    [delegate downloadFileWithURL:url fileExtension:SCIProfilePictureExtension(url) hudLabel:nil];
-}
-
-static void SCIProfileSavePictureToGallery(id user) {
-    NSURL *url = SCIProfilePictureURL(user);
-    if (!url) {
-        SCINotify(kSCINotificationProfileGalleryPicture, @"Picture not found", nil, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-        return;
-    }
-
-    SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:saveToGallery showProgress:SCINotificationIsEnabled(kSCINotificationProfileGalleryPicture)];
-    delegate.notificationIdentifier = kSCINotificationProfileGalleryPicture;
-    delegate.pendingGallerySaveMetadata = SCIProfilePictureMetadata(user);
-    [delegate downloadFileWithURL:url fileExtension:SCIProfilePictureExtension(url) hudLabel:nil];
-}
-
-static UIView *SCIProfileSourceView(id sourceObject) {
-    if ([sourceObject isKindOfClass:[UIView class]]) {
-        return (UIView *)sourceObject;
-    }
-    if ([sourceObject isKindOfClass:[UIViewController class]]) {
-        return [(UIViewController *)sourceObject view];
-    }
-    id view = SCIProfileSafeValue(sourceObject, @"view");
-    return [view isKindOfClass:[UIView class]] ? (UIView *)view : nil;
-}
-
 static UIViewController *SCIProfileSourceController(id sourceObject, UIView *sourceView) {
     if ([sourceObject isKindOfClass:[UIViewController class]]) {
         return (UIViewController *)sourceObject;
@@ -276,26 +152,7 @@ static UIViewController *SCIProfileSourceController(id sourceObject, UIView *sou
     return controller;
 }
 
-static void SCIProfileViewPicture(id user, id sourceObject) {
-    NSURL *url = SCIProfilePictureURL(user);
-    if (!url) {
-        SCINotify(kSCINotificationProfileViewPicture, @"Picture not found", nil, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-        return;
-    }
-
-    UIView *sourceView = SCIProfileSourceView(sourceObject);
-    UIViewController *sourceController = SCIProfileSourceController(sourceObject, sourceView);
-    SCINotify(kSCINotificationProfileViewPicture, @"Opened profile picture", nil, @"photo", SCINotificationToneForIconResource(@"photo"));
-    [SCIFullScreenMediaPlayer showRemoteImageURL:url
-                                        metadata:SCIProfilePictureMetadata(user)
-                                  playbackSource:SCIFullScreenPlaybackSourceProfile
-                                      sourceView:sourceView
-                                      controller:sourceController
-                                   pausePlayback:nil
-                                  resumePlayback:nil];
-}
-
-@interface SCIProfileHeaderActionButton : UIButton
+@interface SCIProfileHeaderActionButton : SCIActionMenuButton
 @property (nonatomic, weak) id sourceObject;
 @property (nonatomic, assign) BOOL sciDidConfigure;
 @end
@@ -325,18 +182,6 @@ static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button
     [super setBounds:bounds];
 }
 
-- (void)layoutSubviews {
-    [super layoutSubviews];
-
-    self.imageView.contentMode = UIViewContentModeCenter;
-    CGRect bounds = self.bounds;
-    CGRect imageFrame = CGRectMake(floor((CGRectGetWidth(bounds) - kSCIProfileActionIconPointSize) / 2.0),
-                                   floor((CGRectGetHeight(bounds) - kSCIProfileActionIconPointSize) / 2.0),
-                                   kSCIProfileActionIconPointSize,
-                                   kSCIProfileActionIconPointSize);
-    self.imageView.frame = imageFrame;
-}
-
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (self.window && !self.sciDidConfigure) {
@@ -364,125 +209,28 @@ static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button
 
 @end
 
-static UIAction *SCIProfileDisabledInfoAction(NSString *title, NSString *resourceName) {
-    UIAction *action = [UIAction actionWithTitle:title image:SCIProfileMenuIcon(resourceName) identifier:nil handler:^(__unused UIAction *menuAction) {}];
-    action.attributes = UIMenuElementAttributesDisabled;
-    return action;
-}
-
-static UIMenu *SCIProfileCopyInfoMenu(id user) {
-    NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
-    [children addObject:[UIAction actionWithTitle:@"Copy ID" image:SCIProfileMenuIcon(@"key") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileExecuteCopyInfoAction(user, kSCIProfileCopyInfoID);
-    }]];
-    [children addObject:[UIAction actionWithTitle:@"Copy Username" image:SCIProfileMenuIcon(@"username") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileExecuteCopyInfoAction(user, kSCIProfileCopyInfoUsername);
-    }]];
-    [children addObject:[UIAction actionWithTitle:@"Copy Name" image:SCIProfileMenuIcon(@"text") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileExecuteCopyInfoAction(user, kSCIProfileCopyInfoName);
-    }]];
-    [children addObject:[UIAction actionWithTitle:@"Copy Bio" image:SCIProfileMenuIcon(@"caption") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileExecuteCopyInfoAction(user, kSCIProfileCopyInfoBio);
-    }]];
-    [children addObject:[UIAction actionWithTitle:@"Copy Profile URL" image:SCIProfileMenuIcon(@"link") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileExecuteCopyInfoAction(user, kSCIProfileCopyInfoLink);
-    }]];
-
-    return [UIMenu menuWithTitle:@"Copy Info" image:SCIProfileMenuIcon(@"copy") identifier:nil options:0 children:children];
-}
-
-static UIMenu *SCIProfileActionMenu(id sourceObject) {
-    id user = SCIProfileResolvedUserFromObject(sourceObject, 0);
-    if (!user) {
-        UIAction *empty = [UIAction actionWithTitle:@"Profile unavailable" image:nil identifier:nil handler:^(__unused UIAction *action) {}];
-        empty.attributes = UIMenuElementAttributesDisabled;
-        return [UIMenu menuWithTitle:@"" children:@[empty]];
-    }
-
-    NSMutableArray<UIMenuElement *> *items = [NSMutableArray array];
-    [items addObject:SCIProfileCopyInfoMenu(user)];
-
-    [items addObject:[UIAction actionWithTitle:@"View Picture" image:SCIProfileMenuIcon(@"photo") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileViewPicture(user, sourceObject);
-    }]];
-
-    [items addObject:[UIAction actionWithTitle:@"Share Picture" image:SCIProfileMenuIcon(@"share") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileSharePicture(user);
-    }]];
-
-    [items addObject:[UIAction actionWithTitle:@"Save to Gallery" image:SCIProfileMenuIcon(@"media") identifier:nil handler:^(__unused UIAction *action) {
-        SCIProfileSavePictureToGallery(user);
-    }]];
-
-    [items addObject:[UIAction actionWithTitle:@"Profile Settings" image:SCIProfileMenuIcon(@"settings") identifier:nil handler:^(__unused UIAction *action) {
-        SCINotify(kSCINotificationProfileOpenSettings, @"Opened profile settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
-        [SCIUtils showSettingsForTopicTitle:@"Profile"];
-    }]];
-
-    NSMutableArray<UIMenuElement *> *infoItems = [NSMutableArray array];
-    NSString *privacyText = SCIProfilePrivacyText(user);
-    if (privacyText.length > 0) {
-        [infoItems addObject:SCIProfileDisabledInfoAction(privacyText,
-                                                          [privacyText containsString:@"Private"] ? @"lock" : @"unlock")];
-    }
-
-    NSString *followers = SCIProfileInfoString(SCIProfileNumberValue(SCIProfileSafeValue(user, @"followerCount")));
-    if (followers.length > 0) {
-        [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Followers: %@", followers], @"users")];
-    }
-
-    NSString *following = SCIProfileInfoString(SCIProfileNumberValue(SCIProfileSafeValue(user, @"followingCount")));
-    if (following.length > 0) {
-        [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Following: %@", following], @"users")];
-    }
-
-    if (infoItems.count > 0) {
-        [items addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:infoItems]];
-    }
-
-    return [UIMenu menuWithTitle:@"" children:items];
-}
-
-static void SCIExecuteProfileDefaultAction(SCIProfileHeaderActionButton *button) {
-    id user = SCIProfileResolvedUserFromObject(button.sourceObject ?: button, 0);
-    if (!user) return;
-
-    NSString *identifier = SCIProfileResolvedDefaultActionIdentifier();
-    if ([identifier isEqualToString:kSCIProfileActionCopyInfo]) {
-        SCIProfileExecuteCopyInfoAction(user, SCIProfileResolvedDefaultCopyInfoIdentifier());
-    } else if ([identifier isEqualToString:kSCIProfileActionViewPicture]) {
-        SCIProfileViewPicture(user, button.sourceObject ?: button);
-    } else if ([identifier isEqualToString:kSCIProfileActionSharePicture]) {
-        SCIProfileSharePicture(user);
-    } else if ([identifier isEqualToString:kSCIProfileActionSavePictureToGallery]) {
-        SCIProfileSavePictureToGallery(user);
-    } else if ([identifier isEqualToString:kSCIProfileActionOpenSettings]) {
-        SCINotify(kSCINotificationProfileOpenSettings, @"Opened profile settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
-        [SCIUtils showSettingsForTopicTitle:@"Profile"];
-    }
-}
-
-static void SCIProfileDefaultTapHandler(id target, SEL _cmd) {
-    SCIExecuteProfileDefaultAction((SCIProfileHeaderActionButton *)target);
-}
-
-static UIImage *SCIProfileButtonIconForDefaultAction(NSString *defaultIdentifier) {
-    NSString *resourceName = @"action";
-
-    if ([defaultIdentifier isEqualToString:kSCIProfileActionCopyInfo]) {
-        resourceName = @"copy";
-    } else if ([defaultIdentifier isEqualToString:kSCIProfileActionViewPicture]) {
-        resourceName = @"photo";
-    } else if ([defaultIdentifier isEqualToString:kSCIProfileActionSharePicture]) {
-        resourceName = @"share";
-    } else if ([defaultIdentifier isEqualToString:kSCIProfileActionSavePictureToGallery]) {
-        resourceName = @"media";
-    } else if ([defaultIdentifier isEqualToString:kSCIProfileActionOpenSettings]) {
-        resourceName = @"settings";
-    }
-
-    return [SCIAssetUtils instagramIconNamed:resourceName
-                                   pointSize:kSCIProfileActionIconPointSize];
+static SCIActionButtonContext *SCIProfileActionContext(SCIProfileHeaderActionButton *button) {
+    SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
+    __weak SCIProfileHeaderActionButton *weakButton = button;
+    context.source = SCIActionButtonSourceProfile;
+    context.view = button;
+    context.controller = SCIProfileSourceController(button.sourceObject ?: button, button);
+    context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceProfile);
+    context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile);
+    context.mediaResolver = ^id (__unused SCIActionButtonContext *resolvedContext) {
+        SCIProfileHeaderActionButton *strongButton = weakButton;
+        return SCIProfileResolvedUserFromObject(strongButton.sourceObject ?: strongButton, 0);
+    };
+    context.visibilityResolver = ^BOOL(__unused SCIActionButtonContext *resolvedContext,
+                                       NSString *identifier,
+                                       __unused id media,
+                                       NSArray *entries,
+                                       __unused NSInteger currentIndex) {
+        if ([identifier isEqualToString:kSCIActionProfileCopyInfo]) return YES;
+        if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) return YES;
+        return entries.count > 0;
+    };
+    return context;
 }
 
 static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button) {
@@ -495,23 +243,9 @@ static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button
     }
 
     button.hidden = NO;
-    NSString *defaultIdentifier = SCIProfileResolvedDefaultActionIdentifier();
-    UIImage *image = SCIProfileButtonIconForDefaultAction(defaultIdentifier);
-    [button setImage:image forState:UIControlStateNormal];
-    button.menu = SCIProfileActionMenu(button.sourceObject ?: button);
-
-    button.showsMenuAsPrimaryAction = [defaultIdentifier isEqualToString:kSCIProfileActionNone];
-    [button removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];
-    if (!button.showsMenuAsPrimaryAction) {
-        [button addTarget:button action:@selector(_sci_profileButtonTap) forControlEvents:UIControlEventTouchUpInside];
-    }
+    SCIApplyButtonStyle(button, SCIActionButtonSourceProfile);
+    SCIConfigureActionButton(button, SCIProfileActionContext(button));
 }
-
-@implementation SCIProfileHeaderActionButton (TapAction)
-- (void)_sci_profileButtonTap {
-    SCIExecuteProfileDefaultAction(self);
-}
-@end
 
 static id SCIProfileNavigationButtonWrapperForView(UIView *view, id sampleWrapper) {
     Class wrapperClass = NSClassFromString(@"IGProfileNavigationHeaderViewButtonSwift.IGProfileNavigationHeaderViewButton");
@@ -543,7 +277,9 @@ static void (*orig_profileHeaderConfigure)(id, SEL, id, id, id, BOOL);
 static void (*orig_profileHeaderLayoutSubviews)(id, SEL);
 
 static SCIProfileHeaderActionButton *SCIProfileBuildHeaderActionButton(id sourceObject) {
-    SCIProfileHeaderActionButton *button = [SCIProfileHeaderActionButton buttonWithType:UIButtonTypeSystem];
+    SCIProfileHeaderActionButton *button = [[SCIProfileHeaderActionButton alloc] initWithSymbol:@""
+                                                                                      pointSize:kSCIProfileActionIconPointSize
+                                                                                       diameter:kSCIProfileActionButtonHeight];
     button.accessibilityIdentifier = @"scinsta-profile-action-button";
     button.translatesAutoresizingMaskIntoConstraints = YES;
     button.frame = CGRectMake(0.0, 0.0, kSCIProfileActionButtonWidth, kSCIProfileActionButtonHeight);

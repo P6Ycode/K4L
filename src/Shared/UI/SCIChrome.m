@@ -275,6 +275,7 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 	} else {
 		self.layer.shadowPath = nil;
 	}
+
 }
 
 @end

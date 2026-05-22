@@ -243,7 +243,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 	}
 
 	button.frame = CGRectMake(SCIGetStoriesCustomButtonX(overlayView, size), y, size, size);
-	SCIApplyButtonStyle(button, SCIActionButtonSourceDirect);
+	SCIApplyButtonStyle(button, SCIActionButtonSourceStories);
 }
 
 %group SCIStoriesActionButtonHooks
