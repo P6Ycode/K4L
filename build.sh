@@ -96,8 +96,8 @@ ensure_flexing_submodule() {
     fi
 }
 
-build_lazy_flex_library() {
-    echo -e '\033[1m\033[32mBuilding lazy libFLEX.dylib...\033[0m'
+build_flex_library() {
+    echo -e '\033[1m\033[32mBuilding libFLEX.dylib...\033[0m'
     make -C "$ROOT_DIR/modules/FLEXing/libflex" clean
     make -C "$ROOT_DIR/modules/FLEXing/libflex" DEBUG=0 FINALPACKAGE=1
 }
@@ -275,6 +275,7 @@ then
     OPT_STRIP_EXTENSIONS=0
     OPT_DEV=0
     OPT_BUILDONLY=0
+    OPT_BUNDLE_ID=""
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -296,9 +297,13 @@ then
                 ;;
             --dev) OPT_DEV=1 ;;
             --buildonly) OPT_BUILDONLY=1 ;;
+            --bundle-id)
+                OPT_BUNDLE_ID="$2"
+                shift
+                ;;
             *)
                 echo -e "\033[1m\033[0;31mUnknown sideload flag: $1\033[0m"
-                echo "Use: ./build.sh sideload [--release|--inject|--ffmpeg|--flex|--patch|--no-ext|--sidestore|--dev|--buildonly] ..."
+                echo "Use: ./build.sh sideload [--release|--inject|--ffmpeg|--flex|--patch|--no-ext|--sidestore|--dev|--buildonly|--bundle-id <id>] ..."
                 exit 1
                 ;;
         esac
@@ -357,7 +362,7 @@ then
         make $MAKEARGS
     fi
     if [ "$OPT_FLEX" -eq 1 ]; then
-        build_lazy_flex_library
+        build_flex_library
     fi
     if [ "$OPT_PATCH" -eq 1 ]; then
         build_sideload_fix_library
@@ -411,7 +416,7 @@ then
     fi
 
     if [ "$OPT_FLEX" -eq 1 ]; then
-        echo -e '\033[1m\033[32mBundling libFLEX.dylib for lazy loading...\033[0m'
+        echo -e '\033[1m\033[32mInjecting libFLEX.dylib...\033[0m'
         copy_flex_library_into_ipa "$ipa_stage_input" "$ipa_flex_tmp" "$LIBFLEXPATH"
         mv -f "$ipa_flex_tmp" "$ipa_stage_input"
     fi
@@ -432,7 +437,11 @@ then
     fi
 
     if [ "${#CYAN_FILES[@]}" -gt 0 ]; then
-        cyan -i "$ipa_stage_input" -o "$ipa_out" -f "${CYAN_FILES[@]}" -c "$COMPRESSION" -m 15.0 -duq
+        if [ -n "$OPT_BUNDLE_ID" ]; then
+            cyan -i "$ipa_stage_input" -o "$ipa_out" -f "${CYAN_FILES[@]}" -c "$COMPRESSION" -m 15.0 -duq -b "$OPT_BUNDLE_ID"
+        else
+            cyan -i "$ipa_stage_input" -o "$ipa_out" -f "${CYAN_FILES[@]}" -c "$COMPRESSION" -m 15.0 -duq
+        fi
     else
         cp "$ipa_stage_input" "$ipa_out"
     fi
@@ -443,7 +452,7 @@ then
         echo -e '\033[1m\033[32mPatching IPA for sideloading...\033[0m'
         ipapatch --input "$ipa_out" --inplace --noconfirm --dylib "$SIDELOADFIXPATH"
     elif [ "$OPT_PATCH" -eq 1 ]; then
-        echo -e '\033[1m\033[32mSkipping ipapatch; SCISideloadFix was injected by cyan for SideStore/no-extension build.\033[0m'
+        echo -e '\033[1m\033[32mSkipping ipapatch\033[0m'
     fi
 
     echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nOutput IPA: $ipa_out"
@@ -510,15 +519,16 @@ else
     echo '  rootless   - Build a rootless .deb package'
     echo '  rootful    - Build a rootful .deb package'
     echo '  sideload   - Build a patched IPA -- choose from the following flags:'
-    echo '      --release   equivalent to --inject --ffmpeg --patch'
-    echo '      --inject    include SCInsta.dylib'
-    echo '      --ffmpeg    include FFmpegKit frameworks'
-    echo '      --flex      include libFLEX.dylib'
-    echo '      --patch     run ipapatch'
-    echo '      --no-ext    remove all .appex bundles before final injection'
-    echo '      --sidestore equivalent to --release --no-ext'
-    echo '      --dev       DEV=1 build'
-    echo '      --buildonly build dylibs only, skip IPA'
+    echo '    --release         equivalent to --inject --ffmpeg --patch'
+    echo '    --inject          include SCInsta.dylib'
+    echo '    --ffmpeg          include FFmpegKit frameworks'
+    echo '    --flex            include libFLEX.dylib'
+    echo '    --patch           run ipapatch'
+    echo '    --no-ext          remove all .appex bundles before final injection'
+    echo '    --sidestore       equivalent to --release --no-ext'
+    echo '    --dev             DEV=1 build'
+    echo '    --buildonly       build dylibs only, skip IPA'
+    echo '    --bundle-id <id>  override bundle ID'
     echo
     echo 'Examples:'
     echo '    ./build.sh sideload --release'

@@ -28,6 +28,11 @@ on:
                 default: false
                 required: false
                 type: boolean
+            bundle_id:
+                description: "Bundle ID"
+                default: ""
+                required: false
+                type: string
   
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -133,6 +138,9 @@ jobs:
                 fi
                 if [ "${{ inputs.with_flex }}" = "true" ]; then
                   FLAGS="$FLAGS --flex"
+                fi
+                if [ -n "${{ inputs.bundle_id }}" ]; then
+                  FLAGS="$FLAGS --bundle-id ${{ inputs.bundle_id }}"
                 fi
                 ./build.sh sideload $FLAGS
                 ls -la packages
