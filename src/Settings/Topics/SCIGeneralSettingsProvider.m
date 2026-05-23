@@ -105,9 +105,11 @@
         ], @"Automatic clearing is checked whenever Instagram becomes active."),
         SCITopicSection(@"App", @[
             [SCISetting switchCellWithTitle:@"Change App Icon" icon:SCISettingsIcon(@"app") defaultsKey:@"teen_app_icons" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Hide TestFlight Popup" defaultsKey:@"hide_testflight_nag" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Disable App Haptics" icon:SCISettingsIcon(@"haptics") defaultsKey:@"disable_haptics"]
         ], @"1. Hold down on the Instagram text on the home screen to bring up the app icon selection menu.\n"
-           @"2. Disables haptics and vibrations within the app."),
+           @"2. Suppresses the Instagram Beta update popup in TestFlight builds.\n"
+           @"3. Disables haptics and vibrations within the app."),
     ]);
 }
 

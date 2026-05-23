@@ -4,8 +4,6 @@
 
 #import "../AssetUtils.h"
 
-#include "SCIInstagramIconCatalogFallback.inc"
-
 static NSBundle *SCIInstagramIconCatalogFrameworkBundle(void) {
     static NSBundle *bundle;
     static dispatch_once_t onceToken;
@@ -122,8 +120,7 @@ static NSArray<NSString *> *SCIInstagramIconCatalogRuntimeNames(void) {
     static NSArray<NSString *> *names;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        NSArray<NSString *> *runtimeNames = SCIInstagramIconCatalogRuntimeNames();
-        names = runtimeNames.count > 0 ? runtimeNames : SCIInstagramIconFallbackNames();
+        names = SCIInstagramIconCatalogRuntimeNames();
     });
     return names ?: @[];
 }

@@ -37,6 +37,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"copy_description": @(YES),
         @"detailed_color_picker": @(YES),
         @"remove_screenshot_alert": @(YES),
+        @"hide_testflight_nag": @(YES),
         @"share_button_long_press_copy_link": @(YES),
         @"story_mark_seen_on_like": @(YES),
         @"story_mark_seen_on_reply": @(YES),
