@@ -189,6 +189,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"general_strip_share_link_tracking": @(YES),
         @"general_hide_create_group": @(NO),
         @"interface_hide_ui_on_capture": @(NO),
+        @"interface_disable_follow_button_edr": @(YES),
         @"feed_disable_autoplay": @(NO),
     } mutableCopy];
 

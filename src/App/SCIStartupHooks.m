@@ -31,6 +31,7 @@ FOUNDATION_EXPORT void SCIInstallTweakLaunchCriticalHooks(void);
 FOUNDATION_EXPORT void SCIInstallOpenLinkFromClipboardHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideExploreGridHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideTrendingSearchesHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallDisableFollowButtonEDRHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallNavigationHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallSettingsShortcutsHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDisableHapticsHooksIfEnabled(void);
@@ -211,6 +212,7 @@ void SCIInstallGeneralUIHooksIfNeeded(void) {
     SCIInstallOpenLinkFromClipboardHooksIfEnabled();
     SCIInstallHideExploreGridHooksIfEnabled();
     SCIInstallHideTrendingSearchesHooksIfEnabled();
+    SCIInstallDisableFollowButtonEDRHooksIfEnabled();
     SCIInstallNavigationHooksIfNeeded();
     SCIInstallSettingsShortcutsHooksIfNeeded();
     SCIInstallDisableHapticsHooksIfEnabled();

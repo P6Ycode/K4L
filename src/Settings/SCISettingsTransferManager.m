@@ -4,6 +4,7 @@
 
 #import "TweakSettings.h"
 #import "../Utils.h"
+#import "../App/SCICore.h"
 #import "../Shared/UI/SCIIGAlertPresenter.h"
 #import "../Shared/Gallery/SCIGalleryCoreDataStack.h"
 #import "../Shared/Gallery/SCIGalleryManager.h"
@@ -38,10 +39,68 @@ static NSArray<SCISetting *> *SCIFlattenSettingsRowsFromSections(NSArray *sectio
     return rows;
 }
 
+static void SCIAddPreferenceKeysFromMenu(UIMenu *menu, NSMutableSet<NSString *> *keys) {
+    for (UIMenuElement *element in menu.children ?: @[]) {
+        if ([element isKindOfClass:[UIMenu class]]) {
+            SCIAddPreferenceKeysFromMenu((UIMenu *)element, keys);
+            continue;
+        }
+
+        if (![element isKindOfClass:[UICommand class]]) continue;
+        NSDictionary *propertyList = ((UICommand *)element).propertyList;
+        NSString *defaultsKey = [propertyList[@"defaultsKey"] isKindOfClass:[NSString class]] ? propertyList[@"defaultsKey"] : nil;
+        if (defaultsKey.length > 0) {
+            [keys addObject:defaultsKey];
+        }
+    }
+}
+
+static BOOL SCIIsSCIPreferenceKey(NSString *key) {
+    if (key.length == 0) return NO;
+
+    static NSSet<NSString *> *exactKeys;
+    static NSArray<NSString *> *prefixes;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        exactKeys = [NSSet setWithArray:@[
+            @"app_first_run",
+            @"instagram.override.project.lucent.navigation",
+            @"IGLiquidGlassOverrideEnabled",
+            @"liquid_glass_override_enabled"
+        ]];
+        prefixes = @[
+            @"feed_",
+            @"general_",
+            @"gallery_",
+            @"interface_",
+            @"msgs_",
+            @"notifs_",
+            @"profile_",
+            @"reels_",
+            @"stories_",
+            @"tools_"
+        ];
+    });
+
+    if ([exactKeys containsObject:key]) return YES;
+    for (NSString *prefix in prefixes) {
+        if ([key hasPrefix:prefix]) return YES;
+    }
+    return NO;
+}
+
 static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
     NSMutableSet<NSString *> *keys = [NSMutableSet set];
+    for (NSString *key in SCICoreRegisteredDefaults()) {
+        if (SCIIsSCIPreferenceKey(key)) {
+            [keys addObject:key];
+        }
+    }
+
     for (SCISetting *row in SCIFlattenSettingsRowsFromSections([SCITweakSettings sections])) {
         if (row.defaultsKey.length > 0) [keys addObject:row.defaultsKey];
+        if (row.mutuallyExclusiveDefaultsKey.length > 0) [keys addObject:row.mutuallyExclusiveDefaultsKey];
+        if (row.baseMenu) SCIAddPreferenceKeysFromMenu(row.baseMenu, keys);
     }
 
     [keys addObjectsFromArray:@[
@@ -58,9 +117,7 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
 
     NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
     for (NSString *key in allPrefs) {
-        if ([key containsString:@"_action_btn"] ||
-            [key hasPrefix:@"notifs_"] ||
-            [key hasPrefix:@"gallery_"]) {
+        if (SCIIsSCIPreferenceKey(key)) {
             [keys addObject:key];
         }
     }

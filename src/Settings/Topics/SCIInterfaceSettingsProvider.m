@@ -62,6 +62,12 @@
                 s;
             })
         ], @"Redacts SCInsta overlay buttons (action button, seen/mentions buttons, etc.) from screenshots, screen recordings, and mirroring."),
+        SCITopicSection(@"Display", @[
+            [SCISetting switchCellWithTitle:@"Disable Follow Button HDR"
+                                       icon:SCISettingsIcon(@"user_follow")
+                                defaultsKey:@"interface_disable_follow_button_edr"
+                            requiresRestart:YES]
+        ], @"Prevents Instagram follow buttons from using EDR/HDR text in normal layout.")
     ]];
 
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
