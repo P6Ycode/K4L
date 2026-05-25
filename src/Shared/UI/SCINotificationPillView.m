@@ -482,7 +482,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
         self.chromeOverlayView.clipsToBounds = YES;
 
         self.chromeGradientLayer.opacity = 0.0;
-        BOOL glowEnabled = [SCIUtils getBoolPref:@"notification_pill_glow_enabled"];
+        BOOL glowEnabled = [SCIUtils getBoolPref:@"notifs_pill_glow"];
         UIColor *glowColor = [self sci_glowColorForTone:self.tone];
         self.layer.shadowColor = glowColor.CGColor;
         self.layer.shadowOpacity = glowEnabled ? 0.50 : 0.0;

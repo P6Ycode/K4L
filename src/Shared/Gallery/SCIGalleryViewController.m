@@ -23,9 +23,9 @@ static NSString * const kGridCellID = @"SCIGalleryGridCell";
 static NSString * const kListCellID = @"SCIGalleryListCell";
 static NSString * const kFolderCellID = @"SCIGalleryFolderCell";
 
-static NSString * const kSortModeKey    = @"scinsta_gallery_sort_mode";
-static NSString * const kViewModeKey    = @"scinsta_gallery_view_mode"; // 0 = grid, 1 = list
-static NSString * const kFavoritesAtTopKey = @"show_favorites_at_top";
+static NSString * const kSortModeKey    = @"gallery_sort_mode";
+static NSString * const kViewModeKey    = @"gallery_view_mode"; // 0 = grid, 1 = list
+static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 
 static CGFloat const kGridSpacing = 2.0;
 static NSInteger const kGridColumns = 3;
@@ -1137,7 +1137,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
     // Folders materialize when any file references them. To make empty folders
     // discoverable, we store a placeholder record in NSUserDefaults.
-    NSString *key = @"scinsta_gallery_folders";
+    NSString *key = @"gallery_folders";
     NSMutableArray<NSString *> *placeholders = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy] ?: [NSMutableArray array];
     if (![placeholders containsObject:newPath]) {
         [placeholders addObject:newPath];
@@ -1155,7 +1155,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 }
 
 - (void)mergePlaceholderSubfolders {
-    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"scinsta_gallery_folders"] ?: @[];
+    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"gallery_folders"] ?: @[];
     NSString *base = self.currentFolderPath ?: @"";
     NSString *prefix = base.length == 0 ? @"/" : [base stringByAppendingString:@"/"];
 
@@ -1214,7 +1214,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [ctx save:nil];
 
     // Update placeholders.
-    NSString *key = @"scinsta_gallery_folders";
+    NSString *key = @"gallery_folders";
     NSMutableArray<NSString *> *placeholders = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy] ?: [NSMutableArray array];
     NSMutableArray<NSString *> *updated = [NSMutableArray array];
     for (NSString *p in placeholders) {
@@ -1269,7 +1269,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [ctx save:nil];
 
     // Remove placeholders beneath the folder path.
-    NSString *key = @"scinsta_gallery_folders";
+    NSString *key = @"gallery_folders";
     NSMutableArray<NSString *> *placeholders = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy] ?: [NSMutableArray array];
     NSString *prefix = [folderPath stringByAppendingString:@"/"];
     [placeholders filterUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSString *p, NSDictionary *b) {
@@ -1377,7 +1377,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         NSString *p = d[@"folderPath"];
         if (p.length > 0) [set addObject:p];
     }
-    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"scinsta_gallery_folders"] ?: @[];
+    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"gallery_folders"] ?: @[];
     [set addObjectsFromArray:placeholders];
 
     return [[set allObjects] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];

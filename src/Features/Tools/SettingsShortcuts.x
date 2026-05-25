@@ -27,15 +27,14 @@ static NSString * const kSCIGalleryQuickAccessDisabledValue = @"none";
 
 static NSString *SCIGalleryShortcutTabIdentifier(void) {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSString *identifier = [defaults stringForKey:@"gallery_long_press_tab"];
+    NSString *identifier = [defaults stringForKey:@"gallery_quick_access_tab"];
     if (identifier.length == 0) {
-        /// TODO: remove
-        identifier = [defaults boolForKey:@"header_long_press_gallery"] ? @"direct-inbox-tab" : kSCIGalleryQuickAccessDisabledValue;
+        identifier = kSCIGalleryQuickAccessDisabledValue;
     }
     if ([identifier isEqualToString:kSCIGalleryQuickAccessDisabledValue]) return identifier;
 
     NSString *target = identifier;
-    BOOL usesClassicTabOrdering = [[[NSUserDefaults standardUserDefaults] stringForKey:@"nav_icon_ordering"] isEqualToString:@"classic"];
+    BOOL usesClassicTabOrdering = [[[NSUserDefaults standardUserDefaults] stringForKey:@"interface_nav_order"] isEqualToString:@"classic"];
     if (usesClassicTabOrdering && [target isEqualToString:@"direct-inbox-tab"]) return @"camera-tab";
     if (!usesClassicTabOrdering && [target isEqualToString:@"camera-tab"]) return @"direct-inbox-tab";
     return target;
@@ -117,7 +116,7 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
     NSString *identifier = self.accessibilityIdentifier ?: @"";
     NSString *label = self.accessibilityLabel ?: @"";
-    if ([identifier isEqualToString:@"mainfeed-tab"] && [SCIUtils getBoolPref:@"settings_shortcut"]) {
+    if ([identifier isEqualToString:@"mainfeed-tab"] && [SCIUtils getBoolPref:@"tools_settings_shortcut"]) {
         if (![SCIGalleryShortcutTabIdentifier() isEqualToString:@"mainfeed-tab"]) {
             [self sci_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSCIHomeTabSettingsLongPressAssocKey minimumDuration:kSCIHomeTabLongPressDuration];
         }

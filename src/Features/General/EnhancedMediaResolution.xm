@@ -1,6 +1,6 @@
 #import "../../Utils.h"
 
-static NSString *const kSCIEnhancedMediaResolutionDefaultsKey = @"enhanced_media_resolution";
+static NSString *const kSCIEnhancedMediaResolutionDefaultsKey = @"general_enhanced_media_resolution";
 
 static const NSInteger kSCIHighResUserAgentWidth = 2064;
 static const NSInteger kSCIHighResUserAgentHeight = 2752;

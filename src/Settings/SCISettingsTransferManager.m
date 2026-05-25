@@ -45,23 +45,22 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
     }
 
     [keys addObjectsFromArray:@[
-        @"SCInstaFirstRun",
-        @"header_long_press_gallery",
+        @"app_first_run",
         @"instagram.override.project.lucent.navigation",
         @"IGLiquidGlassOverrideEnabled",
         @"liquid_glass_override_enabled",
-        @"scinsta_gallery_folders",
-        @"scinsta_gallery_sort_mode",
-        @"scinsta_gallery_view_mode",
-        @"cache_auto_clear_mode",
-        @"cache_last_cleared_at"
+        @"gallery_folders",
+        @"gallery_sort_mode",
+        @"gallery_view_mode",
+        @"general_cache_auto_clear",
+        @"general_cache_last_cleared_at"
     ]];
 
     NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
     for (NSString *key in allPrefs) {
-        if ([key hasPrefix:@"action_button_"] ||
-            [key hasPrefix:@"scinsta_"] ||
-            [key hasPrefix:@"liquid_glass_"]) {
+        if ([key containsString:@"_action_btn"] ||
+            [key hasPrefix:@"notifs_"] ||
+            [key hasPrefix:@"gallery_"]) {
             [keys addObject:key];
         }
     }

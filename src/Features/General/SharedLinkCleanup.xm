@@ -5,7 +5,7 @@
 #import <substrate.h>
 
 static BOOL SCIShouldSanitizeCopiedShareLinks(void) {
-    return [SCIUtils getBoolPref:@"remove_user_from_copied_share_link"];
+    return [SCIUtils getBoolPref:@"general_strip_share_link_tracking"];
 }
 
 static void SCIPollClipboardAndSanitize(NSInteger countBefore, int polls, double interval) {

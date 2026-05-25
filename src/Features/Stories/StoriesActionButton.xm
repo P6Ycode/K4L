@@ -196,7 +196,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 	}
 
 	UIButton *button = (UIButton *)[overlayView viewWithTag:kSCIStoriesActionButtonTag];
-	if (![SCIUtils getBoolPref:@"action_button_stories_enabled"]) {
+	if (![SCIUtils getBoolPref:@"stories_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
@@ -259,7 +259,7 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 %end
 
 extern "C" void SCIInstallStoriesActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"action_button_stories_enabled"]) return;
+	if (![SCIUtils getBoolPref:@"stories_action_btn"]) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{

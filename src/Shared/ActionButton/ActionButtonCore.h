@@ -30,6 +30,7 @@ FOUNDATION_EXPORT NSString * const kSCIActionCopyCaption;
 FOUNDATION_EXPORT NSString * const kSCIActionOpenTopicSettings;
 FOUNDATION_EXPORT NSString * const kSCIActionRepost;
 FOUNDATION_EXPORT NSString * const kSCIActionToggleStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSCIActionStoryMentionsSheet;
 FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyInfo;
 FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyID;
 FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyUsername;

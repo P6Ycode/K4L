@@ -3,7 +3,7 @@
 #import <Security/Security.h>
 #import <CommonCrypto/CommonKeyDerivation.h>
 
-static NSString * const kLockEnabledKey = @"scinsta_gallery_lock_enabled";
+static NSString * const kLockEnabledKey = @"gallery_lock";
 static NSString * const kKeychainService = @"com.socuul.scinsta.gallery.passcode";
 static NSString * const kPBKDF2RecordPrefix = @"pbkdf2-sha256";
 static uint32_t const kPBKDF2Rounds = 210000;

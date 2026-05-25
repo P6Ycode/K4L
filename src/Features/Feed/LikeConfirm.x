@@ -6,25 +6,20 @@
 extern void SCIMarkStoryAsSeenForViewWithAdvancePref(UIView *view, NSString *advancePrefKey);
 extern UIView *SCIActiveStoryOverlayForInteractions(void);
 
-static inline BOOL SCIStoryLegacyInteractionPrefEnabled(void) {
-    return [[NSUserDefaults standardUserDefaults] objectForKey:@"story_mark_seen_on_interaction"] != nil &&
-        [SCIUtils getBoolPref:@"story_mark_seen_on_interaction"];
-}
-
 static inline BOOL SCIStoryMarkSeenOnLikeEnabled(void) {
-    return [SCIUtils getBoolPref:@"story_mark_seen_on_like"] || SCIStoryLegacyInteractionPrefEnabled();
+    return [SCIUtils getBoolPref:@"stories_mark_seen_on_like"];
 }
 
 static inline BOOL SCIStoryMarkSeenOnReplyEnabled(void) {
-    return [SCIUtils getBoolPref:@"story_mark_seen_on_reply"] || SCIStoryLegacyInteractionPrefEnabled();
+    return [SCIUtils getBoolPref:@"stories_mark_seen_on_reply"];
 }
 
 static inline BOOL SCIStoryInteractionHooksNeeded(void) {
-    return [SCIUtils getBoolPref:@"like_confirm_stories"] ||
+    return [SCIUtils getBoolPref:@"stories_confirm_like"] ||
         SCIStoryMarkSeenOnLikeEnabled() ||
         SCIStoryMarkSeenOnReplyEnabled() ||
-        [SCIUtils getBoolPref:@"advance_story_when_like_marked_seen"] ||
-        [SCIUtils getBoolPref:@"advance_story_when_reply_marked_seen"];
+        [SCIUtils getBoolPref:@"stories_advance_on_like_seen"] ||
+        [SCIUtils getBoolPref:@"stories_advance_on_reply_seen"];
 }
 
 static inline id SCIObjectForSelectorIfAvailable(id target, NSString *selectorName) {
@@ -190,7 +185,7 @@ static void SCIStoryReplySideEffects(void) {
     if (!SCIStoryMarkSeenOnReplyEnabled()) return;
     UIView *overlay = SCIActiveStoryOverlayForInteractions();
     if (!overlay) return;
-    SCIStoryMarkSeenForInteractionView(overlay, @"advance_story_when_reply_marked_seen");
+    SCIStoryMarkSeenForInteractionView(overlay, @"stories_advance_on_reply_seen");
 }
 
 ///////////////////////////////////////////////////////////
@@ -224,7 +219,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     if (SCIBypassFeedPostLikeConfirm) { \
         return orig; \
     } \
-    if ([SCIUtils getBoolPref:@"like_confirm_feed_post_likes"]) { \
+    if ([SCIUtils getBoolPref:@"feed_confirm_post_like"]) { \
         BOOL isUnlike = SCIFeedLikeIsUnlike((button), (context)); \
         SCILog(@"General", @"[SCInsta] Confirm feed post %@ triggered", isUnlike ? @"unlike" : @"like"); \
         SCIPresentLikeToggleConfirmation( \
@@ -241,7 +236,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMFEEDDOUBLETAPLIKE(context, orig) \
-    if ([SCIUtils getBoolPref:@"like_confirm_feed_double_tap_likes"]) { \
+    if ([SCIUtils getBoolPref:@"feed_confirm_double_tap_like"]) { \
         BOOL isUnlike = SCIFeedLikeIsUnlike(nil, (context)); \
         SCILog(@"General", @"[SCInsta] Confirm feed double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
         SCIPresentLikeToggleConfirmation( \
@@ -258,7 +253,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMCOMMENTLIKE(context, button, orig) \
-    if ([SCIUtils getBoolPref:@"like_confirm_comment_likes"]) { \
+    if ([SCIUtils getBoolPref:@"feed_confirm_comment_like"]) { \
         BOOL isUnlike = SCICommentLikeIsUnlike((button), (context)); \
         SCILog(@"General", @"[SCInsta] Confirm comment %@ triggered", isUnlike ? @"unlike" : @"like"); \
         SCIPresentLikeToggleConfirmation( \
@@ -274,7 +269,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMREELSLIKE(context, button, orig) \
-    if ([SCIUtils getBoolPref:@"like_confirm_reels"]) { \
+    if ([SCIUtils getBoolPref:@"reels_confirm_like"]) { \
         BOOL isUnlike = SCIFeedLikeIsUnlike((button), (context)); \
         SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like"); \
         SCIPresentLikeToggleConfirmation( \
@@ -290,7 +285,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMREELSDOUBLETAPLIKE(context, orig) \
-    if ([SCIUtils getBoolPref:@"like_confirm_reels_double_tap"]) { \
+    if ([SCIUtils getBoolPref:@"reels_confirm_double_tap_like"]) { \
         BOOL isUnlike = SCIFeedLikeIsUnlike(nil, (context)); \
         SCILog(@"General", @"[SCInsta] Confirm reels double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
         SCIPresentLikeToggleConfirmation( \
@@ -407,10 +402,10 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 // Liking stories (newer Instagram builds)
 static void (*orig_sciStoryLikeTap)(id, SEL, id);
 static void new_sciStoryLikeTap(id self, SEL _cmd, id button) {
-    if (![SCIUtils getBoolPref:@"like_confirm_stories"]) {
+    if (![SCIUtils getBoolPref:@"stories_confirm_like"]) {
         orig_sciStoryLikeTap(self, _cmd, button);
         if (SCIStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
-            SCIStoryMarkSeenForInteractionView((UIView *)button, @"advance_story_when_like_marked_seen");
+            SCIStoryMarkSeenForInteractionView((UIView *)button, @"stories_advance_on_like_seen");
         }
         return;
     }
@@ -430,7 +425,7 @@ static void new_sciStoryLikeTap(id self, SEL _cmd, id button) {
         }
         orig_sciStoryLikeTap(self, _cmd, button);
         if (!isUnlike && SCIStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
-            SCIStoryMarkSeenForInteractionView((UIView *)button, @"advance_story_when_like_marked_seen");
+            SCIStoryMarkSeenForInteractionView((UIView *)button, @"stories_advance_on_like_seen");
         }
     } title:(isUnlike ? @"Confirm Story Unlike" : @"Confirm Story Like")
       message:(isUnlike ? @"Are you sure you want to unlike this story?" : @"Are you sure you want to like this story?")];
@@ -592,7 +587,7 @@ static void SCIInstallStoryReplyHooksIfNeeded(void) {
 
 static void (*orig_sciReelsLikeHandlerTap)(id, SEL, id, id, BOOL) = NULL;
 static void sciReelsLikeHandlerTap(id self, SEL _cmd, id context, id likeButton, BOOL willAnimate) {
-    if (![SCIUtils getBoolPref:@"like_confirm_reels"]) {
+    if (![SCIUtils getBoolPref:@"reels_confirm_like"]) {
         if (orig_sciReelsLikeHandlerTap) orig_sciReelsLikeHandlerTap(self, _cmd, context, likeButton, willAnimate);
         return;
     }
@@ -615,7 +610,7 @@ static void sciReelsLikeHandlerTap(id self, SEL _cmd, id context, id likeButton,
 
 static void (*orig_sciReelsLikeHandlerTapCompletion)(id, SEL, id, id, BOOL, id) = NULL;
 static void sciReelsLikeHandlerTapCompletion(id self, SEL _cmd, id context, id likeButton, BOOL willAnimate, id completion) {
-    if (![SCIUtils getBoolPref:@"like_confirm_reels"]) {
+    if (![SCIUtils getBoolPref:@"reels_confirm_like"]) {
         if (orig_sciReelsLikeHandlerTapCompletion) orig_sciReelsLikeHandlerTapCompletion(self, _cmd, context, likeButton, willAnimate, completion);
         return;
     }
@@ -638,7 +633,7 @@ static void sciReelsLikeHandlerTapCompletion(id self, SEL _cmd, id context, id l
 }
 
 static void SCIInstallReelsSwiftLikeConfirmHookIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"like_confirm_reels"]) return;
+    if (![SCIUtils getBoolPref:@"reels_confirm_like"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -660,11 +655,11 @@ static void SCIInstallReelsSwiftLikeConfirmHookIfNeeded(void) {
 }
 
 void SCIInstallLikeConfirmHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"like_confirm_feed_post_likes"] &&
-        ![SCIUtils getBoolPref:@"like_confirm_feed_double_tap_likes"] &&
-        ![SCIUtils getBoolPref:@"like_confirm_comment_likes"] &&
-        ![SCIUtils getBoolPref:@"like_confirm_reels"] &&
-        ![SCIUtils getBoolPref:@"like_confirm_reels_double_tap"] &&
+    if (![SCIUtils getBoolPref:@"feed_confirm_post_like"] &&
+        ![SCIUtils getBoolPref:@"feed_confirm_double_tap_like"] &&
+        ![SCIUtils getBoolPref:@"feed_confirm_comment_like"] &&
+        ![SCIUtils getBoolPref:@"reels_confirm_like"] &&
+        ![SCIUtils getBoolPref:@"reels_confirm_double_tap_like"] &&
         !SCIStoryInteractionHooksNeeded()) {
         return;
     }

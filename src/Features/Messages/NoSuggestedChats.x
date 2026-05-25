@@ -8,7 +8,7 @@
 - (id)viewModel {
     if ([[%orig title] isEqualToString:@"Suggested"]) {
 
-        if ([SCIUtils getBoolPref:@"no_suggested_chats"]) {
+        if ([SCIUtils getBoolPref:@"msgs_hide_suggested_chats"]) {
             SCILog(@"General", @"[SCInsta] Hiding suggested chats (header: channels tab)");
 
             return nil;
@@ -23,7 +23,7 @@
 %end
 
 void SCIInstallNoSuggestedChatsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"no_suggested_chats"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_hide_suggested_chats"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

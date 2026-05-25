@@ -135,9 +135,9 @@ static NSArray *SCIManageSettingsDataSections(void) {
     NSString *flexFooter = flexInstalled
         ? @"The first time FLEX is opened in a session it can take a moment to initialize."
         : @"FLEX not installed. Rebuild with \"--flex\" flag or install libFLEX.dylib to enable these options.";
-    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Five-finger Hold" defaultsKey:@"flex_instagram"];
-    SCISetting *flexLaunch = [SCISetting switchCellWithTitle:@"Open on App Launch" defaultsKey:@"flex_app_launch"];
-    SCISetting *flexFocus = [SCISetting switchCellWithTitle:@"Open on App Focus" defaultsKey:@"flex_app_start"];
+    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Five-finger Hold" defaultsKey:@"tools_flex_instagram"];
+    SCISetting *flexLaunch = [SCISetting switchCellWithTitle:@"Open on App Launch" defaultsKey:@"tools_flex_app_launch"];
+    SCISetting *flexFocus = [SCISetting switchCellWithTitle:@"Open on App Focus" defaultsKey:@"tools_flex_app_start"];
     SCISetting *flexOpen = [SCISetting buttonCellWithTitle:@"Open FLEX Now" subtitle:@"" icon:nil action:^(void) {
         SCIFlexShowExplorer(@"settings");
     }];
@@ -150,21 +150,24 @@ static NSArray *SCIManageSettingsDataSections(void) {
     NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
         SCITopicSection(@"FLEX", @[flexOpen, flexGesture, flexLaunch, flexFocus], [NSString stringWithFormat:@"Open FLEX directly here, or enable five-finger hold to open it from Instagram. %@", flexFooter]),
         SCITopicSection(@"Tweak", @[
-            [SCISetting switchCellWithTitle:@"Quick Settings Access" defaultsKey:@"settings_shortcut" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Show Settings on App Launch" defaultsKey:@"tweak_settings_app_launch"],
-            [SCISetting switchCellWithTitle:@"Disable All Settings" defaultsKey:@"tweak_master_disabled" requiresRestart:YES],
-            [SCISetting buttonCellWithTitle:@"Reset Safe Startup Mode" subtitle:@"Clears failed-launch counters and temporary hook suppression." icon:nil action:^(void) {
-                SCIStabilityGuardReset();
-                [SCIUtils showRestartConfirmation];
-            }],
+            [SCISetting switchCellWithTitle:@"Quick Settings Access" defaultsKey:@"tools_settings_shortcut" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Show Settings on App Launch" defaultsKey:@"tools_open_settings_on_launch"],
+            [SCISetting switchCellWithTitle:@"Disable All Settings" defaultsKey:@"tools_disable_all" requiresRestart:YES],
             [SCISetting buttonCellWithTitle:@"Reset Onboarding Completion State" subtitle:@"" icon:nil action:^(void) {
-                [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"SCInstaFirstRun"];
+                [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"app_first_run"];
                 [SCIUtils showRestartConfirmation];
             }]
         ], @"Quick Settings Access opens settings when long pressing the Home tab."),
         SCITopicSection(@"Instagram", @[
-            [SCISetting switchCellWithTitle:@"Disable Safe Mode" defaultsKey:@"disable_safe_mode"]
-        ], @"Makes Instagram not reset settings after subsequent crashes. Use at your own risk."),
+            [SCISetting switchCellWithTitle:@"Hide TestFlight Popup" defaultsKey:@"tools_hide_testflight_popup" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Disable Safe Mode" defaultsKey:@"tools_disable_safe_mode"],
+            [SCISetting buttonCellWithTitle:@"Reset Safe Startup Mode" subtitle:@"" icon:nil action:^(void) {
+                SCIStabilityGuardReset();
+                [SCIUtils showRestartConfirmation];
+            }],
+        ], @"1. Suppresses the Instagram Beta update popup in TestFlight builds.\n"
+           @"2. Makes Instagram not reset settings after subsequent crashes. Use at your own risk.\n"
+           @"3. Clears failed-launch counters and temporary hook suppression."),
         SCITopicSection(@"Backup & Transfer", @[
             [SCISetting navigationCellWithTitle:@"Manage Settings & Data" subtitle:@"" icon:SCISettingsIcon(@"cloud") navSections:SCIManageSettingsDataSections()]
         ], nil)

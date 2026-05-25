@@ -4,7 +4,7 @@
 #import "../../Shared/Stories/SCIStoryContext.h"
 
 static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
-    return [SCIUtils getBoolPref:@"stop_story_auto_advance"] && !SCIForceStoryAutoAdvance;
+    return [SCIUtils getBoolPref:@"stories_stop_auto_advance"] && !SCIForceStoryAutoAdvance;
 }
 
 %group SCIDisableStorySeenHooks
@@ -49,9 +49,9 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
 %end
 
 void SCIInstallDisableStorySeenHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"no_seen_receipt"] &&
+    if (![SCIUtils getBoolPref:@"stories_manual_seen"] &&
         SCIStoryManualSeenUserList(NO).count == 0 &&
-        ![SCIUtils getBoolPref:@"stop_story_auto_advance"]) {
+        ![SCIUtils getBoolPref:@"stories_stop_auto_advance"]) {
         return;
     }
 

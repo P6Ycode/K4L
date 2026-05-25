@@ -11,7 +11,7 @@ static NSString * const kSCIProfileActionViewPicture = @"view_picture";
 static NSString * const kSCIProfileActionSharePicture = @"share_picture";
 static NSString * const kSCIProfileActionSavePictureToGallery = @"save_picture_gallery";
 static NSString * const kSCIProfileActionOpenSettings = @"profile_settings";
-static NSString * const kSCIProfileDefaultCopyInfoKey = @"action_button_profile_default_copy_info_action";
+static NSString * const kSCIProfileDefaultCopyInfoKey = @"profile_action_btn_default_copy_info_action";
 static NSString * const kSCIProfileCopyInfoID = @"id";
 static NSString * const kSCIProfileCopyInfoUsername = @"username";
 static NSString * const kSCIProfileCopyInfoName = @"name";
@@ -29,7 +29,7 @@ static UICommand *SCIProfileActionDefaultCommand(NSString *title, NSString *reso
                                  image:image
                                 action:@selector(menuChanged:)
                           propertyList:@{
-        @"defaultsKey": @"action_button_profile_default_action",
+        @"defaultsKey": @"profile_action_btn_default_action",
         @"value": value,
         @"iconName": resourceName
     }];
@@ -73,8 +73,8 @@ static UIMenu *SCIProfileDefaultCopyInfoMenu(void) {
 + (SCISetting *)rootSetting {
     return SCITopicNavigationSetting(@"Profile", @"user_circle", 24.0, @[
         SCITopicSection(@"Action Button", @[
-            [SCISetting switchCellWithTitle:@"Profile Action Button" icon:SCISettingsIcon(@"action") defaultsKey:@"action_button_profile_enabled"],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(@"action_button_profile_default_action", @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile))], SCISettingsIcon(@"action")),
+            [SCISetting switchCellWithTitle:@"Profile Action Button" icon:SCISettingsIcon(@"action") defaultsKey:@"profile_action_btn"],
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(@"profile_action_btn_default_action", @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile))], SCISettingsIcon(@"action")),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceProfile, @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceProfile)),
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Copy Info Default" icon:SCISettingsIcon(@"copy") menu:SCIProfileDefaultCopyInfoMenu()], SCISettingsIcon(@"copy"))
         ], @"Choose what tapping the action button does. Copy Info Default controls what gets copied when Default Tap Action is Copy Info."),
@@ -82,13 +82,13 @@ static UIMenu *SCIProfileDefaultCopyInfoMenu(void) {
             [SCISetting switchCellWithTitle:@"Long Press to Expand" icon:SCISettingsIcon(@"expand") defaultsKey:@"profile_photo_zoom"]
         ], @"Long press a profile picture to open it expanded."),
         SCITopicSection(@"Indicators", @[
-            [SCISetting switchCellWithTitle:@"Show Following Indicator" icon:SCISettingsIcon(@"user_check") defaultsKey:@"follow_indicator"],
-            [SCISetting switchCellWithTitle:@"Hide Notes Bubble" icon:SCISettingsIcon(@"notes") defaultsKey:@"hide_profile_notes_bubble"],
-            [SCISetting switchCellWithTitle:@"Hide Threads Button" icon:SCISettingsIcon(@"threads") defaultsKey:@"hide_profile_threads_button"]
+            [SCISetting switchCellWithTitle:@"Show Following Indicator" icon:SCISettingsIcon(@"user_check") defaultsKey:@"profile_follow_indicator"],
+            [SCISetting switchCellWithTitle:@"Hide Notes Bubble" icon:SCISettingsIcon(@"notes") defaultsKey:@"profile_hide_notes_bubble"],
+            [SCISetting switchCellWithTitle:@"Hide Threads Button" icon:SCISettingsIcon(@"threads") defaultsKey:@"profile_hide_threads_btn"]
         ], nil),
         SCITopicSection(@"Confirmation", @[
-            [SCISetting switchCellWithTitle:@"Confirm Follow" icon:SCISettingsIcon(@"user_follow") defaultsKey:@"follow_confirm"],
-            [SCISetting switchCellWithTitle:@"Confirm Unfollow" icon:SCISettingsIcon(@"user_unfollow") defaultsKey:@"unfollow_confirm"]
+            [SCISetting switchCellWithTitle:@"Confirm Follow" icon:SCISettingsIcon(@"user_follow") defaultsKey:@"profile_confirm_follow"],
+            [SCISetting switchCellWithTitle:@"Confirm Unfollow" icon:SCISettingsIcon(@"user_unfollow") defaultsKey:@"profile_confirm_unfollow"]
         ], @"Shows confirmation alerts before the enabled profile actions are performed.")
     ]);
 }

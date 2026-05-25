@@ -2,7 +2,7 @@
 #import "../../Tweak.h"
 
 static inline BOOL SCIUnlimitedReplayEnabled(void) {
-    return [SCIUtils getBoolPref:@"unlimited_replay"];
+    return [SCIUtils getBoolPref:@"msgs_manual_visual_seen"];
 }
 
 static inline BOOL SCIShouldPassThroughManualDirectSeen(id message) {
@@ -36,7 +36,7 @@ static inline BOOL SCIShouldPassThroughManualDirectSeen(id message) {
 %end
 
 void SCIInstallDisableDMStorySeenHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"unlimited_replay"]) {
+    if (![SCIUtils getBoolPref:@"msgs_manual_visual_seen"]) {
         return;
     }
 

@@ -4,22 +4,6 @@
 #import "../../Utils.h"
 #import "../../Shared/UI/SCIChrome.h"
 
-// ---------------------------------------------------------------------------
-// Capture hiding v7
-//
-// Root cause of v6 "nada" logs: Timing and layout passes.
-// If subviews are added *after* the initial didMoveToWindow layout, they might
-// not trigger another full layoutSubviews pass, meaning they never get wrapped.
-//
-// The Ultimate Solution (v7): Direct Redirection Hook.
-// 1. We hook both `didMoveToWindow` and `addSubview:` on UIView.
-// 2. When the tagged view is added to a window, we immediately instantiate
-//    its secure UITextField.
-// 3. We hook `addSubview:` to dynamically intercept and redirect any future
-//    subviews added to the button (e.g., custom icons/labels) directly into
-//    the secure canvas instead of the button itself!
-// 4. Any subviews already present on construction are migrated immediately.
-// ---------------------------------------------------------------------------
 
 static const void *kSCICaptureFieldKey  = &kSCICaptureFieldKey;
 static const void *kSCICaptureCanvasKey = &kSCICaptureCanvasKey;
@@ -68,7 +52,7 @@ static NSString *SCICaptureSubviewSummary(UIView *view) {
 static void SCIEnsureSecureCanvas(UIView *button) {
     if (!button || !button.window) return;
     if ([button isKindOfClass:NSClassFromString(@"SCIChromeButton")]) return;
-    if (![SCIUtils getBoolPref:@"hide_ui_on_capture"]) return;
+    if (![SCIUtils getBoolPref:@"interface_hide_ui_on_capture"]) return;
 
     // Check if secure field already exists
     UITextField *field = objc_getAssociatedObject(button, kSCICaptureFieldKey);

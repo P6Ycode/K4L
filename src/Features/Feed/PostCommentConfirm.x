@@ -4,7 +4,7 @@
 
 %hook IGCommentComposer.IGCommentComposerController
 - (void)onSendButtonTap {
-    if ([SCIUtils getBoolPref:@"post_comment_confirm"]) {
+    if ([SCIUtils getBoolPref:@"feed_confirm_post_comment"]) {
         SCILog(@"General", @"[SCInsta] Confirm post comment triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -19,7 +19,7 @@
 %end
 
 void SCIInstallPostCommentConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"post_comment_confirm"]) return;
+    if (![SCIUtils getBoolPref:@"feed_confirm_post_comment"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

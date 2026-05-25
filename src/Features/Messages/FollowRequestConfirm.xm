@@ -4,7 +4,7 @@
 
 %hook IGPendingRequestView
 - (void)_onApproveButtonTapped {
-    if ([SCIUtils getBoolPref:@"follow_request_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_follow_request"]) {
         SCILog(@"General", @"[SCInsta] Confirm follow request triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -15,7 +15,7 @@
     }
 }
 - (void)_onIgnoreButtonTapped {
-    if ([SCIUtils getBoolPref:@"follow_request_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_follow_request"]) {
         SCILog(@"General", @"[SCInsta] Confirm follow request triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -30,7 +30,7 @@
 %end
 
 extern "C" void SCIInstallFollowRequestConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"follow_request_confirm"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_confirm_follow_request"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

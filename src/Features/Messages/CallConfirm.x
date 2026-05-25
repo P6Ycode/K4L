@@ -1,18 +1,10 @@
 #import "../../Utils.h"
 
-/// TODO: remove
-static NSString * const kSCILegacyCallConfirmKey = @"call_confirm";
-static NSString * const kSCIAudioCallConfirmKey = @"call_confirm_audio";
-static NSString * const kSCIVideoCallConfirmKey = @"call_confirm_video";
+static NSString * const kSCIAudioCallConfirmKey = @"msgs_confirm_audio_call";
+static NSString * const kSCIVideoCallConfirmKey = @"msgs_confirm_video_call";
 
 static BOOL SCIShouldConfirmCall(NSString *key) {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    id value = [defaults objectForKey:key];
-    if (value) {
-        return [defaults boolForKey:key];
-    }
-    /// TODO: remove
-    return [defaults boolForKey:kSCILegacyCallConfirmKey];
+    return [[NSUserDefaults standardUserDefaults] boolForKey:key];
 }
 
 %group SCICallConfirmHooks

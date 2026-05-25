@@ -3,7 +3,7 @@
 static NSInteger const kSCIFeedRefreshReasonHomeButton = 5;
 
 static BOOL sciShouldBlockFeedRefresh(void) {
-    return [SCIUtils getBoolPref:@"disable_home_button_refresh"];
+    return [SCIUtils getBoolPref:@"feed_disable_home_refresh"];
 }
 
 static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
@@ -57,7 +57,7 @@ static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
 %end
 
 void SCIInstallDisableHomeButtonRefreshHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"disable_home_button_refresh"]) return;
+    if (![SCIUtils getBoolPref:@"feed_disable_home_refresh"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

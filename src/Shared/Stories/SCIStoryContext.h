@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable) NSArray *allMedia;
 @property (nonatomic, assign) NSInteger currentIndex;
 @property (nonatomic, copy, nullable) NSString *username;
+@property (nonatomic, copy, nullable) NSString *fullName;
 @property (nonatomic, strong, nullable) NSURL *storyURL;
 @end
 
@@ -28,6 +29,7 @@ BOOL SCIStoryMarkContextAsSeen(SCIStoryContext *_Nullable context);
 void SCIStoryAdvanceContextIfNeeded(SCIStoryContext *_Nullable context, NSString *_Nullable advancePrefKey);
 
 NSString *_Nullable SCIStoryUsernameForContext(SCIStoryContext *_Nullable context);
+NSString *_Nullable SCIStoryFullNameForContext(SCIStoryContext *_Nullable context);
 NSURL *_Nullable SCIStoryURLForContext(SCIStoryContext *_Nullable context);
 NSString *_Nullable SCIStoryMediaIdentifierForContext(SCIStoryContext *_Nullable context);
 

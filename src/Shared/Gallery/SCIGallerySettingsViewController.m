@@ -10,31 +10,9 @@
 #import "../../AssetUtils.h"
 #import "../../Settings/SCITopicSettingsSupport.h"
 
-static NSString * const kFavoritesAtTopKey = @"show_favorites_at_top";
-static NSString * const kGalleryLongPressTabKey = @"gallery_long_press_tab";
-/// TODO: remove
-static NSString * const kGalleryLegacyLongPressEnabledKey = @"header_long_press_gallery";
+static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
+static NSString * const kGalleryLongPressTabKey = @"gallery_quick_access_tab";
 static NSString * const kGalleryQuickAccessDisabledValue = @"none";
-
-/// TODO: remove
-static void SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded(void) {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSString *existingValue = [defaults stringForKey:kGalleryLongPressTabKey];
-    BOOL usesClassic = [SCIUtils tabOrderSetTo:@"classic"];
-    if (existingValue.length > 0) {
-        if (usesClassic && [existingValue isEqualToString:@"direct-inbox-tab"]) {
-            [defaults setObject:@"camera-tab" forKey:kGalleryLongPressTabKey];
-        } else if (!usesClassic && [existingValue isEqualToString:@"camera-tab"]) {
-            [defaults setObject:@"direct-inbox-tab" forKey:kGalleryLongPressTabKey];
-        }
-        return;
-    }
-
-    BOOL enabled = [defaults objectForKey:kGalleryLegacyLongPressEnabledKey] && [defaults boolForKey:kGalleryLegacyLongPressEnabledKey];
-    NSString *value = enabled ? (usesClassic ? @"camera-tab" : @"direct-inbox-tab") : kGalleryQuickAccessDisabledValue;
-    [defaults setObject:value forKey:kGalleryLongPressTabKey];
-}
-
 
 @interface SCIGalleryStorageStats : NSObject
 @property (nonatomic, assign) NSInteger totalFiles;
@@ -53,11 +31,7 @@ static void SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded(void) {
 @implementation SCIGallerySettingsViewController
 
 - (instancetype)init {
-    if ((self = [super initWithTitle:@"Gallery Settings" sections:@[] reduceMargin:NO])) {
-        /// TODO: remove
-        SCIMigrateLegacyGalleryQuickAccessSettingIfNeeded();
-    }
-    return self;
+    return [super initWithTitle:@"Gallery Settings" sections:@[] reduceMargin:NO];
 }
 
 - (void)viewDidLoad {

@@ -6,7 +6,7 @@
 
 %hook IGDirectRealtimeIrisDeltaHandler
 - (void)handleIrisDeltas:(NSArray<IGDirectRealtimeIrisDelta *> *)deltas {
-    if (![SCIUtils getBoolPref:@"keep_deleted_message"]) {
+    if (![SCIUtils getBoolPref:@"msgs_keep_deleted"]) {
         %orig(deltas);
         return;
     }
@@ -63,7 +63,7 @@
 // Legacy versions fallback (just in case)
 %hook IGDirectRealtimeIrisThreadDelta
 + (id)removeItemWithMessageId:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"keep_deleted_message"]) {
+    if ([SCIUtils getBoolPref:@"msgs_keep_deleted"]) {
         arg1 = NULL;
     }
 
@@ -73,7 +73,7 @@
 
 %hook IGDirectMessageUpdate
 + (id)removeMessageWithMessageId:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"keep_deleted_message"]) {
+    if ([SCIUtils getBoolPref:@"msgs_keep_deleted"]) {
         arg1 = NULL;
     }
     
@@ -84,7 +84,7 @@
 %end
 
 void SCIInstallKeepDeletedMessagesHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"keep_deleted_message"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_keep_deleted"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

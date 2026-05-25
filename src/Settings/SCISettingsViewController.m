@@ -212,7 +212,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
 
-    if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"SCInstaFirstRun"] isEqualToString:SCIVersionString]) {
+    if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"app_first_run"] isEqualToString:SCIVersionString]) {
         UIViewController *presenter = self.presentingViewController;
         [SCIIGAlertPresenter presentAlertFromViewController:presenter
                                                       title:@"SCInsta Settings Info"
@@ -222,7 +222,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
         ]];
 
         // Done with first-time setup for this version
-        [[NSUserDefaults standardUserDefaults] setValue:SCIVersionString forKey:@"SCInstaFirstRun"];
+        [[NSUserDefaults standardUserDefaults] setValue:SCIVersionString forKey:@"app_first_run"];
     }
 }
 
@@ -447,6 +447,14 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
         }
 
         case SCITableCellNavigation: {
+            NSString *accessoryText = [row.userInfo[@"accessoryText"] isKindOfClass:[NSString class]] ? row.userInfo[@"accessoryText"] : nil;
+            if (rowEnabled && accessoryText.length > 0) {
+                cellContentConfig.secondaryText = accessoryText;
+                cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
+                cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
+                cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
+                                                                                   weight:UIFontWeightMedium];
+            }
             cell.accessoryType = rowEnabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
             if (!rowEnabled) {
                 cell.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -802,7 +810,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
     [[NSUserDefaults standardUserDefaults] setValue:properties[@"value"] forKey:properties[@"defaultsKey"]];
     NSString *defaultsKey = properties[@"defaultsKey"];
-    if ([defaultsKey hasPrefix:@"action_button_"]) {
+    if ([defaultsKey containsString:@"_action_btn"]) {
         [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
     }
 

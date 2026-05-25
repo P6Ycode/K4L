@@ -11,7 +11,7 @@
 #import "../../AssetUtils.h"
 
 static NSInteger const kSCIAudioPageDownloadButtonTag = 1351;
-static NSString * const kSCIAudioPageDefaultActionKey = @"audio_page_default_action";
+static NSString * const kSCIAudioPageDefaultActionKey = @"general_audio_page_default_action";
 static NSString * const kSCIAudioPageActionShare = @"share";
 static NSString * const kSCIAudioPageActionGallery = @"gallery";
 static NSString * const kSCIAudioPageActionPlay = @"play";
@@ -189,7 +189,7 @@ static UIView *SCIAudioPageButtonAnchor(UIView *bar) {
 }
 
 static void SCIAudioPageInstallButton(UIView *bar) {
-    if (![SCIUtils getBoolPref:@"audio_page_download"]) {
+    if (![SCIUtils getBoolPref:@"general_audio_page_download"]) {
         [[bar viewWithTag:kSCIAudioPageDownloadButtonTag] removeFromSuperview];
         return;
     }
@@ -255,7 +255,7 @@ static void SCIAudioPageInstallButton(UIView *bar) {
 %end
 
 extern "C" void SCIInstallAudioPageDownloadHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"audio_page_download"]) return;
+    if (![SCIUtils getBoolPref:@"general_audio_page_download"]) return;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SCIAudioPageDownloadHooks);

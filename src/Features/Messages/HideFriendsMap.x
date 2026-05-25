@@ -10,7 +10,7 @@
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        if ([SCIUtils getBoolPref:@"hide_friends_map"]) {
+        if ([SCIUtils getBoolPref:@"msgs_hide_friends_map"]) {
 
             if ([obj isKindOfClass:%c(IGDirectNotesTrayUserViewModel)]) {
 
@@ -37,7 +37,7 @@
 %end
 
 void SCIInstallHideFriendsMapHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"hide_friends_map"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_hide_friends_map"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

@@ -63,15 +63,13 @@ static void SCIScheduleStagedFeatureHooks(void) {
     SCIStabilityGuardBeginLaunch();
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
-    [SCIUtils sci_normalizeLiquidGlassPreferences];
-
-    if ([SCIUtils getBoolPref:@"liquid_glass_buttons"]) {
+    if ([SCIUtils getBoolPref:@"interface_liquid_glass"]) {
         [defaults setValue:@(YES) forKey:@"instagram.override.project.lucent.navigation"];
     } else {
         [defaults setValue:@(NO) forKey:@"instagram.override.project.lucent.navigation"];
     }
 
-    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) {
+    if ([SCIUtils getBoolPref:@"interface_liquid_glass"]) {
         [defaults setBool:YES forKey:@"liquid_glass_override_enabled"];
         [defaults setBool:YES forKey:@"IGLiquidGlassOverrideEnabled"];
     } else {
@@ -91,19 +89,19 @@ static void SCIScheduleStagedFeatureHooks(void) {
     SCIStartupMark(@"didFinishLaunching orig returned");
     SCIScheduleStagedFeatureHooks();
 
-    double openDelay = [SCIUtils getBoolPref:@"tweak_settings_app_launch"] ? 0.0 : 5.0;
+    double openDelay = [SCIUtils getBoolPref:@"tools_open_settings_on_launch"] ? 0.0 : 5.0;
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(openDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (
-            ![[[NSUserDefaults standardUserDefaults] objectForKey:@"SCInstaFirstRun"] isEqualToString:SCIVersionString]
-            || [SCIUtils getBoolPref:@"tweak_settings_app_launch"]
+            ![[[NSUserDefaults standardUserDefaults] objectForKey:@"app_first_run"] isEqualToString:SCIVersionString]
+            || [SCIUtils getBoolPref:@"tools_open_settings_on_launch"]
         ) {
             SCILog(@"Bootstrap", @"First run, initializing");
             SCILog(@"Bootstrap", @"Displaying SCInsta first-time settings modal");
             SCICoreShowSettingsIfNeeded([self window]);
         }
     });
-    if ([SCIUtils getBoolPref:@"flex_app_launch"]) {
+    if ([SCIUtils getBoolPref:@"tools_flex_app_launch"]) {
         SCIFlexShowExplorer(@"launch");
     }
 
@@ -119,7 +117,7 @@ static void SCIScheduleStagedFeatureHooks(void) {
         [SCIUtils evaluateAutomaticCacheClearIfNeeded];
     });
 
-    if ([SCIUtils getBoolPref:@"flex_app_start"]) {
+    if ([SCIUtils getBoolPref:@"tools_flex_app_start"]) {
         SCIFlexShowExplorer(@"focus");
     }
 }

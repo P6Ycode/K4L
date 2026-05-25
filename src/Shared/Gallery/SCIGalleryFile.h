@@ -112,9 +112,6 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
 /// Returns the symbol name for the given source.
 + (NSString *)symbolNameForSource:(SCIGallerySource)source;
 
-/// Renames legacy media files to the current saved-media naming scheme and updates Core Data paths. Returns the number of files renamed.
-+ (NSInteger)migrateLegacyFilenamesWithError:(NSError *_Nullable *_Nullable)error;
-
 @end
 
 NS_ASSUME_NONNULL_END

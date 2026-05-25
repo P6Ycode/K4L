@@ -6,7 +6,7 @@
 - (void)didMoveToWindow {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"hide_reels_header"]) {
+    if ([SCIUtils getBoolPref:@"reels_hide_header"]) {
         SCILog(@"General", @"[SCInsta] Hiding reels header");
 
         [self removeFromSuperview];
@@ -17,7 +17,7 @@
 %end
 
 void SCIInstallHideReelsHeaderHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"hide_reels_header"]) return;
+    if (![SCIUtils getBoolPref:@"reels_hide_header"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

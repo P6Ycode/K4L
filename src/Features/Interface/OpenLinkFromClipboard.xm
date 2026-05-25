@@ -78,7 +78,7 @@ static BOOL SCICanAttemptOpenInstagramClipboardURL(NSURL *url) {
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     (void)gestureRecognizer;
-    if (![SCIUtils getBoolPref:@"search_bar_open_clipboard_link"]) return NO;
+    if (![SCIUtils getBoolPref:@"interface_open_clipboard_link"]) return NO;
 
     NSURL *url = SCINormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
     return SCICanAttemptOpenInstagramClipboardURL(url);
@@ -130,7 +130,7 @@ static void SCIAttachClipboardGestureToExploreButton(UIButton *button) {
 %end
 
 extern "C" void SCIInstallOpenLinkFromClipboardHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"search_bar_open_clipboard_link"]) return;
+    if (![SCIUtils getBoolPref:@"interface_open_clipboard_link"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

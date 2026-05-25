@@ -76,7 +76,7 @@ FOUNDATION_EXPORT void SCIInstallProfileHeaderControlsHooksIfNeeded(void);
 // keep the home long-press shortcut so users can still reach Settings to turn
 // it back off. Toggling requires a restart (each installer is dispatch_once).
 static BOOL SCIShouldSuppressFeatureHooks(void) {
-    return [SCIUtils getBoolPref:@"tweak_master_disabled"] || SCIStabilityGuardIsSafeStartupMode();
+    return [SCIUtils getBoolPref:@"tools_disable_all"] || SCIStabilityGuardIsSafeStartupMode();
 }
 
 // Hooks that must always install regardless of the kill switch so users keep

@@ -186,35 +186,35 @@ UIMenu *SCIReelsTapControlMenu(void) {
 
 UIMenu *SCINavigationIconOrderingMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Default", nil, nil, @"nav_icon_ordering", @"default", YES),
+        SCIMenuCommand(@"Default", nil, nil, @"interface_nav_order", @"default", YES),
         [UIMenu menuWithTitle:@""
                         image:nil
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SCIMenuCommand(@"Classic", nil, nil, @"nav_icon_ordering", @"classic", YES),
-            SCIMenuCommand(@"Standard", nil, nil, @"nav_icon_ordering", @"standard", YES),
-            SCIMenuCommand(@"Alternate", nil, nil, @"nav_icon_ordering", @"alternate", YES)
+            SCIMenuCommand(@"Classic", nil, nil, @"interface_nav_order", @"classic", YES),
+            SCIMenuCommand(@"Standard", nil, nil, @"interface_nav_order", @"standard", YES),
+            SCIMenuCommand(@"Alternate", nil, nil, @"interface_nav_order", @"alternate", YES)
         ]]
     ]];
 }
 
 UIMenu *SCISwipeBetweenTabsMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Default", nil, nil, @"swipe_nav_tabs", @"default", YES),
+        SCIMenuCommand(@"Default", nil, nil, @"interface_swipe_tabs", @"default", YES),
         [UIMenu menuWithTitle:@""
                         image:nil
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SCIMenuCommand(@"Enabled", nil, nil, @"swipe_nav_tabs", @"enabled", YES),
-            SCIMenuCommand(@"Disabled", nil, nil, @"swipe_nav_tabs", @"disabled", YES)
+            SCIMenuCommand(@"Enabled", nil, nil, @"interface_swipe_tabs", @"enabled", YES),
+            SCIMenuCommand(@"Disabled", nil, nil, @"interface_swipe_tabs", @"disabled", YES)
         ]]
     ]];
 }
 
 UIMenu *SCISwipeCloseCommentsDirectionMenu(void) {
-    static NSString * const kSCISwipeCloseCommentsDirectionKey = @"comments_swipe_to_close_direction";
+    static NSString * const kSCISwipeCloseCommentsDirectionKey = @"feed_comments_swipe_close_direction";
     return [UIMenu menuWithChildren:@[
         SCIMenuCommand(@"Both", @"left_right", nil, kSCISwipeCloseCommentsDirectionKey, @"both", NO),
         SCIMenuCommand(@"Left", @"arrow_left", nil, kSCISwipeCloseCommentsDirectionKey, @"left", NO),
@@ -224,34 +224,34 @@ UIMenu *SCISwipeCloseCommentsDirectionMenu(void) {
 
 UIMenu *SCICacheAutoClearMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Never", nil, nil, @"cache_auto_clear_mode", @"never", NO),
-        SCIMenuCommand(@"Always", nil, nil, @"cache_auto_clear_mode", @"always", NO),
-        SCIMenuCommand(@"Daily", nil, nil, @"cache_auto_clear_mode", @"daily", NO),
-        SCIMenuCommand(@"Weekly", nil, nil, @"cache_auto_clear_mode", @"weekly", NO),
-        SCIMenuCommand(@"Monthly", nil, nil, @"cache_auto_clear_mode", @"monthly", NO)
+        SCIMenuCommand(@"Never", nil, nil, @"general_cache_auto_clear", @"never", NO),
+        SCIMenuCommand(@"Always", nil, nil, @"general_cache_auto_clear", @"always", NO),
+        SCIMenuCommand(@"Daily", nil, nil, @"general_cache_auto_clear", @"daily", NO),
+        SCIMenuCommand(@"Weekly", nil, nil, @"general_cache_auto_clear", @"weekly", NO),
+        SCIMenuCommand(@"Monthly", nil, nil, @"general_cache_auto_clear", @"monthly", NO)
     ]];
 }
 
 UIMenu *SCIMediaVideoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Always Ask", nil, nil, @"media_video_quality_default", @"always_ask", NO),
-        SCIMenuCommand(@"High", nil, nil, @"media_video_quality_default", @"high", NO),
-        SCIMenuCommand(@"High (Ignore Dash)", nil, nil, @"media_video_quality_default", @"high_ignore_dash", NO),
-        SCIMenuCommand(@"Medium", nil, nil, @"media_video_quality_default", @"medium", NO),
-        SCIMenuCommand(@"Low", nil, nil, @"media_video_quality_default", @"low", NO)
+        SCIMenuCommand(@"Always Ask", nil, nil, @"general_media_vid_quality", @"always_ask", NO),
+        SCIMenuCommand(@"High", nil, nil, @"general_media_vid_quality", @"high", NO),
+        SCIMenuCommand(@"High (Ignore Dash)", nil, nil, @"general_media_vid_quality", @"high_ignore_dash", NO),
+        SCIMenuCommand(@"Medium", nil, nil, @"general_media_vid_quality", @"medium", NO),
+        SCIMenuCommand(@"Low", nil, nil, @"general_media_vid_quality", @"low", NO)
     ]];
 }
 
 UIMenu *SCIMediaPhotoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Always Ask", nil, nil, @"media_photo_quality_default", @"always_ask", NO),
-        SCIMenuCommand(@"High", nil, nil, @"media_photo_quality_default", @"high", NO),
-        SCIMenuCommand(@"Low", nil, nil, @"media_photo_quality_default", @"low", NO)
+        SCIMenuCommand(@"Always Ask", nil, nil, @"general_media_img_quality", @"always_ask", NO),
+        SCIMenuCommand(@"High", nil, nil, @"general_media_img_quality", @"high", NO),
+        SCIMenuCommand(@"Low", nil, nil, @"general_media_img_quality", @"low", NO)
     ]];
 }
 
 UIMenu *SCIGalleryShortcutTargetMenu(void) {
-    NSString * const kGalleryLongPressTabKey = @"gallery_long_press_tab";
+    NSString * const kGalleryLongPressTabKey = @"gallery_quick_access_tab";
     NSString * const kGalleryQuickAccessDisabledValue = @"none";
 
     NSMutableArray<UIMenuElement *> *commands = [NSMutableArray array];

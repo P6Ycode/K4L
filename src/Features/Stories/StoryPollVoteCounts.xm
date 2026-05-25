@@ -136,7 +136,7 @@ static id SCIFindMediaForPollView(UIView *pollView) {
 }
 
 static void SCIApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *optionViews) {
-    if (![SCIUtils getBoolPref:@"story_poll_vote_counts"]) return;
+    if (![SCIUtils getBoolPref:@"stories_poll_vote_counts"]) return;
     if (!pollView.window || SCIStoryPollStickerIsEditing(pollView)) {
         for (UIView *subview in pollView.subviews) {
             if (subview.tag >= 998800 && subview.tag < 998900) subview.hidden = YES;
@@ -284,7 +284,7 @@ static void SCIApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 #pragma mark - Entry Point
 
 extern "C" void SCIInstallStoryPollVoteCountsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"story_poll_vote_counts"]) return;
+    if (![SCIUtils getBoolPref:@"stories_poll_vote_counts"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

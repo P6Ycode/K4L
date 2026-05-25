@@ -15,7 +15,7 @@ static NSHashTable<UIGestureRecognizer *> *SCIShareCopyLongPressRecognizers(void
 }
 
 static inline BOOL SCIShareLongPressCopyEnabled(void) {
-    return [SCIUtils getBoolPref:@"share_button_long_press_copy_link"];
+    return [SCIUtils getBoolPref:@"general_hold_send_copy_link"];
 }
 
 static NSString *SCIShareDebugViewName(UIView *view) {
@@ -390,7 +390,7 @@ static NSString *SCICopiedShareLinkTitleForURL(NSURL *url) {
 static void SCICopyShareURLForView(UIView *view) {
     if (!SCIShareLongPressCopyEnabled()) return;
     NSURL *url = SCIShareURLFromView(view);
-    if ([SCIUtils getBoolPref:@"remove_user_from_copied_share_link"]) {
+    if ([SCIUtils getBoolPref:@"general_strip_share_link_tracking"]) {
         NSURL *sanitized = [SCIUtils sanitizedInstagramShareURL:url];
         if (sanitized && ![sanitized.absoluteString isEqualToString:url.absoluteString]) {
             SCILog(@"General", @"[SCInsta ShareCopy] Sanitized URL from %@ to %@", url.absoluteString, sanitized.absoluteString);

@@ -14,7 +14,7 @@ static char targetStaticRef[] = "target";
              layoutType:(long long)type
             userSession:(id)session
 {
-    if ([SCIUtils getBoolPref:@"enable_notes_customization"]) {
+    if ([SCIUtils getBoolPref:@"msgs_notes_customization"]) {
 
         // enableAnimatedEmojisInCreation
         @try {
@@ -55,7 +55,7 @@ static char targetStaticRef[] = "target";
 - (void)didMoveToWindow {
     %orig;
 
-    if (![SCIUtils getBoolPref:@"custom_note_themes"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_custom_note_themes"]) return;
     
     // Inject buttons once in view lifecycle
     static char didInjectButtons;
@@ -292,8 +292,8 @@ static char targetStaticRef[] = "target";
 %end
 
 void SCIInstallNotesCustomizationHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"enable_notes_customization"] &&
-        ![SCIUtils getBoolPref:@"custom_note_themes"]) {
+    if (![SCIUtils getBoolPref:@"msgs_notes_customization"] &&
+        ![SCIUtils getBoolPref:@"msgs_custom_note_themes"]) {
         return;
     }
 

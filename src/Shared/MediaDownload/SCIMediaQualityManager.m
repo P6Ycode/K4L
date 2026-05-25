@@ -779,7 +779,7 @@ static SCIMediaOption *SCIMediaFFmpegFreeHighOption(SCIMediaAnalysis *analysis) 
 }
 
 static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
-    NSString *preferenceKey = analysis.isVideo ? @"media_video_quality_default" : @"media_photo_quality_default";
+    NSString *preferenceKey = analysis.isVideo ? @"general_media_vid_quality" : @"general_media_img_quality";
     NSString *quality = [SCIUtils getStringPref:preferenceKey];
     if (quality.length == 0) {
         quality = analysis.isVideo ? @"always_ask" : @"high";
@@ -1076,7 +1076,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 - (void)switchChanged:(UISwitch *)sender {
     [super switchChanged:sender];
     SCISetting *row = [self settingForSender:sender];
-    if ([row.defaultsKey isEqualToString:@"media_advanced_encoding_enabled"]) {
+    if ([row.defaultsKey isEqualToString:@"general_media_adv_encoding"]) {
         [self replaceSections:[self buildSections]];
     }
 }
@@ -1085,10 +1085,10 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
     NSMutableArray *sections = [NSMutableArray array];
 
     [sections addObject:SCITopicSection(@"", @[
-        [SCISetting switchCellWithTitle:@"Advanced Encoding" defaultsKey:@"media_advanced_encoding_enabled"]
+        [SCISetting switchCellWithTitle:@"Advanced Encoding" defaultsKey:@"general_media_adv_encoding"]
     ], @"Advanced Encoding exposes codec, preset, bitrate, CRF, resolution, and audio overrides. In advanced mode, the selected video codec is used for DASH merges while audio remains copied.")];
 
-    if ([SCIUtils getBoolPref:@"media_advanced_encoding_enabled"]) {
+    if ([SCIUtils getBoolPref:@"general_media_adv_encoding"]) {
         [sections addObject:SCITopicSection(@"Video", @[
             [SCISetting menuCellWithTitle:@"Video Codec" subtitle:nil menu:[self codecMenu]],
             [SCISetting menuCellWithTitle:@"Preset" subtitle:nil menu:[self presetMenu]],
@@ -1097,19 +1097,19 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
         ], nil)];
 
         [sections addObject:SCITopicSection(@"Quality", @[
-            [SCISetting textFieldCellWithTitle:@"CRF" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"media_encoding_crf"],
-            [SCISetting textFieldCellWithTitle:@"Video Bitrate" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"media_encoding_video_bitrate_kbps"],
+            [SCISetting textFieldCellWithTitle:@"CRF" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"general_media_encoding_crf"],
+            [SCISetting textFieldCellWithTitle:@"Video Bitrate" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"general_media_encoding_vid_bitrate_kbps"],
             [SCISetting menuCellWithTitle:@"Max Resolution" subtitle:nil menu:[self maxResMenu]]
         ], nil)];
 
         [sections addObject:SCITopicSection(@"Audio", @[
-            [SCISetting textFieldCellWithTitle:@"Audio Bitrate" placeholder:@"128" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"media_encoding_audio_bitrate_kbps"],
+            [SCISetting textFieldCellWithTitle:@"Audio Bitrate" placeholder:@"128" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"general_media_encoding_audio_bitrate_kbps"],
             [SCISetting menuCellWithTitle:@"Audio Channels" subtitle:nil menu:[self audioChannelsMenu]]
         ], nil)];
 
         [sections addObject:SCITopicSection(@"Advanced", @[
             [SCISetting menuCellWithTitle:@"Pixel Format" subtitle:nil menu:[self pixelFormatMenu]],
-            [SCISetting switchCellWithTitle:@"Fast Start" defaultsKey:@"media_encoding_faststart"]
+            [SCISetting switchCellWithTitle:@"Fast Start" defaultsKey:@"general_media_encoding_faststart"]
         ], @"Fast Start moves MP4 metadata to the beginning of the file, allowing the video to start playing immediately when shared online or streamed.")];
 
         SCISetting *ffmpegInfo = [SCISetting linkCellWithTitle:@"About FFmpeg Encoding" subtitle:@"Tap to learn more" imageUrl:@"https://ffmpeg.org/favicon.ico" url:@"https://trac.ffmpeg.org/wiki/Encode/H.264"];
@@ -1125,7 +1125,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)speedMenu {
-    return [self buildMenuForPref:@"media_encoding_speed" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_speed" items:@[
         @{@"value": @"ultrafast", @"label": @"Ultrafast"},
         @{@"value": @"faster", @"label": @"Faster"},
         @{@"value": @"medium", @"label": @"Medium"},
@@ -1134,14 +1134,14 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)codecMenu {
-    return [self buildMenuForPref:@"media_encoding_video_codec" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_vid_codec" items:@[
         @{@"value": @"videotoolbox", @"label": @"VideoToolbox"},
         @{@"value": @"libx264", @"label": @"libx264"}
     ]];
 }
 
 - (UIMenu *)presetMenu {
-    return [self buildMenuForPref:@"media_encoding_preset" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_preset" items:@[
         @{@"value": @"ultrafast", @"label": @"Ultrafast"},
         @{@"value": @"superfast", @"label": @"Superfast"},
         @{@"value": @"veryfast", @"label": @"Very Fast"},
@@ -1155,7 +1155,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)profileMenu {
-    return [self buildMenuForPref:@"media_encoding_h264_profile" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_h264_profile" items:@[
         @{@"value": @"baseline", @"label": @"Baseline"},
         @{@"value": @"main", @"label": @"Main"},
         @{@"value": @"high", @"label": @"High"}
@@ -1163,7 +1163,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)levelMenu {
-    return [self buildMenuForPref:@"media_encoding_h264_level" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_h264_level" items:@[
         @{@"value": @"auto", @"label": @"Auto"},
         @{@"value": @"3.1", @"label": @"3.1"},
         @{@"value": @"4.0", @"label": @"4.0"},
@@ -1173,7 +1173,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)maxResMenu {
-    return [self buildMenuForPref:@"media_encoding_max_resolution" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_max_resolution" items:@[
         @{@"value": @"original", @"label": @"Original"},
         @{@"value": @"480", @"label": @"480p"},
         @{@"value": @"720", @"label": @"720p"},
@@ -1182,7 +1182,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)audioChannelsMenu {
-    return [self buildMenuForPref:@"media_encoding_audio_channels" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_audio_channels" items:@[
         @{@"value": @"original", @"label": @"Original"},
         @{@"value": @"stereo", @"label": @"Stereo"},
         @{@"value": @"mono", @"label": @"Mono"}
@@ -1190,7 +1190,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 }
 
 - (UIMenu *)pixelFormatMenu {
-    return [self buildMenuForPref:@"media_encoding_pixel_format" items:@[
+    return [self buildMenuForPref:@"general_media_encoding_pixel_format" items:@[
         @{@"value": @"default", @"label": @"Default"},
         @{@"value": @"yuv420p", @"label": @"yuv420p"},
         @{@"value": @"nv12", @"label": @"nv12"}

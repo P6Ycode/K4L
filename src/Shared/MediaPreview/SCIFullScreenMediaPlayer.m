@@ -992,8 +992,8 @@ fromViewController:(UIViewController *)presenter {
 
         if (success) {
             [self showCompletedPillForActionIdentifier:kSCINotificationMediaPreviewSavePhotos
-                                                 title:@"Saved! Tap to open Photos"
-                                              subtitle:nil
+                                                 title:@"Saved successfully!"
+                                              subtitle:@"Tap to open Photos"
                                          completedTap:^{
                 [SCIUtils openPhotosApp];
             }];
@@ -1321,8 +1321,8 @@ fromViewController:(UIViewController *)presenter {
 
     if (file) {
         [self showCompletedPillForActionIdentifier:kSCINotificationMediaPreviewSaveGallery
-                                             title:@"Saved! Tap to open Gallery"
-                                          subtitle:nil
+                                             title:@"Saved successfully!"
+                                          subtitle:@"Tap to open Gallery"
                                      completedTap:^{
             [SCIGalleryViewController presentGallery];
         }];

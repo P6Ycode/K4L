@@ -28,7 +28,7 @@
 %new - (void)handleLongPress:(UILongPressGestureRecognizer *)sender {
     if (sender.state != UIGestureRecognizerStateBegan) return;
 
-    if ([SCIUtils getBoolPref:@"teen_app_icons"]) {
+    if ([SCIUtils getBoolPref:@"general_teen_app_icons"]) {
         IGHomeFeedHeaderViewController *homeFeedHeaderVC = [SCIUtils nearestViewControllerForView:self];
 
         if (homeFeedHeaderVC != nil) {
@@ -42,7 +42,7 @@
 %end
 
 void SCIInstallTeenAppIconsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"teen_app_icons"]) return;
+    if (![SCIUtils getBoolPref:@"general_teen_app_icons"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

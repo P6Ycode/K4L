@@ -6,7 +6,7 @@
 
 %hook IGSearchEntityRouter
 - (id)initWithUserSession:(id)arg1 analyticsModule:(id)arg2 shouldAddToRecents:(BOOL)shouldAddToRecents {
-    if ([SCIUtils getBoolPref:@"no_recent_searches"]) {
+    if ([SCIUtils getBoolPref:@"general_no_recent_searches"]) {
         SCILog(@"General", @"[SCInsta] Disabling recent searches");
 
         shouldAddToRecents = false;
@@ -19,7 +19,7 @@
 // Most in-app search bars
 %hook IGRecentSearchStore
 - (id)initWithDiskManager:(id)arg1 recentSearchStoreConfiguration:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"no_recent_searches"]) {
+    if ([SCIUtils getBoolPref:@"general_no_recent_searches"]) {
         SCILog(@"General", @"[SCInsta] Disabling recent searches");
 
         return nil;
@@ -28,7 +28,7 @@
     return %orig;
 }
 - (BOOL)addItem:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"no_recent_searches"]) {
+    if ([SCIUtils getBoolPref:@"general_no_recent_searches"]) {
         SCILog(@"General", @"[SCInsta] Disabling recent searches");
 
         return nil;
@@ -41,7 +41,7 @@
 // Recent dm message recipients search bar
 %hook IGDirectRecipientRecentSearchStorage
 - (id)initWithDiskManager:(id)arg1 directRepo:(id)arg2 userMap:(id)arg3 currentUser:(id)arg4 launcherSet:(id)arg5 {
-    if ([SCIUtils getBoolPref:@"no_recent_searches"]) {
+    if ([SCIUtils getBoolPref:@"general_no_recent_searches"]) {
         SCILog(@"General", @"[SCInsta] Disabling recent searches");
 
         return nil;
@@ -54,7 +54,7 @@
 %end
 
 void SCIInstallNoRecentSearchesHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"no_recent_searches"]) return;
+    if (![SCIUtils getBoolPref:@"general_no_recent_searches"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

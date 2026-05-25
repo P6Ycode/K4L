@@ -103,7 +103,7 @@ static void SCIRenderFollowBadge(UIViewController *controller) {
 
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    if (![SCIUtils getBoolPref:@"follow_indicator"]) return;
+    if (![SCIUtils getBoolPref:@"profile_follow_indicator"]) return;
 
     NSNumber *cachedStatus = SCIGetFollowStatusForController(self);
     if (cachedStatus) {
@@ -140,7 +140,7 @@ static void SCIRenderFollowBadge(UIViewController *controller) {
 
 - (void)viewDidLayoutSubviews {
     %orig;
-    if ([SCIUtils getBoolPref:@"follow_indicator"]) {
+    if ([SCIUtils getBoolPref:@"profile_follow_indicator"]) {
         SCIRenderFollowBadge((UIViewController *)self);
     }
 }
@@ -150,7 +150,7 @@ static void SCIRenderFollowBadge(UIViewController *controller) {
 %end
 
 void SCIInstallFollowIndicatorHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"follow_indicator"]) return;
+    if (![SCIUtils getBoolPref:@"profile_follow_indicator"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

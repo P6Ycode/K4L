@@ -2,23 +2,23 @@
 #import "../../InstagramHeaders.h"
 
 static inline BOOL SCIHideFeedSuggestedUsers(void) {
-    return [SCIUtils getBoolPref:@"hide_suggested_users_feed"];
+    return [SCIUtils getBoolPref:@"general_hide_suggested_users_feed"];
 }
 
 static inline BOOL SCIHideProfileSuggestedUsers(void) {
-    return [SCIUtils getBoolPref:@"hide_suggested_users_profile"];
+    return [SCIUtils getBoolPref:@"general_hide_suggested_users_profile"];
 }
 
 static inline BOOL SCIHideActivitySuggestedUsers(void) {
-    return [SCIUtils getBoolPref:@"hide_suggested_users_activity"];
+    return [SCIUtils getBoolPref:@"general_hide_suggested_users_activity"];
 }
 
 static inline BOOL SCIHideFollowListSuggestedUsers(void) {
-    return [SCIUtils getBoolPref:@"hide_suggested_users_follow_lists"];
+    return [SCIUtils getBoolPref:@"general_hide_suggested_users_follow_lists"];
 }
 
 static inline BOOL SCIHideSubscriptionSuggestedUsers(void) {
-    return [SCIUtils getBoolPref:@"hide_suggested_users_subscriptions"];
+    return [SCIUtils getBoolPref:@"general_hide_suggested_users_subscriptions"];
 }
 
 %group SCINoSuggestedUsersHooks

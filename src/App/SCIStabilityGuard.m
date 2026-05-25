@@ -2,11 +2,11 @@
 
 #import "../Utils.h"
 
-static NSString *const kSCIStabilityLaunchStartedAtKey = @"sci_stability_launch_started_at";
-static NSString *const kSCIStabilityLaunchCompletedAtKey = @"sci_stability_launch_completed_at";
-static NSString *const kSCIStabilityFailedLaunchCountKey = @"sci_stability_failed_launch_count";
-static NSString *const kSCISafeStartupModeKey = @"sci_safe_startup_mode";
-static NSString *const kSCISafeStartupReasonKey = @"sci_safe_startup_reason";
+static NSString *const kSCIStabilityLaunchStartedAtKey = @"app_launch_started_at";
+static NSString *const kSCIStabilityLaunchCompletedAtKey = @"app_launch_completed_at";
+static NSString *const kSCIStabilityFailedLaunchCountKey = @"app_failed_launch_count";
+static NSString *const kSCISafeStartupModeKey = @"app_safe_startup";
+static NSString *const kSCISafeStartupReasonKey = @"app_safe_startup_reason";
 
 static NSTimeInterval const kSCIStabilityRecentLaunchWindow = 300.0;
 static NSInteger const kSCIStabilityFailureThreshold = 2;

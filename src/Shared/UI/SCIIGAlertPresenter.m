@@ -4,6 +4,7 @@
 #import "../../InstagramHeaders.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
+#import "../../Utils.h"
 
 static const void *kSCIIGAlertInputViewKey = &kSCIIGAlertInputViewKey;
 static const void *kSCIIGAlertInputFieldKey = &kSCIIGAlertInputFieldKey;
@@ -11,8 +12,8 @@ static const void *kSCIIGAlertInputHasMessageKey = &kSCIIGAlertInputHasMessageKe
 static const void *kSCIIGAlertNativeActionStyleKey = &kSCIIGAlertNativeActionStyleKey;
 static const void *kSCIIGAlertNativeActionStylesKey = &kSCIIGAlertNativeActionStylesKey;
 static const CGFloat kSCIIGAlertInputHeight = 44.0;
-static const CGFloat kSCIIGAlertInputVerticalPadding = 10.0;
-static const CGFloat kSCIIGAlertInputBottomPadding = 10.0;
+static const CGFloat kSCIIGAlertInputVerticalPadding = 14.0;
+static const CGFloat kSCIIGAlertInputBottomPadding = 12.0;
 static const CGFloat kSCIIGAlertInputHorizontalInset = 24.0;
 
 static CGSize (*sSCIIGAlertOriginalSizeThatFits)(id, SEL, CGSize);
@@ -226,6 +227,121 @@ static CGRect SCIIGFrameInView(UIView *source, UIView *target) {
     return [source.superview convertRect:source.frame toView:target];
 }
 
+static CGFloat SCIIGMeasuredBottomForLabelInView(UIView *labelView, UIView *target) {
+    if (!labelView || !target) return CGFLOAT_MIN;
+    if (labelView.hidden) return CGFLOAT_MIN;
+    if (labelView.alpha <= 0.01) return CGFLOAT_MIN;
+
+    // Check if UILabel is empty
+    if ([labelView isKindOfClass:[UILabel class]]) {
+        UILabel *label = (UILabel *)labelView;
+        if (label.text.length == 0 && label.attributedText.length == 0) {
+            return CGFLOAT_MIN;
+        }
+    } else if ([labelView respondsToSelector:@selector(text)]) {
+        @try {
+            NSString *text = [labelView valueForKey:@"text"];
+            if ([text isKindOfClass:[NSString class]] && text.length == 0) {
+                return CGFLOAT_MIN;
+            }
+        } @catch (__unused NSException *e) {}
+    }
+
+    CGRect frame = SCIIGFrameInView(labelView, target);
+    if (CGRectIsNull(frame)) return CGFLOAT_MIN;
+    if (frame.size.height <= 0.0) return CGFLOAT_MIN;
+
+    CGFloat measuredHeight = CGRectGetHeight(frame);
+    if ([labelView respondsToSelector:@selector(sizeThatFits:)]) {
+        CGSize measured = [labelView sizeThatFits:CGSizeMake(CGRectGetWidth(frame), CGFLOAT_MAX)];
+        if (measured.height > 0.0) {
+            measuredHeight = MAX(measuredHeight, ceil(measured.height));
+        }
+    }
+
+    return CGRectGetMinY(frame) + measuredHeight;
+}
+
+static CGFloat SCIIGMinimumButtonY(NSArray<UIView *> *buttons, UIView *coordinateView) {
+    if (!coordinateView || ![buttons isKindOfClass:[NSArray class]] || buttons.count == 0) return CGFLOAT_MAX;
+
+    CGFloat minY = CGFLOAT_MAX;
+    for (UIView *button in buttons) {
+        CGRect buttonFrame = SCIIGFrameInView(button, coordinateView);
+        if (!CGRectIsNull(buttonFrame)) {
+            minY = MIN(minY, CGRectGetMinY(buttonFrame));
+        }
+    }
+    return minY;
+}
+
+static UIView *SCIIGDirectChildAncestor(UIView *view, UIView *root) {
+    if (!view || !root) return nil;
+    UIView *current = view;
+    while (current && current.superview != root) {
+        current = current.superview;
+    }
+    return (current && current.superview == root) ? current : nil;
+}
+
+static void SCIIGShiftButtonRegionToStartAtY(UIView *root, UIView *coordinateView, NSArray<UIView *> *buttons, CGFloat minimumY) {
+    if (!root || !coordinateView || ![buttons isKindOfClass:[NSArray class]] || buttons.count == 0) return;
+
+    UIView *inputView = objc_getAssociatedObject(coordinateView, kSCIIGAlertInputViewKey);
+    if (!inputView) {
+        inputView = objc_getAssociatedObject(root, kSCIIGAlertInputViewKey);
+    }
+
+    CGFloat minButtonY = SCIIGMinimumButtonY(buttons, coordinateView);
+    if (minButtonY == CGFLOAT_MAX) return;
+
+    CGFloat delta = ceil(minimumY - minButtonY);
+    if (delta <= 0.0) return;
+
+    // Collect unique direct-child ancestors of each button within root.
+    NSMutableSet<NSValue *> *shifted = [NSMutableSet set];
+    for (UIView *button in buttons) {
+        UIView *ancestor = SCIIGDirectChildAncestor(button, root);
+        if (!ancestor || ancestor == inputView) continue;
+        NSValue *key = [NSValue valueWithNonretainedObject:ancestor];
+        if ([shifted containsObject:key]) continue;
+        [shifted addObject:key];
+
+        CGRect frame = ancestor.frame;
+        frame.origin.y += delta;
+        ancestor.frame = frame;
+    }
+
+    // Also shift any other direct subviews of root that sit in the button region.
+    for (UIView *subview in root.subviews) {
+        if (subview == inputView) continue;
+        NSValue *key = [NSValue valueWithNonretainedObject:subview];
+        if ([shifted containsObject:key]) continue;
+
+        CGRect subviewFrame = SCIIGFrameInView(subview, coordinateView);
+        if (CGRectIsNull(subviewFrame)) continue;
+        if (CGRectGetMinY(subviewFrame) < minButtonY - 10.0) continue;
+
+        [shifted addObject:key];
+        CGRect frame = subview.frame;
+        frame.origin.y += delta;
+        subview.frame = frame;
+    }
+
+    // Grow root if shifted content exceeds its bounds.
+    CGFloat maxBottom = 0.0;
+    for (NSValue *val in shifted) {
+        UIView *v = [val nonretainedObjectValue];
+        CGFloat bottom = CGRectGetMaxY(v.frame);
+        if (bottom > maxBottom) maxBottom = bottom;
+    }
+    if (maxBottom > CGRectGetHeight(root.bounds)) {
+        CGRect rootFrame = root.frame;
+        rootFrame.size.height = maxBottom;
+        root.frame = rootFrame;
+    }
+}
+
 static UIColor *SCIIGColorFromClassSelector(NSString *className, SEL selector) {
     Class colorClass = NSClassFromString(className);
     if (!colorClass || ![colorClass respondsToSelector:selector]) return nil;
@@ -263,9 +379,56 @@ static NSNumber *SCIIGNativeStyleForButton(id alertView, UIView *button, NSUInte
     return index < styles.count ? styles[index] : nil;
 }
 
+static NSArray<UIView *> *SCIIGFindAlertButtons(id alertView) {
+    if (!alertView) return @[];
+    NSMutableArray<UIView *> *buttons = [NSMutableArray array];
+
+    // 1. Try _buttons ivar
+    id ivarButtons = SCIIGGetIvarObject(alertView, "_buttons");
+    if ([ivarButtons isKindOfClass:[NSArray class]]) {
+        for (id btn in ivarButtons) {
+            if ([btn isKindOfClass:[UIView class]]) {
+                [buttons addObject:btn];
+            }
+        }
+        if (buttons.count > 0) return buttons.copy;
+    }
+
+    // 2. Try keyEnumerator on _buttonToActionMap
+    id buttonToActionMap = SCIIGGetIvarObject(alertView, "_buttonToActionMap");
+    if ([buttonToActionMap respondsToSelector:@selector(keyEnumerator)]) {
+        for (id key in [buttonToActionMap keyEnumerator]) {
+            if ([key isKindOfClass:[UIView class]]) {
+                [buttons addObject:key];
+            }
+        }
+        if (buttons.count > 0) return buttons.copy;
+    }
+
+    // 3. Recursive subview search
+    if ([alertView isKindOfClass:[UIView class]]) {
+        NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:alertView];
+        while (queue.count > 0) {
+            UIView *current = queue.firstObject;
+            [queue removeObjectAtIndex:0];
+
+            NSString *className = NSStringFromClass([current class]);
+            if ([current isKindOfClass:[UIButton class]] ||
+                [className rangeOfString:@"Button" options:NSCaseInsensitiveSearch].location != NSNotFound ||
+                [className rangeOfString:@"ActionView" options:NSCaseInsensitiveSearch].location != NSNotFound) {
+                [buttons addObject:current];
+            } else {
+                [queue addObjectsFromArray:current.subviews];
+            }
+        }
+    }
+
+    return buttons.copy;
+}
+
 static void SCIIGStyleAlertButtons(id alertView) {
-    NSArray<UIView *> *buttons = SCIIGGetIvarObject(alertView, "_buttons");
-    if (![buttons isKindOfClass:[NSArray class]]) return;
+    NSArray<UIView *> *buttons = SCIIGFindAlertButtons(alertView);
+    if (buttons.count == 0) return;
 
     UIColor *dangerColor = SCIIGDangerActionColor();
     [buttons enumerateObjectsUsingBlock:^(UIView *button, NSUInteger index, __unused BOOL *stop) {
@@ -286,7 +449,7 @@ static CGSize SCIIGAlertHookSizeThatFits(id self, SEL _cmd, CGSize size) {
         return fittingSize;
     }
 
-    CGFloat extraHeight = kSCIIGAlertInputHeight + kSCIIGAlertInputVerticalPadding + kSCIIGAlertInputBottomPadding;
+    CGFloat extraHeight = kSCIIGAlertInputVerticalPadding + kSCIIGAlertInputHeight + kSCIIGAlertInputBottomPadding;
     fittingSize.height += extraHeight;
     return fittingSize;
 }
@@ -311,55 +474,132 @@ static void SCIIGAlertHookLayoutSubviews(id self, SEL _cmd) {
 
     UIView *descriptionLabel = SCIIGGetIvarObject(self, "_descriptionLabel");
     UIView *titleLabel = SCIIGGetIvarObject(self, "_titleLabel");
-    CGRect descriptionFrame = descriptionLabel ? SCIIGFrameInView(descriptionLabel, container) : CGRectNull;
-    CGRect titleFrame = titleLabel ? SCIIGFrameInView(titleLabel, container) : CGRectNull;
     CGFloat width = MIN(CGRectGetWidth(container.bounds) - (kSCIIGAlertInputHorizontalInset * 2.0), 280.0);
     width = MAX(width, 160.0);
 
-    CGFloat y = 0.0;
-    if (!CGRectIsNull(descriptionFrame)) {
-        y = CGRectGetMaxY(descriptionFrame) + kSCIIGAlertInputVerticalPadding;
-    } else if (!CGRectIsNull(titleFrame)) {
-        y = CGRectGetMaxY(titleFrame) + kSCIIGAlertInputVerticalPadding;
+    CGFloat labelBottom = CGFLOAT_MIN;
+    CGFloat descBottom = SCIIGMeasuredBottomForLabelInView(descriptionLabel, container);
+    CGFloat titleBottom = SCIIGMeasuredBottomForLabelInView(titleLabel, container);
+
+    if (descBottom != CGFLOAT_MIN && titleBottom != CGFLOAT_MIN) {
+        labelBottom = MAX(descBottom, titleBottom);
+    } else if (descBottom != CGFLOAT_MIN) {
+        labelBottom = descBottom;
     } else {
-        y = kSCIIGAlertInputVerticalPadding;
+        labelBottom = titleBottom;
     }
 
-    NSArray<UIView *> *buttons = SCIIGGetIvarObject(self, "_buttons");
-    if ([buttons isKindOfClass:[NSArray class]]) {
-        CGFloat maxAllowedY = CGFLOAT_MAX;
-        for (UIView *button in buttons) {
-            CGRect buttonFrame = SCIIGFrameInView(button, container);
-            if (CGRectIsNull(buttonFrame)) {
-                continue;
-            }
-            CGFloat candidateMaxY = CGRectGetMinY(buttonFrame) - kSCIIGAlertInputBottomPadding - kSCIIGAlertInputHeight;
-            maxAllowedY = MIN(maxAllowedY, candidateMaxY);
-        }
-        if (maxAllowedY != CGFLOAT_MAX) {
-            y = MIN(y, maxAllowedY);
-        }
-    }
+    CGFloat y = labelBottom != CGFLOAT_MIN
+        ? labelBottom + kSCIIGAlertInputVerticalPadding
+        : kSCIIGAlertInputVerticalPadding;
     y = MAX(y, kSCIIGAlertInputVerticalPadding);
 
     CGFloat x = floor((CGRectGetWidth(container.bounds) - width) / 2.0);
     inputView.frame = CGRectMake(x, y, width, kSCIIGAlertInputHeight);
+
+    NSArray<UIView *> *buttons = SCIIGFindAlertButtons(self);
+    CGFloat minimumButtonY = CGRectGetMaxY(inputView.frame) + kSCIIGAlertInputBottomPadding;
+    if (scrollView && [buttons isKindOfClass:[NSArray class]]) {
+        // Separate buttons into those inside vs outside the scrollView.
+        NSMutableArray<UIView *> *buttonsInScroll = [NSMutableArray array];
+        NSMutableArray<UIView *> *buttonsOutsideScroll = [NSMutableArray array];
+        for (UIView *button in buttons) {
+            BOOL insideScroll = NO;
+            UIView *walk = button.superview;
+            while (walk) {
+                if (walk == scrollView) { insideScroll = YES; break; }
+                if (walk == alertView) break;
+                walk = walk.superview;
+            }
+            if (insideScroll) {
+                [buttonsInScroll addObject:button];
+            } else {
+                [buttonsOutsideScroll addObject:button];
+            }
+        }
+
+        // Shift buttons inside the scrollView using scrollView-local coordinates.
+        if (buttonsInScroll.count > 0) {
+            SCIIGShiftButtonRegionToStartAtY(scrollView, scrollView, buttonsInScroll, minimumButtonY);
+            // Grow scrollView content if needed.
+            if ([scrollView isKindOfClass:[UIScrollView class]]) {
+                CGFloat maxBottom = 0.0;
+                for (UIView *sub in scrollView.subviews) {
+                    CGFloat bottom = CGRectGetMaxY(sub.frame);
+                    if (bottom > maxBottom) maxBottom = bottom;
+                }
+                ((UIScrollView *)scrollView).contentSize = CGSizeMake(CGRectGetWidth(scrollView.bounds), maxBottom);
+            }
+        }
+
+        // Shift buttons outside the scrollView using alertView coordinates.
+        if (buttonsOutsideScroll.count > 0) {
+            CGRect inputFrameInAlert = SCIIGFrameInView(inputView, alertView);
+            CGFloat minimumButtonYInAlert = CGRectIsNull(inputFrameInAlert)
+                ? minimumButtonY
+                : CGRectGetMaxY(inputFrameInAlert) + kSCIIGAlertInputBottomPadding;
+            SCIIGShiftButtonRegionToStartAtY(alertView, alertView, buttonsOutsideScroll, minimumButtonYInAlert);
+        }
+    } else {
+        SCIIGShiftButtonRegionToStartAtY(container, container, buttons, minimumButtonY);
+    }
+
+    // Trim the alert to tightly fit the actual content after repositioning.
+    if (buttons.count > 0) {
+        CGFloat maxButtonBottom = 0.0;
+        for (UIView *button in buttons) {
+            CGRect buttonFrameInAlert = SCIIGFrameInView(button, alertView);
+            if (!CGRectIsNull(buttonFrameInAlert)) {
+                CGFloat bottom = CGRectGetMaxY(buttonFrameInAlert);
+                if (bottom > maxButtonBottom) maxButtonBottom = bottom;
+            }
+        }
+        if (maxButtonBottom > 0.0) {
+            CGFloat desiredHeight = maxButtonBottom;
+            CGFloat currentHeight = CGRectGetHeight(alertView.frame);
+            if (currentHeight > desiredHeight + 1.0) {
+                CGRect frame = alertView.frame;
+                CGFloat shrink = currentHeight - desiredHeight;
+                frame.size.height = desiredHeight;
+                frame.origin.y += shrink / 2.0;
+                alertView.frame = frame;
+
+                // Also resize the immediate container if it wraps the alert tightly.
+                UIView *wrapper = alertView.superview;
+                if (wrapper && fabs(CGRectGetHeight(wrapper.bounds) - currentHeight) < 2.0) {
+                    CGRect wrapperFrame = wrapper.frame;
+                    wrapperFrame.size.height = desiredHeight;
+                    wrapperFrame.origin.y += shrink / 2.0;
+                    wrapper.frame = wrapperFrame;
+                }
+            }
+        }
+    }
+}
+
+static void SCIIGSwizzleInstanceMethod(Class cls, SEL origSel, IMP newImp, IMP *outOrigImp) {
+    if (!cls || !origSel || !newImp) return;
+    Method origMethod = class_getInstanceMethod(cls, origSel);
+    if (!origMethod) return;
+
+    const char *types = method_getTypeEncoding(origMethod);
+    IMP origImp = method_getImplementation(origMethod);
+
+    if (class_addMethod(cls, origSel, newImp, types)) {
+        if (outOrigImp) *outOrigImp = origImp;
+    } else {
+        IMP prevImp = method_setImplementation(origMethod, newImp);
+        if (outOrigImp) *outOrigImp = prevImp;
+    }
 }
 
 static void SCIIGInstallAlertHooksIfNeeded(Class alertClass) {
     if (sSCIIGAlertHooksInstalled || !alertClass) return;
 
-    Method sizeMethod = class_getInstanceMethod(alertClass, @selector(sizeThatFits:));
-    if (sizeMethod) {
-        sSCIIGAlertOriginalSizeThatFits = (CGSize (*)(id, SEL, CGSize))method_setImplementation(sizeMethod, (IMP)SCIIGAlertHookSizeThatFits);
-    }
+    SCIIGSwizzleInstanceMethod(alertClass, @selector(sizeThatFits:), (IMP)SCIIGAlertHookSizeThatFits, (IMP *)&sSCIIGAlertOriginalSizeThatFits);
+    SCIIGSwizzleInstanceMethod(alertClass, @selector(layoutSubviews), (IMP)SCIIGAlertHookLayoutSubviews, (IMP *)&sSCIIGAlertOriginalLayoutSubviews);
 
-    Method layoutMethod = class_getInstanceMethod(alertClass, @selector(layoutSubviews));
-    if (layoutMethod) {
-        sSCIIGAlertOriginalLayoutSubviews = (void (*)(id, SEL))method_setImplementation(layoutMethod, (IMP)SCIIGAlertHookLayoutSubviews);
-    }
-
-    sSCIIGAlertHooksInstalled = (sizeMethod || layoutMethod);
+    sSCIIGAlertHooksInstalled = YES;
 }
 
 @implementation SCIIGAlertPresenter
@@ -435,6 +675,10 @@ static void SCIIGInstallAlertHooksIfNeeded(Class alertClass) {
 
     NSMutableArray *nativeActions = [NSMutableArray arrayWithCapacity:actions.count];
     for (SCIIGAlertAction *action in actions) {
+        // The native IGActionSheetController already provides its own Cancel button,
+        // so skip cancel-style actions to avoid duplicates.
+        if (action.style == SCIIGAlertActionStyleCancel) continue;
+
         id nativeAction = ((id (*)(id, SEL, id, id, long long, id, id, id))objc_msgSend)([actionClass alloc],
                                                                                         actionSelector,
                                                                                         action.title,
@@ -474,6 +718,14 @@ static void SCIIGInstallAlertHooksIfNeeded(Class alertClass) {
     }
 
     ((void (*)(id, SEL))objc_msgSend)(sheet, @selector(show));
+
+    // Tint the native cancel button with the danger/cancel color.
+    UIView *cancelButton = SCIIGGetIvarObject(sheet, "_cancelButton");
+    if ([cancelButton isKindOfClass:[UIButton class]]) {
+        UIColor *cancelColor = SCIIGDangerActionColor();
+        [(UIButton *)cancelButton setTitleColor:cancelColor forState:UIControlStateNormal];
+        cancelButton.tintColor = cancelColor;
+    }
     return YES;
 }
 

@@ -8,7 +8,7 @@
     %orig;
 
     if ([[self delegate] isKindOfClass:%c(IGSearchTypeaheadNavigationHeaderView)]) {
-        if ([SCIUtils getBoolPref:@"hide_trending_searches"]) {
+        if ([SCIUtils getBoolPref:@"interface_hide_trending_searches"]) {
             SCILog(@"General", @"[SCInsta] Hiding trending searches");
 
             [self removeFromSuperview];
@@ -20,7 +20,7 @@
 %end
 
 void SCIInstallHideTrendingSearchesHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"hide_trending_searches"]) return;
+    if (![SCIUtils getBoolPref:@"interface_hide_trending_searches"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

@@ -56,7 +56,7 @@ static void SCIDMEndRefreshIfNeeded(id self, id arg) {
 }
 
 static void SCIConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
-    if (sSCIDMRefreshBypassing || ![SCIUtils getBoolPref:@"dm_refresh_confirm"]) {
+    if (sSCIDMRefreshBypassing || ![SCIUtils getBoolPref:@"msgs_confirm_refresh"]) {
         if (confirmBlock) confirmBlock();
         return;
     }

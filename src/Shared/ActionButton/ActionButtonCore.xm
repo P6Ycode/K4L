@@ -10,6 +10,7 @@
 #import "../../InstagramHeaders.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../../Settings/SCIPreferences.h"
 #import "../MediaDownload/SCIMediaQualityManager.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../MediaPreview/SCIMediaItem.h"
@@ -38,6 +39,7 @@ NSString * const kSCIActionCopyCaption = @"copy_caption";
 NSString * const kSCIActionOpenTopicSettings = @"open_topic_settings";
 NSString * const kSCIActionRepost = @"repost";
 NSString * const kSCIActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
+NSString * const kSCIActionStoryMentionsSheet = @"story_mentions_sheet";
 NSString * const kSCIActionProfileCopyInfo = @"profile_copy_info";
 NSString * const kSCIActionProfileCopyID = @"profile_copy_id";
 NSString * const kSCIActionProfileCopyUsername = @"profile_copy_username";
@@ -73,6 +75,14 @@ static UIView *SCIActionContextAnchorView(SCIActionButtonContext *context);
 void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
 void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
 SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void SCIPresentStoryMentionsSheet(UIView *overlayView);
+#ifdef __cplusplus
+}
+#endif
 
 @implementation SCIResolvedMediaEntry
 @end
@@ -180,7 +190,7 @@ static UIColor *SCIActionButtonTintForSource(SCIActionButtonSource source) {
 }
 
 static NSString *SCIDefaultActionPrefKeyForSource(SCIActionButtonSource source) {
-	return [NSString stringWithFormat:@"action_button_%@_default_action", SCIActionButtonTopicKeyForSource(source)];
+	return [NSString stringWithFormat:@"%@_action_btn_default_action", SCIActionButtonTopicKeyForSource(source)];
 }
 
 static SCIGallerySource SCIGallerySourceForActionSource(SCIActionButtonSource source) {
@@ -342,7 +352,7 @@ static NSString *SCIProfileInfoSignature(id user) {
 }
 
 static NSString *SCIProfileDefaultCopyInfoIdentifier(void) {
-    NSString *identifier = [SCIUtils getStringPref:@"action_button_profile_default_copy_info_action"] ?: kSCIActionProfileCopyUsername;
+    NSString *identifier = [SCIUtils getStringPref:@"profile_action_btn_default_copy_info_action"] ?: kSCIActionProfileCopyUsername;
     NSDictionary<NSString *, NSString *> *legacyMap = @{
         @"id": kSCIActionProfileCopyID,
         @"username": kSCIActionProfileCopyUsername,
@@ -509,6 +519,11 @@ static NSString *SCIResolvedSettingsTitleForContext(SCIActionButtonContext *cont
     return SCIActionButtonTopicTitleForSource(context.source);
 }
 
+static BOOL SCIStoryMediaHasMentions(id media) {
+    NSArray *mentions = SCIArrayFromCollection(SCIObjectForSelector(media, @"reelMentions") ?: SCIKVCObject(media, @"reelMentions"));
+    return mentions.count > 0;
+}
+
 static UIImage *SCIIconForActionIdentifier(NSString *identifier, SCIActionButtonSource source, CGFloat size, SCIActionButtonContext *context) {
 	if (SCIIsBulkChildActionIdentifier(identifier)) {
 		return SCIIconForActionIdentifier(SCIBaseActionIdentifierForBulkChild(identifier), source, size, context);
@@ -587,7 +602,8 @@ static void SCIResumePlaybackForPreviewContext(SCIActionButtonContext *context) 
 
 static BOOL SCIActionIdentifierOpensPreview(NSString *identifier) {
     return [identifier isEqualToString:kSCIActionExpand] ||
-           [identifier isEqualToString:kSCIActionViewThumbnail];
+           [identifier isEqualToString:kSCIActionViewThumbnail] ||
+           [identifier isEqualToString:kSCIActionStoryMentionsSheet];
 }
 
 static SCIMediaPreviewPlaybackBlock SCIPausePlaybackBlockForContext(SCIActionButtonContext *context) {
@@ -1076,7 +1092,12 @@ static UIImage *SCIButtonDefaultImage(NSString *identifier, SCIActionButtonSourc
 		size = 23.0;
 	}
 
-	return SCIIconForActionIdentifier(identifier, source, size, context);
+    NSString *resolvedIdentifier = identifier;
+    if (source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
+        resolvedIdentifier = SCIProfileDefaultCopyInfoIdentifier();
+    }
+
+	return SCIIconForActionIdentifier(resolvedIdentifier, source, size, context);
 }
 
 static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButtonSource source, UIImage *image, UIButton *button) {
@@ -1295,51 +1316,11 @@ static UIMenu *SCIBulkActionMenuForContext(SCIActionButtonContext *context,
         return nil;
     }
 
-    NSArray<SCIBulkDownloadItem *> *bulkItems = SCIBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media);
-    NSArray<NSString *> *bulkLinks = SCIBulkDownloadLinksFromEntries(downloadableEntries, media);
-    UIViewController *presenter = SCIActionContextPresenter(context);
-    UIView *anchorView = SCIActionContextAnchorView(context);
-
+    __weak SCIActionButtonContext *weakContext = context;
     NSArray<UIMenuElement *> *children = SCIBulkActionMenuElementsForIdentifiers(configuredIdentifiers, ^(NSString *identifier) {
-        if ([identifier isEqualToString:kSCIActionDownloadAllLibrary]) {
-            [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationSaveToPhotos
-                                                   items:bulkItems
-                                        actionIdentifier:kSCIActionDownloadAllLibrary
-                                               presenter:presenter
-                                              anchorView:anchorView];
-            return;
-        }
-        if ([identifier isEqualToString:kSCIActionDownloadAllShare]) {
-            [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationShare
-                                                   items:bulkItems
-                                        actionIdentifier:kSCIActionDownloadAllShare
-                                               presenter:presenter
-                                              anchorView:anchorView];
-            return;
-        }
-        if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) {
-            [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationSaveToGallery
-                                                   items:bulkItems
-                                        actionIdentifier:kSCIActionDownloadAllGallery
-                                               presenter:presenter
-                                              anchorView:anchorView];
-            return;
-        }
-        if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) {
-            [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationCopyMedia
-                                                   items:bulkItems
-                                        actionIdentifier:kSCIActionDownloadAllClipboard
-                                               presenter:presenter
-                                              anchorView:anchorView];
-            return;
-        }
-        if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) {
-            if (bulkLinks.count == 0) {
-                SCINotify(kSCIActionDownloadAllLinks, @"No links available", nil, @"error_filled", SCINotificationToneError);
-                return;
-            }
-            [UIPasteboard generalPasteboard].string = [bulkLinks componentsJoinedByString:@"\n"];
-            SCINotify(kSCIActionDownloadAllLinks, SCICopiedDownloadURLTitleForSource(context.source, YES), [NSString stringWithFormat:@"%lu item%@", (unsigned long)bulkLinks.count, bulkLinks.count == 1 ? @"" : @"s"], @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+        SCIActionButtonContext *strongContext = weakContext;
+        if (strongContext) {
+            SCIExecuteActionIdentifier(identifier, strongContext, NO);
         }
     });
     if (children.count == 0) return nil;
@@ -1399,6 +1380,9 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
         return context.source == SCIActionButtonSourceStories &&
                SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context)).length > 0;
     }
+    if ([identifier isEqualToString:kSCIActionStoryMentionsSheet]) {
+        return context.source == SCIActionButtonSourceStories && SCIStoryMediaHasMentions(media);
+    }
     if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
         return media != nil;
     }
@@ -1430,10 +1414,9 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 	}
 	if ([identifier isEqualToString:kSCIActionRepost]) {
 		return context.repostHandler != nil;
-	}
+    }
     if (SCIIsBulkChildActionIdentifier(identifier)) {
-        NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIBulkEntriesForContext(context);
-        if (SCIDownloadableEntries(bulkEntries).count <= 1) return NO;
+        if (SCIDownloadableEntries(entries).count <= 1) return NO;
         if (SCIIsBulkDownloadActionIdentifier(identifier)) {
             return ![configuration.disabledActions containsObject:kSCIActionDownloadLibrary] ||
                    ![configuration.disabledActions containsObject:kSCIActionDownloadShare] ||
@@ -1748,7 +1731,7 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 
 		NSInteger previewIndex = SCIClampedIndex(SCIResolveCurrentIndexForContext(context), (NSInteger)previewEntries.count);
 		NSInteger clampedIndex = SCIClampedIndex(previewIndex, (NSInteger)playerItems.count);
-		SCINotify(identifier, @"Opened media viewer", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
+		SCINotify(identifier, @"Expanded media", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
 		[SCIFullScreenMediaPlayer showMediaItems:playerItems
                                 startingAtIndex:clampedIndex
                                        metadata:meta
@@ -1842,7 +1825,7 @@ static BOOL SCIExecuteToggleStorySeenUserRuleAction(SCIActionButtonContext *cont
     NSString *title = SCIStoryCurrentUserRuleConfirmationTitle(storyContext);
     NSString *message = SCIStoryCurrentUserRuleConfirmationMessage(storyContext);
     if (title.length == 0 || message.length == 0) {
-        SCINotify(kSCIActionToggleStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+        SCINotify(kSCINotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
         return YES;
     }
 
@@ -1850,12 +1833,28 @@ static BOOL SCIExecuteToggleStorySeenUserRuleAction(SCIActionButtonContext *cont
         NSString *notificationTitle = nil;
         NSString *notificationSubtitle = nil;
         if (!SCIStoryToggleCurrentUserRule(storyContext, &notificationTitle, &notificationSubtitle)) {
-            SCINotify(kSCIActionToggleStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+            SCINotify(kSCINotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
             return;
         }
-        SCINotify(kSCIActionToggleStorySeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
+        SCINotify(kSCINotificationStorySeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
         [storyContext.overlayView setNeedsLayout];
     } title:title message:message];
+    return YES;
+}
+
+static BOOL SCIExecuteStoryMentionsSheetAction(SCIActionButtonContext *context) {
+    if (context.source != SCIActionButtonSourceStories || !context.view) {
+        SCINotify(kSCINotificationStoryMentionsSheet, @"Story mentions unavailable", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+
+    id media = SCIResolveMediaForContext(context);
+    if (!SCIStoryMediaHasMentions(media)) {
+        SCINotify(kSCINotificationStoryMentionsSheet, @"No mentions found", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+
+    SCIPresentStoryMentionsSheet(context.view);
     return YES;
 }
 
@@ -1864,6 +1863,9 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 
     if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
         return SCIExecuteToggleStorySeenUserRuleAction(context);
+    }
+    if ([identifier isEqualToString:kSCIActionStoryMentionsSheet]) {
+        return SCIExecuteStoryMentionsSheetAction(context);
     }
     if (context.source == SCIActionButtonSourceProfile && SCIIsProfileCopyActionIdentifier(identifier)) {
         return SCIExecuteProfileCopyAction(identifier, context);
@@ -2091,11 +2093,10 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		objc_setAssociatedObject(button, kSCIActionButtonTapActionAssocKey, newTapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
-    NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIBulkEntriesForContext(context);
-    NSString *bulkUsername = SCIResolvedBulkUsernameForContext(context, bulkEntries, media);
     NSArray<NSString *> *configuredBulkDownloadIdentifiers = SCIActionButtonConfiguredBulkDownloadActionsForSource(context.source);
     NSArray<NSString *> *configuredBulkCopyIdentifiers = SCIActionButtonConfiguredBulkCopyActionsForSource(context.source);
-    BOOL hasBulkMedia = (SCIDownloadableEntries(bulkEntries).count > 1);
+    BOOL hasBulkMedia = (SCIDownloadableEntries(entries).count > 1);
+    NSString *bulkUsername = hasBulkMedia ? SCIResolvedBulkUsernameForContext(context, entries, media) : nil;
 	NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray array];
 	NSArray<SCIActionMenuSection *> *menuSections = [configuration visibleSections];
 	BOOL firstGroup = YES;
@@ -2110,7 +2111,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 
             if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
                 NSMutableArray<UIMenuElement *> *copyChildren = [NSMutableArray array];
-                for (NSString *copyIdentifier in @[kSCIActionProfileCopyID, kSCIActionProfileCopyUsername, kSCIActionProfileCopyName, kSCIActionProfileCopyBio, kSCIActionProfileCopyLink]) {
+                for (NSString *copyIdentifier in SCIProfileConfiguredCopyInfoActions()) {
                     [copyChildren addObject:[UIAction actionWithTitle:SCIActionButtonTitleForIdentifier(copyIdentifier)
                                                                 image:SCIActionButtonMenuIconForContext(copyIdentifier, context, 22.0)
                                                            identifier:nil
@@ -2142,9 +2143,9 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
             }
 		}
 
-		if (groupElements.count == 0) continue;
+        if (groupElements.count == 0) continue;
         if (hasBulkMedia && [group.identifier isEqualToString:@"download"]) {
-            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, media, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
+            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, entries, bulkUsername, media, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
             if (bulkElement) {
                 NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
                 [groupElements removeAllObjects];
@@ -2158,7 +2159,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
                 [groupElements addObject:bulkElement];
             }
         } else if (hasBulkMedia && [group.identifier isEqualToString:@"copy"]) {
-            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, media, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
+            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, entries, bulkUsername, media, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
             if (bulkElement) {
                 NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
                 [groupElements removeAllObjects];

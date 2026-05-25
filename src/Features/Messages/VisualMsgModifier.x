@@ -10,7 +10,7 @@
     // 0 - View Once
     // 1 - Replayable
 
-    if ([SCIUtils getBoolPref:@"disable_view_once_limitations"]) {
+    if ([SCIUtils getBoolPref:@"msgs_disable_view_once"]) {
         if (mode == 0) {
             mode = 1;
 
@@ -25,7 +25,7 @@
 %end
 
 void SCIInstallVisualMsgModifierHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"disable_view_once_limitations"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_disable_view_once"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

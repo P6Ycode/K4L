@@ -18,6 +18,16 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 #define SCIErrorLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)
 #define SCILogId(category, obj) SCILog((category), @"%@", (obj))
 
+/*
+ *  System Versioning Preprocessor Macros
+ */ 
+
+#define SYSTEM_VERSION_EQUAL_TO(v)                  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedSame)
+#define SYSTEM_VERSION_GREATER_THAN(v)              ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedDescending)
+#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
+#define SYSTEM_VERSION_LESS_THAN(v)                 ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
+#define SYSTEM_VERSION_LESS_THAN_OR_EQUAL_TO(v)     ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedDescending)
+
 @interface SCIUtils : NSObject
 
 // Preferences
@@ -32,10 +42,7 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 
 + (BOOL)existingLongPressGestureRecognizerForView:(UIView *)view;
 
-/// Normalizes legacy `liquid_glass` into `liquid_glass_surfaces` / `liquid_glass_buttons` (runs once).
-+ (void)sci_normalizeLiquidGlassPreferences;
-
-/// IGDSLauncherConfig hooks: when the per-key pref is set and on, returns YES; when set and off, returns `fallback` (stock). When unset, the five legacy launcher keys follow Core “Enable liquid glass surfaces” like `origin/main`’s `liquidGlassEnabledBool:`; icon bar and internal debugger unset always use `fallback`.
+/// IGDSLauncherConfig hooks: when Liquid Glass is on, returns YES; otherwise returns `fallback` (stock).
 + (_Bool)sci_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback;
 
 typedef BOOL (*SCILiquidGlassBoolMsg)(id, SEL);

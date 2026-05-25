@@ -5,7 +5,7 @@ static const void *kSCIProfileHeaderSavedHiddenKey = &kSCIProfileHeaderSavedHidd
 static const void *kSCIProfileHeaderSavedAlphaKey = &kSCIProfileHeaderSavedAlphaKey;
 
 static BOOL SCIProfileShouldHideThreadsButton(UIView *view) {
-    if (![SCIUtils getBoolPref:@"hide_profile_threads_button"]) return NO;
+    if (![SCIUtils getBoolPref:@"profile_hide_threads_btn"]) return NO;
     NSString *identifier = view.accessibilityIdentifier ?: @"";
     NSString *label = view.accessibilityLabel ?: @"";
     if ([identifier isEqualToString:@"profile-app-switch-button"]) return YES;
@@ -14,7 +14,7 @@ static BOOL SCIProfileShouldHideThreadsButton(UIView *view) {
 }
 
 static BOOL SCIProfileShouldHideNotesBubble(UIView *view) {
-    if (![SCIUtils getBoolPref:@"hide_profile_notes_bubble"]) return NO;
+    if (![SCIUtils getBoolPref:@"profile_hide_notes_bubble"]) return NO;
     NSString *className = NSStringFromClass(view.class);
     return [className containsString:@"IGDirectNotesThoughtBubbleView"];
 }

@@ -58,7 +58,7 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 	if (!overlay) return;
 
 	UIButton *button = (UIButton *)[overlay viewWithTag:kSCIDirectActionButtonTag];
-	if (![SCIUtils getBoolPref:@"action_button_messages_enabled"]) {
+	if (![SCIUtils getBoolPref:@"msgs_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
@@ -117,7 +117,7 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 %end
 
 extern "C" void SCIInstallMessagesActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"action_button_messages_enabled"]) return;
+	if (![SCIUtils getBoolPref:@"msgs_action_btn"]) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{

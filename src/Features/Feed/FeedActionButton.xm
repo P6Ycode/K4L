@@ -17,7 +17,7 @@ static const void *kSCIFeedExpandLongPressMarkerAssocKey = &kSCIFeedExpandLongPr
 @end
 
 static BOOL SCIFeedLongPressExpandEnabled(void) {
-	return [SCIUtils getBoolPref:@"enable_long_press_expand"];
+	return [SCIUtils getBoolPref:@"feed_long_press_expand"];
 }
 
 static UIPageControl *SCIPageControlInViewHierarchy(UIView *view) {
@@ -457,7 +457,7 @@ static void SCIInstallFeedActionButton(UIView *barView) {
 	if (!barView) return;
 
 	UIButton *button = (UIButton *)[barView viewWithTag:kSCIFeedActionButtonTag];
-	if (![SCIUtils getBoolPref:@"action_button_feed_enabled"]) {
+	if (![SCIUtils getBoolPref:@"feed_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
@@ -528,7 +528,7 @@ static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecogni
 		if (items.count > 0) {
 			NSInteger index = SCIFeedCarouselPageIndexFromView(view);
 			if (index < 0 || index >= (NSInteger)items.count) index = 0;
-			SCINotify(kSCIActionExpand, @"Opened media viewer", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
+			SCINotify(kSCIActionExpand, @"Expanded media", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
 			[SCIFullScreenMediaPlayer showMediaItems:items
 								startingAtIndex:index
 									   metadata:metadata
@@ -552,7 +552,7 @@ static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecogni
 	item.sourceMediaObject = media;
 	if (username.length > 0) item.title = username;
 
-	SCINotify(kSCIActionExpand, @"Opened media viewer", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
+	SCINotify(kSCIActionExpand, @"Expanded media", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
 	[SCIFullScreenMediaPlayer showMediaItems:@[item]
 						startingAtIndex:0
 							   metadata:metadata
@@ -686,8 +686,8 @@ static void SCIHookSwiftModernFeedVideoLayout(id self, SEL _cmd) {
 %end
 
 extern "C" void SCIInstallFeedActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"action_button_feed_enabled"] &&
-		![SCIUtils getBoolPref:@"enable_long_press_expand"]) {
+	if (![SCIUtils getBoolPref:@"feed_action_btn"] &&
+		![SCIUtils getBoolPref:@"feed_long_press_expand"]) {
 		return;
 	}
 

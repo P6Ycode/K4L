@@ -204,7 +204,7 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     AVPlayerItem *item = [AVPlayerItem playerItemWithURL:url];
     _playerItem = item;
     _player = [AVPlayer playerWithPlayerItem:item];
-    _player.muted = [SCIUtils getBoolPref:@"expanded_video_start_muted"];
+    _player.muted = [SCIUtils getBoolPref:@"feed_expanded_vid_start_muted"];
 
     [item addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
     self.isObservingPlayerItemStatus = YES;

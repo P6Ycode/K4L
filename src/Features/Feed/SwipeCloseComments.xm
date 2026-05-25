@@ -6,7 +6,7 @@
 static char kSCISwipeCloseCommentsInstalledKey;
 static char kSCISwipeCloseCommentsTargetKey;
 
-static NSString * const kSCISwipeCloseCommentsDirectionKey = @"comments_swipe_to_close_direction";
+static NSString * const kSCISwipeCloseCommentsDirectionKey = @"feed_comments_swipe_close_direction";
 static NSString * const kSCISwipeCloseCommentsDirectionLeft = @"left";
 static NSString * const kSCISwipeCloseCommentsDirectionRight = @"right";
 static NSString * const kSCISwipeCloseCommentsDirectionBoth = @"both";
@@ -488,7 +488,7 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
 @end
 
 static void SCIInstallSwipeCloseCommentsGesture(UIViewController *controller) {
-    if (![SCIUtils getBoolPref:@"comments_swipe_to_close"]) {
+    if (![SCIUtils getBoolPref:@"feed_comments_swipe_close"]) {
         return;
     }
 
@@ -574,7 +574,7 @@ static void SCIInstallSwipeCloseCommentsGesture(UIViewController *controller) {
 %end
 
 extern "C" void SCIInstallSwipeCloseCommentsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"comments_swipe_to_close"]) return;
+    if (![SCIUtils getBoolPref:@"feed_comments_swipe_close"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

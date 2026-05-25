@@ -32,7 +32,7 @@
 
 %hook IGSundialFeedViewController
 - (void)_refreshReelsWithParamsForNetworkRequest:(NSInteger)arg1 userDidPullToRefresh:(BOOL)arg2 {
-    if ([SCIUtils getBoolPref:@"prevent_doom_scrolling"] && arg2) {
+    if ([SCIUtils getBoolPref:@"reels_prevent_doom_scroll"] && arg2) {
         IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
         [_refreshControl finishLoading];
         [self finishPullToRefreshLoading];
@@ -40,7 +40,7 @@
         return;
     }
 
-    if ([SCIUtils getBoolPref:@"refresh_reel_confirm"] && arg2) {
+    if ([SCIUtils getBoolPref:@"reels_confirm_refresh"] && arg2) {
         SCILog(@"General", @"[SCInsta] Reel refresh triggered");
         
         [SCIUtils showConfirmation:^(void) { %orig(arg1, arg2); }
@@ -60,17 +60,17 @@
 // * Disable volume/mute button triggering unmutes
 %hook IGAudioStatusAnnouncer
 - (void)_muteSwitchStateChanged:(id)changed {
-    if (![SCIUtils getBoolPref:@"disable_auto_unmuting_reels"]) {
+    if (![SCIUtils getBoolPref:@"reels_disable_auto_unmute"]) {
         %orig(changed);
     }
 }
 - (void)_didPressVolumeButton:(id)button {
-    if (![SCIUtils getBoolPref:@"disable_auto_unmuting_reels"]) {
+    if (![SCIUtils getBoolPref:@"reels_disable_auto_unmute"]) {
         %orig(button);
     }
 }
 - (void)_didUnplugHeadphones:(id)headphones {
-    if (![SCIUtils getBoolPref:@"disable_auto_unmuting_reels"]) {
+    if (![SCIUtils getBoolPref:@"reels_disable_auto_unmute"]) {
         %orig(headphones);
     }
 }
@@ -81,9 +81,9 @@
 extern "C" void SCIInstallReelsPlaybackHooksIfNeeded(void) {
     BOOL shouldInstall = ![[SCIUtils getStringPref:@"reels_tap_control"] isEqualToString:@"default"] ||
                          [SCIUtils getBoolPref:@"reels_show_scrubber"] ||
-                         [SCIUtils getBoolPref:@"prevent_doom_scrolling"] ||
-                         [SCIUtils getBoolPref:@"refresh_reel_confirm"] ||
-                         [SCIUtils getBoolPref:@"disable_auto_unmuting_reels"];
+                         [SCIUtils getBoolPref:@"reels_prevent_doom_scroll"] ||
+                         [SCIUtils getBoolPref:@"reels_confirm_refresh"] ||
+                         [SCIUtils getBoolPref:@"reels_disable_auto_unmute"];
     if (!shouldInstall) return;
 
     static dispatch_once_t onceToken;

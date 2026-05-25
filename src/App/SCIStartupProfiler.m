@@ -9,8 +9,8 @@ static CFAbsoluteTime sSCIStartupStartTime;
 
 static BOOL SCIStartupProfilingEnabled(void) {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    id override = [defaults objectForKey:@"startup_profiling"];
-    return override == nil || [defaults boolForKey:@"startup_profiling"];
+    id override = [defaults objectForKey:@"app_startup_profiling"];
+    return override == nil || [defaults boolForKey:@"app_startup_profiling"];
 }
 
 __attribute__((constructor))

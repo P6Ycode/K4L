@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////
 
 #define CONFIRMFOLLOW(orig)                            \
-    if ([SCIUtils getBoolPref:@"follow_confirm"]) {             \
+    if ([SCIUtils getBoolPref:@"profile_confirm_follow"]) {             \
         SCILog(@"General", @"[SCInsta] Confirm follow triggered");  \
                                                        \
         [SCIUtils showConfirmation:^(void) { orig; }   \
@@ -36,7 +36,7 @@
 
 // Unfollow from profile action sheet
 - (void)_performUnfollow {
-    if ([SCIUtils getBoolPref:@"unfollow_confirm"]) {
+    if ([SCIUtils getBoolPref:@"profile_confirm_unfollow"]) {
         [SCIUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Unfollow"
                                message:@"Are you sure you want to unfollow this account?"];
@@ -93,7 +93,7 @@
 static void (*orig_listSectionController)(id, SEL, id, id);
 
 static void hooked_listSectionController(id self, SEL _cmd, id arg1, id arg2) {
-    if ([SCIUtils getBoolPref:@"follow_confirm"]) {
+    if ([SCIUtils getBoolPref:@"profile_confirm_follow"]) {
 
         [SCIUtils showConfirmation:^{
             orig_listSectionController(self, _cmd, arg1, arg2);
@@ -121,7 +121,7 @@ static void SCIInstallFollowAllConfirmHook(void) {
 }
 
 void SCIInstallFollowConfirmHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"follow_confirm"] && ![SCIUtils getBoolPref:@"unfollow_confirm"]) return;
+    if (![SCIUtils getBoolPref:@"profile_confirm_follow"] && ![SCIUtils getBoolPref:@"profile_confirm_unfollow"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

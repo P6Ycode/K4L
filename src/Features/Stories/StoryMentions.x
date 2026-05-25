@@ -6,6 +6,7 @@
 #import "../../InstagramHeaders.h"
 #import "../../Networking/SCIInstagramAPI.h"
 #import "../../Shared/UI/SCIMediaChrome.h"
+#import "../../Shared/UI/SCINotificationCenter.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
 
@@ -550,11 +551,11 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         if (currentlyFollowing) [SCIInstagramAPI unfollowUserPK:pk completion:done];
         else                    [SCIInstagramAPI followUserPK:pk   completion:done];
     };
-    if (!currentlyFollowing && [SCIUtils getBoolPref:@"follow_confirm"]) {
+    if (!currentlyFollowing && [SCIUtils getBoolPref:@"profile_confirm_follow"]) {
         [SCIUtils showConfirmation:doIt
                              title:@"Confirm Follow"
                            message:@"Are you sure you want to follow this account?"];
-    } else if (currentlyFollowing && [SCIUtils getBoolPref:@"unfollow_confirm"]) {
+    } else if (currentlyFollowing && [SCIUtils getBoolPref:@"profile_confirm_unfollow"]) {
         [SCIUtils showConfirmation:doIt
                              title:@"Confirm Unfollow"
                            message:@"Are you sure you want to unfollow this account?"];
@@ -620,5 +621,6 @@ void SCIPresentStoryMentionsSheet(UIView *overlayView) {
     sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = YES;
     sheet.prefersGrabberVisible = YES;
 
+    SCINotify(kSCINotificationStoryMentionsSheet, @"Opened story mentions", nil, @"mention", SCINotificationToneForIconResource(@"mention"));
     [presenter presentViewController:nav animated:YES completion:nil];
 }

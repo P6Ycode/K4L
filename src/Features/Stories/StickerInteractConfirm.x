@@ -4,7 +4,7 @@
 
 %hook IGStoryViewerTapTarget
 - (void)_didTap:(id)arg1 forEvent:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"sticker_interact_confirm"]) {
+    if ([SCIUtils getBoolPref:@"stories_confirm_sticker"]) {
         SCILog(@"General", @"[SCInsta] Confirm sticker interact triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -19,7 +19,7 @@
 %end
 
 void SCIInstallStickerInteractConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"sticker_interact_confirm"]) return;
+    if (![SCIUtils getBoolPref:@"stories_confirm_sticker"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

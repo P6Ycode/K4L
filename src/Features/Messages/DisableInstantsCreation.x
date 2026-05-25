@@ -1,6 +1,6 @@
 #import "../../Utils.h"
 
-#define QUICKSNAPENABLED(orig) return [SCIUtils getBoolPref:@"disable_instants_creation"] ? false : orig;
+#define QUICKSNAPENABLED(orig) return [SCIUtils getBoolPref:@"msgs_disable_instants_creation"] ? false : orig;
 
 // Demangled name: IGQuickSnapExperimentation.IGQuickSnapExperimentationHelper
 %group SCIDisableInstantsCreationHooks
@@ -56,7 +56,7 @@
 %end
 
 void SCIInstallDisableInstantsCreationHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"disable_instants_creation"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_disable_instants_creation"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

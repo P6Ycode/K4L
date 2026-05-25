@@ -7,7 +7,7 @@
 - (void)didMoveToSuperview {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"copy_description"]) {
+    if ([SCIUtils getBoolPref:@"general_copy_text"]) {
         [self addHandleLongPress];
     }
 
@@ -47,7 +47,7 @@
 %end
 
 void SCIInstallCopyDescriptionHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"copy_description"]) return;
+    if (![SCIUtils getBoolPref:@"general_copy_text"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

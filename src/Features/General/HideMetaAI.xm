@@ -2,23 +2,23 @@
 #import "../../InstagramHeaders.h"
 
 static inline BOOL SCIHideMetaAIDirect(void) {
-    return [SCIUtils getBoolPref:@"hide_meta_ai_direct"];
+    return [SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"];
 }
 
 static inline BOOL SCIHideMetaAIExplore(void) {
-    return [SCIUtils getBoolPref:@"hide_meta_ai_explore"];
+    return [SCIUtils getBoolPref:@"general_hide_meta_ai_explore"];
 }
 
 static inline BOOL SCIHideMetaAIComments(void) {
-    return [SCIUtils getBoolPref:@"hide_meta_ai_comments"];
+    return [SCIUtils getBoolPref:@"general_hide_meta_ai_comments"];
 }
 
 static inline BOOL SCIHideMetaAICreation(void) {
-    return [SCIUtils getBoolPref:@"hide_meta_ai_creation"];
+    return [SCIUtils getBoolPref:@"general_hide_meta_ai_creation"];
 }
 
 static inline BOOL SCIHideMetaAIGlobal(void) {
-    return [SCIUtils getBoolPref:@"hide_meta_ai_global"];
+    return [SCIUtils getBoolPref:@"general_hide_meta_ai_global"];
 }
 
 %group SCIHideMetaAIHooks

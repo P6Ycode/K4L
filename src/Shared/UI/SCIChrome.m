@@ -110,7 +110,7 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 }
 
 - (void)applyPref {
-	BOOL enabled = [SCIUtils getBoolPref:@"hide_ui_on_capture"];
+	BOOL enabled = [SCIUtils getBoolPref:@"interface_hide_ui_on_capture"];
 	if (_secureField.secureTextEntry != enabled) {
 		_secureField.secureTextEntry = enabled;
 		// Force the text field to create / destroy its internal CanvasView.

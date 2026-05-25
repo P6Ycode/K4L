@@ -1,12 +1,13 @@
 #import "SCIActionButtonConfiguration.h"
 #import "SCIActionDescriptor.h"
+#import "../../Settings/SCIPreferences.h"
 
 static NSString *SCIBulkDownloadDefaultsKeyForSource(SCIActionButtonSource source) {
-    return [NSString stringWithFormat:@"action_button_%@_bulk_download_actions", SCIActionButtonTopicKeyForSource(source)];
+    return SCIPrefActionButtonBulkDownloadKey(SCIActionButtonTopicKeyForSource(source));
 }
 
 static NSString *SCIBulkCopyDefaultsKeyForSource(SCIActionButtonSource source) {
-    return [NSString stringWithFormat:@"action_button_%@_bulk_copy_actions", SCIActionButtonTopicKeyForSource(source)];
+    return SCIPrefActionButtonBulkCopyKey(SCIActionButtonTopicKeyForSource(source));
 }
 
 static NSArray<NSString *> *SCIFilteredActionArray(NSArray *values, NSArray<NSString *> *supported) {
@@ -28,7 +29,7 @@ NSString *SCIActionButtonTopicKeyForSource(SCIActionButtonSource source) {
         case SCIActionButtonSourceFeed: return @"feed";
         case SCIActionButtonSourceReels: return @"reels";
         case SCIActionButtonSourceStories: return @"stories";
-        case SCIActionButtonSourceDirect: return @"messages";
+        case SCIActionButtonSourceDirect: return @"msgs";
         case SCIActionButtonSourceProfile: return @"profile";
     }
 }
@@ -68,6 +69,7 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionDownloadGallery,
                 kSCIActionExpand,
                 kSCIActionViewThumbnail,
+                kSCIActionStoryMentionsSheet,
                 kSCIActionToggleStorySeenUserRule,
                 kSCIActionOpenTopicSettings
             ];
@@ -169,7 +171,7 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
     NSArray<NSString *> *moreActions = (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
         ? @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings]
         : ((source == SCIActionButtonSourceStories)
-            ? @[kSCIActionExpand, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings]
+            ? @[kSCIActionExpand, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings]
             : @[kSCIActionExpand, kSCIActionOpenTopicSettings]);
 
     [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"download"
@@ -227,7 +229,7 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
 }
 
 - (NSString *)configDefaultsKey {
-    return [NSString stringWithFormat:@"action_button_%@_config", SCIActionButtonTopicKeyForSource(self.source)];
+    return SCIPrefActionButtonConfigKey(SCIActionButtonTopicKeyForSource(self.source));
 }
 
 - (NSDictionary *)dictionaryRepresentation {
@@ -367,3 +369,26 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
 }
 
 @end
+
+NSArray<NSString *> *SCIProfileCopyInfoSupportedActions(void) {
+    return @[
+        kSCIActionProfileCopyID,
+        kSCIActionProfileCopyUsername,
+        kSCIActionProfileCopyName,
+        kSCIActionProfileCopyBio,
+        kSCIActionProfileCopyLink
+    ];
+}
+
+NSArray<NSString *> *SCIProfileConfiguredCopyInfoActions(void) {
+    NSArray<NSString *> *supported = SCIProfileCopyInfoSupportedActions();
+    NSArray *stored = [[NSUserDefaults standardUserDefaults] arrayForKey:@"profile_action_btn_copy_info_submenu_actions"];
+    NSArray<NSString *> *filtered = SCIFilteredUniqueActionArray(stored, supported);
+    return filtered.count > 0 ? filtered : supported;
+}
+
+void SCIProfileSetConfiguredCopyInfoActions(NSArray<NSString *> *actions) {
+    [[NSUserDefaults standardUserDefaults] setObject:SCIFilteredUniqueActionArray(actions, SCIProfileCopyInfoSupportedActions())
+                                              forKey:@"profile_action_btn_copy_info_submenu_actions"];
+    [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+}

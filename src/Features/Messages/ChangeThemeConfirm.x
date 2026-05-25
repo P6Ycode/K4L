@@ -5,7 +5,7 @@
 
 %hook IGDirectThreadThemePickerViewController
 - (void)themeNewPickerSectionController:(id)arg1 didSelectTheme:(id)arg2 atIndex:(NSInteger)arg3 {
-    if ([SCIUtils getBoolPref:@"change_direct_theme_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) {
         SCILog(@"General", @"[SCInsta] Confirm change direct theme triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -16,7 +16,7 @@
     }
 }
 - (void)themePickerSectionController:(id)arg1 didSelectThemeId:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"change_direct_theme_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) {
         SCILog(@"General", @"[SCInsta] Confirm change direct theme triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -30,7 +30,7 @@
 
 %hook IGDirectThreadThemeKitSwift.IGDirectThreadThemePreviewController
 - (void)primaryButtonTapped {
-    if ([SCIUtils getBoolPref:@"change_direct_theme_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) {
         SCILog(@"General", @"[SCInsta] Confirm change direct theme triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -45,7 +45,7 @@
 %end
 
 void SCIInstallChangeThemeConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"change_direct_theme_confirm"]) return;
+    if (![SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

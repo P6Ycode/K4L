@@ -178,16 +178,6 @@ static NSDate * _Nullable SCIParseEpochDateFromString(NSString *s) {
     return [NSDate dateWithTimeIntervalSince1970:seconds];
 }
 
-static BOOL SCIBasenameUsesCurrentNamingScheme(NSString *fileName) {
-    NSString *baseName = [[fileName lastPathComponent] stringByDeletingPathExtension];
-    NSArray<NSString *> *parts = [baseName componentsSeparatedByString:@"_"];
-    if (parts.count < 4) {
-        return NO;
-    }
-    NSString *lead = parts.firstObject;
-    return lead.length == 13 && SCIParseEpochDateFromString(lead) != nil;
-}
-
 /// Recognizes slug segments matching `SCIGallerySourceSlug` output (feed, story, reel, …).
 static BOOL SCISourceFromBasenameSlug(NSString *low, SCIGallerySource *out) {
     if ([low isEqualToString:@"feed"]) {
@@ -360,12 +350,6 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     return [NSString stringWithFormat:@"%@_%@_%@_%@.%@", epoch, user, slug, dateCompact, ext];
 }
 
-static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
-    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
-    NSDate *date = fallbackDate ?: attrs[NSFileCreationDate] ?: attrs[NSFileModificationDate];
-    return date ?: [NSDate date];
-}
-
 @implementation SCIGalleryFile
 
 @dynamic identifier;
@@ -430,96 +414,6 @@ static NSDate *SCIGalleryBestFileDate(NSString *path, NSDate *fallbackDate) {
         file.durationSeconds = 0;
         file.customName = nil;
     }
-}
-
-+ (NSInteger)migrateLegacyFilenamesWithError:(NSError **)error {
-    NSManagedObjectContext *ctx = [SCIGalleryCoreDataStack shared].viewContext;
-    NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SCIGalleryFile"];
-    NSArray<SCIGalleryFile *> *files = [ctx executeFetchRequest:req error:error] ?: @[];
-    NSFileManager *fm = [NSFileManager defaultManager];
-    NSInteger migrated = 0;
-
-    for (SCIGalleryFile *file in files) {
-        if (SCIBasenameUsesCurrentNamingScheme(file.relativePath)) {
-            continue;
-        }
-
-        NSString *oldPath = [file filePath];
-        if (![fm fileExistsAtPath:oldPath]) {
-            continue;
-        }
-
-        SCIGallerySaveMetadata *metadata = [SCIGallerySaveMetadata new];
-        metadata.source = file.source;
-        metadata.sourceUsername = file.sourceUsername;
-        metadata.sourceUserPK = file.sourceUserPK;
-        metadata.sourceProfileURLString = file.sourceProfileURLString;
-        metadata.sourceMediaPK = file.sourceMediaPK;
-        metadata.sourceMediaCode = file.sourceMediaCode;
-        metadata.sourceMediaURLString = file.sourceMediaURLString;
-        metadata.pixelWidth = file.pixelWidth;
-        metadata.pixelHeight = file.pixelHeight;
-        metadata.durationSeconds = file.durationSeconds;
-        metadata.importCapturedDate = SCIGalleryBestFileDate(oldPath, file.dateAdded);
-
-        SCIGallerySaveMetadata *parsedMetadata = [SCIGallerySaveMetadata new];
-        parsedMetadata.source = SCIGallerySourceOther;
-        SCIGalleryApplyImportHeuristicsFromFilename(file.relativePath, parsedMetadata);
-        if (!metadata.sourceUsername.length && parsedMetadata.sourceUsername.length) {
-            metadata.sourceUsername = parsedMetadata.sourceUsername;
-        }
-        if (file.source == SCIGallerySourceOther && parsedMetadata.source != SCIGallerySourceOther) {
-            metadata.source = parsedMetadata.source;
-        }
-        metadata.importPostedDate = parsedMetadata.importPostedDate ?: parsedMetadata.importCapturedDate ?: metadata.importCapturedDate;
-
-        NSString *newName = SCIFileNameForMedia([NSURL fileURLWithPath:oldPath], (SCIGalleryMediaType)file.mediaType, metadata);
-        NSString *destPath = [[SCIGalleryPaths galleryMediaDirectory] stringByAppendingPathComponent:newName];
-        if ([oldPath isEqualToString:destPath]) {
-            continue;
-        }
-
-        if ([fm fileExistsAtPath:destPath]) {
-            NSString *stem = [newName stringByDeletingPathExtension];
-            NSString *ext = newName.pathExtension;
-            for (int n = 1; n < 100; n++) {
-                NSString *candidate = [NSString stringWithFormat:@"%@-%d.%@", stem, n, ext];
-                NSString *candidatePath = [[SCIGalleryPaths galleryMediaDirectory] stringByAppendingPathComponent:candidate];
-                if (![fm fileExistsAtPath:candidatePath]) {
-                    newName = candidate;
-                    destPath = candidatePath;
-                    break;
-                }
-            }
-        }
-
-        NSError *moveError = nil;
-        if (![fm moveItemAtPath:oldPath toPath:destPath error:&moveError]) {
-            if (error) *error = moveError;
-            return migrated;
-        }
-
-        NSString *oldRelativePath = file.relativePath;
-        file.relativePath = newName;
-        file.source = metadata.source;
-        if (!file.sourceUsername.length && metadata.sourceUsername.length) {
-            file.sourceUsername = metadata.sourceUsername;
-        }
-        if (!file.dateAdded && metadata.importCapturedDate) {
-            file.dateAdded = metadata.importCapturedDate;
-        }
-        migrated += 1;
-
-        NSError *saveError = nil;
-        if (![ctx save:&saveError]) {
-            [fm moveItemAtPath:destPath toPath:oldPath error:nil];
-            file.relativePath = oldRelativePath;
-            if (error) *error = saveError;
-            return migrated - 1;
-        }
-    }
-
-    return migrated;
 }
 
 + (SCIGalleryMediaType)inferMediaTypeFromFileURL:(NSURL *)fileURL {

@@ -7,16 +7,15 @@
 #import <substrate.h>
 
 static BOOL sciDisableBgRefresh(void) {
-    return [SCIUtils getBoolPref:@"disable_bg_refresh"];
+    return [SCIUtils getBoolPref:@"feed_disable_bg_refresh"];
 }
 
 static BOOL sciDisableHomeRefresh(void) {
-    // Compatibility with legacy key naming.
-    return [SCIUtils getBoolPref:@"disable_home_button_refresh"] || [SCIUtils getBoolPref:@"disable_home_refresh"];
+    return [SCIUtils getBoolPref:@"feed_disable_home_refresh"];
 }
 
 static BOOL sciDisableReelsRefresh(void) {
-    return [SCIUtils getBoolPref:@"disable_reels_tab_refresh"];
+    return [SCIUtils getBoolPref:@"reels_disable_tab_refresh"];
 }
 
 // Returns a very large interval when disabled, -1 to keep Instagram's value.

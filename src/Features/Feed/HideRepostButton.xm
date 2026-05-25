@@ -2,11 +2,11 @@
 #import "../../InstagramHeaders.h"
 
 static inline BOOL SCIHideFeedRepostEnabled(void) {
-    return [SCIUtils getBoolPref:@"hide_repost_button_feed"];
+    return [SCIUtils getBoolPref:@"feed_hide_repost_btn"];
 }
 
 static inline BOOL SCIHideReelsRepostEnabled(void) {
-    return [SCIUtils getBoolPref:@"hide_repost_button_reels"];
+    return [SCIUtils getBoolPref:@"reels_hide_repost_btn"];
 }
 
 static void SCIHideFeedRepostButtons(id view) {

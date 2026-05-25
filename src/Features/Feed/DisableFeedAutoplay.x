@@ -14,25 +14,25 @@
 
 static id (*orig_feedAutoplayInit1)(id, SEL, BOOL);
 static id sci_feedAutoplayInit1(id self, SEL _cmd, BOOL shouldDisable) {
-    if ([SCIUtils getBoolPref:@"disable_feed_autoplay"]) shouldDisable = YES;
+    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit1(self, _cmd, shouldDisable);
 }
 
 static id (*orig_feedAutoplayInit2)(id, SEL, BOOL, BOOL);
 static id sci_feedAutoplayInit2(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale) {
-    if ([SCIUtils getBoolPref:@"disable_feed_autoplay"]) shouldDisable = YES;
+    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit2(self, _cmd, shouldDisable, shouldClearStale);
 }
 
 static id (*orig_feedAutoplayInit3)(id, SEL, BOOL, BOOL, BOOL);
 static id sci_feedAutoplayInit3(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover) {
-    if ([SCIUtils getBoolPref:@"disable_feed_autoplay"]) shouldDisable = YES;
+    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit3(self, _cmd, shouldDisable, shouldClearStale, bypassForVoiceover);
 }
 
 static id (*orig_feedAutoplayInit5)(id, SEL, BOOL, BOOL, BOOL, BOOL, id);
 static id sci_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover, BOOL overrideThresholds, id launcherSet) {
-    if ([SCIUtils getBoolPref:@"disable_feed_autoplay"]) shouldDisable = YES;
+    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit5(self, _cmd, shouldDisable, shouldClearStale, bypassForVoiceover, overrideThresholds, launcherSet);
 }
 
@@ -42,7 +42,7 @@ static id sci_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shou
 static void (*orig_feedVideoCellSingleTap)(id, SEL, id, id);
 static void sci_feedVideoCellSingleTap(id self, SEL _cmd, id overlay, id recognizer) {
     if (orig_feedVideoCellSingleTap) orig_feedVideoCellSingleTap(self, _cmd, overlay, recognizer);
-    if (![SCIUtils getBoolPref:@"disable_feed_autoplay"]) return;
+    if (![SCIUtils getBoolPref:@"feed_disable_autoplay"]) return;
     UIView *superview = [(UIView *)self superview];
     if (!superview || !strstr(class_getName([superview class]), "Carousel")) return;
     SEL retrySelector = NSSelectorFromString(@"retryStartPlayback");

@@ -1,6 +1,7 @@
 #import "SCINotificationCenter.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../../Settings/SCIPreferences.h"
 
 #define SCI_NOTIF_CONST(name, value) NSString * const name = @value
 SCI_NOTIF_CONST(kSCINotificationDownloadLibrary, "download_library");
@@ -20,16 +21,15 @@ SCI_NOTIF_CONST(kSCINotificationOpenTopicSettings, "open_topic_settings");
 SCI_NOTIF_CONST(kSCINotificationRepost, "repost");
 
 SCI_NOTIF_CONST(kSCINotificationStoryMarkSeen, "story_mark_seen");
+SCI_NOTIF_CONST(kSCINotificationStorySeenUserRule, "toggle_story_seen_user_rule");
+SCI_NOTIF_CONST(kSCINotificationStoryMentionsSheet, "story_mentions_sheet");
 SCI_NOTIF_CONST(kSCINotificationDirectVisualMarkSeen, "direct_visual_mark_seen");
 SCI_NOTIF_CONST(kSCINotificationThreadMessagesMarkSeen, "thread_messages_mark_seen");
+SCI_NOTIF_CONST(kSCINotificationDirectThreadSeenRule, "direct_thread_seen_rule");
 SCI_NOTIF_CONST(kSCINotificationUnsentMessage, "unsent_message");
 SCI_NOTIF_CONST(kSCINotificationUnsentReaction, "unsent_reaction");
 
 SCI_NOTIF_CONST(kSCINotificationProfileCopyInfo, "profile_copy_info");
-SCI_NOTIF_CONST(kSCINotificationProfileViewPicture, "profile_view_picture");
-SCI_NOTIF_CONST(kSCINotificationProfileSharePicture, "profile_share_picture");
-SCI_NOTIF_CONST(kSCINotificationProfileGalleryPicture, "profile_gallery_picture");
-SCI_NOTIF_CONST(kSCINotificationProfileOpenSettings, "profile_open_settings");
 
 SCI_NOTIF_CONST(kSCINotificationMediaPreviewSavePhotos, "media_preview_save_photos");
 SCI_NOTIF_CONST(kSCINotificationMediaPreviewSaveGallery, "media_preview_save_gallery");
@@ -54,11 +54,9 @@ SCI_NOTIF_CONST(kSCINotificationMediaEncodingLogs, "media_encoding_logs");
 SCI_NOTIF_CONST(kSCINotificationFlexUnavailable, "flex_unavailable");
 #undef SCI_NOTIF_CONST
 
-NSString * const kSCINotificationPillDurationKey = @"notification_pill_duration";
-NSString * const kSCINotificationPillGlowEnabledKey = @"notification_pill_glow_enabled";
+NSString * const kSCINotificationPillDurationKey = @"notifs_pill_duration";
+NSString * const kSCINotificationPillGlowEnabledKey = @"notifs_pill_glow";
 
-static NSString * const kSCINotificationPrefix = @"notification_";
-static NSString * const kSCINotificationHapticPrefix = @"notification_haptic_";
 static CGFloat const kSCINotificationStackSpacing = 8.0;
 static CGFloat const kSCINotificationTopMargin = 8.0;
 static NSTimeInterval const kSCINotificationInsertDuration = 0.55;
@@ -105,11 +103,11 @@ static NSDictionary *SCINotificationItem(NSString *identifier, NSString *title, 
 }
 
 NSString *SCINotificationDefaultsKey(NSString *identifier) {
-    return [kSCINotificationPrefix stringByAppendingString:identifier ?: @""];
+    return SCIPrefNotificationKey(identifier);
 }
 
 NSString *SCINotificationHapticDefaultsKey(NSString *identifier) {
-    return [kSCINotificationHapticPrefix stringByAppendingString:identifier ?: @""];
+    return SCIPrefNotificationHapticKey(identifier);
 }
 
 NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
@@ -133,8 +131,13 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
         ]},
         @{@"title": @"Stories", @"items": @[
             SCINotificationItem(kSCINotificationStoryMarkSeen, @"Mark Story as Seen", @"story"),
+            SCINotificationItem(kSCINotificationStorySeenUserRule, @"Story Seen List Changes", @"eye"),
+            SCINotificationItem(kSCINotificationStoryMentionsSheet, @"Open Story Mentions", @"mention"),
+        ]},
+        @{@"title": @"Messages", @"items": @[
             SCINotificationItem(kSCINotificationDirectVisualMarkSeen, @"Mark Visual Message as Seen", @"view_twice"),
             SCINotificationItem(kSCINotificationThreadMessagesMarkSeen, @"Mark Messages as Seen", @"messages"),
+            SCINotificationItem(kSCINotificationDirectThreadSeenRule, @"Chat Seen List Changes", @"eye"),
             SCINotificationItem(kSCINotificationUnsentMessage, @"Unsent Message", @"undo"),
             SCINotificationItem(kSCINotificationUnsentReaction, @"Removed Reaction", @"reactions"),
         ]},
@@ -215,7 +218,7 @@ NSTimeInterval SCINotificationPillDuration(void) {
 
 void SCINotificationTriggerHaptic(NSString *identifier, SCINotificationTone tone) {
     if (!SCINotificationIdentifierIsRegistered(identifier)) return;
-    if ([SCIUtils getBoolPref:@"disable_haptics"]) return;
+    if ([SCIUtils getBoolPref:@"general_disable_haptics"]) return;
     if (![NSUserDefaults.standardUserDefaults boolForKey:SCINotificationHapticDefaultsKey(identifier)]) return;
 
     dispatch_block_t trigger = ^{

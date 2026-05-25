@@ -13,7 +13,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryBiometryType) {
 ///
 /// Passcode hashes are stored in the keychain under service
 /// `com.socuul.scinsta.gallery.passcode`, using PBKDF2-HMAC-SHA256 with per-passcode random salt.
-/// The "enabled" flag is stored in NSUserDefaults under `scinsta_gallery_lock_enabled`.
+/// The lock flag is stored in NSUserDefaults under `gallery_lock`.
 @interface SCIGalleryManager : NSObject
 
 + (instancetype)sharedManager;

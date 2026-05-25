@@ -250,7 +250,7 @@ void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 	if (!verticalUFIView) return;
 
 	UIButton *button = (UIButton *)[verticalUFIView viewWithTag:kSCIReelsActionButtonTag];
-	if (![SCIUtils getBoolPref:@"action_button_reels_enabled"]) {
+	if (![SCIUtils getBoolPref:@"reels_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
@@ -302,7 +302,7 @@ void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 %end
 
 extern "C" void SCIInstallReelsActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"action_button_reels_enabled"]) return;
+	if (![SCIUtils getBoolPref:@"reels_action_btn"]) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{

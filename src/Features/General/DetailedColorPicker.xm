@@ -7,7 +7,7 @@
 - (void)didMoveToWindow {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"detailed_color_picker"]) {
+    if ([SCIUtils getBoolPref:@"stories_detailed_color_picker"]) {
         [self addLongPressGestureRecognizer];
     }
 
@@ -91,7 +91,7 @@
 %end
 
 extern "C" void SCIInstallDetailedColorPickerHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"detailed_color_picker"]) return;
+    if (![SCIUtils getBoolPref:@"stories_detailed_color_picker"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

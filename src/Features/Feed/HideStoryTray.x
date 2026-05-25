@@ -6,7 +6,7 @@
 
 %hook IGMainStoryTrayDataSource
 - (id)initWithUserSession:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"hide_stories_tray"]) {
+    if ([SCIUtils getBoolPref:@"feed_hide_stories_tray"]) {
         SCILog(@"General", @"[SCInsta] Hiding story tray");
 
         return nil;
@@ -19,7 +19,7 @@
 %end
 
 void SCIInstallHideStoryTrayHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"hide_stories_tray"]) return;
+    if (![SCIUtils getBoolPref:@"feed_hide_stories_tray"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

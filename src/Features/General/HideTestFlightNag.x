@@ -17,7 +17,7 @@
 %end
 
 %ctor {
-    if ([SCIUtils getBoolPref:@"hide_testflight_nag"]) {
+    if ([SCIUtils getBoolPref:@"tools_hide_testflight_popup"]) {
         %init(SCIHideTestFlightNagReceipt);
     }
 }

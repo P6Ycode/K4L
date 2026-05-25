@@ -1,5 +1,13 @@
 #import "../../Utils.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+void SCIMarkDirectThreadSeenAfterReaction(id source);
+#ifdef __cplusplus
+}
+#endif
+
 #pragma mark - Hook group
 
 %group SCIDMInteractionConfirmHooks
@@ -9,7 +17,7 @@
 %hook IGDirectMessageSectionController
 
 - (void)messageCellDidDoubleTap:(id)cell {
-    if (![SCIUtils getBoolPref:@"dm_message_double_tap_confirm"]) {
+    if (![SCIUtils getBoolPref:@"msgs_confirm_double_tap"]) {
         %orig;
         return;
     }
@@ -37,12 +45,16 @@
 %hook IGDirectMessageReactionSelectionViewController
 
 - (void)reactionContainerView:(id)containerView didSelectEmojiAtIndex:(NSInteger)index {
-    if (![SCIUtils getBoolPref:@"dm_message_reaction_confirm"]) {
+    if (![SCIUtils getBoolPref:@"msgs_confirm_reaction"]) {
         %orig;
+        SCIMarkDirectThreadSeenAfterReaction(self);
         return;
     }
 
-    [SCIUtils showConfirmation:^{ %orig; }
+    [SCIUtils showConfirmation:^{
+        %orig;
+        SCIMarkDirectThreadSeenAfterReaction(self);
+    }
                          title:@"Confirm Message Reaction"
                        message:@"Are you sure you want to react to this message?"];
 }

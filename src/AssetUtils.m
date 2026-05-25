@@ -157,6 +157,7 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"explore_grid": @{@"candidates": @[@"ig_icon_photo_grid_outline_24"]},
             @"external_link": @{@"candidates": @[@"ig_icon_external_link_outline_24"]},
             @"eye": @{@"candidates": @[@"ig_icon_eye_outline_24"]},
+            @"eye_off": @{@"candidates": @[@"ig_icon_eye_off_outline_24"]},
             @"eyedropper": @{@"candidates": @[@"ig_icon_eyedropper_outline_24"]},
             @"feed": @{@"candidates": @[@"ig_icon_feeds_outline_24", @"ig_icon_photo_list_outline_24"]},
             @"filter": @{@"candidates": @[@"ig_icon_align_center_outline_24", @"ig_icon_sliders_pano_outline_24", @"ig_icon_sliders_outline_24"]},

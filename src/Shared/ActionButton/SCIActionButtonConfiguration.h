@@ -45,4 +45,8 @@ FOUNDATION_EXPORT NSArray<NSString *> *SCIActionButtonConfiguredBulkCopyActionsF
 FOUNDATION_EXPORT void SCIActionButtonSetConfiguredBulkDownloadActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *actions);
 FOUNDATION_EXPORT void SCIActionButtonSetConfiguredBulkCopyActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *actions);
 
+FOUNDATION_EXPORT NSArray<NSString *> *SCIProfileCopyInfoSupportedActions(void);
+FOUNDATION_EXPORT NSArray<NSString *> *SCIProfileConfiguredCopyInfoActions(void);
+FOUNDATION_EXPORT void SCIProfileSetConfiguredCopyInfoActions(NSArray<NSString *> *actions);
+
 NS_ASSUME_NONNULL_END

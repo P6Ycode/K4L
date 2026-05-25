@@ -6,6 +6,7 @@
 #import "Shared/MediaPreview/SCIMediaCacheManager.h"
 #import "Shared/Gallery/SCIGalleryPaths.h"
 #import "Shared/UI/SCIIGAlertPresenter.h"
+#import "Settings/SCIPreferences.h"
 
 static NSString *SCITrimmedLogBody(NSString *body) {
     return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -184,8 +185,8 @@ static NSArray *SCIArrayFromCollection(id collection) {
     return nil;
 }
 
-static NSString * const kSCICacheAutoClearModeKey = @"cache_auto_clear_mode";
-static NSString * const kSCICacheLastClearedAtKey = @"cache_last_cleared_at";
+static NSString * const kSCICacheAutoClearModeKey = @"general_cache_auto_clear";
+static NSString * const kSCICacheLastClearedAtKey = @"general_cache_last_cleared_at";
 
 static UIColor *SCIDynamicInstagramColor(CGFloat lightRed,
                                          CGFloat lightGreen,
@@ -200,70 +201,6 @@ static UIColor *SCIDynamicInstagramColor(CGFloat lightRed,
         CGFloat blue = dark ? darkBlue : lightBlue;
         return [UIColor colorWithRed:red / 255.0 green:green / 255.0 blue:blue / 255.0 alpha:1.0];
     }];
-}
-
-static void SCIMigrateLiquidGlassPrefsIfNeeded(void) {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-        NSDictionary *persistedDefaults = [ud persistentDomainForName:NSBundle.mainBundle.bundleIdentifier ?: @""];
-        if (persistedDefaults[@"liquid_glass"] == nil) {
-            return;
-        }
-        BOOL unified = [persistedDefaults[@"liquid_glass"] boolValue];
-        if (persistedDefaults[@"liquid_glass_surfaces"] == nil) {
-            [ud setBool:unified forKey:@"liquid_glass_surfaces"];
-        }
-        if (persistedDefaults[@"liquid_glass_buttons"] == nil) {
-            [ud setBool:unified forKey:@"liquid_glass_buttons"];
-        }
-        [ud removeObjectForKey:@"liquid_glass"];
-    });
-}
-
-/// Launcher keys that mirror `origin/main`’s `liquidGlassEnabledBool:` when the per-key pref is unset.
-static NSSet<NSString *> *SCILiquidGlassLauncherKeysUsingSurfacesFallback(void) {
-    static NSSet<NSString *> *set;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        set = [NSSet setWithArray:@[
-            @"liquid_glass_in_app_notifications",
-            @"liquid_glass_context_menus",
-            @"liquid_glass_toasts",
-            @"liquid_glass_toast_peek",
-            @"liquid_glass_alert_dialogs",
-        ]];
-    });
-    return set;
-}
-
-static NSArray<NSString *> *SCIAllLiquidGlassPreferenceKeys(void) {
-    static NSArray<NSString *> *keys;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        keys = @[
-            @"liquid_glass_surfaces",
-            @"liquid_glass_buttons",
-            @"liquid_glass_in_app_notifications",
-            @"liquid_glass_context_menus",
-            @"liquid_glass_toasts",
-            @"liquid_glass_toast_peek",
-            @"liquid_glass_alert_dialogs",
-            @"liquid_glass_icon_bar_buttons",
-            @"liquid_glass_internal_debugger",
-            @"liquid_glass_core_class",
-            @"liquid_glass_nav_is_enabled",
-            @"liquid_glass_nav_default_value_set",
-            @"liquid_glass_nav_home_feed_header",
-            @"liquid_glass_swizzle_toggle",
-            @"liquid_glass_badged_nav_button",
-            @"liquid_glass_video_back_button",
-            @"liquid_glass_video_camera_button",
-            @"liquid_glass_alert_dialog_actions",
-            @"liquid_glass_interactive_tab_bar",
-        ];
-    });
-    return keys;
 }
 
 static NSArray *SCIImageVersionsFromPhoto(IGPhoto *photo) {
@@ -524,19 +461,18 @@ static NSSet<NSString *> *SCIMasterDisableBypassKeys(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         keys = [NSSet setWithArray:@[
-            @"tweak_master_disabled",
-            @"settings_shortcut",
-            @"header_long_press_gallery",
-            @"gallery_long_press_tab",
-            @"tweak_settings_app_launch",
-            @"SCInstaFirstRun",
+            @"tools_disable_all",
+            @"tools_settings_shortcut",
+            @"gallery_quick_access_tab",
+            @"tools_open_settings_on_launch",
+            @"app_first_run",
         ]];
     });
     return keys;
 }
 
 static BOOL SCIMasterDisableActive(void) {
-    return [[NSUserDefaults standardUserDefaults] boolForKey:@"tweak_master_disabled"];
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"tools_disable_all"];
 }
 
 static id SCIPrefValueWithMasterOverlay(NSString *key) {
@@ -568,7 +504,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 // MARK: Misc
 + (BOOL)tabOrderSetTo:(NSString *)ordering {
-    return [[[NSUserDefaults standardUserDefaults] stringForKey:@"nav_icon_ordering"] isEqualToString:ordering];
+    return [[[NSUserDefaults standardUserDefaults] stringForKey:@"interface_nav_order"] isEqualToString:ordering];
 };
 
 + (NSString *)IGVersionString {
@@ -590,47 +526,17 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return NO;
 }
 
-+ (void)sci_normalizeLiquidGlassPreferences {
-    SCIMigrateLiquidGlassPrefsIfNeeded();
-}
-
 + (_Bool)sci_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback {
-    SCIMigrateLiquidGlassPrefsIfNeeded();
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    if ([ud objectForKey:key] != nil) {
-        if ([ud boolForKey:key]) {
-            return YES;
-        }
-        return fallback;
-    }
-    if ([SCILiquidGlassLauncherKeysUsingSurfacesFallback() containsObject:key]) {
-        BOOL surfaces = [SCIUtils getBoolPref:@"liquid_glass_surfaces"];
-        return surfaces ? YES : fallback;
-    }
-    return fallback;
+    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass] ? YES : fallback;
 }
 
 + (BOOL)sci_liquidGlassHookPrefKey:(NSString *)key orig:(SCILiquidGlassBoolMsg)orig selfPtr:(id)selfPtr sel:(SEL)sel {
-    SCIMigrateLiquidGlassPrefsIfNeeded();
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     BOOL origVal = orig ? orig(selfPtr, sel) : NO;
-    if ([ud objectForKey:key] == nil) {
-        return origVal;
-    }
-    if ([ud boolForKey:key]) {
-        return YES;
-    }
-    return origVal;
+    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass] ? YES : origVal;
 }
 
 + (BOOL)sci_anyLiquidGlassEnabled {
-    SCIMigrateLiquidGlassPrefsIfNeeded();
-    for (NSString *key in SCIAllLiquidGlassPreferenceKeys()) {
-        if ([SCIUtils getBoolPref:key]) {
-            return YES;
-        }
-    }
-    return NO;
+    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass];
 }
 
 + (void)applyLiquidGlassNavigationExperimentOverride {

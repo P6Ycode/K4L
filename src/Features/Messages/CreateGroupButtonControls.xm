@@ -1,8 +1,8 @@
 #import "../../Utils.h"
 #import <objc/runtime.h>
 
-static NSString * const kSCIConfirmCreateGroupButtonPref = @"confirm_create_group_button";
-static NSString * const kSCIHideCreateGroupButtonPref = @"hide_create_group_button";
+static NSString * const kSCIConfirmCreateGroupButtonPref = @"general_confirm_create_group";
+static NSString * const kSCIHideCreateGroupButtonPref = @"general_hide_create_group";
 static NSString * const kSCICreateGroupButtonRuntimeClassName = @"IGShareSheet.IGShareSheetCreateOrSendToGroupFacepileButton";
 static NSString * const kSCIBottomButtonsViewRuntimeClassName = @"IGShareSheet.IGSharesheetBottomButtonsView";
 static NSString * const kSCIBottomButtonsContainerRuntimeClassName = @"IGShareSheet.IGShareSheetBottomButtonsViewContainer";

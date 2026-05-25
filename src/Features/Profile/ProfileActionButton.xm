@@ -13,8 +13,8 @@
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 #import "../../AssetUtils.h"
 
-static NSString * const kSCIProfileActionButtonDefaultKey = @"action_button_profile_default_action";
-static NSString * const kSCIProfileActionButtonDefaultCopyInfoKey = @"action_button_profile_default_copy_info_action";
+static NSString * const kSCIProfileActionButtonDefaultKey = @"profile_action_btn_default_action";
+static NSString * const kSCIProfileActionButtonDefaultCopyInfoKey = @"profile_action_btn_default_copy_info_action";
 static NSString * const kSCIProfileActionNone = @"none";
 static NSString * const kSCIProfileActionCopyInfo = @"copy_info";
 static NSString * const kSCIProfileActionViewPicture = @"view_picture";
@@ -294,7 +294,7 @@ static SCIProfileHeaderActionButton *SCIProfileBuildHeaderActionButton(id source
 }
 
 static NSArray *SCIProfilePatchedRightButtons(id self, NSArray *leftButtons, NSArray *rightButtons) {
-    if (![SCIUtils getBoolPref:@"action_button_profile_enabled"]) return rightButtons;
+    if (![SCIUtils getBoolPref:@"profile_action_btn"]) return rightButtons;
     if (SCIProfileButtonsContainSCInstaButton(rightButtons)) return rightButtons;
     if (SCIProfileResolvedUserFromObject(self, 0) == nil) return rightButtons;
 
@@ -391,7 +391,7 @@ static void SCIProfileLayoutLegacyActionButton(SCIProfileHeaderActionButton *but
 }
 
 static void SCIProfileInstallLegacyActionButtonIfNeeded(UIView *headerView) {
-    if (![SCIUtils getBoolPref:@"action_button_profile_enabled"]) return;
+    if (![SCIUtils getBoolPref:@"profile_action_btn"]) return;
     if (SCIProfileResolvedUserFromObject(headerView, 0) == nil) return;
 
     UIView *container = SCIProfileLegacyButtonContainer(headerView);
@@ -419,7 +419,7 @@ static void hooked_profileHeaderLayoutSubviews(id self, SEL _cmd) {
 }
 
 extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"action_button_profile_enabled"]) return;
+    if (![SCIUtils getBoolPref:@"profile_action_btn"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

@@ -1,11 +1,11 @@
 #import "../../Utils.h"
 
 static inline BOOL SCIBlockDisappearingSwipeUpEnabled(void) {
-    return [SCIUtils getBoolPref:@"disable_disappearing_swipe_up"];
+    return [SCIUtils getBoolPref:@"msgs_disable_vanish_swipe_up"];
 }
 
 static inline BOOL SCIHideVanishScreenshotEnabled(void) {
-    return [SCIUtils getBoolPref:@"hide_vanish_screenshot"];
+    return [SCIUtils getBoolPref:@"msgs_hide_vanish_screenshot"];
 }
 
 %group SCIShhConfirmHooks
@@ -37,6 +37,25 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 }
 %end
 
+%hook IGDirectThreadViewBottomSwipeFeatureController
+- (void)swipeableScrollManagerDidEndDraggingAboveSwipeThreshold:(id)arg1 {
+    if (SCIBlockDisappearingSwipeUpEnabled()) {
+        SCILog(@"General", @"[SCInsta] Blocking disappearing swipe-up threshold action");
+        return;
+    }
+
+    if ([SCIUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
+        SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
+
+        [SCIUtils showConfirmation:^(void) { %orig; }
+                                 title:@"Confirm Vanish Mode"
+                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+    } else {
+        return %orig;
+    }
+}
+%end
+
 %hook IGDirectThreadViewController
 - (void)swipeableScrollManagerDidEndDraggingAboveSwipeThreshold:(id)arg1 {
     if (SCIBlockDisappearingSwipeUpEnabled()) {
@@ -44,7 +63,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
         return;
     }
 
-    if ([SCIUtils getBoolPref:@"shh_mode_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -65,7 +84,7 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 }
 
 - (void)shhModeTransitionButtonDidTap:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"shh_mode_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -77,7 +96,30 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 }
 
 - (void)messageListViewControllerDidToggleShhMode:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"shh_mode_confirm"]) {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
+        SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
+
+        [SCIUtils showConfirmation:^(void) { %orig; }
+                                 title:@"Confirm Vanish Mode"
+                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+    } else {
+        return %orig;
+    }
+}
+
+- (void)messageListViewControllerDidTakeScreenshot:(id)arg1 isRecording:(BOOL)arg2 productType:(NSInteger)arg3 {
+    if (SCIHideVanishScreenshotEnabled()) {
+        SCILog(@"General", @"[SCInsta] Suppressing vanish screenshot callback (thread controller)");
+        return;
+    }
+
+    %orig;
+}
+%end
+
+%hook IGDirectThreadViewMessageListFeatureController
+- (void)messageListViewControllerDidToggleShhMode:(id)arg1 {
+    if ([SCIUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SCILog(@"General", @"[SCInsta] Confirm shh mode triggered");
 
         [SCIUtils showConfirmation:^(void) { %orig; }
@@ -121,9 +163,9 @@ static inline BOOL SCIHideVanishScreenshotEnabled(void) {
 %end
 
 void SCIInstallShhConfirmHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"disable_disappearing_swipe_up"] &&
-        ![SCIUtils getBoolPref:@"hide_vanish_screenshot"] &&
-        ![SCIUtils getBoolPref:@"shh_mode_confirm"]) {
+    if (![SCIUtils getBoolPref:@"msgs_disable_vanish_swipe_up"] &&
+        ![SCIUtils getBoolPref:@"msgs_hide_vanish_screenshot"] &&
+        ![SCIUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         return;
     }
 
