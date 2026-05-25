@@ -7,9 +7,12 @@
 @implementation SCIInterfaceSettingsProvider
 
 + (SCISetting *)experimentalLiquidGlassSetting {
+    if (!SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+        return nil;
+    }
     SCISetting *setting = [SCISetting switchCellWithTitle:@"Liquid Glass"
-                                                 subtitle:@"Force-enable Liquid Glass UI across Instagram"
-                                              defaultsKey:@"interface_liquid_glass"
+                                                subtitle:@"Force-enable Liquid Glass UI across Instagram"
+                                             defaultsKey:@"interface_liquid_glass"
                                           requiresRestart:YES];
     setting.icon = SCISettingsIcon(@"warning_filled");
     setting.userInfo = @{@"deferRestartPrompt": @YES};
@@ -17,23 +20,10 @@
 }
 
 + (SCISetting *)rootSetting {
-    SCISetting *liquidGlass = [SCISetting switchCellWithTitle:@"Liquid Glass"
-                                                     subtitle:@""
-                                                  defaultsKey:@"interface_liquid_glass"
-                                              requiresRestart:YES];
-    liquidGlass.icon = SCISettingsIcon(@"warning_filled");
-    liquidGlass.switchValueProvider = ^BOOL{
-        return [SCIUtils getBoolPref:@"interface_liquid_glass"];
-    };
-    liquidGlass.switchChangeHandler = ^(BOOL isOn) {
-        [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"interface_liquid_glass"];
-        [SCIUtils showRestartConfirmation];
-    };
-
-    return SCITopicNavigationSetting(@"Interface", @"interface", 24.0, @[
+    NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
         SCITopicSection(@"Notifications", @[
             [SCISetting navigationCellWithTitle:@"Notifications"
-                                       subtitle:nil
+                                      subtitle:nil
                                            icon:SCISettingsIcon(@"notification")
                                     navSections:[SCINotificationSettingsProvider sections]]
         ], nil),
@@ -72,10 +62,27 @@
                 s;
             })
         ], @"Redacts SCInsta overlay buttons (action button, seen/mentions buttons, etc.) from screenshots, screen recordings, and mirroring."),
-        SCITopicSection(@"Liquid Glass", @[
+    ]];
+
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+        SCISetting *liquidGlass = [SCISetting switchCellWithTitle:@"Liquid Glass"
+                                                         subtitle:@""
+                                                      defaultsKey:@"interface_liquid_glass"
+                                                  requiresRestart:YES];
+        liquidGlass.icon = SCISettingsIcon(@"warning_filled");
+        liquidGlass.switchValueProvider = ^BOOL{
+            return [SCIUtils getBoolPref:@"interface_liquid_glass"];
+        };
+        liquidGlass.switchChangeHandler = ^(BOOL isOn) {
+            [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"interface_liquid_glass"];
+            [SCIUtils showRestartConfirmation];
+        };
+        [sections addObject:SCITopicSection(@"Liquid Glass", @[
             SCISettingApplyIconTint(liquidGlass, [UIColor systemOrangeColor])
-        ], @"Force-enable Liquid Glass UI across Instagram.")
-    ]);
+        ], @"Force-enable Liquid Glass UI across Instagram.")];
+    }
+
+    return SCITopicNavigationSetting(@"Interface", @"interface", 24.0, sections);
 }
 
 @end

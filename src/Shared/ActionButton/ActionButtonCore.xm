@@ -72,6 +72,7 @@ static BOOL SCIActionIdentifierOpensPreview(NSString *identifier);
 static id SCIResolveMediaForContext(SCIActionButtonContext *context);
 static UIViewController *SCIActionContextPresenter(SCIActionButtonContext *context);
 static UIView *SCIActionContextAnchorView(SCIActionButtonContext *context);
+static UIColor *SCIActionButtonTintForSource(SCIActionButtonSource source);
 void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
 void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
 SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button);
@@ -84,10 +85,117 @@ void SCIPresentStoryMentionsSheet(UIView *overlayView);
 }
 #endif
 
+static BOOL SCIActionMenuButtonIsReels(UIButton *button) {
+	SCIActionButtonContext *context = SCIActionButtonContextFromButton(button);
+	return context.source == SCIActionButtonSourceReels;
+}
+
+static void SCIStabilizeReelsActionButtonIcon(UIButton *button) {
+	if (!SCIActionMenuButtonIsReels(button) || ![button isKindOfClass:[SCIChromeButton class]]) return;
+
+	SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+	chromeButton.iconTint = SCIActionButtonTintForSource(SCIActionButtonSourceReels);
+	chromeButton.iconView.tintColor = chromeButton.iconTint;
+	chromeButton.iconView.hidden = NO;
+	chromeButton.iconView.alpha = 1.0;
+	chromeButton.iconView.layer.opacity = 1.0;
+	chromeButton.iconView.layer.hidden = NO;
+	[chromeButton.iconView.superview bringSubviewToFront:chromeButton.iconView];
+	[chromeButton setNeedsLayout];
+	[chromeButton layoutIfNeeded];
+}
+
+static CGSize SCIReelsActionButtonCurrentIconSize(SCIChromeButton *button, CGRect bounds) {
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIActionButtonIconWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIActionButtonIconHeightConstraintAssocKey);
+	if (widthConstraint && heightConstraint && widthConstraint.constant > 0.0 && heightConstraint.constant > 0.0) {
+		return CGSizeMake(widthConstraint.constant, heightConstraint.constant);
+	}
+
+	UIImage *image = button.iconView.image;
+	CGSize imageSize = image ? image.size : CGSizeMake(28.0, 28.0);
+	CGFloat maxWidth = CGRectGetWidth(bounds) > 0.0 ? CGRectGetWidth(bounds) : 44.0;
+	CGFloat maxHeight = CGRectGetHeight(bounds) > 0.0 ? CGRectGetHeight(bounds) : 44.0;
+	return CGSizeMake(MAX(1.0, MIN(maxWidth, imageSize.width)), MAX(1.0, MIN(maxHeight, imageSize.height)));
+}
+
+static UITargetedPreview *SCIReelsActionButtonMenuPreview(UIButton *button) {
+	if (!SCIActionMenuButtonIsReels(button) || ![button isKindOfClass:[SCIChromeButton class]]) return nil;
+
+	SCIStabilizeReelsActionButtonIcon(button);
+
+	CGRect bounds = button.bounds;
+	if (CGRectIsEmpty(bounds)) {
+		CGFloat side = 44.0;
+		bounds = CGRectMake(0.0, 0.0, side, side);
+	}
+
+	SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+	UIView *previewView = [[UIView alloc] initWithFrame:bounds];
+	previewView.userInteractionEnabled = NO;
+	previewView.backgroundColor = UIColor.clearColor;
+	previewView.clipsToBounds = NO;
+
+	UIView *bubbleView = [[UIView alloc] initWithFrame:bounds];
+	bubbleView.userInteractionEnabled = NO;
+	bubbleView.backgroundColor = [UIColor blackColor];
+	bubbleView.layer.cornerRadius = MIN(CGRectGetWidth(bounds), CGRectGetHeight(bounds)) / 2.0;
+	bubbleView.clipsToBounds = YES;
+	[previewView addSubview:bubbleView];
+
+	UIImageView *iconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+	iconView.userInteractionEnabled = NO;
+	iconView.contentMode = UIViewContentModeScaleAspectFit;
+	iconView.tintColor = SCIActionButtonTintForSource(SCIActionButtonSourceReels);
+	iconView.image = [chromeButton.iconView.image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+	CGSize iconSize = SCIReelsActionButtonCurrentIconSize(chromeButton, bounds);
+	iconView.frame = CGRectMake((CGRectGetWidth(bounds) - iconSize.width) / 2.0,
+	                            (CGRectGetHeight(bounds) - iconSize.height) / 2.0,
+	                            iconSize.width,
+	                            iconSize.height);
+	[previewView addSubview:iconView];
+
+	UIPreviewParameters *parameters = [[UIPreviewParameters alloc] init];
+	parameters.backgroundColor = UIColor.clearColor;
+	parameters.visiblePath = [UIBezierPath bezierPathWithOvalInRect:bounds];
+
+	if (button.superview) {
+		CGPoint center = [button.superview convertPoint:CGPointMake(CGRectGetMidX(button.bounds), CGRectGetMidY(button.bounds)) fromView:button];
+		UIPreviewTarget *target = [[UIPreviewTarget alloc] initWithContainer:button.superview center:center];
+		return [[UITargetedPreview alloc] initWithView:previewView parameters:parameters target:target];
+	}
+	return [[UITargetedPreview alloc] initWithView:previewView parameters:parameters];
+}
+
+// For non-reels buttons, use a simple preview of the button itself to ensure consistent scaling and positioning during the context menu animation. 
+// This also prevents issues where the original button might be hidden or removed from the view hierarchy while the menu is open,
+// which could cause the default preview to disappear or animate back to an unexpected location.
+static UITargetedPreview *SCIActionMenuButtonMenuPreview(UIButton *button) {
+	UITargetedPreview *reelsPreview = SCIReelsActionButtonMenuPreview(button);
+	if (reelsPreview) return reelsPreview;
+	return [[UITargetedPreview alloc] initWithView:button];
+}
+
 @implementation SCIResolvedMediaEntry
 @end
 
 @implementation SCIActionMenuButton
+
+- (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+      previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+	(void)interaction;
+	(void)configuration;
+	return SCIActionMenuButtonMenuPreview(self);
+}
+
+- (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+       previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+	(void)interaction;
+	(void)configuration;
+	return SCIActionMenuButtonMenuPreview(self);
+}
 
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
 willDisplayMenuForConfiguration:(id)configuration
@@ -100,6 +208,11 @@ willDisplayMenuForConfiguration:(id)configuration
 
 	SCIActionButtonContext *context = SCIActionButtonContextFromButton(self);
 	if (!context) return;
+
+	SCIStabilizeReelsActionButtonIcon(self);
+	[animator addAnimations:^{
+		SCIStabilizeReelsActionButtonIcon(self);
+	}];
 
 	objc_setAssociatedObject(self, kSCIActionButtonLastMenuActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
 	if (context.source == SCIActionButtonSourceStories) {
@@ -117,9 +230,15 @@ willDisplayMenuForConfiguration:(id)configuration
 	(void)interaction;
 	(void)configuration;
 
+	SCIStabilizeReelsActionButtonIcon(self);
+	[animator addAnimations:^{
+		SCIStabilizeReelsActionButtonIcon(self);
+	}];
+
 	[animator addCompletion:^{
 		SCIActionMenuButton *strongSelf = self;
 		if (!strongSelf) return;
+		SCIStabilizeReelsActionButtonIcon(strongSelf);
 
 		SCIActionButtonContext *context = SCIActionButtonContextFromButton(strongSelf);
 		NSString *lastAction = objc_getAssociatedObject(strongSelf, kSCIActionButtonLastMenuActionAssocKey);
@@ -1106,14 +1225,15 @@ static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButt
     CGFloat width = image.size.width;
     CGFloat height = image.size.height;
 
-    if (source == SCIActionButtonSourceReels &&
-        ([identifier isEqualToString:kSCIActionNone] ||
-		 [identifier isEqualToString:kSCIActionDownloadShare] ||
-         [identifier isEqualToString:kSCIActionViewThumbnail] ||
-         [identifier isEqualToString:kSCIActionDownloadGallery] ||
-		 [identifier isEqualToString:kSCIActionCopyMedia])) {
-        
-        width = height = (![identifier isEqualToString:kSCIActionDownloadShare]) ? 28.0 : 38.0;
+    if (source == SCIActionButtonSourceReels) {
+        if ([identifier isEqualToString:kSCIActionDownloadShare]) {
+            width = height = 38.0;
+        } else if ([identifier isEqualToString:kSCIActionNone] ||
+                   [identifier isEqualToString:kSCIActionViewThumbnail] ||
+                   [identifier isEqualToString:kSCIActionDownloadGallery] ||
+                   [identifier isEqualToString:kSCIActionCopyMedia]) {
+            width = height = 28.0;
+        }
     }
 
     CGFloat maxWidth = CGRectGetWidth(button.bounds) > 0.0 ? CGRectGetWidth(button.bounds) : 44.0;
@@ -1155,6 +1275,7 @@ static void SCISetButtonVisualImage(UIButton *button, UIImage *image, SCIActionB
 	if ([button isKindOfClass:[SCIChromeButton class]]) {
 		SCIChromeButton *chromeButton = (SCIChromeButton *)button;
 		if (source == SCIActionButtonSourceReels) {
+			chromeButton.iconView.contentMode = UIViewContentModeScaleAspectFit;
 			CGSize displaySize = SCICustomButtonIconDisplaySize(identifier, source, templatedImage, button);
 			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey);
 			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey);
@@ -1178,6 +1299,7 @@ static void SCISetButtonVisualImage(UIButton *button, UIImage *image, SCIActionB
 				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 			}
+			chromeButton.iconView.contentMode = UIViewContentModeCenter;
 		}
 		chromeButton.iconView.image = templatedImage;
 		chromeButton.iconTint = SCIActionButtonTintForSource(source);

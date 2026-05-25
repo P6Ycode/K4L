@@ -93,7 +93,9 @@ void SCIInstallLaunchCriticalHooks(void) {
     }
     SCIInstallTweakLaunchCriticalHooks();
     SCIInstallAdBlockingEarlyHooksIfEnabled();
-    SCIInstallLiquidGlassHooksIfEnabled();
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+        SCIInstallLiquidGlassHooksIfEnabled();
+    }
     SCIInstallNavigationHooksIfNeeded();
     SCIInstallSettingsShortcutsHooksIfNeeded();
 }
