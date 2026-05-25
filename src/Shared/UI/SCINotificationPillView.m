@@ -1,4 +1,5 @@
 #import "SCINotificationPillView.h"
+#import "SCINotificationCenter.h"
 #import <math.h>
 #import "../../AssetUtils.h"
 
@@ -10,7 +11,7 @@
 static CGFloat const kPillCorner     = 28.0;
 static CGFloat const kHorizontalPad  = 16.0;
 static CGFloat const kDynamicMinWidth = 200.0;
-static CGFloat const kDynamicMaxWidth = 320.0;
+static CGFloat const kDynamicMaxWidth = 360.0;
 static CGFloat const kRingLineWidth   = 2.5;
 static CGFloat const kDynamicPillHeight = 52.0;
 static CGFloat const kDynamicTallHeight = 64.0;
@@ -49,7 +50,10 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 @property (nonatomic, strong) CAGradientLayer    *iconBadgeGradientLayer;
 @property (nonatomic, strong) UIButton           *closeButton;
 @property (nonatomic, assign) float              currentProgress;
+@property (nonatomic, assign) int64_t            currentBytesWritten;
+@property (nonatomic, assign) int64_t            currentBytesExpected;
 @property (nonatomic, assign) BOOL               isCompleted;
+@property (nonatomic, assign) BOOL               usesAutomaticProgressSubtitle;
 @property (nonatomic, assign) SCINotificationPillMode mode;
 @property (nonatomic, assign) SCIPillVisualTone tone;
 @property (nonatomic, strong) NSLayoutConstraint *textCenterYConstraint;
@@ -77,6 +81,9 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 - (void)sci_updateRingPath;
 - (UIColor *)sci_glowColorForTone:(SCIPillVisualTone)tone;
 - (void)sci_updateDynamicWidthForTitle:(NSString *)title subtitle:(NSString *)subtitle hasButton:(BOOL)hasButton;
+- (NSString *)sci_progressSubtitleForProgress:(float)progress;
+- (NSString *)sci_progressSubtitleForProgress:(float)progress bytesWritten:(int64_t)bytesWritten totalBytesExpected:(int64_t)totalBytesExpected;
+- (void)sci_applyAutomaticProgressSubtitleIfNeeded;
 - (void)handlePan:(UIPanGestureRecognizer *)pan;
 @end
 
@@ -220,7 +227,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.8];
-    _subtitleLabel.font = [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
+    _subtitleLabel.font = [UIFont monospacedDigitSystemFontOfSize:11.5 weight:UIFontWeightMedium];
     _subtitleLabel.numberOfLines = 1;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     _subtitleLabel.hidden = YES;
@@ -574,15 +581,18 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     self.mode = SCINotificationPillModeProgress;
     self.isCompleted = NO;
     self.isErrorState = NO;
+    self.usesAutomaticProgressSubtitle = YES;
     self.tone = SCIPillVisualToneInfo;
     self.currentProgress = 0.0f;
-    self.subtitleLabel.text = nil;
-    self.subtitleLabel.hidden = YES;
+    self.currentBytesWritten = 0;
+    self.currentBytesExpected = 0;
+    self.subtitleLabel.text = [self sci_progressSubtitleForProgress:self.currentProgress];
+    self.subtitleLabel.hidden = (self.subtitleLabel.text.length == 0);
     self.titleLabel.text = @"Downloading...";
     self.progressView.progress = 0.0f;
 
-    self.heightConstraint.constant = kDynamicPillHeight;
-    [self sci_updateDynamicWidthForTitle:self.titleLabel.text subtitle:nil hasButton:YES];
+    self.heightConstraint.constant = self.subtitleLabel.hidden ? kDynamicPillHeight : kDynamicTallHeight;
+    [self sci_updateDynamicWidthForTitle:self.titleLabel.text subtitle:self.subtitleLabel.text hasButton:YES];
     self.progressRingLayer.strokeEnd = 0.0;
 
     [self setProgressVisible:YES];
@@ -655,6 +665,74 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     self.closeButton.tintColor = [self retryButtonTintColor];
 }
 
+- (NSString *)sci_progressSubtitleForProgress:(float)progress {
+    return [self sci_progressSubtitleForProgress:progress
+                                    bytesWritten:self.currentBytesWritten
+                              totalBytesExpected:self.currentBytesExpected];
+}
+
+- (NSString *)sci_byteCountString:(int64_t)bytes {
+    if (bytes < 0) bytes = 0;
+    NSByteCountFormatter *formatter = [[NSByteCountFormatter alloc] init];
+    formatter.countStyle = NSByteCountFormatterCountStyleFile;
+    formatter.allowedUnits = NSByteCountFormatterUseKB | NSByteCountFormatterUseMB | NSByteCountFormatterUseGB;
+    formatter.includesUnit = YES;
+    formatter.includesCount = YES;
+    formatter.zeroPadsFractionDigits = NO;
+    return [formatter stringFromByteCount:bytes];
+}
+
+- (NSString *)sci_progressSubtitleForProgress:(float)progress bytesWritten:(int64_t)bytesWritten totalBytesExpected:(int64_t)totalBytesExpected {
+    float sanitized = [self sanitizedProgressValue:progress];
+    NSInteger percent = (NSInteger)lroundf(sanitized * 100.0f);
+    percent = MAX(0, MIN(100, percent));
+    NSString *percentString = [NSString stringWithFormat:@"%3ld%%", (long)percent];
+
+    NSString *style = [NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationProgressSubtitleStyleKey];
+    if (style.length == 0) style = @"both";
+    if ([style isEqualToString:@"off"]) {
+        return nil;
+    }
+    if ([style isEqualToString:@"percent"]) {
+        return percentString;
+    }
+
+    BOOL hasByteTotals = (bytesWritten > 0 && totalBytesExpected > 0);
+    NSString *bytesString = hasByteTotals
+        ? [NSString stringWithFormat:@"%@ of %@",
+           [self sci_byteCountString:bytesWritten],
+           [self sci_byteCountString:totalBytesExpected]]
+        : nil;
+
+    if ([style isEqualToString:@"bytes"]) {
+        return bytesString.length > 0 ? bytesString : percentString;
+    }
+
+    if (bytesString.length > 0) {
+        return [NSString stringWithFormat:@"%@ • %@", percentString, bytesString];
+    }
+    return percentString;
+}
+
+- (void)sci_applyAutomaticProgressSubtitleIfNeeded {
+    if (self.mode != SCINotificationPillModeProgress ||
+        !self.usesAutomaticProgressSubtitle ||
+        self.isCompleted ||
+        self.isErrorState) {
+        return;
+    }
+
+    NSString *subtitle = [self sci_progressSubtitleForProgress:self.currentProgress];
+    if ([self.subtitleLabel.text isEqualToString:subtitle]) {
+        return;
+    }
+
+    self.subtitleLabel.text = subtitle;
+    self.subtitleLabel.hidden = (subtitle.length == 0);
+    self.heightConstraint.constant = self.subtitleLabel.hidden ? kDynamicPillHeight : kDynamicTallHeight;
+    [self sci_updateDynamicWidthForTitle:self.titleLabel.text subtitle:subtitle hasButton:!self.closeButton.hidden];
+}
+
 #pragma mark - Public
 
 - (float)sanitizedProgressValue:(float)progress {
@@ -666,19 +744,29 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 }
 
 - (void)setProgress:(float)progress animated:(BOOL)animated {
+    [self setProgress:progress bytesWritten:self.currentBytesWritten totalBytesExpected:self.currentBytesExpected animated:animated];
+}
+
+- (void)setProgress:(float)progress
+       bytesWritten:(int64_t)bytesWritten
+ totalBytesExpected:(int64_t)totalBytesExpected
+           animated:(BOOL)animated {
     if (self.mode != SCINotificationPillModeProgress) {
         [self configureForProgressMode];
     }
 
     _currentProgress = [self sanitizedProgressValue:progress];
+    self.currentBytesWritten = MAX((int64_t)0, bytesWritten);
+    self.currentBytesExpected = MAX((int64_t)0, totalBytesExpected);
 
     if (self.isErrorState || self.isCompleted) {
         self.isErrorState = NO;
         self.isCompleted = NO;
+        self.usesAutomaticProgressSubtitle = YES;
         self.titleLabel.text = @"Downloading...";
-        self.subtitleLabel.text = nil;
-        self.subtitleLabel.hidden = YES;
-        self.heightConstraint.constant = kDynamicPillHeight;
+        self.subtitleLabel.text = [self sci_progressSubtitleForProgress:self.currentProgress];
+        self.subtitleLabel.hidden = (self.subtitleLabel.text.length == 0);
+        self.heightConstraint.constant = self.subtitleLabel.hidden ? kDynamicPillHeight : kDynamicTallHeight;
         [self setCloseButtonVisible:YES];
         [self setProgressVisible:YES];
 
@@ -691,6 +779,8 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
         [self setProgressVisible:YES];
         [self sci_applyProgressModeInfoIcon];
     }
+    [self.progressView setProgress:self.currentProgress animated:animated];
+    [self sci_applyAutomaticProgressSubtitleIfNeeded];
 
     if (animated) {
         [CATransaction begin];
@@ -714,11 +804,17 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     self.isCompleted = NO;
     self.isErrorState = NO;
     self.titleLabel.text = title.length > 0 ? title : @"Downloading...";
-    self.subtitleLabel.text = subtitle;
+    self.usesAutomaticProgressSubtitle = (subtitle.length == 0);
+    self.subtitleLabel.text = self.usesAutomaticProgressSubtitle
+        ? [self sci_progressSubtitleForProgress:self.currentProgress]
+        : subtitle;
     self.subtitleLabel.hidden = (subtitle.length == 0);
+    if (self.usesAutomaticProgressSubtitle) {
+        self.subtitleLabel.hidden = (self.subtitleLabel.text.length == 0);
+    }
 
     self.heightConstraint.constant = self.subtitleLabel.hidden ? kDynamicPillHeight : kDynamicTallHeight;
-    [self sci_updateDynamicWidthForTitle:self.titleLabel.text subtitle:subtitle hasButton:YES];
+    [self sci_updateDynamicWidthForTitle:self.titleLabel.text subtitle:self.subtitleLabel.text hasButton:YES];
 
     [self setProgressVisible:YES];
     [self setCloseButtonVisible:YES];
@@ -742,6 +838,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
     self.isCompleted = YES;
     self.isErrorState = NO;
+    self.usesAutomaticProgressSubtitle = NO;
     self.onCancel = nil;
     self.onRetry = nil;
     [self applyCancelButtonStyle];
@@ -780,6 +877,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
     self.isCompleted = NO;
     self.isErrorState = YES;
+    self.usesAutomaticProgressSubtitle = NO;
     self.onTapWhenCompleted = nil;
     self.onCancel = nil;
     [self applyErrorDismissButtonStyle];
@@ -819,6 +917,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
     self.isCompleted = YES;
     self.isErrorState = NO;
+    self.usesAutomaticProgressSubtitle = NO;
     self.onCancel = nil;
     self.onRetry = nil;
     [self applyCancelButtonStyle];
@@ -997,7 +1096,8 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     }
 
     CGFloat targetWidth = ceil(textWidth) + fixedWidth;
-    targetWidth = MIN(kDynamicMaxWidth, MAX(kDynamicMinWidth, targetWidth));
+    CGFloat screenMaxWidth = MAX(kDynamicMinWidth, CGRectGetWidth(UIScreen.mainScreen.bounds) - 24.0);
+    targetWidth = MIN(MIN(kDynamicMaxWidth, screenMaxWidth), MAX(kDynamicMinWidth, targetWidth));
 
     CGFloat newWidth = targetWidth;
     CGFloat currentWidth = self.widthConstraint.constant;

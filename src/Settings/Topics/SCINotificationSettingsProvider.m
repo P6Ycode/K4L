@@ -67,8 +67,11 @@
     NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
         SCITopicSection(@"Appearance", @[
             [SCISetting switchCellWithTitle:@"Glow"
-                                   subtitle:@"Adds a glow effect around notifications"
+                                   subtitle:@"Show glow effect around notifications"
                                 defaultsKey:kSCINotificationPillGlowEnabledKey],
+            [SCISetting menuCellWithTitle:@"Download Progress"
+                                 subtitle:@""
+                                     menu:SCINotificationProgressSubtitleStyleMenu()],
             [SCISetting stepperCellWithTitle:@"Duration"
                                     subtitle:@"Dismiss after %@%@"
                                  defaultsKey:kSCINotificationPillDurationKey
@@ -84,7 +87,7 @@
                                        icon:nil
                                      action:^{ [self sci_showNextNotificationPreview]; }]
         ], nil),
-        SCITopicSection(@"Haptics", @[
+        SCITopicSection(@"", @[
             [SCISetting navigationCellWithTitle:@"Haptics"
                                        subtitle:@""
                                            icon:SCISettingsIcon(@"haptics")

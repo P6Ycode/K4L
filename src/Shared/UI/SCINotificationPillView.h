@@ -18,6 +18,10 @@ typedef NS_ENUM(NSUInteger, SCINotificationTone) {
 
 /// Updates progress (0.0 – 1.0) for progress-style pills.
 - (void)setProgress:(float)progress animated:(BOOL)animated;
+- (void)setProgress:(float)progress
+       bytesWritten:(int64_t)bytesWritten
+ totalBytesExpected:(int64_t)totalBytesExpected
+           animated:(BOOL)animated;
 - (void)updateProgressTitle:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 
 /// Transitions the pill to a success state.

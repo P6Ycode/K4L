@@ -188,6 +188,18 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
 }
 
 - (void)updateCustomProgress:(float)progress title:(NSString *)title subtitle:(NSString *)subtitle {
+    [self updateCustomProgress:progress
+                          title:title
+                       subtitle:subtitle
+                   bytesWritten:0
+             totalBytesExpected:0];
+}
+
+- (void)updateCustomProgress:(float)progress
+                        title:(NSString *)title
+                     subtitle:(NSString *)subtitle
+                 bytesWritten:(int64_t)bytesWritten
+           totalBytesExpected:(int64_t)totalBytesExpected {
     if (!self.showProgress) {
         return;
     }
@@ -197,7 +209,10 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
             self.progressView = SCINotifyProgress(self.notificationIdentifier, title ?: @"Working", nil);
         }
         [self.progressView updateProgressTitle:title subtitle:subtitle];
-        [self.progressView setProgress:progress animated:YES];
+        [self.progressView setProgress:progress
+                          bytesWritten:bytesWritten
+                    totalBytesExpected:totalBytesExpected
+                              animated:YES];
     });
 }
 
@@ -255,6 +270,19 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.progressView setProgress:progress animated:YES];
+    });
+}
+
+- (void)downloadDidProgress:(float)progress
+               bytesWritten:(int64_t)bytesWritten
+         totalBytesExpected:(int64_t)totalBytesExpected {
+    SCILog(@"General", @"[SCInsta] Download: Download progress: %f", progress);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.progressView setProgress:progress
+                          bytesWritten:bytesWritten
+                    totalBytesExpected:totalBytesExpected
+                              animated:YES];
     });
 }
 

@@ -37,6 +37,11 @@ typedef NS_ENUM(NSUInteger, DownloadAction) {
 - (void)downloadFileWithURL:(NSURL *)url fileExtension:(NSString *)fileExtension hudLabel:(NSString *)hudLabel;
 - (void)beginCustomProgressWithTitle:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 - (void)updateCustomProgress:(float)progress title:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
+- (void)updateCustomProgress:(float)progress
+                        title:(nullable NSString *)title
+                     subtitle:(nullable NSString *)subtitle
+                 bytesWritten:(int64_t)bytesWritten
+           totalBytesExpected:(int64_t)totalBytesExpected;
 - (void)showCustomErrorWithTitle:(NSString *)title subtitle:(nullable NSString *)subtitle;
 - (void)finishWithLocalFileURL:(NSURL *)fileURL;
 - (void)cancelCustomOperation;

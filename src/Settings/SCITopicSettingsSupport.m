@@ -1,4 +1,5 @@
 #import "SCITopicSettingsSupport.h"
+#import "../Shared/UI/SCINotificationCenter.h"
 #import "SCIEditActionsListViewController.h"
 #import "SCIBulkActionMenuEditViewController.h"
 
@@ -229,6 +230,15 @@ UIMenu *SCICacheAutoClearMenu(void) {
         SCIMenuCommand(@"Daily", nil, nil, @"general_cache_auto_clear", @"daily", NO),
         SCIMenuCommand(@"Weekly", nil, nil, @"general_cache_auto_clear", @"weekly", NO),
         SCIMenuCommand(@"Monthly", nil, nil, @"general_cache_auto_clear", @"monthly", NO)
+    ]];
+}
+
+UIMenu *SCINotificationProgressSubtitleStyleMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SCIMenuCommand(@"Both", nil, nil, kSCINotificationProgressSubtitleStyleKey, @"both", NO),
+        SCIMenuCommand(@"Percent", nil, nil, kSCINotificationProgressSubtitleStyleKey, @"percent", NO),
+        SCIMenuCommand(@"Bytes", nil, nil, kSCINotificationProgressSubtitleStyleKey, @"bytes", NO),
+        SCIMenuCommand(@"Off", nil, nil, kSCINotificationProgressSubtitleStyleKey, @"off", NO)
     ]];
 }
 

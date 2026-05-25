@@ -7,6 +7,11 @@
 - (void)downloadDidStart;
 - (void)downloadDidCancel;
 - (void)downloadDidProgress:(float)progress;
+@optional
+- (void)downloadDidProgress:(float)progress
+               bytesWritten:(int64_t)bytesWritten
+         totalBytesExpected:(int64_t)totalBytesExpected;
+@required
 - (void)downloadDidFinishWithError:(NSError *)error;
 - (void)downloadDidFinishWithFileURL:(NSURL *)fileURL;
 

@@ -74,7 +74,13 @@
                                           expectedTotalBytes:effectiveExpectedBytes];
     self.lastReportedProgress = progress;
 
-    [self.delegate downloadDidProgress:progress];
+    if ([self.delegate respondsToSelector:@selector(downloadDidProgress:bytesWritten:totalBytesExpected:)]) {
+        [self.delegate downloadDidProgress:progress
+                              bytesWritten:totalBytesWritten
+                        totalBytesExpected:effectiveExpectedBytes];
+    } else {
+        [self.delegate downloadDidProgress:progress];
+    }
 }
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location {    

@@ -818,7 +818,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 @interface SCIMediaSingleDownloadJob : NSObject <NSURLSessionDownloadDelegate>
 @property (nonatomic, strong) NSURLSession *session;
 @property (nonatomic, strong) NSURLSessionDownloadTask *task;
-@property (nonatomic, copy) void (^progressBlock)(double progress);
+@property (nonatomic, copy) void (^progressBlock)(double progress, int64_t bytesWritten, int64_t totalBytesExpected);
 @property (nonatomic, copy) void (^completionBlock)(NSURL * _Nullable fileURL, NSError * _Nullable error);
 @property (nonatomic, copy) NSString *fileExtension;
 @end
@@ -827,7 +827,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 
 - (void)startWithURL:(NSURL *)url
        defaultExtension:(NSString *)defaultExtension
-               progress:(void (^)(double progress))progress
+               progress:(void (^)(double progress, int64_t bytesWritten, int64_t totalBytesExpected))progress
              completion:(void (^)(NSURL * _Nullable fileURL, NSError * _Nullable error))completion {
     self.progressBlock = progress;
     self.completionBlock = completion;
@@ -867,7 +867,9 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
     if (totalBytesExpectedToWrite <= 0) return;
     double progress = (double)totalBytesWritten / (double)totalBytesExpectedToWrite;
     if (self.progressBlock) {
-        self.progressBlock(MAX(0.0, MIN(1.0, progress)));
+        self.progressBlock(MAX(0.0, MIN(1.0, progress)),
+                           totalBytesWritten,
+                           totalBytesExpectedToWrite);
     }
 }
 
@@ -1617,8 +1619,12 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
         [weakDelegate updateCustomProgress:0.46f title:@"Downloading audio" subtitle:nil];
         [audioJob startWithURL:option.secondaryURL
                defaultExtension:@"m4a"
-                       progress:^(double progress) {
-            [weakDelegate updateCustomProgress:(float)(0.46 + (progress * 0.22)) title:@"Downloading audio" subtitle:nil];
+                       progress:^(double progress, int64_t bytesWritten, int64_t totalBytesExpected) {
+            [weakDelegate updateCustomProgress:(float)(0.46 + (progress * 0.22))
+                                         title:@"Downloading audio"
+                                      subtitle:nil
+                                  bytesWritten:bytesWritten
+                            totalBytesExpected:totalBytesExpected];
         }
                      completion:^(NSURL * _Nullable audioFileURL, NSError * _Nullable error) {
             if (error || !audioFileURL) {
@@ -1656,8 +1662,12 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
         [weakDelegate updateCustomProgress:0.1f title:@"Downloading audio" subtitle:nil];
         [audioJob startWithURL:option.primaryURL
                defaultExtension:@"m4a"
-                       progress:^(double progress) {
-            [weakDelegate updateCustomProgress:(float)(0.1 + (progress * 0.65)) title:@"Downloading audio" subtitle:nil];
+                       progress:^(double progress, int64_t bytesWritten, int64_t totalBytesExpected) {
+            [weakDelegate updateCustomProgress:(float)(0.1 + (progress * 0.65))
+                                         title:@"Downloading audio"
+                                      subtitle:nil
+                                  bytesWritten:bytesWritten
+                            totalBytesExpected:totalBytesExpected];
         }
                      completion:^(NSURL * _Nullable audioFileURL, NSError * _Nullable error) {
             if (error || !audioFileURL) {
@@ -1688,8 +1698,12 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
     [weakDelegate updateCustomProgress:0.12f title:@"Downloading video" subtitle:nil];
     [videoJob startWithURL:option.primaryURL
           defaultExtension:@"mp4"
-                  progress:^(double progress) {
-        [weakDelegate updateCustomProgress:(float)(0.12 + (progress * (option.secondaryURL ? 0.28 : 0.7))) title:@"Downloading video" subtitle:nil];
+                  progress:^(double progress, int64_t bytesWritten, int64_t totalBytesExpected) {
+        [weakDelegate updateCustomProgress:(float)(0.12 + (progress * (option.secondaryURL ? 0.28 : 0.7)))
+                                     title:@"Downloading video"
+                                  subtitle:nil
+                              bytesWritten:bytesWritten
+                        totalBytesExpected:totalBytesExpected];
     }
                 completion:^(NSURL * _Nullable videoFileURL, NSError * _Nullable error) {
         if (error || !videoFileURL) {

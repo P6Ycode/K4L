@@ -54,6 +54,7 @@ FOUNDATION_EXPORT NSString * const kSCINotificationMediaEncodingLogs;
 FOUNDATION_EXPORT NSString * const kSCINotificationFlexUnavailable;
 FOUNDATION_EXPORT NSString * const kSCINotificationPillDurationKey;
 FOUNDATION_EXPORT NSString * const kSCINotificationPillGlowEnabledKey;
+FOUNDATION_EXPORT NSString * const kSCINotificationProgressSubtitleStyleKey;
 
 #ifdef __cplusplus
 extern "C" {
