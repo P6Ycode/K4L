@@ -8,13 +8,13 @@
 set -e
 
 echo 'Note: This script is meant to be used while developing the tweak.'
-echo '      LiveContainer / base IPAs: ./build.sh sideload --ffmpeg  (optional: --flex, --patch)'
-echo '      Build libFLEX only: ./build.sh sideload --buildonly --flex'
+echo '      LiveContainer / base IPAs: ./build.sh ipa --ffmpeg  (optional: --flex, --patch)'
+echo '      Build libFLEX only: ./build.sh ipa --buildonly --flex'
 echo
 
 if [ "$1" == "true" ];
 then
-    ./build.sh sideload --dev --release
+    ./build.sh ipa --dev --release
 
 else
     # Built tweak and deploy to live container

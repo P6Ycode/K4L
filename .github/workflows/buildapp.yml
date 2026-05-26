@@ -142,7 +142,7 @@ jobs:
                 if [ -n "${{ inputs.bundle_id }}" ]; then
                   FLAGS="$FLAGS --bundle-id ${{ inputs.bundle_id }}"
                 fi
-                ./build.sh sideload $FLAGS
+                ./build.sh ipa $FLAGS
                 ls -la packages
                 
               env:

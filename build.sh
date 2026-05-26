@@ -265,7 +265,7 @@ scinsta_sideload_output_ipa() {
 }
 
 # Building modes
-if [ "$1" == "sideload" ];
+if [ "$1" == "ipa" ];
 then
     shift
     OPT_INJECT=0
@@ -302,8 +302,8 @@ then
                 shift
                 ;;
             *)
-                echo -e "\033[1m\033[0;31mUnknown sideload flag: $1\033[0m"
-                echo "Use: ./build.sh sideload [--release|--inject|--ffmpeg|--flex|--patch|--no-ext|--sidestore|--dev|--buildonly|--bundle-id <id>] ..."
+                echo -e "\033[1m\033[0;31mUnknown ipa flag: $1\033[0m"
+                echo "Use: ./build.sh ipa [--release|--inject|--ffmpeg|--flex|--patch|--no-ext|--sidestore|--dev|--buildonly|--bundle-id <id>] ..."
                 exit 1
                 ;;
         esac
@@ -516,25 +516,27 @@ else
     echo
     echo 'Usage: ./build.sh <rootless|rootful|sideload>'
     echo
-    echo '  rootless   - Build a rootless .deb package'
-    echo '  rootful    - Build a rootful .deb package'
-    echo '  sideload   - Build a patched IPA -- choose from the following flags:'
-    echo '    --release         equivalent to --inject --ffmpeg --patch'
-    echo '    --inject          include SCInsta.dylib'
-    echo '    --ffmpeg          include FFmpegKit frameworks'
-    echo '    --flex            include libFLEX.dylib'
-    echo '    --patch           run ipapatch'
-    echo '    --no-ext          remove all .appex bundles before final injection'
-    echo '    --sidestore       equivalent to --release --no-ext'
-    echo '    --dev             DEV=1 build'
-    echo '    --buildonly       build dylibs only, skip IPA'
-    echo '    --bundle-id <id>  override bundle ID'
+    echo '  rootless - Build a rootless .deb package'
+    echo '  rootful  - Build a rootful .deb package'
+    echo '  ipa      - Build a patched IPA'
+    echo
+    echo 'When building an IPA, use at least one of the following flags:'
+    echo '  --release         equivalent to --inject --ffmpeg --patch'
+    echo '  --inject          include SCInsta.dylib'
+    echo '  --ffmpeg          include FFmpegKit frameworks'
+    echo '  --flex            include libFLEX.dylib'
+    echo '  --patch           run ipapatch'
+    echo '  --no-ext          remove all .appex bundles before final injection'
+    echo '  --sidestore       equivalent to --release --no-ext'
+    echo '  --dev             DEV=1 build'
+    echo '  --buildonly       build dylibs only, skip IPA'
+    echo '  --bundle-id <id>  override bundle ID'
     echo
     echo 'Examples:'
-    echo '    ./build.sh sideload --release'
-    echo '    ./build.sh sideload --release --flex'
-    echo '    ./build.sh sideload --sidestore'
-    echo '    ./build.sh sideload --ffmpeg    (FFmpeg in IPA only)'
+    echo '    ./build.sh ipa --release'
+    echo '    ./build.sh ipa --release --flex'
+    echo '    ./build.sh ipa --sidestore'
+    echo '    ./build.sh ipa --ffmpeg    (FFmpeg in IPA only)'
     echo
     exit 1
 fi
