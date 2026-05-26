@@ -5,15 +5,21 @@
 
 #import "../../Utils.h"
 #import "../../Downloader/Download.h"
+#import "../../Shared/ActionButton/ActionButtonCore.h"
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
+#import "../../Shared/Audio/SCIAudioDownloadCoordinator.h"
+#import "../../Shared/Audio/SCIAudioItem.h"
 #import "../../Shared/MediaDownload/SCIDashParser.h"
+#import "../../Shared/UI/SCIChrome.h"
 #import "../../Shared/UI/SCINotificationCenter.h"
 #import "../../AssetUtils.h"
 
 static NSInteger const kSCIAudioPageDownloadButtonTag = 1351;
 static NSString * const kSCIAudioPageDefaultActionKey = @"general_audio_page_default_action";
 static NSString * const kSCIAudioPageActionShare = @"share";
+static NSString * const kSCIAudioPageActionConvertShare = @"convert_share";
 static NSString * const kSCIAudioPageActionGallery = @"gallery";
+static NSString * const kSCIAudioPageActionConvertGallery = @"convert_gallery";
 static NSString * const kSCIAudioPageActionPlay = @"play";
 static NSString * const kSCIAudioPageActionCopyURL = @"copy_url";
 
@@ -95,12 +101,12 @@ static UIViewController *SCIAudioPageControllerForView(UIView *view) {
     return nil;
 }
 
-static void SCIAudioPageDownload(NSURL *url, NSString *identifier, DownloadAction action, SCIGallerySaveMetadata *metadata) {
-    SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:action showProgress:SCINotificationIsEnabled(identifier)];
-    delegate.notificationIdentifier = identifier;
-    delegate.pendingGallerySaveMetadata = metadata;
-    NSString *ext = url.pathExtension.length > 0 ? url.pathExtension.lowercaseString : @"m4a";
-    [delegate downloadFileWithURL:url fileExtension:ext hudLabel:nil];
+static SCIAudioItem *SCIAudioPageItem(NSURL *url, SCIGallerySaveMetadata *metadata) {
+    SCIAudioItem *item = [SCIAudioItem itemWithURL:url source:SCIAudioSourceAudioPage];
+    item.artist = metadata.sourceUsername;
+    item.mediaIdentifier = metadata.sourceMediaPK;
+    item.sourceURLString = url.absoluteString;
+    return item;
 }
 
 static void SCIAudioPagePlay(NSURL *url, UIView *sourceView) {
@@ -113,23 +119,43 @@ static void SCIAudioPagePlay(NSURL *url, UIView *sourceView) {
 }
 
 static void SCIAudioPageRunAction(NSString *action, NSURL *url, UIView *sourceView, SCIGallerySaveMetadata *metadata) {
+    if (![SCIUtils getBoolPref:@"general_audio_download_enabled"] && ![action isEqualToString:kSCIAudioPageActionPlay]) {
+        SCINotify(kSCINotificationDownloadShare, @"Audio downloads disabled", nil, @"error_filled", SCINotificationToneError);
+        return;
+    }
+    SCIAudioItem *item = SCIAudioPageItem(url, metadata);
     if ([action isEqualToString:kSCIAudioPageActionGallery]) {
-        SCIAudioPageDownload(url, kSCINotificationDownloadGallery, saveToGallery, metadata);
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionSaveToGallery item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadGallery];
+    } else if ([action isEqualToString:kSCIAudioPageActionConvertGallery]) {
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadGallery];
     } else if ([action isEqualToString:kSCIAudioPageActionPlay]) {
         SCIAudioPagePlay(url, sourceView);
     } else if ([action isEqualToString:kSCIAudioPageActionCopyURL]) {
-        UIPasteboard.generalPasteboard.string = url.absoluteString;
-        SCINotify(kSCINotificationDownloadShare, @"Copied audio URL", nil, @"copy_filled", SCINotificationToneSuccess);
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+    } else if ([action isEqualToString:kSCIAudioPageActionConvertShare]) {
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
     } else {
-        SCIAudioPageDownload(url, kSCINotificationDownloadShare, share, metadata);
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionShare item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
     }
 }
 
 static NSString *SCIAudioPageIconForAction(NSString *action) {
     if ([action isEqualToString:kSCIAudioPageActionGallery]) return @"media";
+    if ([action isEqualToString:kSCIAudioPageActionConvertGallery]) return @"media";
+    if ([action isEqualToString:kSCIAudioPageActionConvertShare]) return @"share";
     if ([action isEqualToString:kSCIAudioPageActionPlay]) return @"play";
     if ([action isEqualToString:kSCIAudioPageActionCopyURL]) return @"link";
     return @"share";
+}
+
+static UIImage *SCIAudioPageMenuIcon(NSString *iconName) {
+    return [[[SCIAssetUtils instagramIconNamed:iconName pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+static UIImage *SCIAudioPageActionIcon(NSString *identifier, NSString *fallbackIconName) {
+    UIImage *actionButtonIcon = SCIActionButtonMenuIconForIdentifier(identifier, 22.0);
+    if (actionButtonIcon) return actionButtonIcon;
+    return SCIAudioPageMenuIcon(fallbackIconName);
 }
 
 static NSDictionary *SCIAudioPageResolvedPayload(UIView *sourceView) {
@@ -142,38 +168,43 @@ static NSDictionary *SCIAudioPageResolvedPayload(UIView *sourceView) {
     }
 
     SCIGallerySaveMetadata *metadata = [[SCIGallerySaveMetadata alloc] init];
+    metadata.source = (int16_t)SCIGallerySourceAudioPage;
     metadata.sourceUsername = SCIAudioPageStringForAsset(asset, @[@"artistDisplayName", @"username", @"displayArtist", @"artist"]) ?: @"audio";
     metadata.sourceMediaPK = SCIAudioPageStringForAsset(asset, @[@"audioAssetId", @"pk", @"id"]);
     return @{@"url": url, @"metadata": metadata};
 }
 
-static UIAction *SCIAudioPageMenuAction(NSString *title, NSString *iconName, NSString *action, NSURL *url, UIView *sourceView, SCIGallerySaveMetadata *metadata) {
+static UIAction *SCIAudioPageMenuAction(NSString *title, NSString *action, NSString *iconIdentifier, NSString *fallbackIconName, UIView *sourceView) {
     return [UIAction actionWithTitle:title
-                               image:[SCIAssetUtils instagramIconNamed:iconName pointSize:20.0]
+                               image:SCIAudioPageActionIcon(iconIdentifier, fallbackIconName)
                           identifier:nil
                              handler:^(__unused UIAction *menuAction) {
+        NSDictionary *payload = SCIAudioPageResolvedPayload(sourceView);
+        NSURL *url = payload[@"url"];
+        SCIGallerySaveMetadata *metadata = payload[@"metadata"];
+        if (!url || !metadata) return;
         SCIAudioPageRunAction(action, url, sourceView, metadata);
     }];
 }
 
-static UIMenu *SCIAudioPageMenuForButton(UIView *sourceView) {
-    NSDictionary *payload = SCIAudioPageResolvedPayload(sourceView);
-    NSURL *url = payload[@"url"];
-    SCIGallerySaveMetadata *metadata = payload[@"metadata"];
-    if (!url || !metadata) return [UIMenu menuWithTitle:@"" children:@[]];
-
-    return [UIMenu menuWithTitle:@"" children:@[
-        SCIAudioPageMenuAction(@"Share Audio", @"share", kSCIAudioPageActionShare, url, sourceView, metadata),
-        SCIAudioPageMenuAction(@"Save Audio to Gallery", @"media", kSCIAudioPageActionGallery, url, sourceView, metadata),
-        SCIAudioPageMenuAction(@"Play Audio", @"play", kSCIAudioPageActionPlay, url, sourceView, metadata),
-        SCIAudioPageMenuAction(@"Copy Audio URL", @"link", kSCIAudioPageActionCopyURL, url, sourceView, metadata),
+static UIMenu *SCIAudioPageMenuForButton(UIButton *button) {
+    return [UIMenu menuWithTitle:@""
+                           image:nil
+                      identifier:nil
+                         options:0
+                        children:@[
+        SCIAudioPageMenuAction(@"Share Audio", kSCIAudioPageActionShare, kSCIActionDownloadAudio, @"share", button),
+        SCIAudioPageMenuAction(@"Convert & Share", kSCIAudioPageActionConvertShare, kSCIActionDownloadAudioShare, @"share", button),
+        SCIAudioPageMenuAction(@"Save Audio to Gallery", kSCIAudioPageActionGallery, kSCIActionDownloadAudioGallery, @"media", button),
+        SCIAudioPageMenuAction(@"Convert & Save to Gallery", kSCIAudioPageActionConvertGallery, kSCIActionDownloadAudioGallery, @"media", button),
+        SCIAudioPageMenuAction(@"Play Audio", kSCIAudioPageActionPlay, kSCIActionPlayAudio, @"play", button),
+        SCIAudioPageMenuAction(@"Copy Audio URL", kSCIAudioPageActionCopyURL, kSCIActionCopyAudioURL, @"link", button)
     ]];
 }
 
 static void SCIAudioPageRunDefaultAction(UIView *sourceView) {
     NSString *action = [SCIUtils getStringPref:kSCIAudioPageDefaultActionKey];
     if (action.length == 0) action = kSCIAudioPageActionShare;
-    if ([action isEqualToString:@"none"]) return;
 
     NSDictionary *payload = SCIAudioPageResolvedPayload(sourceView);
     NSURL *url = payload[@"url"];
@@ -185,7 +216,25 @@ static void SCIAudioPageRunDefaultAction(UIView *sourceView) {
 static UIView *SCIAudioPageButtonAnchor(UIView *bar) {
     UIView *share = SCIAudioPageReadIvar(bar, "shareButton");
     UIView *save = SCIAudioPageReadIvar(bar, "saveButton");
-    return save ?: share;
+    BOOL shareValid = share && !share.hidden && !CGRectIsEmpty(share.frame);
+    BOOL saveValid = save && !save.hidden && !CGRectIsEmpty(save.frame);
+    if (shareValid && saveValid) {
+        return CGRectGetMinX(save.frame) <= CGRectGetMinX(share.frame) ? save : share;
+    }
+    return saveValid ? save : (shareValid ? share : nil);
+}
+
+static UIColor *SCIAudioPageBackgroundColorFromAnchor(UIView *anchor) {
+    UIColor *color = anchor.backgroundColor;
+    if (color && CGColorGetAlpha(color.CGColor) > 0.01) return color;
+    if (anchor.layer.backgroundColor && CGColorGetAlpha(anchor.layer.backgroundColor) > 0.01) {
+        return [UIColor colorWithCGColor:anchor.layer.backgroundColor];
+    }
+    /// TODO: fix (use custom colors)
+    if (@available(iOS 13.0, *)) {
+        return UIColor.secondarySystemFillColor;
+    }
+    return [UIColor colorWithWhite:0.0 alpha:0.08];
 }
 
 static void SCIAudioPageInstallButton(UIView *bar) {
@@ -194,46 +243,44 @@ static void SCIAudioPageInstallButton(UIView *bar) {
         return;
     }
     UIView *anchor = SCIAudioPageButtonAnchor(bar);
-    if (!anchor || anchor.hidden || CGRectIsEmpty(anchor.frame)) return;
-    UIButton *button = (UIButton *)[bar viewWithTag:kSCIAudioPageDownloadButtonTag];
-    if (![button isKindOfClass:UIButton.class]) {
-        button = [UIButton buttonWithType:UIButtonTypeSystem];
+    SCIChromeButton *button = (SCIChromeButton *)[bar viewWithTag:kSCIAudioPageDownloadButtonTag];
+    if (![button isKindOfClass:SCIChromeButton.class] || [button isKindOfClass:SCIActionMenuButton.class]) {
+        if (button) [button removeFromSuperview];
+        button = [[SCIChromeButton alloc] initWithSymbol:@"" pointSize:22.0 diameter:32.0];
         button.tag = kSCIAudioPageDownloadButtonTag;
+        button.translatesAutoresizingMaskIntoConstraints = YES;
+        button.showsMenuAsPrimaryAction = NO;
         [button addTarget:bar action:@selector(sci_audioPageDownloadTapped:) forControlEvents:UIControlEventTouchUpInside];
         [bar addSubview:button];
     }
+    if (!anchor) {
+        if (CGRectIsEmpty(button.frame)) {
+            button.hidden = YES;
+        }
+        return;
+    }
+
     NSString *defaultAction = [SCIUtils getStringPref:kSCIAudioPageDefaultActionKey];
     if (defaultAction.length == 0) defaultAction = kSCIAudioPageActionShare;
     
     BOOL isNone = [defaultAction isEqualToString:@"none"];
     NSString *iconName = isNone ? @"action" : SCIAudioPageIconForAction(defaultAction);
     
-    CGFloat side = MAX(32.0, CGRectGetHeight(anchor.frame));
-    CGFloat iconPointSize = MAX(18.0, side * 0.55);
+    CGFloat side = MAX(28.0, CGRectGetHeight(anchor.frame));
+    CGFloat iconPointSize = MAX(16.0, MIN(22.0, side - 10.0));
     
-    UIImage *image = [[SCIAssetUtils instagramIconNamed:iconName pointSize:iconPointSize] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    [button setImage:image forState:UIControlStateNormal];
-    button.tintColor = anchor.tintColor ?: UIColor.labelColor;
-    
+    [button setIconResource:iconName pointSize:iconPointSize];
+    button.iconTint = UIColor.labelColor;
+    button.tintColor = UIColor.labelColor;
+    button.iconView.tintColor = UIColor.labelColor;
+    button.bubbleColor = SCIAudioPageBackgroundColorFromAnchor(anchor);
+    if (!button.menu) {
+        button.menu = SCIAudioPageMenuForButton(button);
+    }
     button.showsMenuAsPrimaryAction = isNone;
-    button.menu = SCIAudioPageMenuForButton(button);
     
     button.frame = CGRectMake(CGRectGetMinX(anchor.frame) - side - 8.0, CGRectGetMidY(anchor.frame) - side / 2.0, side, side);
-    button.layer.cornerRadius = side / 2.0;
-    button.clipsToBounds = YES;
-    
-    if (@available(iOS 13.0, *)) {
-        button.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * (UITraitCollection *trait) {
-            if (trait.userInterfaceStyle == UIUserInterfaceStyleDark) {
-                return [UIColor colorWithWhite:1.0 alpha:0.12];
-            } else {
-                return [UIColor colorWithWhite:0.0 alpha:0.06];
-            }
-        }];
-    } else {
-        button.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.06];
-    }
-    
+    button.hidden = NO;
     [bar bringSubviewToFront:button];
 }
 
@@ -241,6 +288,7 @@ static void SCIAudioPageInstallButton(UIView *bar) {
 
 %hook UIView
 %new - (void)sci_audioPageDownloadTapped:(UIButton *)sender {
+    if (sender.showsMenuAsPrimaryAction) return;
     SCIAudioPageRunDefaultAction(sender ?: (UIView *)self);
 }
 %end
@@ -255,6 +303,7 @@ static void SCIAudioPageInstallButton(UIView *bar) {
 %end
 
 extern "C" void SCIInstallAudioPageDownloadHooksIfNeeded(void) {
+    if (![SCIUtils getBoolPref:@"general_audio_download_enabled"]) return;
     if (![SCIUtils getBoolPref:@"general_audio_page_download"]) return;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

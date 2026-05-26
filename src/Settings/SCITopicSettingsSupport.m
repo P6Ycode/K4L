@@ -126,6 +126,7 @@ UIMenu *SCIActionButtonDefaultActionMenu(NSString *defaultsKey, NSString *topicT
 
     NSArray<NSArray<NSString *> *> *groups = @[
         @[kSCIActionDownloadLibrary, kSCIActionDownloadShare, kSCIActionDownloadGallery],
+        @[kSCIActionDownloadAudioShare, kSCIActionDownloadAudioGallery, kSCIActionPlayAudio, kSCIActionCopyAudioURL],
         @[kSCIActionExpand, kSCIActionViewThumbnail],
         @[kSCIActionCopyMedia, kSCIActionCopyDownloadLink, kSCIActionCopyCaption, kSCIActionProfileCopyInfo],
         @[kSCIActionOpenTopicSettings, kSCIActionRepost]

@@ -159,12 +159,16 @@ static void SCIFFmpegPersistLoaderFailure(NSArray<NSString *> *details) {
 static NSArray<NSString *> *SCIFFmpegCandidateBinaryPaths(void) {
     NSMutableArray<NSString *> *paths = [NSMutableArray array];
 
-    // Highest priority: frameworks checked into the repo's modules directory
-    // (used for both dev builds and sideloaded IPAs that have the frameworks injected)
+    // Deb install: FFmpegKit is packaged beside SCInsta.dylib.
     NSString *dylibDir = SCIFFmpegDylibDirectory();
     if (dylibDir.length > 0) {
         [paths addObject:[dylibDir stringByAppendingPathComponent:@"FFmpegKit/ffmpegkit.framework/ffmpegkit"]];
     }
+
+    // Rootless/rootful fallback paths. Some jailbreaks normalize the loaded
+    // tweak path differently than the package payload location.
+    [paths addObject:@"/var/jb/Library/MobileSubstrate/DynamicLibraries/FFmpegKit/ffmpegkit.framework/ffmpegkit"];
+    [paths addObject:@"/Library/MobileSubstrate/DynamicLibraries/FFmpegKit/ffmpegkit.framework/ffmpegkit"];
 
     // Sideloaded IPA: FFmpegKit injected alongside Instagram's own Frameworks
     NSString *mainBundlePath = [NSBundle mainBundle].bundlePath;
@@ -517,6 +521,32 @@ static NSArray<NSString *> *SCIFFmpegFaststartArguments(NSURL *sourceURL, NSURL 
         @"-movflags", @"+faststart",
         outputURL.path
     ];
+}
+
+static NSArray<NSString *> *SCIFFmpegAudioReencodeArguments(NSURL *sourceURL, NSURL *outputURL) {
+    NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
+        @"-y",
+        @"-hide_banner",
+        @"-loglevel", @"warning",
+        @"-i", sourceURL.path,
+        @"-vn",
+        @"-c:a", @"aac"
+    ]];
+
+    NSInteger audioBitrate = SCIFFmpegIntegerPref(@"general_media_encoding_audio_bitrate_kbps", 128);
+    if (audioBitrate > 0) {
+        [args addObjectsFromArray:@[@"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate]]];
+    }
+
+    NSString *channels = SCIFFmpegStringPref(@"general_media_encoding_audio_channels", @"original").lowercaseString;
+    if ([channels isEqualToString:@"mono"]) {
+        [args addObjectsFromArray:@[@"-ac", @"1"]];
+    } else if ([channels isEqualToString:@"stereo"]) {
+        [args addObjectsFromArray:@[@"-ac", @"2"]];
+    }
+
+    [args addObject:outputURL.path];
+    return args;
 }
 
 static NSURL *SCIFFmpegPreFaststartURL(NSString *basename, NSString *suffix) {
@@ -1459,7 +1489,7 @@ static void SCIFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     NSURL *outputURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-audio.m4a", basename]]];
     [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
 
-    NSArray<NSString *> *arguments = @[
+    NSArray<NSString *> *copyArguments = @[
         @"-y",
         @"-hide_banner",
         @"-loglevel", @"warning",
@@ -1468,15 +1498,29 @@ static void SCIFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         @"-c:a", @"copy",
         outputURL.path
     ];
+    NSArray<NSDictionary<NSString *, id> *> *attempts = @[
+        @{
+            @"identifier": @"audio-copy",
+            @"arguments": copyArguments
+        },
+        @{
+            @"identifier": @"audio-reencode-aac",
+            @"arguments": SCIFFmpegAudioReencodeArguments(audioFileURL, outputURL)
+        }
+    ];
 
-    SCIFFmpegRunAsyncCommand(arguments,
-                             @"audio",
-                             @"Finalizing audio",
-                             0.0,
-                             progress,
-                             completion,
-                             cancelOut,
-                             outputURL);
+    SCIFFmpegRunMergeAttempts(attempts,
+                              0,
+                              outputURL,
+                              0.0,
+                              NO,
+                              YES,
+                              progress,
+                              completion,
+                              ^(dispatch_block_t cancelBlock) {
+        if (cancelOut) cancelOut(cancelBlock);
+    },
+                              nil);
 }
 
 @end

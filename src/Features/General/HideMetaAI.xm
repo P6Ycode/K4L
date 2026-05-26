@@ -583,20 +583,94 @@ sponsoredSupportConfiguration:(id)supportConfig
 }
 %end
 
+@interface IGDirectMessageCellShortcutView : UIView
+@end
+
+%hook IGDirectMessageCellShortcutView
+- (void)setViewModel:(id)viewModel {
+    %orig;
+
+    if (SCIHideMetaAIDirect() || SCIHideMetaAIGlobal()) {
+        @try {
+            UIButton *iconButton = MSHookIvar<UIButton *>(self, "_iconButton");
+            if (iconButton != nil) {
+                NSString *label = [iconButton accessibilityLabel];
+                NSString *identifier = [iconButton accessibilityIdentifier];
+                if ([label caseInsensitiveCompare:@"Restyle"] == NSOrderedSame ||
+                    [label caseInsensitiveCompare:@"Create with Meta AI"] == NSOrderedSame ||
+                    [identifier containsString:@"restyle"] ||
+                    [identifier containsString:@"meta_ai"]) {
+                    
+                    SCILog(@"General", @"[SCInsta] Hiding IGDirectMessageCellShortcutView in setViewModel: (label: %@, id: %@)", label, identifier);
+                    self.hidden = YES;
+                    [self removeFromSuperview];
+                }
+            }
+        }
+        @catch (NSException *exception) {
+            SCILog(@"General", @"[SCInsta] WARNING: Exception in setViewModel: %@", exception.reason);
+        }
+    }
+}
+
+- (void)layoutSubviews {
+    %orig;
+
+    if (SCIHideMetaAIDirect() || SCIHideMetaAIGlobal()) {
+        @try {
+            UIButton *iconButton = MSHookIvar<UIButton *>(self, "_iconButton");
+            if (iconButton != nil) {
+                NSString *label = [iconButton accessibilityLabel];
+                NSString *identifier = [iconButton accessibilityIdentifier];
+                if ([label caseInsensitiveCompare:@"Restyle"] == NSOrderedSame ||
+                    [label caseInsensitiveCompare:@"Create with Meta AI"] == NSOrderedSame ||
+                    [identifier containsString:@"restyle"] ||
+                    [identifier containsString:@"meta_ai"]) {
+                    
+                    self.hidden = YES;
+                    [self removeFromSuperview];
+                }
+            }
+        }
+        @catch (NSException *exception) {}
+    }
+}
+%end
+
 // Themed in-app buttons
-%hook IGTapButton
+%hook UIButton
 - (void)didMoveToWindow {
     %orig;
 
-    if (SCIHideMetaAIGlobal()) {
-
-        // Hide buttons that are associated with meta ai
-        if ([self.accessibilityIdentifier containsString:@"meta_ai"]) {
-            SCILog(@"General", @"[SCInsta] Hiding meta ai: meta ai associated button");
-
+    if (SCIHideMetaAIDirect() || SCIHideMetaAICreation() || SCIHideMetaAIGlobal()) {
+        NSString *accessibilityID = self.accessibilityIdentifier;
+        if ([accessibilityID containsString:@"meta_ai"] ||
+            [accessibilityID containsString:@"restyle"] ||
+            [accessibilityID containsString:@"magic_mod"] ||
+            [accessibilityID containsString:@"ai_restyle"] ||
+            [accessibilityID containsString:@"imagine"]) {
+            
+            SCILog(@"General", @"[SCInsta] Hiding UIButton: %@", accessibilityID);
+            self.hidden = YES;
             [self removeFromSuperview];
         }
+    }
+}
 
+- (void)setAccessibilityIdentifier:(NSString *)accessibilityIdentifier {
+    %orig;
+
+    if (SCIHideMetaAIDirect() || SCIHideMetaAICreation() || SCIHideMetaAIGlobal()) {
+        if ([accessibilityIdentifier containsString:@"meta_ai"] ||
+            [accessibilityIdentifier containsString:@"restyle"] ||
+            [accessibilityIdentifier containsString:@"magic_mod"] ||
+            [accessibilityIdentifier containsString:@"ai_restyle"] ||
+            [accessibilityIdentifier containsString:@"imagine"]) {
+            
+            SCILog(@"General", @"[SCInsta] Hiding UIButton via setAccessibilityIdentifier: %@", accessibilityIdentifier);
+            self.hidden = YES;
+            [self removeFromSuperview];
+        }
     }
 }
 %end

@@ -539,7 +539,7 @@ fromViewController:(UIViewController *)presenter {
 
     SCIMediaItem *item = _items[index];
 
-    if (item.mediaType == SCIMediaItemTypeVideo) {
+    if (item.mediaType == SCIMediaItemTypeVideo || item.mediaType == SCIMediaItemTypeAudio) {
         SCIFullScreenVideoViewController *vc = [[SCIFullScreenVideoViewController alloc] initWithMediaItem:item];
         vc.delegate = self;
         return vc;

@@ -7,6 +7,8 @@
 
 static void (*orig_inboxRefreshControlArg)(id, SEL, id) = NULL;
 static void (*orig_inboxRefreshNoArg)(id, SEL) = NULL;
+static void (*orig_networkingCoordinatorPullToRefreshIfPossible)(id, SEL) = NULL;
+static BOOL (*orig_executePullToRefreshWithParams)(id, SEL, id, BOOL) = NULL;
 static BOOL sSCIDMRefreshBypassing = NO;
 static BOOL sSCIDMRefreshAlertVisible = NO;
 
@@ -86,6 +88,34 @@ static void replaced_inboxRefreshNoArg(id self, SEL _cmd) {
     });
 }
 
+static void replaced_networkingCoordinatorPullToRefreshIfPossible(id self, SEL _cmd) {
+    SCIConfirmDMRefresh(self, nil, ^{
+        if (orig_networkingCoordinatorPullToRefreshIfPossible) orig_networkingCoordinatorPullToRefreshIfPossible(self, _cmd);
+    });
+}
+
+static BOOL replaced_executePullToRefreshWithParams(id self, SEL _cmd, id params, BOOL rightNow) {
+    if (sSCIDMRefreshBypassing || ![SCIUtils getBoolPref:@"msgs_confirm_refresh"]) {
+        return orig_executePullToRefreshWithParams ? orig_executePullToRefreshWithParams(self, _cmd, params, rightNow) : NO;
+    }
+
+    if (sSCIDMRefreshAlertVisible) return NO;
+
+    sSCIDMRefreshAlertVisible = YES;
+    [SCIUtils showConfirmation:^{
+        sSCIDMRefreshAlertVisible = NO;
+        sSCIDMRefreshBypassing = YES;
+        if (orig_executePullToRefreshWithParams) orig_executePullToRefreshWithParams(self, _cmd, params, rightNow);
+        sSCIDMRefreshBypassing = NO;
+    } cancelHandler:^{
+        sSCIDMRefreshAlertVisible = NO;
+        SCIDMEndRefreshIfNeeded(self, nil);
+    } title:@"Confirm Messages Refresh"
+      message:@"Are you sure you want to refresh your inbox?"];
+
+    return NO;
+}
+
 static BOOL SCIHookDMRefreshArgSelector(Class cls, SEL selector) {
     if (!cls || !class_getInstanceMethod(cls, selector)) return NO;
     MSHookMessageEx(cls, selector, (IMP)replaced_inboxRefreshControlArg, (IMP *)&orig_inboxRefreshControlArg);
@@ -113,13 +143,30 @@ extern "C" void SCIInstallDMRefreshConfirmHooksIfEnabled(void) {
         BOOL hookedArg = NO;
         for (Class cls in classes) {
             if (!hookedNoArg) {
-                hookedNoArg = SCIHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"_pullToRefreshIfPossible"));
+                hookedNoArg = SCIHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"pullToRefreshIfPossible")) ||
+                              SCIHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"_pullToRefreshIfPossible"));
             }
             if (!hookedArg) {
                 hookedArg = SCIHookDMRefreshArgSelector(cls, NSSelectorFromString(@"refreshControlDidRefresh:")) ||
                             SCIHookDMRefreshArgSelector(cls, NSSelectorFromString(@"refreshControlValueChanged:")) ||
                             SCIHookDMRefreshArgSelector(cls, NSSelectorFromString(@"_didPullToRefresh:"));
             }
+        }
+
+        Class networkingCoordinatorClass = NSClassFromString(@"_TtC23IGDirectInboxNetworking34IGDirectInboxNetworkingCoordinator");
+        if (networkingCoordinatorClass && class_getInstanceMethod(networkingCoordinatorClass, NSSelectorFromString(@"pullToRefreshIfPossible"))) {
+            MSHookMessageEx(networkingCoordinatorClass,
+                            NSSelectorFromString(@"pullToRefreshIfPossible"),
+                            (IMP)replaced_networkingCoordinatorPullToRefreshIfPossible,
+                            (IMP *)&orig_networkingCoordinatorPullToRefreshIfPossible);
+        }
+
+        Class pullToRefreshCoordinatorClass = NSClassFromString(@"IGDirectInboxDjangoPullToRefreshCoordinator");
+        if (pullToRefreshCoordinatorClass && class_getInstanceMethod(pullToRefreshCoordinatorClass, NSSelectorFromString(@"executePullToRefreshWithParams:rightNow:"))) {
+            MSHookMessageEx(pullToRefreshCoordinatorClass,
+                            NSSelectorFromString(@"executePullToRefreshWithParams:rightNow:"),
+                            (IMP)replaced_executePullToRefreshWithParams,
+                            (IMP *)&orig_executePullToRefreshWithParams);
         }
     });
 }

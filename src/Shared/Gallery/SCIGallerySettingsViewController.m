@@ -18,6 +18,7 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
 @property (nonatomic, assign) NSInteger totalFiles;
 @property (nonatomic, assign) NSInteger imageCount;
 @property (nonatomic, assign) NSInteger videoCount;
+@property (nonatomic, assign) NSInteger audioCount;
 @property (nonatomic, assign) long long totalSize;
 @end
 
@@ -55,7 +56,9 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
     for (SCIGalleryFile *file in files) {
         stats.totalFiles += 1;
         stats.totalSize += file.fileSize;
-        if (file.mediaType == SCIGalleryMediaTypeVideo) {
+        if (file.mediaType == SCIGalleryMediaTypeAudio) {
+            stats.audioCount += 1;
+        } else if (file.mediaType == SCIGalleryMediaTypeVideo) {
             stats.videoCount += 1;
         } else {
             stats.imageCount += 1;
@@ -74,7 +77,8 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
     [sections addObject:SCITopicSection(@"Storage", @[
         [SCISetting valueCellWithTitle:@"Total" subtitle:[NSString stringWithFormat:@"%ld files • %@", (long)self.stats.totalFiles, [self formattedSize:self.stats.totalSize]] icon:SCISettingsIcon(@"info")],
         [SCISetting valueCellWithTitle:@"Images" subtitle:[NSString stringWithFormat:@"%ld", (long)self.stats.imageCount] icon:SCISettingsIcon(@"photo")],
-        [SCISetting valueCellWithTitle:@"Videos" subtitle:[NSString stringWithFormat:@"%ld", (long)self.stats.videoCount] icon:SCISettingsIcon(@"video")]
+        [SCISetting valueCellWithTitle:@"Videos" subtitle:[NSString stringWithFormat:@"%ld", (long)self.stats.videoCount] icon:SCISettingsIcon(@"video")],
+        [SCISetting valueCellWithTitle:@"Audio" subtitle:[NSString stringWithFormat:@"%ld", (long)self.stats.audioCount] icon:SCISettingsIcon(@"audio")]
     ], nil)];
 
     SCISetting *favoritesRow = [SCISetting switchCellWithTitle:@"Show Favorites at Top" icon:SCISettingsIcon(@"heart") defaultsKey:kFavoritesAtTopKey];

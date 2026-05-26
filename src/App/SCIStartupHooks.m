@@ -18,6 +18,7 @@ FOUNDATION_EXPORT void SCIInstallSharedLinkCleanupHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallShareLongPressCopyHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallHideMetaAIHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallAdBlockingEarlyHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallStoryAdBlockingHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallFeedFilteringHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallFeedFilteringFeedHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallNoSuggestedUsersHooksIfEnabled(void);
@@ -38,7 +39,6 @@ FOUNDATION_EXPORT void SCIInstallDisableHapticsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallCopyDescriptionHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallNoRecentSearchesHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallDetailedColorPickerHooksIfEnabled(void);
-FOUNDATION_EXPORT void SCIInstallTeenAppIconsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallEnhancedMediaResolutionHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideMetricsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallDisableFeedAutoplayHooksIfEnabled(void);
@@ -72,6 +72,8 @@ FOUNDATION_EXPORT void SCIInstallNotesCustomizationHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDMRefreshConfirmHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallCaptureHidingHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallProfileHeaderControlsHooksIfNeeded(void);
+FOUNDATION_EXPORT void SCIInstallAudioPageDownloadHooksIfNeeded(void);
+FOUNDATION_EXPORT void SCIInstallDMAudioDownloadHooksIfNeeded(void);
 
 // Master kill switch: when YES, suppress all feature hook installation, but
 // keep the home long-press shortcut so users can still reach Settings to turn
@@ -94,6 +96,7 @@ void SCIInstallLaunchCriticalHooks(void) {
     }
     SCIInstallTweakLaunchCriticalHooks();
     SCIInstallAdBlockingEarlyHooksIfEnabled();
+    SCIInstallStoryAdBlockingHooksIfEnabled();
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
         SCIInstallLiquidGlassHooksIfEnabled();
     }
@@ -119,7 +122,6 @@ void SCIInstallFeedSurfaceHooksIfNeeded(void) {
     SCIInstallHideRepostButtonHooksIfEnabled();
     SCIInstallDisableHomeButtonRefreshHooksIfEnabled();
     SCIInstallCopyDescriptionHooksIfEnabled();
-    SCIInstallTeenAppIconsHooksIfEnabled();
     SCIInstallHideMetricsHooksIfEnabled();
 }
 
@@ -181,6 +183,7 @@ void SCIInstallMessagesSurfaceHooksIfNeeded(void) {
     SCIInstallDMInteractionConfirmHooksIfEnabled();
     SCIInstallNotesCustomizationHooksIfNeeded();
     SCIInstallDMRefreshConfirmHooksIfEnabled();
+    SCIInstallDMAudioDownloadHooksIfNeeded();
     SCIInstallNoRecentSearchesHooksIfEnabled();
     SCIInstallDetailedColorPickerHooksIfEnabled();
 }
@@ -219,6 +222,7 @@ void SCIInstallGeneralUIHooksIfNeeded(void) {
     SCIInstallCopyDescriptionHooksIfEnabled();
     SCIInstallNoRecentSearchesHooksIfEnabled();
     SCIInstallEnhancedMediaResolutionHooksIfEnabled();
+    SCIInstallAudioPageDownloadHooksIfNeeded();
     SCIInstallCaptureHidingHooksIfNeeded();
 }
 

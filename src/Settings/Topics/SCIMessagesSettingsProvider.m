@@ -80,12 +80,18 @@ static NSArray *SCIMessagesSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_manual_visual_seen"],
             [SCISetting switchCellWithTitle:@"Advance After Manual Seen" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"msgs_advance_visual_on_seen"],
             [SCISetting switchCellWithTitle:@"Disable View-Once Limitations" icon:SCISettingsIcon(@"view_once") defaultsKey:@"msgs_disable_view_once"],
-            [SCISetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_disable_screenshot_detection"],
-            [SCISetting switchCellWithTitle:@"Disable Instants Creation" icon:SCISettingsIcon(@"instants") defaultsKey:@"msgs_disable_instants_creation" requiresRestart:YES]
+            [SCISetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_disable_screenshot_detection"]
         ], @"1. Prevents automatic seen receipts and adds a button to mark the chat as seen.\n"
            @"2. Moves to the next visual item when available or dismisses.\n"
            @"3. View-once messages behave like normal visual messages.\n"
            @"4. Allows screen capture of visual messages."),
+        SCITopicSection(@"Instants", @[
+            [SCISetting switchCellWithTitle:@"Disable Instants Creation" icon:SCISettingsIcon(@"instants") defaultsKey:@"msgs_disable_instants_creation"],
+            [SCISetting switchCellWithTitle:@"Skip Camera After Instants" icon:SCISettingsIcon(@"camera") defaultsKey:@"msgs_skip_instants_camera_after_viewing"],
+            [SCISetting switchCellWithTitle:@"Confirm Instant Capture" icon:SCISettingsIcon(@"instants_burst") defaultsKey:@"msgs_confirm_instants_capture"]
+        ], @"1. Blocks the Instant shutter button without disabling received Instants.\n"
+           @"2. Skips the camera page Instagram opens after viewing the last Instant.\n"
+           @"3. Shows a confirmation alert before capturing an Instant."),
         SCITopicSection(@"Vanish Mode", @[
             [SCISetting switchCellWithTitle:@"Disable Swipe-Up Gesture" icon:SCISettingsIcon(@"arrow_up") defaultsKey:@"msgs_disable_vanish_swipe_up"],
             [SCISetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_hide_vanish_screenshot"],
@@ -95,8 +101,13 @@ static NSArray *SCIMessagesSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Hide Notes Tray" icon:SCISettingsIcon(@"notes") defaultsKey:@"msgs_hide_notes_tray"],
             [SCISetting switchCellWithTitle:@"Hide Friends Map" icon:SCISettingsIcon(@"map") defaultsKey:@"msgs_hide_friends_map"],
             [SCISetting switchCellWithTitle:@"Note Theming" icon:SCISettingsIcon(@"palette") defaultsKey:@"msgs_notes_customization"],
-            [SCISetting switchCellWithTitle:@"Custom Note Themes" icon:SCISettingsIcon(@"eyedropper") defaultsKey:@"msgs_custom_note_themes"]
+            [SCISetting switchCellWithTitle:@"Custom Note Themes" icon:SCISettingsIcon(@"eyedropper") defaultsKey:@"msgs_custom_note_themes"],
+            [SCISetting switchCellWithTitle:@"Download Notes Audio" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio" requiresRestart:YES]
         ], @"Note Theming enables Instagram's note theme picker. Custom Note Themes add custom emoji, background, and text color options."),
+        SCITopicSection(@"Audio", @[
+            [SCISetting switchCellWithTitle:@"Download Audio Messages" icon:SCISettingsIcon(@"download") defaultsKey:@"msgs_download_audio_messages" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Upload Audio Messages" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_upload_audio_messages" requiresRestart:YES]
+        ], @"Downloads add audio actions to supported voice/audio message views. Upload converts selected audio or video to M4A when a compatible Instagram sender is available."),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Audio Call" icon:SCISettingsIcon(@"call") defaultsKey:kSCIMessagesAudioCallConfirmKey],
             [SCISetting switchCellWithTitle:@"Confirm Video Call" icon:SCISettingsIcon(@"video") defaultsKey:kSCIMessagesVideoCallConfirmKey],

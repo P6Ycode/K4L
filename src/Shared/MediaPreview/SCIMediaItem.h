@@ -7,6 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, SCIMediaItemType) {
     SCIMediaItemTypeImage = 1,
     SCIMediaItemTypeVideo = 2,
+    SCIMediaItemTypeAudio = 3,
 };
 
 @interface SCIMediaItem : NSObject

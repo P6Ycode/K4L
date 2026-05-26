@@ -37,7 +37,6 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 @interface SCIChromeCanvas ()
 @property (nonatomic, strong) UITextField *secureField;
 @property (nonatomic, strong, nullable) UIView *canvas;
-@property (nonatomic, strong) UIView *contentView;
 @end
 
 @implementation SCIChromeCanvas
@@ -74,12 +73,6 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 		self.translatesAutoresizingMaskIntoConstraints = NO;
 		self.clipsToBounds = NO;
 
-		_contentView = [UIView new];
-		_contentView.translatesAutoresizingMaskIntoConstraints = NO;
-		_contentView.clipsToBounds = NO;
-		[self addSubview:_contentView];
-		sciPinEdges(_contentView, self);
-
 		_secureField = [UITextField new];
 		// Tag so the Instants screenshot bypass leaves our own redaction alone.
 		objc_setAssociatedObject(_secureField, &kSCIChromeOwnedSecureFieldKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -93,38 +86,29 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 		_secureField.smartInsertDeleteType = UITextSmartInsertDeleteTypeNo;
 		_secureField.autocapitalizationType = UITextAutocapitalizationTypeNone;
 
-		// Add secureField as a subview so iOS creates its internal
-		// _UITextLayoutCanvasView when secureTextEntry is set.
-		[self addSubview:_secureField];
-		sciPinEdges(_secureField, self);
-
 		[self applyPref];
 		[[SCIChromeCanvas instances] addObject:self];
+		[self attachCanvasIfPossible];
 	}
 
 	return self;
 }
 
 - (UIView *)contentContainer {
-	return _contentView;
+	return _canvas ?: self;
 }
 
 - (void)applyPref {
 	BOOL enabled = [SCIUtils getBoolPref:@"interface_hide_ui_on_capture"];
 	if (_secureField.secureTextEntry != enabled) {
 		_secureField.secureTextEntry = enabled;
-		// Force the text field to create / destroy its internal CanvasView.
-		[_secureField setNeedsLayout];
-		[_secureField layoutIfNeeded];
-		// Schedule a re-attach on the next layout pass.
-		_canvas = nil;
 		[self setNeedsLayout];
 	}
 }
 
 - (void)didMoveToWindow {
 	[super didMoveToWindow];
-	if (self.window) [self attachCanvasIfPossible];
+	[self attachCanvasIfPossible];
 }
 
 - (void)layoutSubviews {
@@ -141,6 +125,11 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 	UIView *canvas = sciFindCanvasDeep(_secureField, 0);
 	if (!canvas) return;
 
+	NSMutableArray<UIView *> *stashedViews = [NSMutableArray array];
+	for (UIView *subview in self.subviews) {
+		if (subview != canvas) [stashedViews addObject:subview];
+	}
+
 	// Steal the CanvasView from the text field and pin it edge-to-edge.
 	[canvas removeFromSuperview];
 	canvas.translatesAutoresizingMaskIntoConstraints = NO;
@@ -150,10 +139,10 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 
 	_canvas = canvas;
 
-	// Reparent the single content view into the secure canvas
-	[_contentView removeFromSuperview];
-	[canvas addSubview:_contentView];
-	sciPinEdges(_contentView, canvas);
+	for (UIView *view in stashedViews) {
+		[view removeFromSuperview];
+		[canvas addSubview:view];
+	}
 }
 
 @end

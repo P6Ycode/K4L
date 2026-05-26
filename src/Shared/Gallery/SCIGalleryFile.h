@@ -7,7 +7,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(int16_t, SCIGalleryMediaType) {
     SCIGalleryMediaTypeImage = 0,
-    SCIGalleryMediaTypeVideo = 1
+    SCIGalleryMediaTypeVideo = 1,
+    SCIGalleryMediaTypeAudio = 2
 };
 
 FOUNDATION_EXPORT NSString *SCIFileNameForMedia(NSURL *originalURL, SCIGalleryMediaType mediaType, SCIGallerySaveMetadata * _Nullable metadata);
@@ -22,7 +23,9 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
     SCIGallerySourceReels   = 3,
     SCIGallerySourceProfile = 4,
     SCIGallerySourceDMs     = 5,
-    SCIGallerySourceThumbnail = 6
+    SCIGallerySourceThumbnail = 6,
+    SCIGallerySourceInstants = 7,
+    SCIGallerySourceAudioPage = 8
 };
 
 @interface SCIGalleryFile : NSManagedObject

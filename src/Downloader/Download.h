@@ -47,6 +47,7 @@ typedef NS_ENUM(NSUInteger, DownloadAction) {
 - (void)cancelCustomOperation;
 
 + (BOOL)isVideoFileAtURL:(NSURL *)fileURL;
++ (BOOL)isAudioFileAtURL:(NSURL *)fileURL;
 + (void)saveFileURLToPhotos:(NSURL *)fileURL completion:(void(^)(BOOL success, NSError * _Nullable error))completion;
 + (nullable SCIGalleryFile *)saveFileURLToGallery:(NSURL *)fileURL
                                          metadata:(nullable SCIGallerySaveMetadata *)metadata

@@ -64,7 +64,7 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
     return [videoExtensions containsObject:ext];
 }
 
-static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
++ (BOOL)isAudioFileAtURL:(NSURL *)fileURL {
     NSString *ext = fileURL.pathExtension.lowercaseString;
     NSSet<NSString *> *audioExtensions = [NSSet setWithArray:@[@"m4a", @"aac", @"mp3", @"wav", @"caf", @"aiff", @"flac", @"opus", @"ogg"]];
     return [audioExtensions containsObject:ext];
@@ -91,7 +91,7 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
 + (SCIGalleryFile *)saveFileURLToGallery:(NSURL *)fileURL
                                 metadata:(SCIGallerySaveMetadata *)metadata
                                    error:(NSError **)error {
-    SCIGalleryMediaType galleryType = [self isVideoFileAtURL:fileURL] ? SCIGalleryMediaTypeVideo : SCIGalleryMediaTypeImage;
+    SCIGalleryMediaType galleryType = [self isAudioFileAtURL:fileURL] ? SCIGalleryMediaTypeAudio : ([self isVideoFileAtURL:fileURL] ? SCIGalleryMediaTypeVideo : SCIGalleryMediaTypeImage);
     return [SCIGalleryFile saveFileToGallery:fileURL
                                       source:SCIGallerySourceOther
                                    mediaType:galleryType
@@ -323,8 +323,8 @@ static BOOL SCIIsAudioFileAtURL(NSURL *fileURL) {
     }
 
     BOOL isVideo = [[self class] isVideoFileAtURL:fileURL];
-    BOOL isAudio = SCIIsAudioFileAtURL(fileURL);
-    SCIGalleryMediaType galleryType = isVideo ? SCIGalleryMediaTypeVideo : SCIGalleryMediaTypeImage;
+    BOOL isAudio = [[self class] isAudioFileAtURL:fileURL];
+    SCIGalleryMediaType galleryType = isAudio ? SCIGalleryMediaTypeAudio : (isVideo ? SCIGalleryMediaTypeVideo : SCIGalleryMediaTypeImage);
     NSString *fileName = SCIFileNameForMedia(fileURL, galleryType, galleryMeta);
     if (isAudio) {
         NSString *audioExtension = fileURL.pathExtension.length > 0 ? fileURL.pathExtension.lowercaseString : @"m4a";

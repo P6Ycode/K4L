@@ -20,6 +20,12 @@ SCI_NOTIF_CONST(kSCINotificationCopyCaption, "copy_caption");
 SCI_NOTIF_CONST(kSCINotificationOpenTopicSettings, "open_topic_settings");
 SCI_NOTIF_CONST(kSCINotificationRepost, "repost");
 
+SCI_NOTIF_CONST(kSCINotificationDownloadAudio, "download_audio");
+SCI_NOTIF_CONST(kSCINotificationDownloadAudioShare, "download_audio_share");
+SCI_NOTIF_CONST(kSCINotificationDownloadAudioGallery, "download_audio_gallery");
+SCI_NOTIF_CONST(kSCINotificationPlayAudio, "play_audio");
+SCI_NOTIF_CONST(kSCINotificationCopyAudioURL, "copy_audio_url");
+
 SCI_NOTIF_CONST(kSCINotificationStoryMarkSeen, "story_mark_seen");
 SCI_NOTIF_CONST(kSCINotificationStorySeenUserRule, "toggle_story_seen_user_rule");
 SCI_NOTIF_CONST(kSCINotificationStoryMentionsSheet, "story_mentions_sheet");
@@ -129,6 +135,11 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
             SCINotificationItem(kSCINotificationCopyCaption, @"Copy Caption", @"caption"),
             SCINotificationItem(kSCINotificationOpenTopicSettings, @"Open Topic Settings", @"settings"),
             SCINotificationItem(kSCINotificationRepost, @"Repost", @"repost"),
+            SCINotificationItem(kSCINotificationDownloadAudio, @"Download Audio", @"audio"),
+            SCINotificationItem(kSCINotificationDownloadAudioShare, @"Download Audio & Share", @"share"),
+            SCINotificationItem(kSCINotificationDownloadAudioGallery, @"Download Audio to Gallery", @"media"),
+            SCINotificationItem(kSCINotificationPlayAudio, @"Play Audio", @"play"),
+            SCINotificationItem(kSCINotificationCopyAudioURL, @"Copy Audio URL", @"link"),
         ]},
         @{@"title": @"Stories", @"items": @[
             SCINotificationItem(kSCINotificationStoryMarkSeen, @"Mark Story as Seen", @"story"),

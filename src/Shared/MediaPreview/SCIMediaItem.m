@@ -30,7 +30,7 @@
     item.galleryFile = file;
     item.isFromGallery = YES;
     item.fileURL = [file fileURL];
-    item.mediaType = (file.mediaType == SCIGalleryMediaTypeVideo) ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
+    item.mediaType = (file.mediaType == SCIGalleryMediaTypeAudio) ? SCIMediaItemTypeAudio : ((file.mediaType == SCIGalleryMediaTypeVideo) ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage);
     SCIGallerySaveMetadata *meta = [[SCIGallerySaveMetadata alloc] init];
     meta.source = file.source;
     meta.sourceUsername = file.sourceUsername;
@@ -55,6 +55,12 @@
         [ext isEqualToString:@"m4v"] || [ext isEqualToString:@"avi"] ||
         [ext isEqualToString:@"webm"]) {
         return SCIMediaItemTypeVideo;
+    }
+    if ([ext isEqualToString:@"m4a"] || [ext isEqualToString:@"aac"] ||
+        [ext isEqualToString:@"mp3"] || [ext isEqualToString:@"wav"] ||
+        [ext isEqualToString:@"caf"] || [ext isEqualToString:@"flac"] ||
+        [ext isEqualToString:@"opus"] || [ext isEqualToString:@"ogg"]) {
+        return SCIMediaItemTypeAudio;
     }
     return SCIMediaItemTypeImage;
 }

@@ -20,6 +20,12 @@ FOUNDATION_EXPORT NSString * const kSCINotificationCopyCaption;
 FOUNDATION_EXPORT NSString * const kSCINotificationOpenTopicSettings;
 FOUNDATION_EXPORT NSString * const kSCINotificationRepost;
 
+FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAudio;
+FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAudioShare;
+FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAudioGallery;
+FOUNDATION_EXPORT NSString * const kSCINotificationPlayAudio;
+FOUNDATION_EXPORT NSString * const kSCINotificationCopyAudioURL;
+
 FOUNDATION_EXPORT NSString * const kSCINotificationStoryMarkSeen;
 FOUNDATION_EXPORT NSString * const kSCINotificationStorySeenUserRule;
 FOUNDATION_EXPORT NSString * const kSCINotificationStoryMentionsSheet;

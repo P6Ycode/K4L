@@ -1,0 +1,26 @@
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+#import "SCIAudioItem.h"
+
+@class SCIGallerySaveMetadata;
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface SCIAudioDownloadCoordinator : NSObject
+
++ (void)performAction:(SCIAudioAction)action
+                 item:(SCIAudioItem *)item
+            presenter:(nullable UIViewController *)presenter
+           sourceView:(nullable UIView *)sourceView
+             metadata:(nullable SCIGallerySaveMetadata *)metadata
+ notificationIdentifier:(nullable NSString *)notificationIdentifier;
+
++ (nullable SCIAudioItem *)audioItemFromMediaObject:(nullable id)mediaObject
+                                             source:(SCIAudioSource)source;
+
++ (nullable NSURL *)bestAudioURLFromMediaObject:(nullable id)mediaObject;
+
+@end
+
+NS_ASSUME_NONNULL_END

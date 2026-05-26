@@ -54,6 +54,10 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionCopyDownloadLink,
                 kSCIActionCopyMedia,
                 kSCIActionDownloadGallery,
+                kSCIActionDownloadAudioShare,
+                kSCIActionDownloadAudioGallery,
+                kSCIActionPlayAudio,
+                kSCIActionCopyAudioURL,
                 kSCIActionExpand,
                 kSCIActionViewThumbnail,
                 kSCIActionCopyCaption,
@@ -67,6 +71,10 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionCopyDownloadLink,
                 kSCIActionCopyMedia,
                 kSCIActionDownloadGallery,
+                kSCIActionDownloadAudioShare,
+                kSCIActionDownloadAudioGallery,
+                kSCIActionPlayAudio,
+                kSCIActionCopyAudioURL,
                 kSCIActionExpand,
                 kSCIActionViewThumbnail,
                 kSCIActionStoryMentionsSheet,
@@ -163,8 +171,18 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
             kSCIActionDownloadGallery,
             kSCIActionViewThumbnail
         ];
+    NSArray<NSString *> *audioActions = (source == SCIActionButtonSourceFeed ||
+                                         source == SCIActionButtonSourceReels ||
+                                         source == SCIActionButtonSourceStories)
+        ? @[
+            kSCIActionDownloadAudioShare,
+            kSCIActionDownloadAudioGallery,
+            kSCIActionPlayAudio,
+            kSCIActionCopyAudioURL
+        ]
+        : @[];
     NSArray<NSString *> *copyActions = (source == SCIActionButtonSourceProfile)
-        ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionProfileCopyInfo]
+            ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionProfileCopyInfo]
         : ((source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
             ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionCopyCaption]
             : @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia]);
@@ -179,6 +197,13 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
                                                            iconName:@"download"
                                                         collapsible:YES
                                                             actions:downloadActions]];
+    if (audioActions.count > 0) {
+        [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"audio"
+                                                                  title:@"Audio"
+                                                               iconName:@"audio"
+                                                            collapsible:YES
+                                                                actions:audioActions]];
+    }
     [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"copy"
                                                               title:@"Copy"
                                                            iconName:@"copy"

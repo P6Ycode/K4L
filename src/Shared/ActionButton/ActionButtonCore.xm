@@ -17,6 +17,8 @@
 #import "../Gallery/SCIGalleryFile.h"
 #import "../Gallery/SCIGalleryOriginController.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
+#import "../Audio/SCIAudioDownloadCoordinator.h"
+#import "../Audio/SCIAudioItem.h"
 #import "../Stories/SCIStoryContext.h"
 #import "../UI/SCINotificationCenter.h"
 #import "../UI/SCIChrome.h"
@@ -27,6 +29,11 @@ NSString * const kSCIActionDownloadShare = @"download_share";
 NSString * const kSCIActionCopyDownloadLink = @"copy_download_link";
 NSString * const kSCIActionCopyMedia = @"copy_media";
 NSString * const kSCIActionDownloadGallery = @"download_gallery";
+NSString * const kSCIActionDownloadAudio = @"download_audio";
+NSString * const kSCIActionDownloadAudioShare = @"download_audio_share";
+NSString * const kSCIActionDownloadAudioGallery = @"download_audio_gallery";
+NSString * const kSCIActionPlayAudio = @"play_audio";
+NSString * const kSCIActionCopyAudioURL = @"copy_audio_url";
 NSString * const kSCIActionDownloadAll = @"download_all";
 NSString * const kSCIActionDownloadAllLibrary = @"download_all_library";
 NSString * const kSCIActionDownloadAllShare = @"download_all_share";
@@ -326,6 +333,22 @@ static SCIGallerySource SCIGallerySourceForActionSource(SCIActionButtonSource so
             return SCIGallerySourceProfile;
 		default:
 			return SCIGallerySourceOther;
+	}
+}
+
+static SCIAudioSource SCIAudioSourceForActionSource(SCIActionButtonSource source) {
+	switch (source) {
+		case SCIActionButtonSourceFeed:
+			return SCIAudioSourceFeed;
+		case SCIActionButtonSourceReels:
+			return SCIAudioSourceReels;
+		case SCIActionButtonSourceStories:
+			return SCIAudioSourceStories;
+		case SCIActionButtonSourceDirect:
+			return SCIAudioSourceDMs;
+		case SCIActionButtonSourceProfile:
+		default:
+			return SCIAudioSourceOther;
 	}
 }
 
@@ -1528,6 +1551,14 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 		[identifier isEqualToString:kSCIActionDownloadGallery]) {
 		return currentURL != nil;
 	}
+    if ([identifier isEqualToString:kSCIActionDownloadAudio] ||
+        [identifier isEqualToString:kSCIActionDownloadAudioShare] ||
+        [identifier isEqualToString:kSCIActionDownloadAudioGallery] ||
+        [identifier isEqualToString:kSCIActionPlayAudio] ||
+        [identifier isEqualToString:kSCIActionCopyAudioURL]) {
+        id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+        return [SCIAudioDownloadCoordinator bestAudioURLFromMediaObject:audioMedia] != nil;
+    }
 	if ([identifier isEqualToString:kSCIActionCopyCaption]) {
 		return context.captionResolver != nil && [context.captionResolver(context, media, entries, idx) length] > 0;
 	}
@@ -1750,6 +1781,40 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 	}
     if (SCIIsBulkChildActionIdentifier(identifier)) {
         return SCIExecuteBulkChildAction(identifier, context, entries, username, media);
+    }
+
+    if ([identifier isEqualToString:kSCIActionDownloadAudio] ||
+        [identifier isEqualToString:kSCIActionDownloadAudioShare] ||
+        [identifier isEqualToString:kSCIActionDownloadAudioGallery] ||
+        [identifier isEqualToString:kSCIActionPlayAudio] ||
+        [identifier isEqualToString:kSCIActionCopyAudioURL]) {
+        id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+        SCIAudioItem *audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
+                                                                                 source:SCIAudioSourceForActionSource(context.source)];
+        if (!audioItem) {
+            SCINotify(identifier, @"No audio available", nil, @"error_filled", SCINotificationToneError);
+            return YES;
+        }
+        if (audioItem.artist.length == 0) audioItem.artist = username;
+        if (audioItem.sourceURLString.length == 0) audioItem.sourceURLString = audioItem.url.absoluteString;
+
+        SCIAudioAction audioAction = SCIAudioActionConvertAndShare;
+        if ([identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
+            audioAction = SCIAudioActionConvertAndSaveToGallery;
+        } else if ([identifier isEqualToString:kSCIActionPlayAudio]) {
+            audioAction = SCIAudioActionPlay;
+        } else if ([identifier isEqualToString:kSCIActionCopyAudioURL]) {
+            audioAction = SCIAudioActionCopyURL;
+        } else if ([identifier isEqualToString:kSCIActionDownloadAudio]) {
+            audioAction = SCIAudioActionShare;
+        }
+        [SCIAudioDownloadCoordinator performAction:audioAction
+                                             item:audioItem
+                                        presenter:SCIActionContextPresenter(context)
+                                       sourceView:SCIActionContextAnchorView(context)
+                                         metadata:meta
+                           notificationIdentifier:identifier];
+        return YES;
     }
 
 	if ([identifier isEqualToString:kSCIActionDownloadLibrary] ||
@@ -2048,6 +2113,10 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 	return SCIExecuteCommonAction(identifier, context, currentEntry, entries, resolvedIndex, username, meta, media);
 }
 
+static BOOL SCIActionButtonLegacyDiagnosticsEnabled(SCIActionButtonSource source) {
+	return source == SCIActionButtonSourceFeed && SYSTEM_VERSION_LESS_THAN(@"26.0");
+}
+
 UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag) {
 	UIView *existing = [container viewWithTag:tag];
 	if ([existing isKindOfClass:[UIButton class]]) {
@@ -2062,6 +2131,13 @@ UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag) {
 	button.clipsToBounds = NO;
 	button.translatesAutoresizingMaskIntoConstraints = YES;
 	[container addSubview:button];
+	if (SYSTEM_VERSION_LESS_THAN(@"26.0")) {
+		SCILog(@"ActionButton", @"Created action button tag=%ld class=%@ container=%@ iOS=%@",
+			   (long)tag,
+			   NSStringFromClass(button.class),
+			   NSStringFromClass(container.class),
+			   [UIDevice currentDevice].systemVersion);
+	}
 	return button;
 }
 
@@ -2134,6 +2210,13 @@ SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button) {
 
 void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context) {
 	if (!button || !context) return;
+	BOOL legacyDiagnostics = SCIActionButtonLegacyDiagnosticsEnabled(context.source);
+	if (legacyDiagnostics) {
+		SCILog(@"ActionButton", @"Configuring feed action button class=%@ view=%@ iOS=%@",
+			   NSStringFromClass(button.class),
+			   NSStringFromClass(context.view.class),
+			   [UIDevice currentDevice].systemVersion);
+	}
 
     if (!objc_getAssociatedObject(button, kSCIActionButtonConfigurationObserverAssocKey)) {
         __weak UIButton *weakObservedButton = button;
@@ -2158,12 +2241,21 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
     SCIResolvedMediaEntry *currentEntry = nil;
     if (entries.count > 0) {
         currentEntry = entries[SCIClampedIndex(currentIndex, (NSInteger)entries.count)];
-    }
+	}
 	NSArray<NSString *> *visibleActions = SCIVisibleActionsForContext(context, media, entries, currentIndex);
+	if (legacyDiagnostics) {
+		SCILog(@"ActionButton", @"Feed action button resolved visibleActions=%lu entries=%lu currentIndex=%ld",
+			   (unsigned long)visibleActions.count,
+			   (unsigned long)entries.count,
+			   (long)currentIndex);
+	}
 
 	if (visibleActions.count == 0) {
 		button.hidden = YES;
 		button.menu = nil;
+		if (legacyDiagnostics) {
+			SCILog(@"ActionButton", @"Feed action button hidden: no visible actions");
+		}
 		return;
 	}
 
@@ -2182,6 +2274,11 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 	if ([existingSignature isEqualToString:menuSignature] && button.menu != nil) {
 		button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
 		objc_setAssociatedObject(button, kSCIActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		if (legacyDiagnostics) {
+			SCILog(@"ActionButton", @"Feed action button reused menu default=%@ opensMenu=%@",
+				   defaultIdentifier ?: @"(nil)",
+				   shouldOpenMenuOnTap ? @"YES" : @"NO");
+		}
 		return;
 	}
 
@@ -2350,4 +2447,10 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 	button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
 	objc_setAssociatedObject(button, kSCIActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	objc_setAssociatedObject(button, kSCIActionButtonMenuSignatureAssocKey, menuSignature, OBJC_ASSOCIATION_COPY_NONATOMIC);
+	if (legacyDiagnostics) {
+		SCILog(@"ActionButton", @"Feed action button menu complete elements=%lu default=%@ opensMenu=%@",
+			   (unsigned long)menuElements.count,
+			   defaultIdentifier ?: @"(nil)",
+			   shouldOpenMenuOnTap ? @"YES" : @"NO");
+	}
 }

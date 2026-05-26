@@ -1,11 +1,46 @@
 #import "SCIGeneralSettingsProvider.h"
 
+#import "../SCIAppIconCatalog.h"
+#import "../SCIAppIconPickerViewController.h"
 #import "../SCITopicSettingsSupport.h"
 #import "../../Shared/MediaDownload/SCIMediaFFmpeg.h"
 #import "../../Shared/MediaDownload/SCIMediaQualityManager.h"
 #import "../../Utils.h"
 
 @implementation SCIGeneralSettingsProvider
+
++ (SCISetting *)appIconSetting {
+    SCIAppIconItem *currentIcon = [SCIAppIconCatalog currentAppIcon];
+    NSString *currentTitle = currentIcon.displayName.length > 0 ? currentIcon.displayName : @"Default";
+    SCIAppIconPickerViewController *controller = [[SCIAppIconPickerViewController alloc] initWithSelectedIdentifier:[SCIAppIconCatalog currentAppIconIdentifier]
+                                                                                                          onSelect:nil];
+    SCISetting *setting = [SCISetting navigationCellWithTitle:@"App Icon"
+                                                     subtitle:currentTitle
+                                                         icon:SCISettingsIcon(@"app")
+                                               viewController:controller];
+    setting.userInfo = @{@"accessoryText": currentTitle};
+    return setting;
+}
+
++ (UIMenu *)audioPageDefaultActionMenu {
+    NSArray<NSDictionary *> *items = @[
+        @{@"title": @"Share Audio", @"value": @"share", @"icon": @"share"},
+        @{@"title": @"Convert & Share", @"value": @"convert_share", @"icon": @"share"},
+        @{@"title": @"Save Original to Gallery", @"value": @"gallery", @"icon": @"media"},
+        @{@"title": @"Convert & Save to Gallery", @"value": @"convert_gallery", @"icon": @"media"},
+        @{@"title": @"Play Audio", @"value": @"play", @"icon": @"play"},
+        @{@"title": @"Copy Audio URL", @"value": @"copy_url", @"icon": @"link"},
+        @{@"title": @"None", @"value": @"none", @"icon": @"action"}
+    ];
+    NSMutableArray<UICommand *> *commands = [NSMutableArray array];
+    for (NSDictionary *item in items) {
+        [commands addObject:[UICommand commandWithTitle:item[@"title"]
+                                                  image:SCISettingsIcon(item[@"icon"])
+                                                 action:@selector(menuChanged:)
+                                           propertyList:@{@"defaultsKey": @"general_audio_page_default_action", @"value": item[@"value"], @"iconName": item[@"icon"]}]];
+    }
+    return [UIMenu menuWithChildren:commands];
+}
 
 + (SCISetting *)rootSetting {
     BOOL ffmpegAvailable = [SCIMediaFFmpeg isAvailable];
@@ -96,6 +131,11 @@
             encodingSettings,
             encodingLogs
         ], qualityFooter),
+        SCITopicSection(@"Audio", @[
+            [SCISetting switchCellWithTitle:@"Audio Downloads" icon:SCISettingsIcon(@"audio") defaultsKey:@"general_audio_download_enabled"],
+            [SCISetting switchCellWithTitle:@"Audio Page Button" icon:SCISettingsIcon(@"download") defaultsKey:@"general_audio_page_download" requiresRestart:YES],
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Audio Page Default Action" icon:SCISettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SCISettingsIcon(@"action"))
+        ], @"Adds audio actions for audio pages and media action buttons. Regram-style processing preserves original audio when possible and converts to M4A for converted actions."),
         SCITopicSection(@"Storage", @[
             [SCISetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SCISettingsIcon(@"trash") action:^(void) {
                 [SCIUtils cleanCache];
@@ -104,10 +144,9 @@
             [SCISetting menuCellWithTitle:@"Auto Clear Cache" icon:SCISettingsIcon(@"clock") menu:SCICacheAutoClearMenu()]
         ], @"Automatic clearing is checked whenever Instagram becomes active."),
         SCITopicSection(@"App", @[
-            [SCISetting switchCellWithTitle:@"Change App Icon" icon:SCISettingsIcon(@"app") defaultsKey:@"general_teen_app_icons" requiresRestart:YES],
+            [self appIconSetting],
             [SCISetting switchCellWithTitle:@"Disable App Haptics" icon:SCISettingsIcon(@"haptics") defaultsKey:@"general_disable_haptics"]
-        ], @"1. Hold down on the Instagram text on the home screen to bring up the app icon selection menu.\n"
-           @"2. Disables haptics and vibrations within the app."),
+        ], @"Choose an app icon directly from the icons exposed by the installed Instagram bundle. Disable App Haptics turns off haptics and vibrations within the app."),
     ]);
 }
 

@@ -53,6 +53,74 @@ static id SCIValueForSelectorOrKey(id object, NSString *name) {
     }
 }
 
+static BOOL SCIObjectIsKindOfClassNamed(id object, NSString *className) {
+    if (!object || className.length == 0) return NO;
+    Class cls = NSClassFromString(className);
+    return cls && [object isKindOfClass:cls];
+}
+
+static NSArray *SCIFilterDirectInboxObjects(NSArray *originalObjs) {
+    if (![originalObjs isKindOfClass:[NSArray class]]) return originalObjs;
+
+    NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
+
+    for (id obj in originalObjs) {
+        BOOL shouldHide = NO;
+
+        // Section header
+        if (SCIObjectIsKindOfClassNamed(obj, @"IGDirectInboxHeaderCellViewModel")) {
+            NSString *title = SCIValueForSelectorOrKey(obj, @"title");
+
+            // "Suggestions" header
+            if ([title isEqualToString:@"Suggestions"]) {
+                if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                    SCILog(@"General", @"[SCInsta] Hiding suggested chats (header: messages tab)");
+                    shouldHide = YES;
+                }
+            }
+
+            // "Accounts to follow/message" header
+            else if ([title hasPrefix:@"Accounts to"]) {
+                if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                    SCILog(@"General", @"[SCInsta] Hiding suggested users: (header: inbox view)");
+                    shouldHide = YES;
+                }
+            }
+        }
+
+        // Suggested recipients
+        else if (SCIObjectIsKindOfClassNamed(obj, @"IGDirectInboxSuggestedThreadCellViewModel")) {
+            if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                SCILog(@"General", @"[SCInsta] Hiding suggested chats (recipients: channels tab)");
+                shouldHide = YES;
+            }
+        }
+
+        // "Accounts to follow" recipients
+        else if (SCIObjectIsKindOfClassNamed(obj, @"IGDiscoverPeopleItemConfiguration") ||
+                 SCIObjectIsKindOfClassNamed(obj, @"IGDiscoverPeopleConnectionItemConfiguration")) {
+            if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                SCILog(@"General", @"[SCInsta] Hiding suggested chats: (recipients: inbox view)");
+                shouldHide = YES;
+            }
+        }
+
+        // Hide notes tray
+        else if (SCIObjectIsKindOfClassNamed(obj, @"IGDirectNotesTrayRowViewModel")) {
+            if ([SCIUtils getBoolPref:@"msgs_hide_notes_tray"]) {
+                SCILog(@"General", @"[SCInsta] Hiding notes tray");
+                shouldHide = YES;
+            }
+        }
+
+        if (!shouldHide) {
+            [filteredObjs addObject:obj];
+        }
+    }
+
+    return [filteredObjs copy];
+}
+
 static NSString *SCIStoryMediaIdentifierFromObject(id object, NSInteger depth) {
     if (!object || depth > 3) return nil;
 
@@ -384,70 +452,14 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 // Direct suggested chats (inbox view)
 %hook IGDirectInboxListAdapterDataSource
 - (id)objectsForListAdapter:(id)arg1 {
-    NSArray *originalObjs = %orig();
-    NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
+    return SCIFilterDirectInboxObjects(%orig());
+}
+%end
 
-    for (id obj in originalObjs) {
-        BOOL shouldHide = NO;
-
-        // Section header
-        if ([obj isKindOfClass:%c(IGDirectInboxHeaderCellViewModel)]) {
-            
-            // "Suggestions" header
-            if ([[obj title] isEqualToString:@"Suggestions"]) {
-                if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested chats (header: messages tab)");
-
-                    shouldHide = YES;
-                }
-            }
-
-            // "Accounts to follow/message" header
-            else if ([[obj title] hasPrefix:@"Accounts to"]) {
-                if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested users: (header: inbox view)");
-
-                    shouldHide = YES;
-                }
-            }
-
-        }
-
-        // Suggested recipients
-        else if ([obj isKindOfClass:%c(IGDirectInboxSuggestedThreadCellViewModel)]) {
-            if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested chats (recipients: channels tab)");
-
-                shouldHide = YES;
-            }
-        }
-
-        // "Accounts to follow" recipients
-        else if ([obj isKindOfClass:%c(IGDiscoverPeopleItemConfiguration)] || [obj isKindOfClass:%c(IGDiscoverPeopleConnectionItemConfiguration)]) {
-            if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested chats: (recipients: inbox view)");
-
-                shouldHide = YES;
-            }
-        }
-
-        // Hide notes tray
-        else if ([obj isKindOfClass:%c(IGDirectNotesTrayRowViewModel)]) {
-            if ([SCIUtils getBoolPref:@"msgs_hide_notes_tray"]) {
-                SCILog(@"General", @"[SCInsta] Hiding notes tray");
-
-                shouldHide = YES;
-            }
-        }
-
-        // Populate new objs array
-        if (!shouldHide) {
-            [filteredObjs addObject:obj];
-        }
-
-    }
-
-    return [filteredObjs copy];
+// Direct suggested chats (inbox view, latest Swift data source)
+%hook _TtC34IGDirectInboxListAdapterDataSource34IGDirectInboxListAdapterDataSource
+- (id)objectsForListAdapter:(id)arg1 {
+    return SCIFilterDirectInboxObjects(%orig());
 }
 %end
 

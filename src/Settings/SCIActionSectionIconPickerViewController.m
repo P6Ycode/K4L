@@ -232,7 +232,7 @@ static NSString *SCISectionIconPickerCellTitle(NSString *title) {
     searchController.searchResultsUpdater = self;
     searchController.obscuresBackgroundDuringPresentation = NO;
     searchController.hidesNavigationBarDuringPresentation = NO;
-    searchController.searchBar.placeholder = @"Search icons";
+    searchController.searchBar.placeholder = @"Search Icons";
     [searchController.searchBar setImage:[SCIAssetUtils instagramIconNamed:@"search" pointSize:18.0]
                         forSearchBarIcon:UISearchBarIconSearch
                                     state:UIControlStateNormal];

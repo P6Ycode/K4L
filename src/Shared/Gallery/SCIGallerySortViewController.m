@@ -101,7 +101,7 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
         case SCIGallerySortModeSizeDesc:      return @"Largest first";
         case SCIGallerySortModeSizeAsc:       return @"Smallest first";
         case SCIGallerySortModeTypeAsc:       return @"Images first";
-        case SCIGallerySortModeTypeDesc:      return @"Videos first";
+        case SCIGallerySortModeTypeDesc:      return @"Audio first";
     }
     return @"Newest first";
 }

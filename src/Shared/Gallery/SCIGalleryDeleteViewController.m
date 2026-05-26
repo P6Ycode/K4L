@@ -96,7 +96,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
         @[[self actionWithTitle:@"Delete All Files" iconName:@"trash" predicate:nil successTitle:@"All files deleted"]],
         @[
             [self actionWithTitle:@"Delete All Images" iconName:@"photo" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SCIGalleryMediaTypeImage] successTitle:@"Images deleted"],
-            [self actionWithTitle:@"Delete All Videos" iconName:@"video" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SCIGalleryMediaTypeVideo] successTitle:@"Videos deleted"]
+            [self actionWithTitle:@"Delete All Videos" iconName:@"video" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SCIGalleryMediaTypeVideo] successTitle:@"Videos deleted"],
+            [self actionWithTitle:@"Delete All Audio" iconName:@"audio" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SCIGalleryMediaTypeAudio] successTitle:@"Audio deleted"]
         ],
         @[
             [self actionWithTitle:@"Delete Feed Posts" iconName:@"feed" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceFeed] successTitle:@"Feed posts deleted"],
@@ -104,7 +105,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
             [self actionWithTitle:@"Delete Reels" iconName:@"reels" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceReels] successTitle:@"Reels deleted"],
             [self actionWithTitle:@"Delete Thumbnails" iconName:@"photo_gallery" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceThumbnail] successTitle:@"Thumbnails deleted"],
             [self actionWithTitle:@"Delete DM Media" iconName:@"messages" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceDMs] successTitle:@"DM media deleted"],
-            [self actionWithTitle:@"Delete Profile Pictures" iconName:@"user_circle" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceProfile] successTitle:@"Profile pictures deleted"]
+            [self actionWithTitle:@"Delete Profile Pictures" iconName:@"user_circle" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceProfile] successTitle:@"Profile pictures deleted"],
+            [self actionWithTitle:@"Delete Instants" iconName:@"instants" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceInstants] successTitle:@"Instants deleted"],
+            [self actionWithTitle:@"Delete Audio Page Media" iconName:@"audio_page" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceAudioPage] successTitle:@"Audio page media deleted"]
         ],
         @[]
     ];

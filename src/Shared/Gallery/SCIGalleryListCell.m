@@ -126,8 +126,9 @@
     self.subtitleLabel.text = [file sourceLabel];
     self.detailLabel.text = [self formattedDetailForFile:file];
 
-    BOOL isVideo = (file.mediaType == SCIGalleryMediaTypeVideo);
-    self.typeIcon.hidden = !isVideo;
+    BOOL hasTypeIcon = (file.mediaType == SCIGalleryMediaTypeVideo || file.mediaType == SCIGalleryMediaTypeAudio);
+    self.typeIcon.image = [SCIAssetUtils instagramIconNamed:(file.mediaType == SCIGalleryMediaTypeAudio ? @"audio" : @"video_filled") pointSize:10.0];
+    self.typeIcon.hidden = !hasTypeIcon;
     self.favoriteIcon.hidden = !file.isFavorite;
 
     UIImage *thumb = [SCIGalleryFile loadThumbnailForFile:file];

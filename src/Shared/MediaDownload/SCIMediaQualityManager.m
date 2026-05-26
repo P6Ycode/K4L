@@ -1577,13 +1577,6 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
         return;
     }
 
-    if (option.kind == SCIMediaOptionKindAudioDash && !copyToClipboard && action != share) {
-        if (notificationIdentifier.length > 0) {
-            SCINotify(notificationIdentifier, @"Audio-only export is only supported for Share", nil, @"info_filled", SCINotificationToneInfo);
-        }
-        return;
-    }
-
     [delegate beginCustomProgressWithTitle:@"Preparing media options" subtitle:nil];
 
     __block SCIMediaSingleDownloadJob *videoJob = nil;
@@ -1729,7 +1722,7 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
                      videoURL:(NSURL *)videoURL
               galleryMetadata:(SCIGallerySaveMetadata *)galleryMetadata
                 showProgress:(BOOL)showProgress {
-    BOOL includeAudioOptions = (action == share);
+    BOOL includeAudioOptions = (action == share || action == saveToGallery || action == downloadOnly);
     SCIMediaAnalysis *analysis = SCIMediaAnalyze(mediaObject, photoURL, videoURL, action, includeAudioOptions);
     if (analysis.photoOptions.count == 0 && analysis.progressiveVideoOptions.count == 0 && analysis.mergedDashOptions.count == 0 && analysis.videoDashOnlyOptions.count == 0 && analysis.audioDashOptions.count == 0) {
         return NO;

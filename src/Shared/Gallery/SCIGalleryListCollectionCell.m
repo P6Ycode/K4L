@@ -193,7 +193,8 @@
     self.dateLabel.text = [file listDownloadDateString];
 
     BOOL isVideo = (file.mediaType == SCIGalleryMediaTypeVideo);
-    UIImage *rowIcon = [SCIAssetUtils instagramIconNamed:(isVideo ? @"video_filled" : @"photo_filled")
+    BOOL isAudio = (file.mediaType == SCIGalleryMediaTypeAudio);
+    UIImage *rowIcon = [SCIAssetUtils instagramIconNamed:(isAudio ? @"audio" : (isVideo ? @"video_filled" : @"photo_filled"))
                                                pointSize:12];
     self.rowTypeIcon.image = rowIcon;
 

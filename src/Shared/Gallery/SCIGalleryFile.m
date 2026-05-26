@@ -1,12 +1,14 @@
+#import <AVFoundation/AVFoundation.h>
+#import <ImageIO/ImageIO.h>
+#import <ctype.h>
+#import <math.h>
+
 #import "SCIGalleryFile.h"
 #import "SCIGalleryPaths.h"
 #import "SCIGalleryCoreDataStack.h"
 #import "SCIGalleryOriginController.h"
 #import "../../Utils.h"
-#import <AVFoundation/AVFoundation.h>
-#import <ImageIO/ImageIO.h>
-#import <ctype.h>
-#import <math.h>
+#import "../../AssetUtils.h"
 
 static CGFloat const kThumbnailSize = 300.0;
 
@@ -42,14 +44,17 @@ static NSString *SCIGalleryNormalizedExtension(NSString * _Nullable origExt, SCI
     NSString *e = origExt.length ? origExt.lowercaseString : @"";
     static NSSet<NSString *> *imageExts;
     static NSSet<NSString *> *videoExts;
+    static NSSet<NSString *> *audioExts;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         imageExts = [NSSet setWithArray:@[ @"jpg", @"jpeg", @"png", @"heic", @"webp", @"gif" ]];
         videoExts = [NSSet setWithArray:@[ @"mp4", @"mov", @"m4v", @"webm" ]];
+        audioExts = [NSSet setWithArray:@[ @"m4a", @"aac", @"mp3", @"wav", @"caf", @"aiff", @"flac", @"opus", @"ogg" ]];
     });
-    if (e.length > 0 && e.length <= 5 && ([imageExts containsObject:e] || [videoExts containsObject:e])) {
+    if (e.length > 0 && e.length <= 5 && ([imageExts containsObject:e] || [videoExts containsObject:e] || [audioExts containsObject:e])) {
         return [e isEqualToString:@"jpeg"] ? @"jpg" : e;
     }
+    if (mediaType == SCIGalleryMediaTypeAudio) return @"m4a";
     return (mediaType == SCIGalleryMediaTypeVideo) ? @"mp4" : @"jpg";
 }
 
@@ -61,6 +66,8 @@ static NSString *SCIGallerySourceSlug(SCIGallerySource source) {
         case SCIGallerySourceProfile: return @"profile-photo";
         case SCIGallerySourceDMs:     return @"dms";
         case SCIGallerySourceThumbnail: return @"thumbnail";
+        case SCIGallerySourceInstants: return @"instants";
+        case SCIGallerySourceAudioPage: return @"audio-page";
         case SCIGallerySourceOther:
         default:                    return @"other";
     }
@@ -202,6 +209,14 @@ static BOOL SCISourceFromBasenameSlug(NSString *low, SCIGallerySource *out) {
     }
     if ([low isEqualToString:@"thumbnail"] || [low isEqualToString:@"thumb"]) {
         *out = SCIGallerySourceThumbnail;
+        return YES;
+    }
+    if ([low isEqualToString:@"instant"] || [low isEqualToString:@"instants"]) {
+        *out = SCIGallerySourceInstants;
+        return YES;
+    }
+    if ([low isEqualToString:@"audio"] || [low isEqualToString:@"audio-page"] || [low isEqualToString:@"audiopage"]) {
+        *out = SCIGallerySourceAudioPage;
         return YES;
     }
     if ([low isEqualToString:@"other"]) {
@@ -419,10 +434,15 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
 + (SCIGalleryMediaType)inferMediaTypeFromFileURL:(NSURL *)fileURL {
     NSString *e = fileURL.pathExtension.lowercaseString;
     static NSSet<NSString *> *videoExts;
+    static NSSet<NSString *> *audioExts;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         videoExts = [NSSet setWithArray:@[ @"mp4", @"mov", @"m4v", @"webm" ]];
+        audioExts = [NSSet setWithArray:@[ @"m4a", @"aac", @"mp3", @"wav", @"caf", @"aiff", @"flac", @"opus", @"ogg" ]];
     });
+    if ([audioExts containsObject:e]) {
+        return SCIGalleryMediaTypeAudio;
+    }
     if ([videoExts containsObject:e]) {
         return SCIGalleryMediaTypeVideo;
     }
@@ -461,6 +481,10 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
             file.durationSeconds = sec;
         }
     }
+    if (mediaType == SCIGalleryMediaTypeAudio) {
+        return;
+    }
+
     NSArray<AVAssetTrack *> *tracks = [asset tracksWithMediaType:AVMediaTypeVideo];
     if (tracks.count == 0) {
         return;
@@ -640,7 +664,7 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
 }
 
 - (NSString *)listBitrateString {
-    if (self.mediaType != SCIGalleryMediaTypeVideo) {
+    if (self.mediaType != SCIGalleryMediaTypeVideo && self.mediaType != SCIGalleryMediaTypeAudio) {
         return @"";
     }
     if (self.durationSeconds < 0.5 || self.fileSize <= 0) {
@@ -655,8 +679,8 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
 
 - (NSString *)listTechnicalLine {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    BOOL isVideo = self.mediaType == SCIGalleryMediaTypeVideo;
-    if (isVideo) {
+    BOOL isTimedMedia = (self.mediaType == SCIGalleryMediaTypeVideo || self.mediaType == SCIGalleryMediaTypeAudio);
+    if (isTimedMedia) {
         NSString *d = [self listFormattedDuration];
         if (d.length) {
             [parts addObject:d];
@@ -667,10 +691,10 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     if (sz.length) {
         [parts addObject:sz];
     }
-    if (self.pixelWidth > 0 && self.pixelHeight > 0) {
+    if (self.mediaType != SCIGalleryMediaTypeAudio && self.pixelWidth > 0 && self.pixelHeight > 0) {
         [parts addObject:[NSString stringWithFormat:@"%dx%d", self.pixelWidth, self.pixelHeight]];
     }
-    if (isVideo) {
+    if (isTimedMedia) {
         NSString *br = [self listBitrateString];
         if (br.length) {
             [parts addObject:br];
@@ -759,6 +783,8 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         case SCIGallerySourceProfile:   return @"Profile";
         case SCIGallerySourceDMs:       return @"DMs";
         case SCIGallerySourceThumbnail: return @"Thumb";
+        case SCIGallerySourceInstants:  return @"Instants";
+        case SCIGallerySourceAudioPage: return @"Audio Page";
         case SCIGallerySourceOther:
         default:                      return @"Other";
     }
@@ -772,6 +798,8 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         case SCIGallerySourceProfile:   return @"Profile";
         case SCIGallerySourceDMs:       return @"DMs";
         case SCIGallerySourceThumbnail: return @"Thumb";
+        case SCIGallerySourceInstants:  return @"Instant";
+        case SCIGallerySourceAudioPage: return @"Audio Page";
         case SCIGallerySourceOther:
         default:                      return @"Other";
     }
@@ -785,6 +813,8 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         case SCIGallerySourceProfile: return @"user_circle";
         case SCIGallerySourceDMs:     return @"messages";
         case SCIGallerySourceThumbnail: return @"photo_gallery";
+        case SCIGallerySourceInstants: return @"instants";
+        case SCIGallerySourceAudioPage: return @"audio_page";
         case SCIGallerySourceOther:
         default:                    return @"media";
     }
@@ -793,9 +823,18 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
 #pragma mark - Thumbnails
 
 + (void)generateThumbnailForFile:(SCIGalleryFile *)file completion:(void(^)(BOOL success))completion {
+    int16_t mediaType = file.mediaType;
+    if (mediaType == SCIGalleryMediaTypeAudio) {
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(YES);
+            });
+        }
+        return;
+    }
+
     NSString *filePath = [file filePath];
     NSString *thumbPath = [file thumbnailPath];
-    int16_t mediaType = file.mediaType;
     NSCache<NSString *, UIImage *> *cache = SCIGalleryThumbnailCache();
 
     UIImage *cachedThumb = [cache objectForKey:thumbPath];
@@ -885,7 +924,64 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     });
 }
 
+static UIImage *SCIGalleryAudioPlaceholderImage(void) {
+    UIUserInterfaceStyle style = UIUserInterfaceStyleLight;
+    style = [UITraitCollection currentTraitCollection].userInterfaceStyle;
+    
+    static NSMutableDictionary<NSNumber *, UIImage *> *cachedImages = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        cachedImages = [NSMutableDictionary dictionary];
+    });
+    
+    UIImage *cached = cachedImages[@(style)];
+    if (cached) {
+        return cached;
+    }
+    
+    CGSize size = CGSizeMake(kThumbnailSize, kThumbnailSize);
+    UIGraphicsBeginImageContextWithOptions(size, YES, 0.0);
+    
+    [[SCIUtils SCIColor_InstagramTertiaryBackground] setFill];
+    UIRectFill(CGRectMake(0, 0, size.width, size.height));
+    
+    UIColor *tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    [tintColor setFill];
+    
+    CGFloat const w = 12.0;
+    CGFloat const s = 28.0;
+    CGFloat const h_middle = 130.0;
+    CGFloat const h_side = 85.0;
+    
+    // Left bar
+    CGRect leftRect = CGRectMake(150.0 - w/2.0 - s - w, 150.0 - h_side/2.0, w, h_side);
+    UIBezierPath *leftPath = [UIBezierPath bezierPathWithRoundedRect:leftRect cornerRadius:w/2.0];
+    [leftPath fill];
+    
+    // Middle bar
+    CGRect middleRect = CGRectMake(150.0 - w/2.0, 150.0 - h_middle/2.0, w, h_middle);
+    UIBezierPath *middlePath = [UIBezierPath bezierPathWithRoundedRect:middleRect cornerRadius:w/2.0];
+    [middlePath fill];
+    
+    // Right bar
+    CGRect rightRect = CGRectMake(150.0 + w/2.0 + s, 150.0 - h_side/2.0, w, h_side);
+    UIBezierPath *rightPath = [UIBezierPath bezierPathWithRoundedRect:rightRect cornerRadius:w/2.0];
+    [rightPath fill];
+    
+    UIImage *thumb = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    if (thumb) {
+        cachedImages[@(style)] = thumb;
+    }
+    return thumb;
+}
+
 + (UIImage *)loadThumbnailForFile:(SCIGalleryFile *)file {
+    if (file.mediaType == SCIGalleryMediaTypeAudio) {
+        return SCIGalleryAudioPlaceholderImage();
+    }
+
     NSString *thumbPath = [file thumbnailPath];
     UIImage *cached = [SCIGalleryThumbnailCache() objectForKey:thumbPath];
     if (cached) {

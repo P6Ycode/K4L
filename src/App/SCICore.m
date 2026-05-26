@@ -27,6 +27,7 @@ static NSDictionary *SCIBootstrapDefaults(void) {
         @"tools_open_settings_on_launch": @(NO),
         @"tools_disable_all": @(NO),
         @"app_safe_startup": @(NO),
+        @"general_hide_ads_stories": @(YES),
     };
 }
 
@@ -125,6 +126,9 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"reels_tap_control": @"default",
         @"msgs_notes_customization": @(YES),
         @"msgs_custom_note_themes": @(YES),
+        @"msgs_disable_instants_creation": @(NO),
+        @"msgs_confirm_instants_capture": @(NO),
+        @"msgs_skip_instants_camera_after_viewing": @(NO),
         @"msgs_disable_vanish_swipe_up": @(NO),
         @"msgs_hide_vanish_screenshot": @(NO),
         @"reels_disable_auto_unmute": @(YES),
@@ -172,6 +176,13 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"general_media_encoding_audio_channels": @"original",
         @"general_media_encoding_pixel_format": @"default",
         @"general_media_encoding_faststart": @(YES),
+        @"general_audio_download_enabled": @(YES),
+        @"general_audio_page_download": @(YES),
+        @"general_audio_page_default_action": @"share",
+        @"general_audio_processing_default": @"match_regram",
+        @"msgs_download_audio_messages": @(YES),
+        @"msgs_download_notes_audio": @(YES),
+        @"msgs_upload_audio_messages": @(NO),
         @"feed_disable_home_refresh": @(NO),
         @"reels_disable_tab_refresh": @(NO),
         @"stories_stop_auto_advance": @(NO),

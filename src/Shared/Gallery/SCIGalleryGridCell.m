@@ -129,9 +129,10 @@
         }];
     }
 
-    BOOL isVideo = (file.mediaType == SCIGalleryMediaTypeVideo);
-    self.videoBadge.hidden = !isVideo;
-    [self.contentView viewWithTag:100].hidden = !isVideo;
+    BOOL hasTypeBadge = (file.mediaType == SCIGalleryMediaTypeVideo || file.mediaType == SCIGalleryMediaTypeAudio);
+    self.videoBadge.image = [SCIAssetUtils instagramIconNamed:(file.mediaType == SCIGalleryMediaTypeAudio ? @"audio" : @"video_filled") pointSize:12.0];
+    self.videoBadge.hidden = !hasTypeBadge;
+    [self.contentView viewWithTag:100].hidden = !hasTypeBadge;
 
     self.favoriteBadge.hidden = !file.isFavorite;
 

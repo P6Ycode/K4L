@@ -663,6 +663,13 @@ static void SCIIGInstallAlertHooksIfNeeded(Class alertClass) {
                                        title:(NSString *)title
                                      message:(NSString *)message
                                      actions:(NSArray<SCIIGAlertAction *> *)actions {
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+        return [self presentAlertFromViewController:presenter
+                                             title:title
+                                           message:message
+                                           actions:actions];
+    }
+
     Class actionClass = NSClassFromString(@"IGActionSheetControllerAction");
     Class sheetClass = NSClassFromString(@"IGActionSheetController");
     SEL actionSelector = NSSelectorFromString(@"initWithTitle:subtitle:style:handler:accessibilityIdentifier:accessibilityLabel:");
@@ -718,14 +725,6 @@ static void SCIIGInstallAlertHooksIfNeeded(Class alertClass) {
     }
 
     ((void (*)(id, SEL))objc_msgSend)(sheet, @selector(show));
-
-    // Tint the native cancel button with the danger/cancel color.
-    UIView *cancelButton = SCIIGGetIvarObject(sheet, "_cancelButton");
-    if ([cancelButton isKindOfClass:[UIButton class]]) {
-        UIColor *cancelColor = SCIIGDangerActionColor();
-        [(UIButton *)cancelButton setTitleColor:cancelColor forState:UIControlStateNormal];
-        cancelButton.tintColor = cancelColor;
-    }
     return YES;
 }
 

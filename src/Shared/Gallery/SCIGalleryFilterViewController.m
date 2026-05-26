@@ -19,6 +19,8 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
         self.layer.cornerRadius = 12;
         self.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 12);
         self.titleLabel.font = [UIFont systemFontOfSize:kSCIGalleryFilterChipLabelPointSize weight:UIFontWeightMedium];
+        self.titleLabel.adjustsFontSizeToFitWidth = YES;
+        self.titleLabel.minimumScaleFactor = 0.78;
         [self updateChipAppearance];
     }
     return self;
@@ -45,6 +47,7 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
 
 @interface SCIGalleryFilterViewController ()
 
+@property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIStackView *contentStack;
 
 @property (nonatomic, strong) NSMutableArray<SCIGalleryFilterChip *> *typeChips;
@@ -120,6 +123,11 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     [self updateClearRowState];
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self updateScrollAvailability];
+}
+
 - (void)setupNavigationBar {
     self.title = @"Filter";
     self.navigationItem.leftBarButtonItem = nil;
@@ -127,18 +135,31 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
 }
 
 - (void)setupContent {
+    self.scrollView = [[UIScrollView alloc] init];
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.alwaysBounceVertical = NO;
+    self.scrollView.bounces = NO;
+    self.scrollView.scrollEnabled = NO;
+    self.scrollView.showsVerticalScrollIndicator = NO;
+    [self.view addSubview:self.scrollView];
+
     self.contentStack = [[UIStackView alloc] init];
     self.contentStack.axis = UILayoutConstraintAxisVertical;
     self.contentStack.spacing = 10;
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:self.contentStack];
+    [self.scrollView addSubview:self.contentStack];
 
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentStack.topAnchor constraintEqualToAnchor:safe.topAnchor constant:12],
-        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:safe.bottomAnchor constant:-12],
+        [self.scrollView.topAnchor constraintEqualToAnchor:safe.topAnchor],
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor constant:12],
+        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor constant:16],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor constant:-16],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor constant:-12],
+        [self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-32],
     ]];
 
     [self.contentStack addArrangedSubview:[self createFavoritesRow]];
@@ -154,6 +175,28 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     }
     [self.contentStack addArrangedSubview:[self sectionTitle:@"Options"]];
     [self.contentStack addArrangedSubview:[self createClearRow]];
+}
+
+- (BOOL)isPresentedAtFullscreenHeight {
+    UIView *presentedView = self.navigationController.view ?: self.view;
+    UIView *containerView = self.presentationController.containerView ?: presentedView.superview;
+    if (!containerView) return NO;
+
+    CGFloat presentedHeight = CGRectGetHeight(presentedView.bounds);
+    CGFloat containerHeight = CGRectGetHeight(containerView.bounds);
+    if (presentedHeight <= 0.0 || containerHeight <= 0.0) return NO;
+    return presentedHeight >= floor(containerHeight * 0.92);
+}
+
+- (void)updateScrollAvailability {
+    CGFloat viewportHeight = CGRectGetHeight(self.scrollView.bounds);
+    CGFloat contentHeight = self.scrollView.contentSize.height;
+    BOOL contentOverflows = contentHeight > viewportHeight + 1.0;
+    BOOL shouldScroll = contentOverflows && [self isPresentedAtFullscreenHeight];
+    self.scrollView.scrollEnabled = shouldScroll;
+    self.scrollView.bounces = shouldScroll;
+    self.scrollView.alwaysBounceVertical = shouldScroll;
+    self.scrollView.showsVerticalScrollIndicator = shouldScroll;
 }
 
 - (UILabel *)sectionTitle:(NSString *)title {
@@ -173,6 +216,7 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     NSArray *defs = @[
         @{@"label": @"Images", @"resource": @"photo", @"tag": @(SCIGalleryMediaTypeImage)},
         @{@"label": @"Videos", @"resource": @"video", @"tag": @(SCIGalleryMediaTypeVideo)},
+        @{@"label": @"Audio", @"resource": @"audio", @"tag": @(SCIGalleryMediaTypeAudio)},
     ];
     for (NSDictionary *d in defs) {
         NSInteger tag = [d[@"tag"] integerValue];
@@ -198,11 +242,13 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     NSArray *sources = @[
         @(SCIGallerySourceFeed), @(SCIGallerySourceStories), @(SCIGallerySourceReels),
         @(SCIGallerySourceProfile), @(SCIGallerySourceDMs), @(SCIGallerySourceThumbnail),
+        @(SCIGallerySourceInstants), @(SCIGallerySourceAudioPage),
     ];
 
+    NSInteger columns = 2;
     UIStackView *currentRow = nil;
     for (NSInteger i = 0; i < sources.count; i++) {
-        if (i % 3 == 0) {
+        if (i % columns == 0) {
             currentRow = [[UIStackView alloc] init];
             currentRow.axis = UILayoutConstraintAxisHorizontal;
             currentRow.spacing = 8;
@@ -224,7 +270,7 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     }
 
     // Pad last row so chips have equal width
-    while (currentRow.arrangedSubviews.count % 3 != 0) {
+    while (currentRow.arrangedSubviews.count % columns != 0) {
         UIView *spacer = [[UIView alloc] init];
         [currentRow addArrangedSubview:spacer];
     }

@@ -34,6 +34,22 @@ static BOOL SCIShouldHideSuggestedAccountsForSurface(SCIFeedFilterSurface surfac
     return NO;
 }
 
+static BOOL SCIShouldHideStoryAds(void) {
+    return [SCIUtils getBoolPref:@"general_hide_ads_stories"];
+}
+
+static void SCIStoryAdBlockingLogClassAvailability(void) {
+    for (NSString *className in @[
+        @"IGStoryAdPool",
+        @"IGStoryAdsManager",
+        @"IGStoryAdsFetcher",
+        @"IGStoryAdsResponseParser",
+        @"IGStoryAdsOptInTextView"
+    ]) {
+        SCILog(@"Ads", @"Story ad hook target %@ %@", className, NSClassFromString(className) ? @"available" : @"missing");
+    }
+}
+
 static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
     BOOL isFeed = surface == SCIFeedFilterSurfaceFeed;
     NSArray *originalObjs = list;
@@ -228,71 +244,6 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
     return %orig;
 }
 %end
-%hook IGStoryAdPool
-- (id)initWithUserSession:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_stories"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
-
-        return nil;
-    }
-
-    return %orig;
-}
-%end
-%hook IGStoryAdsManager
-- (id)initWithUserSession:(id)arg1 storyViewerLoggingContext:(id)arg2 storyFullscreenSectionLoggingContext:(id)arg3 viewController:(id)arg4 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_stories"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
-
-        return nil;
-    }
-
-    return %orig;
-}
-%end
-%hook IGStoryAdsFetcher
-- (id)initWithUserSession:(id)arg1 delegate:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_stories"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
-
-        return nil;
-    }
-
-    return %orig;
-}
-%end
-// IG 148.0
-%hook IGStoryAdsResponseParser
-- (id)parsedObjectFromResponse:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_stories"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
-
-        return nil;
-    }
-
-    return %orig;
-}
-- (id)initWithReelStore:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_stories"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
-
-        return nil;
-    }
-
-    return %orig;
-}
-%end
-%hook IGStoryAdsOptInTextView
-- (id)initWithBrandedContentStyledString:(id)arg1 sponsoredPostLabel:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_stories"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
-
-        return nil;
-    }
-
-    return %orig;
-}
-%end
 %hook IGSundialAdsResponseParser
 - (id)parsedObjectFromResponse:(id)arg1 {
     if ([SCIUtils getBoolPref:@"general_hide_ads_reels"]) {
@@ -372,7 +323,75 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %end
 
-%group SCIFeedFilteringDeferredHooks
+%group SCIStoryAdBlockingHooks
+
+%hook IGStoryAdPool
+- (id)initWithUserSession:(id)arg1 {
+    if (SCIShouldHideStoryAds()) {
+        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdPool initWithUserSession:");
+        return nil;
+    }
+
+    return %orig;
+}
+%end
+
+%hook IGStoryAdsManager
+- (id)initWithUserSession:(id)arg1 storyViewerLoggingContext:(id)arg2 storyFullscreenSectionLoggingContext:(id)arg3 viewController:(id)arg4 {
+    if (SCIShouldHideStoryAds()) {
+        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsManager initWithUserSession:storyViewerLoggingContext:storyFullscreenSectionLoggingContext:viewController:");
+        return nil;
+    }
+
+    return %orig;
+}
+%end
+
+%hook IGStoryAdsFetcher
+- (id)initWithUserSession:(id)arg1 delegate:(id)arg2 {
+    if (SCIShouldHideStoryAds()) {
+        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsFetcher initWithUserSession:delegate:");
+        return nil;
+    }
+
+    return %orig;
+}
+%end
+
+// IG 148.0
+%hook IGStoryAdsResponseParser
+- (id)parsedObjectFromResponse:(id)arg1 {
+    if (SCIShouldHideStoryAds()) {
+        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsResponseParser parsedObjectFromResponse:");
+        return nil;
+    }
+
+    return %orig;
+}
+- (id)initWithReelStore:(id)arg1 {
+    if (SCIShouldHideStoryAds()) {
+        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsResponseParser initWithReelStore:");
+        return nil;
+    }
+
+    return %orig;
+}
+%end
+
+%hook IGStoryAdsOptInTextView
+- (id)initWithBrandedContentStyledString:(id)arg1 sponsoredPostLabel:(id)arg2 {
+    if (SCIShouldHideStoryAds()) {
+        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsOptInTextView initWithBrandedContentStyledString:sponsoredPostLabel:");
+        return nil;
+    }
+
+    return %orig;
+}
+%end
+
+%end
+
+%group SCIFeedEndDemarcatorHooks
 
 // Hide "suggested for you" text at end of feed
 %hook IGEndOfFeedDemarcatorCellTopOfFeed
@@ -439,12 +458,12 @@ extern "C" void SCIInstallFeedFilteringHooksIfEnabled(void) {
     static dispatch_once_t deferredOnceToken;
     dispatch_once(&deferredOnceToken, ^{
         %init(SCIFeedFilteringDeferredHooks);
+        %init(SCIFeedEndDemarcatorHooks);
     });
 }
 
 extern "C" void SCIInstallAdBlockingEarlyHooksIfEnabled(void) {
     if (![SCIUtils getBoolPref:@"general_hide_ads_feed"] &&
-        ![SCIUtils getBoolPref:@"general_hide_ads_stories"] &&
         ![SCIUtils getBoolPref:@"general_hide_ads_reels"] &&
         ![SCIUtils getBoolPref:@"general_hide_ads_explore"] &&
         ![SCIUtils getBoolPref:@"feed_hide_comment_shopping"] &&
@@ -455,5 +474,18 @@ extern "C" void SCIInstallAdBlockingEarlyHooksIfEnabled(void) {
     static dispatch_once_t earlyAdsOnceToken;
     dispatch_once(&earlyAdsOnceToken, ^{
         %init(SCIAdBlockingEarlyHooks);
+    });
+}
+
+extern "C" void SCIInstallStoryAdBlockingHooksIfEnabled(void) {
+    if (!SCIShouldHideStoryAds()) {
+        return;
+    }
+
+    SCIStoryAdBlockingLogClassAvailability();
+
+    static dispatch_once_t storyAdsOnceToken;
+    dispatch_once(&storyAdsOnceToken, ^{
+        %init(SCIStoryAdBlockingHooks);
     });
 }

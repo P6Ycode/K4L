@@ -1507,11 +1507,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
             UISheetPresentationControllerDetent *expanded = [UISheetPresentationControllerDetent
                 customDetentWithIdentifier:@"scinsta.gallery.filter.expanded"
                                    resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                CGFloat maximum = showsUsernameSection ? 515.0 : 445.0;
-                CGFloat minimum = showsUsernameSection ? 470.0 : 405.0;
-                CGFloat fraction = showsUsernameSection ? 0.72 : 0.62;
+                CGFloat maximum = showsUsernameSection ? 635.0 : 555.0;
+                CGFloat minimum = showsUsernameSection ? 570.0 : 505.0;
+                CGFloat fraction = showsUsernameSection ? 0.92 : 0.88;
                 CGFloat target = MIN(maximum, context.maximumDetentValue * fraction);
-                return MAX(minimum, target);
+                return MIN(context.maximumDetentValue, MAX(minimum, target));
             }];
             sheet.detents = @[expanded];
             sheet.selectedDetentIdentifier = expanded.identifier;
