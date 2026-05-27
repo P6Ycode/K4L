@@ -378,16 +378,28 @@ static CGFloat SCIProfileLegacyRightClusterMinX(UIView *container) {
     return minX == CGFLOAT_MAX ? 0.0 : minX;
 }
 
-static void SCIProfileLayoutLegacyActionButton(SCIProfileHeaderActionButton *button, UIView *container, UIView *moreButton) {
+static CGRect SCIProfileLegacyActionButtonFrame(UIView *container, UIView *moreButton) {
     CGFloat y = CGRectGetMinY(moreButton.frame);
     CGFloat rightClusterMinX = SCIProfileLegacyRightClusterMinX(container);
     CGFloat x = rightClusterMinX - kSCIProfileActionButtonWidth - kSCIProfileLegacyActionButtonRightGap;
     if (x < 0.0) x = CGRectGetMinX(moreButton.frame) - kSCIProfileActionButtonWidth - kSCIProfileLegacyActionButtonRightGap;
     if (x < 0.0) x = 0.0;
-    button.frame = CGRectMake(floor(x),
-                              floor(y),
-                              kSCIProfileActionButtonWidth,
-                              kSCIProfileActionButtonHeight);
+    return CGRectMake(floor(x),
+                      floor(y),
+                      kSCIProfileActionButtonWidth,
+                      kSCIProfileActionButtonHeight);
+}
+
+static BOOL SCIProfileActionFrameMatches(SCIProfileHeaderActionButton *button, CGRect frame) {
+    if (![button isKindOfClass:[SCIProfileHeaderActionButton class]] || button.hidden || !button.superview) return NO;
+    return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
+           ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
+           ABS(CGRectGetWidth(button.frame) - CGRectGetWidth(frame)) < 0.5 &&
+           ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
+}
+
+static void SCIProfileLayoutLegacyActionButton(SCIProfileHeaderActionButton *button, UIView *container, UIView *moreButton) {
+    button.frame = SCIProfileLegacyActionButtonFrame(container, moreButton);
 }
 
 static void SCIProfileInstallLegacyActionButtonIfNeeded(UIView *headerView) {
@@ -400,6 +412,8 @@ static void SCIProfileInstallLegacyActionButtonIfNeeded(UIView *headerView) {
 
     SCIProfileHeaderActionButton *button = SCIProfileExistingLegacyActionButton(container);
     if (!button && SCIProfileViewTreeContainsActionButton(headerView)) return;
+    CGRect expectedFrame = SCIProfileLegacyActionButtonFrame(container, moreButton);
+    if (button && button.sourceObject == headerView && SCIProfileActionFrameMatches(button, expectedFrame)) return;
     if (!button) {
         button = SCIProfileBuildHeaderActionButton(headerView);
         [container addSubview:button];

@@ -186,6 +186,14 @@ static CGFloat SCIGetStoriesCustomButtonX(UIView *overlayView, CGFloat size) {
 	return CGRectGetWidth(overlayView.frame) - size - 6.0;
 }
 
+static BOOL SCIStoriesActionFrameMatches(UIButton *button, CGRect frame) {
+	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
+	return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
+	       ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
+	       ABS(CGRectGetWidth(button.frame) - CGRectGetWidth(frame)) < 0.5 &&
+	       ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
+}
+
 static void SCIInstallStoriesActionButton(UIView *overlayView) {
 	if (!overlayView) return;
 
@@ -200,11 +208,6 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		[button removeFromSuperview];
 		return;
 	}
-
-	button = SCIActionButtonWithTag(overlayView, kSCIStoriesActionButtonTag);
-	button.translatesAutoresizingMaskIntoConstraints = YES;
-	SCIConfigureActionButton(button, SCIStoriesActionContext(overlayView));
-	if (button.hidden) return;
 
 	UIView *mediaView = [SCIUtils getIvarForObj:overlayView name:"_mediaView"];
 	UIView *footerContainer = [SCIUtils getIvarForObj:overlayView name:"_footerContainerView"];
@@ -242,7 +245,15 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		}
 	}
 
-	button.frame = CGRectMake(SCIGetStoriesCustomButtonX(overlayView, size), y, size, size);
+	CGRect expectedFrame = CGRectMake(SCIGetStoriesCustomButtonX(overlayView, size), y, size, size);
+	if (SCIStoriesActionFrameMatches(button, expectedFrame)) return;
+
+	button = SCIActionButtonWithTag(overlayView, kSCIStoriesActionButtonTag);
+	button.translatesAutoresizingMaskIntoConstraints = YES;
+	SCIConfigureActionButton(button, SCIStoriesActionContext(overlayView));
+	if (button.hidden) return;
+
+	button.frame = expectedFrame;
 	SCIApplyButtonStyle(button, SCIActionButtonSourceStories);
 }
 

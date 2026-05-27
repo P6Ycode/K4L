@@ -53,6 +53,24 @@ static SCIActionButtonContext *SCIMessagesActionContext(UIViewController *contro
 	return context;
 }
 
+static BOOL SCIDirectConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
+	return constraint && constraint.active && ABS(constraint.constant - constant) < 0.5;
+}
+
+static BOOL SCIDirectActionButtonLayoutIsCurrent(UIButton *button, CGFloat bottomOffset) {
+	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
+
+	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIDirectActionBottomConstraintAssocKey);
+	NSLayoutConstraint *trailingConstraint = objc_getAssociatedObject(button, kSCIDirectActionTrailingConstraintAssocKey);
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIDirectActionWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIDirectActionHeightConstraintAssocKey);
+
+	return SCIDirectConstraintMatches(trailingConstraint, -10.0) &&
+	       SCIDirectConstraintMatches(bottomConstraint, -bottomOffset) &&
+	       SCIDirectConstraintMatches(widthConstraint, 44.0) &&
+	       SCIDirectConstraintMatches(heightConstraint, 44.0);
+}
+
 static void SCIInstallDirectActionButton(UIViewController *controller) {
 	UIView *overlay = SCIDirectOverlayView(controller);
 	if (!overlay) return;
@@ -63,12 +81,14 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 		return;
 	}
 
+	CGFloat bottomOffset = SCIDirectBottomOffset(controller);
+	if (SCIDirectActionButtonLayoutIsCurrent(button, bottomOffset)) return;
+
 	button = SCIActionButtonWithTag(overlay, kSCIDirectActionButtonTag);
 	SCIConfigureActionButton(button, SCIMessagesActionContext(controller));
 	if (button.hidden) return;
 
 	CGFloat size = 44.0;
-	CGFloat bottomOffset = SCIDirectBottomOffset(controller);
 	button.translatesAutoresizingMaskIntoConstraints = NO;
 
 	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIDirectActionBottomConstraintAssocKey);

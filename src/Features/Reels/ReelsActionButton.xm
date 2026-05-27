@@ -11,6 +11,8 @@ static const void *kSCIReelsActionBottomConstraintAssocKey = &kSCIReelsActionBot
 static const void *kSCIReelsActionCenterXConstraintAssocKey = &kSCIReelsActionCenterXConstraintAssocKey;
 static const void *kSCIReelsActionWidthConstraintAssocKey = &kSCIReelsActionWidthConstraintAssocKey;
 static const void *kSCIReelsActionHeightConstraintAssocKey = &kSCIReelsActionHeightConstraintAssocKey;
+static CGFloat const kSCIReelsActionButtonSize = 44.0;
+static CGFloat const kSCIReelsActionButtonBottomOffset = -5.0;
 
 static UIView *SCIReelsFindSuperviewOfClass(UIView *view, NSString *className) {
 	Class cls = NSClassFromString(className);
@@ -246,6 +248,24 @@ static SCIActionButtonContext *SCIReelsActionContext(UIView *verticalUFIView) {
 	return context;
 }
 
+static BOOL SCIReelsConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
+	return constraint && constraint.active && ABS(constraint.constant - constant) < 0.5;
+}
+
+static BOOL SCIReelsActionButtonLayoutIsCurrent(UIButton *button) {
+	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
+
+	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIReelsActionBottomConstraintAssocKey);
+	NSLayoutConstraint *centerXConstraint = objc_getAssociatedObject(button, kSCIReelsActionCenterXConstraintAssocKey);
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIReelsActionWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIReelsActionHeightConstraintAssocKey);
+
+	return SCIReelsConstraintMatches(bottomConstraint, kSCIReelsActionButtonBottomOffset) &&
+	       centerXConstraint && centerXConstraint.active &&
+	       SCIReelsConstraintMatches(widthConstraint, kSCIReelsActionButtonSize) &&
+	       SCIReelsConstraintMatches(heightConstraint, kSCIReelsActionButtonSize);
+}
+
 void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 	if (!verticalUFIView) return;
 
@@ -255,11 +275,14 @@ void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 		return;
 	}
 
+	if (SCIReelsActionButtonLayoutIsCurrent(button)) {
+		return;
+	}
+
 	button = SCIActionButtonWithTag(verticalUFIView, kSCIReelsActionButtonTag);
 	SCIConfigureActionButton(button, SCIReelsActionContext(verticalUFIView));
 	if (button.hidden) return;
 
-	CGFloat size = 44.0;
 	button.translatesAutoresizingMaskIntoConstraints = NO;
 
 	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIReelsActionBottomConstraintAssocKey);
@@ -268,10 +291,10 @@ void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIReelsActionHeightConstraintAssocKey);
 
 	if (!bottomConstraint || !centerXConstraint || !widthConstraint || !heightConstraint) {
-		bottomConstraint = [button.bottomAnchor constraintEqualToAnchor:verticalUFIView.topAnchor constant:-5.0];
+		bottomConstraint = [button.bottomAnchor constraintEqualToAnchor:verticalUFIView.topAnchor constant:kSCIReelsActionButtonBottomOffset];
 		centerXConstraint = [button.centerXAnchor constraintEqualToAnchor:verticalUFIView.centerXAnchor];
-		widthConstraint = [button.widthAnchor constraintEqualToConstant:size];
-		heightConstraint = [button.heightAnchor constraintEqualToConstant:size];
+		widthConstraint = [button.widthAnchor constraintEqualToConstant:kSCIReelsActionButtonSize];
+		heightConstraint = [button.heightAnchor constraintEqualToConstant:kSCIReelsActionButtonSize];
 		[NSLayoutConstraint activateConstraints:@[bottomConstraint, centerXConstraint, widthConstraint, heightConstraint]];
 
 		objc_setAssociatedObject(button, kSCIReelsActionBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -280,9 +303,9 @@ void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 		objc_setAssociatedObject(button, kSCIReelsActionHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
-	bottomConstraint.constant = -5.0;
-	widthConstraint.constant = size;
-	heightConstraint.constant = size;
+	bottomConstraint.constant = kSCIReelsActionButtonBottomOffset;
+	widthConstraint.constant = kSCIReelsActionButtonSize;
+	heightConstraint.constant = kSCIReelsActionButtonSize;
 
 	verticalUFIView.clipsToBounds = NO;
 	verticalUFIView.layer.masksToBounds = NO;

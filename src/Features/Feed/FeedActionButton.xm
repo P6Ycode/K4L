@@ -453,6 +453,14 @@ static SCIActionButtonContext *SCIFeedActionContext(UIView *barView) {
 	return context;
 }
 
+static BOOL SCIFeedActionFrameMatches(UIButton *button, CGRect frame) {
+	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
+	return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
+	       ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
+	       ABS(CGRectGetWidth(button.frame) - CGRectGetWidth(frame)) < 0.5 &&
+	       ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
+}
+
 static void SCIInstallFeedActionButton(UIView *barView) {
 	if (!barView) return;
 
@@ -462,11 +470,6 @@ static void SCIInstallFeedActionButton(UIView *barView) {
 		return;
 	}
 
-	button = SCIActionButtonWithTag(barView, kSCIFeedActionButtonTag);
-	button.translatesAutoresizingMaskIntoConstraints = YES;
-	SCIConfigureActionButton(button, SCIFeedActionContext(barView));
-	if (button.hidden) return;
-
 	CGRect anyFrame = SCIFeedAnyButtonFrameFromBarView(barView);
 	UIView *firstRightButton = SCIFeedFirstRightButtonFromBarView(barView);
 	if (!firstRightButton) {
@@ -475,10 +478,18 @@ static void SCIInstallFeedActionButton(UIView *barView) {
 	}
 
 	CGFloat width = CGRectGetWidth(anyFrame) > 0.0 ? CGRectGetWidth(anyFrame) : 40.0;
-	button.frame = CGRectMake(CGRectGetMinX(firstRightButton.frame) - width,
-							  CGRectGetMinY(anyFrame) + 2.0,
-							  width,
-							  CGRectGetHeight(anyFrame));
+	CGRect expectedFrame = CGRectMake(CGRectGetMinX(firstRightButton.frame) - width,
+	                                  CGRectGetMinY(anyFrame) + 2.0,
+	                                  width,
+	                                  CGRectGetHeight(anyFrame));
+	if (SCIFeedActionFrameMatches(button, expectedFrame)) return;
+
+	button = SCIActionButtonWithTag(barView, kSCIFeedActionButtonTag);
+	button.translatesAutoresizingMaskIntoConstraints = YES;
+	SCIConfigureActionButton(button, SCIFeedActionContext(barView));
+	if (button.hidden) return;
+
+	button.frame = expectedFrame;
 	SCIApplyButtonStyle(button, SCIActionButtonSourceFeed);
 }
 
