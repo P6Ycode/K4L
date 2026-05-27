@@ -14,7 +14,7 @@ static NSSet<NSNumber *> *SCICaptureHiddenTags(void) {
     dispatch_once(&onceToken, ^{
         tags = [NSSet setWithArray:@[
             @921341, @921342, @921343, @921344, @921345,
-            @926001, @926002, @1351
+            @926001, @926002
         ]];
     });
     return tags;

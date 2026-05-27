@@ -19,7 +19,13 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable SCIAudioItem *)audioItemFromMediaObject:(nullable id)mediaObject
                                              source:(SCIAudioSource)source;
 
++ (nullable SCIAudioItem *)audioItemFromMediaObject:(nullable id)mediaObject
+                                             source:(SCIAudioSource)source
+                                allowVideoFallback:(BOOL)allowVideoFallback;
+
 + (nullable NSURL *)bestAudioURLFromMediaObject:(nullable id)mediaObject;
+
++ (nullable NSURL *)bestAudioDownloadURLFromMediaObject:(nullable id)mediaObject;
 
 @end
 

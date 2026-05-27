@@ -98,6 +98,11 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 	return _canvas ?: self;
 }
 
+- (void)setUserInteractionEnabled:(BOOL)userInteractionEnabled {
+	[super setUserInteractionEnabled:userInteractionEnabled];
+	_canvas.userInteractionEnabled = userInteractionEnabled;
+}
+
 - (void)applyPref {
 	BOOL enabled = [SCIUtils getBoolPref:@"interface_hide_ui_on_capture"];
 	if (_secureField.secureTextEntry != enabled) {
@@ -133,6 +138,7 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 	// Steal the CanvasView from the text field and pin it edge-to-edge.
 	[canvas removeFromSuperview];
 	canvas.translatesAutoresizingMaskIntoConstraints = NO;
+	canvas.userInteractionEnabled = self.userInteractionEnabled;
 	canvas.clipsToBounds = NO;
 	[self insertSubview:canvas atIndex:0];
 	sciPinEdges(canvas, self);

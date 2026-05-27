@@ -4,6 +4,7 @@
 #import "../Shared/UI/SCIIGAlertPresenter.h"
 #import "../Shared/UI/SCIMediaChrome.h"
 #import "../Shared/UI/SCISwitch.h"
+#import "SCIPreferenceAvailability.h"
 #import "../AssetUtils.h"
 
 static char rowStaticRef[] = "row";
@@ -290,7 +291,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
     cellContentConfig.textProperties.numberOfLines = 0;
     cellContentConfig.secondaryTextProperties.numberOfLines = 0;
     cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByWordWrapping;
-    BOOL rowEnabled = row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES;
+    BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) && SCIPrefIsAvailable(row.defaultsKey);
 
     cellContentConfig.text = row.title;
 
@@ -360,13 +361,15 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
             NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
             if (row.switchValueProvider) {
                 toggle.on = row.switchValueProvider();
+            } else if (!SCIPrefIsAvailable(row.defaultsKey)) {
+                toggle.on = NO;
             } else {
                 id storedValue = [defaults objectForKey:row.defaultsKey];
                 NSNumber *defaultValue = row.userInfo[@"defaultValue"];
                 toggle.on = storedValue ? [defaults boolForKey:row.defaultsKey] : defaultValue.boolValue;
             }
             if (!row.switchValueProvider && row.mutuallyExclusiveDefaultsKey.length) {
-                BOOL otherOn = [defaults boolForKey:row.mutuallyExclusiveDefaultsKey];
+                BOOL otherOn = [SCIUtils getBoolPref:row.mutuallyExclusiveDefaultsKey];
                 toggle.enabled = toggle.isOn || !otherOn;
             }
             toggle.enabled = toggle.enabled && rowEnabled;
@@ -522,7 +525,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     SCISetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
     if (!row) return;
-    BOOL rowEnabled = row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES;
+    BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) && SCIPrefIsAvailable(row.defaultsKey);
     if (!rowEnabled) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         return;
@@ -745,6 +748,10 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 - (void)switchChanged:(UISwitch *)sender {
     SCISetting *row = objc_getAssociatedObject(sender, rowStaticRef);
     if (!row) return;
+    if (!SCIPrefIsAvailable(row.defaultsKey)) {
+        sender.on = NO;
+        return;
+    }
 
     if (row.switchChangeHandler) {
         row.switchChangeHandler(sender.isOn);

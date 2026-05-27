@@ -1,21 +1,21 @@
 #import "SCIInterfaceSettingsProvider.h"
 #import "SCINotificationSettingsProvider.h"
 #import "../SCITopicSettingsSupport.h"
+#import "../SCIPreferenceAvailability.h"
+#import "../SCIPreferences.h"
 #import "../../Utils.h"
 #import "../../Shared/UI/SCIChrome.h"
 
 @implementation SCIInterfaceSettingsProvider
 
 + (SCISetting *)experimentalLiquidGlassSetting {
-    if (!SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
-        return nil;
-    }
+    BOOL available = SCIPrefIsAvailable(kSCIPrefInterfaceLiquidGlass);
     SCISetting *setting = [SCISetting switchCellWithTitle:@"Liquid Glass"
-                                                subtitle:@"Force-enable Liquid Glass UI across Instagram"
-                                             defaultsKey:@"interface_liquid_glass"
+                                                subtitle:available ? @"Force-enable Liquid Glass UI across Instagram" : @"Requires iOS 26 or later"
+                                             defaultsKey:kSCIPrefInterfaceLiquidGlass
                                           requiresRestart:YES];
     setting.icon = SCISettingsIcon(@"warning_filled");
-    setting.userInfo = @{@"deferRestartPrompt": @YES};
+    setting.userInfo = available ? @{@"deferRestartPrompt": @YES} : @{@"deferRestartPrompt": @YES, @"enabled": @NO};
     return SCISettingApplyIconTint(setting, [UIColor systemOrangeColor]);
 }
 
@@ -70,19 +70,24 @@
         ], @"Prevents Instagram follow buttons from using EDR/HDR text in normal layout.")
     ]];
 
-    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+    {
+        BOOL liquidGlassAvailable = SCIPrefIsAvailable(kSCIPrefInterfaceLiquidGlass);
         SCISetting *liquidGlass = [SCISetting switchCellWithTitle:@"Liquid Glass"
-                                                         subtitle:@""
-                                                      defaultsKey:@"interface_liquid_glass"
+                                                         subtitle:liquidGlassAvailable ? @"" : @"Requires iOS 26 or later"
+                                                      defaultsKey:kSCIPrefInterfaceLiquidGlass
                                                   requiresRestart:YES];
         liquidGlass.icon = SCISettingsIcon(@"warning_filled");
         liquidGlass.switchValueProvider = ^BOOL{
-            return [SCIUtils getBoolPref:@"interface_liquid_glass"];
+            return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass];
         };
         liquidGlass.switchChangeHandler = ^(BOOL isOn) {
-            [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"interface_liquid_glass"];
+            if (!SCIPrefIsAvailable(kSCIPrefInterfaceLiquidGlass)) return;
+            [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:kSCIPrefInterfaceLiquidGlass];
             [SCIUtils showRestartConfirmation];
         };
+        if (!liquidGlassAvailable) {
+            liquidGlass.userInfo = @{@"enabled": @NO};
+        }
         [sections addObject:SCITopicSection(@"Liquid Glass", @[
             SCISettingApplyIconTint(liquidGlass, [UIColor systemOrangeColor])
         ], @"Force-enable Liquid Glass UI across Instagram.")];

@@ -3,6 +3,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 #import "TweakSettings.h"
+#import "SCIPreferenceAvailability.h"
 #import "../Utils.h"
 #import "../App/SCICore.h"
 #import "../Shared/UI/SCIIGAlertPresenter.h"
@@ -798,6 +799,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
             [defaults removeObjectForKey:key];
         }
         [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
+            if (!SCIPrefIsAvailable(key)) return;
             [defaults setObject:value forKey:key];
         }];
     }

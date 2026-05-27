@@ -1510,6 +1510,85 @@ static NSString *SCIResolvedBulkUsernameForContext(SCIActionButtonContext *conte
     return nil;
 }
 
+static id SCICheapObjectValueForAudioKey(id object, NSString *key) {
+    if (!object || key.length == 0) return nil;
+    id value = SCIFieldCacheValue(object, key);
+    if (!value) value = SCIObjectForSelector(object, key);
+    if (!value) value = SCIKVCObject(object, key);
+    return [value isKindOfClass:[NSNull class]] ? nil : value;
+}
+
+static BOOL SCICheapAudioValueExists(id object, NSArray<NSString *> *keys) {
+    for (NSString *key in keys) {
+        id value = SCICheapObjectValueForAudioKey(object, key);
+        if (!value) continue;
+        if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] == 0) continue;
+        if ([value isKindOfClass:[NSArray class]] && [(NSArray *)value count] == 0) continue;
+        if ([value isKindOfClass:[NSDictionary class]] && [(NSDictionary *)value count] == 0) continue;
+        return YES;
+    }
+    return NO;
+}
+
+static BOOL SCICheapAudioBoolValue(id object, NSArray<NSString *> *keys) {
+    for (NSString *key in keys) {
+        id value = SCICheapObjectValueForAudioKey(object, key);
+        if ([value respondsToSelector:@selector(boolValue)] && [value boolValue]) return YES;
+    }
+    return NO;
+}
+
+static NSArray *SCIFeedAudioVisibilityCandidates(SCIResolvedMediaEntry *entry, id media) {
+    NSMutableArray *candidates = [NSMutableArray array];
+    for (id candidate in @[media ?: NSNull.null, entry.metadataObject ?: NSNull.null, entry.mediaObject ?: NSNull.null]) {
+        if (candidate == NSNull.null || [candidates containsObject:candidate]) continue;
+        [candidates addObject:candidate];
+    }
+    return candidates;
+}
+
+static BOOL SCIFeedEntryMayHaveDownloadableAudio(SCIResolvedMediaEntry *entry, id media) {
+    static NSArray<NSString *> *metadataKeys = nil;
+    static NSArray<NSString *> *boolKeys = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        metadataKeys = @[
+            @"audio", @"audio_url", @"audioURL", @"audioFileUrl", @"audioFileFastStartUrl", @"audioSrc",
+            @"music", @"music_info", @"musicInfo", @"music_metadata", @"musicMetadata", @"musicAssetInfo",
+            @"audio_asset", @"audioAsset", @"audio_asset_info", @"audioAssetInfo",
+            @"clips_audio", @"clipsAudio", @"clips_metadata", @"clipsMetadata",
+            @"original_audio", @"originalAudio", @"original_audio_info", @"originalAudioInfo",
+            @"original_sound_info", @"originalSoundInfo",
+            @"video_dash_manifest", @"videoDashManifest", @"dashManifest"
+        ];
+        boolKeys = @[@"has_audio", @"hasAudio", @"has_original_audio", @"hasOriginalAudio", @"contains_audio", @"containsAudio"];
+    });
+
+    for (id candidate in SCIFeedAudioVisibilityCandidates(entry, media)) {
+        if (SCICheapAudioValueExists(candidate, metadataKeys) || SCICheapAudioBoolValue(candidate, boolKeys)) {
+            return YES;
+        }
+    }
+
+    return entry.videoURL != nil;
+}
+
+static BOOL SCIFeedEntryMayHaveDirectAudioURL(SCIResolvedMediaEntry *entry, id media) {
+    static NSArray<NSString *> *directKeys = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        directKeys = @[
+            @"audio", @"audio_url", @"audioURL", @"audioFileUrl", @"audioFileFastStartUrl", @"audioSrc",
+            @"video_dash_manifest", @"videoDashManifest", @"dashManifest"
+        ];
+    });
+
+    for (id candidate in SCIFeedAudioVisibilityCandidates(entry, media)) {
+        if (SCICheapAudioValueExists(candidate, directKeys)) return YES;
+    }
+    return NO;
+}
+
 static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 							   SCIActionButtonConfiguration *configuration,
 							   NSString *identifier,
@@ -1553,9 +1632,18 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 	}
     if ([identifier isEqualToString:kSCIActionDownloadAudio] ||
         [identifier isEqualToString:kSCIActionDownloadAudioShare] ||
-        [identifier isEqualToString:kSCIActionDownloadAudioGallery] ||
-        [identifier isEqualToString:kSCIActionPlayAudio] ||
+        [identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
+        if (context.source == SCIActionButtonSourceFeed) {
+            return SCIFeedEntryMayHaveDownloadableAudio(currentEntry, media);
+        }
+        id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+        return [SCIAudioDownloadCoordinator bestAudioDownloadURLFromMediaObject:audioMedia] != nil;
+    }
+    if ([identifier isEqualToString:kSCIActionPlayAudio] ||
         [identifier isEqualToString:kSCIActionCopyAudioURL]) {
+        if (context.source == SCIActionButtonSourceFeed) {
+            return SCIFeedEntryMayHaveDirectAudioURL(currentEntry, media);
+        }
         id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
         return [SCIAudioDownloadCoordinator bestAudioURLFromMediaObject:audioMedia] != nil;
     }
@@ -1785,12 +1873,16 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 
     if ([identifier isEqualToString:kSCIActionDownloadAudio] ||
         [identifier isEqualToString:kSCIActionDownloadAudioShare] ||
-        [identifier isEqualToString:kSCIActionDownloadAudioGallery] ||
-        [identifier isEqualToString:kSCIActionPlayAudio] ||
-        [identifier isEqualToString:kSCIActionCopyAudioURL]) {
+        [identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
         id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
         SCIAudioItem *audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
-                                                                                 source:SCIAudioSourceForActionSource(context.source)];
+                                                                                 source:SCIAudioSourceForActionSource(context.source)
+                                                                    allowVideoFallback:YES];
+        if (!audioItem && media && media != audioMedia) {
+            audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:media
+                                                                       source:SCIAudioSourceForActionSource(context.source)
+                                                          allowVideoFallback:YES];
+        }
         if (!audioItem) {
             SCINotify(identifier, @"No audio available", nil, @"error_filled", SCINotificationToneError);
             return YES;
@@ -1801,13 +1893,35 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
         SCIAudioAction audioAction = SCIAudioActionConvertAndShare;
         if ([identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
             audioAction = SCIAudioActionConvertAndSaveToGallery;
-        } else if ([identifier isEqualToString:kSCIActionPlayAudio]) {
-            audioAction = SCIAudioActionPlay;
-        } else if ([identifier isEqualToString:kSCIActionCopyAudioURL]) {
-            audioAction = SCIAudioActionCopyURL;
         } else if ([identifier isEqualToString:kSCIActionDownloadAudio]) {
             audioAction = SCIAudioActionShare;
         }
+        [SCIAudioDownloadCoordinator performAction:audioAction
+                                             item:audioItem
+                                        presenter:SCIActionContextPresenter(context)
+                                       sourceView:SCIActionContextAnchorView(context)
+                                         metadata:meta
+                           notificationIdentifier:identifier];
+        return YES;
+    }
+
+    if ([identifier isEqualToString:kSCIActionPlayAudio] ||
+        [identifier isEqualToString:kSCIActionCopyAudioURL]) {
+        id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+        SCIAudioItem *audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
+                                                                                 source:SCIAudioSourceForActionSource(context.source)];
+        if (!audioItem && media && media != audioMedia) {
+            audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:media
+                                                                       source:SCIAudioSourceForActionSource(context.source)];
+        }
+        if (!audioItem) {
+            SCINotify(identifier, @"No audio available", nil, @"error_filled", SCINotificationToneError);
+            return YES;
+        }
+        if (audioItem.artist.length == 0) audioItem.artist = username;
+        if (audioItem.sourceURLString.length == 0) audioItem.sourceURLString = audioItem.url.absoluteString;
+
+        SCIAudioAction audioAction = [identifier isEqualToString:kSCIActionPlayAudio] ? SCIAudioActionPlay : SCIAudioActionCopyURL;
         [SCIAudioDownloadCoordinator performAction:audioAction
                                              item:audioItem
                                         presenter:SCIActionContextPresenter(context)

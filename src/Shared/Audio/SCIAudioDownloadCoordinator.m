@@ -34,6 +34,23 @@ static id SCIAudioKVCObject(id target, NSString *key) {
     }
 }
 
+static id SCIAudioFieldCacheValue(id object, NSString *key) {
+    if (!object || key.length == 0) return nil;
+    Ivar fieldCacheIvar = NULL;
+    for (Class cls = [object class]; cls && !fieldCacheIvar; cls = class_getSuperclass(cls)) {
+        fieldCacheIvar = class_getInstanceVariable(cls, "_fieldCache");
+    }
+    if (!fieldCacheIvar) return nil;
+    id fieldCache = nil;
+    @try {
+        fieldCache = object_getIvar(object, fieldCacheIvar);
+    } @catch (__unused NSException *exception) {
+        fieldCache = nil;
+    }
+    if (![fieldCache isKindOfClass:NSDictionary.class]) return nil;
+    return ((NSDictionary *)fieldCache)[key];
+}
+
 static id SCIAudioIvarValue(id target, const char *name) {
     if (!target || !name) return nil;
     @try {
@@ -84,6 +101,43 @@ static NSURL *SCIAudioURLFromValue(id value) {
     return url;
 }
 
+static NSURL *SCIAudioURLFromCollectionValue(id collection) {
+    if (!collection) return nil;
+    if ([collection isKindOfClass:NSURL.class] || [collection isKindOfClass:NSString.class]) {
+        return SCIAudioURLFromValue(collection);
+    }
+
+    NSArray *items = nil;
+    if ([collection isKindOfClass:NSArray.class]) {
+        items = collection;
+    } else if ([collection isKindOfClass:NSSet.class]) {
+        items = [(NSSet *)collection allObjects];
+    } else if ([collection isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dict = collection;
+        NSURL *direct = SCIAudioURLFromValue(dict[@"url"] ?: dict[@"src"] ?: dict[@"uri"]);
+        if (direct) return direct;
+        id candidates = dict[@"candidates"] ?: dict[@"items"] ?: dict[@"urls"];
+        if ([candidates isKindOfClass:NSArray.class] || [candidates isKindOfClass:NSSet.class]) {
+            return SCIAudioURLFromCollectionValue(candidates);
+        }
+        return nil;
+    }
+
+    for (id item in items ?: @[]) {
+        NSURL *url = nil;
+        if ([item isKindOfClass:NSDictionary.class]) {
+            NSDictionary *dict = item;
+            url = SCIAudioURLFromValue(dict[@"url"] ?: dict[@"src"] ?: dict[@"uri"]);
+        } else {
+            url = SCIAudioURLFromValue(SCIAudioObjectForSelector(item, @"url") ?: SCIAudioKVCObject(item, @"url"));
+            if (!url) url = SCIAudioURLFromValue(SCIAudioObjectForSelector(item, @"urlString") ?: SCIAudioKVCObject(item, @"urlString"));
+            if (!url) url = SCIAudioURLFromValue(item);
+        }
+        if (url) return url;
+    }
+    return nil;
+}
+
 static NSURL *SCIAudioURLForNames(id object, NSArray<NSString *> *names) {
     for (NSString *name in names) {
         NSURL *url = SCIAudioURLFromValue(SCIAudioObjectForSelector(object, name));
@@ -91,6 +145,231 @@ static NSURL *SCIAudioURLForNames(id object, NSArray<NSString *> *names) {
         if (url) return url;
     }
     return nil;
+}
+
+static NSURL *SCIAudioCollectionURLForNames(id object, NSArray<NSString *> *names) {
+    for (NSString *name in names) {
+        NSURL *url = SCIAudioURLFromCollectionValue(SCIAudioObjectForSelector(object, name));
+        if (!url) url = SCIAudioURLFromCollectionValue(SCIAudioKVCObject(object, name));
+        if (url) return url;
+    }
+    return nil;
+}
+
+static NSString *SCIAudioManifestString(id value) {
+    if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 10) return value;
+    if ([value isKindOfClass:NSData.class] && [(NSData *)value length] > 10) {
+        NSString *string = [[NSString alloc] initWithData:value encoding:NSUTF8StringEncoding];
+        return string.length > 10 ? string : nil;
+    }
+    return nil;
+}
+
+static NSURL *SCIAudioURLFromDashManifest(NSString *manifest) {
+    NSArray<SCIDashRepresentation *> *representations = [SCIDashParser parseManifest:manifest ?: @""];
+    SCIDashRepresentation *best = nil;
+    for (SCIDashRepresentation *rep in representations) {
+        if (![rep.contentType.lowercaseString containsString:@"audio"] || !rep.url) continue;
+        if (!best || rep.bandwidth > best.bandwidth) best = rep;
+    }
+    return best.url;
+}
+
+static NSURL *SCIAudioDashAudioURLFromObject(id object) {
+    for (NSString *name in @[@"dashManifestData", @"videoDashManifest", @"dashManifest", @"audioDashManifest"]) {
+        NSString *manifest = SCIAudioManifestString(SCIAudioObjectForSelector(object, name));
+        if (!manifest) manifest = SCIAudioManifestString(SCIAudioKVCObject(object, name));
+        NSURL *url = SCIAudioURLFromDashManifest(manifest);
+        if (url) return url;
+    }
+
+    for (NSString *key in @[@"dash_manifest", @"video_dash_manifest", @"audio_dash_manifest"]) {
+        NSURL *url = SCIAudioURLFromDashManifest(SCIAudioManifestString(SCIAudioFieldCacheValue(object, key)));
+        if (url) return url;
+    }
+
+    id ivarValue = SCIAudioIvarValue(object, "_dashManifestData");
+    return SCIAudioURLFromDashManifest(SCIAudioManifestString(ivarValue));
+}
+
+static BOOL SCIAudioObjectLooksAudioLike(id object) {
+    if (!object) return NO;
+    NSString *className = NSStringFromClass([object class]);
+    return [className containsString:@"Audio"] ||
+           [className containsString:@"Music"] ||
+           [className containsString:@"Sound"] ||
+           [className containsString:@"Track"];
+}
+
+static BOOL SCIAudioKeyLooksAudioLike(NSString *key) {
+    NSString *lower = key.lowercaseString;
+    return [lower containsString:@"audio"] ||
+           [lower containsString:@"music"] ||
+           [lower containsString:@"sound"] ||
+           [lower containsString:@"track"] ||
+           [lower containsString:@"dash"] ||
+           [lower containsString:@"manifest"];
+}
+
+static BOOL SCIAudioKeyLooksGenericURLLike(NSString *key) {
+    NSString *lower = key.lowercaseString;
+    return [lower containsString:@"url"] ||
+           [lower containsString:@"uri"] ||
+           [lower containsString:@"download"] ||
+           [lower containsString:@"progressive"];
+}
+
+static BOOL SCIAudioDictionaryLooksAudioLike(NSDictionary *dict) {
+    for (id key in dict.allKeys) {
+        if ([key isKindOfClass:NSString.class] && SCIAudioKeyLooksAudioLike((NSString *)key)) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static BOOL SCIAudioBoolValue(id value) {
+    if (!value) return NO;
+    if ([value respondsToSelector:@selector(boolValue)]) return [value boolValue];
+    return NO;
+}
+
+static NSURL *SCIAudioBestVideoURLFromVersions(id versions) {
+    NSArray *items = nil;
+    if ([versions isKindOfClass:NSArray.class]) {
+        items = versions;
+    } else if ([versions isKindOfClass:NSDictionary.class]) {
+        id candidates = ((NSDictionary *)versions)[@"candidates"] ?: ((NSDictionary *)versions)[@"items"];
+        if ([candidates isKindOfClass:NSArray.class]) items = candidates;
+    }
+
+    NSURL *bestURL = nil;
+    NSInteger bestArea = -1;
+    for (id item in items ?: @[]) {
+        id urlValue = nil;
+        NSInteger width = 0;
+        NSInteger height = 0;
+        if ([item isKindOfClass:NSDictionary.class]) {
+            NSDictionary *dict = item;
+            urlValue = dict[@"url"] ?: dict[@"src"];
+            width = [dict[@"width"] integerValue];
+            height = [dict[@"height"] integerValue];
+        } else {
+            urlValue = SCIAudioObjectForSelector(item, @"url") ?: SCIAudioKVCObject(item, @"url");
+            id widthValue = SCIAudioObjectForSelector(item, @"width") ?: SCIAudioKVCObject(item, @"width");
+            id heightValue = SCIAudioObjectForSelector(item, @"height") ?: SCIAudioKVCObject(item, @"height");
+            width = [widthValue integerValue];
+            height = [heightValue integerValue];
+        }
+        NSURL *url = SCIAudioURLFromValue(urlValue);
+        if (!url) continue;
+        NSInteger area = width * height;
+        if (!bestURL || area > bestArea) {
+            bestURL = url;
+            bestArea = area;
+        }
+    }
+    return bestURL;
+}
+
+static BOOL SCIAudioMediaHasAudio(id object, NSMutableSet<NSValue *> *visited, NSUInteger depth) {
+    if (!object || depth > 4) return NO;
+    NSValue *identity = [NSValue valueWithNonretainedObject:object];
+    if ([visited containsObject:identity]) return NO;
+    [visited addObject:identity];
+
+    if ([object isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dict = object;
+        for (NSString *key in @[@"has_audio", @"hasAudio", @"audio_enabled", @"contains_audio", @"audio_detected", @"is_audio_detected", @"audio_available", @"is_audio_available", @"has_original_audio"]) {
+            if (SCIAudioBoolValue(dict[key])) return YES;
+        }
+        for (id value in dict.allValues) {
+            if (SCIAudioMediaHasAudio(value, visited, depth + 1)) return YES;
+        }
+        return NO;
+    }
+    if ([object isKindOfClass:NSArray.class] || [object isKindOfClass:NSSet.class]) {
+        for (id value in object) {
+            if (SCIAudioMediaHasAudio(value, visited, depth + 1)) return YES;
+        }
+        return NO;
+    }
+
+    for (NSString *name in @[@"hasAudio", @"audioEnabled", @"containsAudio", @"isAudioDetected", @"audioDetected", @"isAudioAvailable", @"audioAvailable", @"hasOriginalAudio"]) {
+        id value = SCIAudioObjectForSelector(object, name) ?: SCIAudioKVCObject(object, name);
+        if (SCIAudioBoolValue(value)) return YES;
+    }
+
+    for (NSString *key in @[@"has_audio", @"audio_enabled", @"contains_audio", @"audio_detected", @"is_audio_detected", @"audio_available", @"is_audio_available", @"has_original_audio"]) {
+        if (SCIAudioBoolValue(SCIAudioFieldCacheValue(object, key))) return YES;
+    }
+
+    for (NSString *name in @[@"media", @"item", @"video", @"rawVideo", @"clipsMedia", @"clipsItem", @"post", @"clipsMetadata", @"musicInfo", @"musicMetadata", @"originalAudio", @"originalAudioInfo", @"originalSoundInfo", @"audioTrack"]) {
+        id nested = SCIAudioObjectForSelector(object, name) ?: SCIAudioKVCObject(object, name);
+        if (nested && nested != object && SCIAudioMediaHasAudio(nested, visited, depth + 1)) return YES;
+    }
+    for (NSString *key in @[@"clips_metadata", @"music_info", @"music_metadata", @"original_audio", @"original_audio_info", @"original_sound_info", @"audio", @"audio_track", @"video"]) {
+        id nested = SCIAudioFieldCacheValue(object, key);
+        if (nested && nested != object && SCIAudioMediaHasAudio(nested, visited, depth + 1)) return YES;
+    }
+    return NO;
+}
+
+static NSURL *SCIAudioVideoURLFromObject(id object, NSMutableSet<NSValue *> *visited, NSUInteger depth) {
+    if (!object || depth > 4) return nil;
+    NSValue *identity = [NSValue valueWithNonretainedObject:object];
+    if ([visited containsObject:identity]) return nil;
+    [visited addObject:identity];
+
+    if ([object isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dict = object;
+        NSURL *direct = SCIAudioURLFromValue(dict[@"video_url"] ?: dict[@"videoURL"] ?: dict[@"url"]);
+        if (direct) return direct;
+        NSURL *versionURL = SCIAudioBestVideoURLFromVersions(dict[@"video_versions"] ?: dict[@"videoVersions"]);
+        if (versionURL) return versionURL;
+        for (id value in dict.allValues) {
+            NSURL *url = SCIAudioVideoURLFromObject(value, visited, depth + 1);
+            if (url) return url;
+        }
+        return nil;
+    }
+    if ([object isKindOfClass:NSArray.class] || [object isKindOfClass:NSSet.class]) {
+        for (id value in object) {
+            NSURL *url = SCIAudioVideoURLFromObject(value, visited, depth + 1);
+            if (url) return url;
+        }
+        return nil;
+    }
+
+    NSURL *mediaVideoURL = [SCIUtils getVideoUrlForMedia:object];
+    if (mediaVideoURL) return mediaVideoURL;
+
+    NSURL *direct = SCIAudioURLForNames(object, @[@"videoURL", @"videoUrl", @"playableURL", @"playableUrl", @"progressiveDownloadURL"]);
+    if (direct) return direct;
+
+    NSURL *fieldCacheURL = SCIAudioBestVideoURLFromVersions(SCIAudioFieldCacheValue(object, @"video_versions"));
+    if (fieldCacheURL) return fieldCacheURL;
+
+    for (NSString *name in @[@"media", @"item", @"video", @"rawVideo", @"clipsMedia", @"clipsItem", @"post", @"clipsMetadata"]) {
+        id nested = SCIAudioObjectForSelector(object, name) ?: SCIAudioKVCObject(object, name);
+        if (nested && nested != object) {
+            NSURL *url = SCIAudioVideoURLFromObject(nested, visited, depth + 1);
+            if (url) return url;
+        }
+    }
+    for (NSString *key in @[@"video", @"video_versions", @"clips_metadata"]) {
+        id nested = SCIAudioFieldCacheValue(object, key);
+        if (nested && nested != object) {
+            NSURL *url = SCIAudioVideoURLFromObject(nested, visited, depth + 1);
+            if (url) return url;
+        }
+    }
+    return nil;
+}
+
+static NSURL *SCIAudioFallbackVideoURLFromMediaObject(id mediaObject) {
+    if (!SCIAudioMediaHasAudio(mediaObject, [NSMutableSet set], 0)) return nil;
+    return SCIAudioVideoURLFromObject(mediaObject, [NSMutableSet set], 0);
 }
 
 static BOOL SCIAudioShouldTraverseObject(id object) {
@@ -118,7 +397,7 @@ static BOOL SCIAudioShouldTraverseObject(id object) {
 static NSURL *SCIAudioBestURLFromObject(id mediaObject, NSMutableSet<NSValue *> *visited, NSUInteger depth) {
     if (!mediaObject || depth > 5) return nil;
     if ([mediaObject isKindOfClass:NSURL.class] || [mediaObject isKindOfClass:NSString.class]) {
-        return SCIAudioURLFromValue(mediaObject);
+        return depth == 0 ? SCIAudioURLFromValue(mediaObject) : nil;
     }
 
     NSValue *identity = [NSValue valueWithNonretainedObject:mediaObject];
@@ -127,13 +406,33 @@ static NSURL *SCIAudioBestURLFromObject(id mediaObject, NSMutableSet<NSValue *> 
 
     NSURL *direct = SCIAudioURLForNames(mediaObject, @[
         @"audioFileUrl", @"audioFileURL", @"playableAudioURL", @"audioURL", @"audioUrl",
-        @"progressiveDownloadURL", @"progressiveAudioURL", @"audioSrc", @"mediaUrl", @"mediaURL",
-        @"downloadUrl", @"downloadURL", @"url"
+        @"progressiveDownloadURL", @"progressiveDownloadUrl", @"progressiveAudioURL", @"progressiveAudioUrl",
+        @"_progressiveAudioUrl", @"audioSrc"
     ]);
     if (direct) return direct;
 
+    NSURL *collectionURL = SCIAudioCollectionURLForNames(mediaObject, @[
+        @"_audioUrls", @"audioUrls", @"audioURLs", @"allAudioURLs",
+        @"_allDashAudioURLs", @"allDashAudioURLs", @"sortedAudioURLsBySize"
+    ]);
+    if (collectionURL) return collectionURL;
+
+    NSURL *dashAudioURL = SCIAudioDashAudioURLFromObject(mediaObject);
+    if (dashAudioURL) return dashAudioURL;
+
+    if (SCIAudioObjectLooksAudioLike(mediaObject)) {
+        NSURL *genericAudioURL = SCIAudioURLForNames(mediaObject, @[
+            @"mediaUrl", @"mediaURL", @"downloadUrl", @"downloadURL", @"url"
+        ]);
+        if (genericAudioURL) return genericAudioURL;
+    }
+
     if ([mediaObject isKindOfClass:NSDictionary.class]) {
-        for (id value in [(NSDictionary *)mediaObject allValues]) {
+        NSDictionary *dict = (NSDictionary *)mediaObject;
+        NSURL *direct = SCIAudioURLFromValue(dict[@"audioFileUrl"] ?: dict[@"audioFileURL"] ?: dict[@"playableAudioURL"] ?: dict[@"audioURL"] ?: dict[@"audioUrl"] ?: dict[@"progressiveAudioURL"] ?: dict[@"progressiveAudioUrl"] ?: dict[@"progressiveDownloadURL"] ?: dict[@"progressiveDownloadUrl"]);
+        if (direct) return direct;
+        if (!SCIAudioDictionaryLooksAudioLike(dict)) return nil;
+        for (id value in dict.allValues) {
             NSURL *url = SCIAudioBestURLFromObject(value, visited, depth + 1);
             if (url) return url;
         }
@@ -144,10 +443,19 @@ static NSURL *SCIAudioBestURLFromObject(id mediaObject, NSMutableSet<NSValue *> 
         }
     }
 
-    for (NSString *name in @[@"audio", @"audioAsset", @"music", @"originalAudio", @"clipsAudio", @"sound", @"media", @"item", @"viewModel", @"message", @"messageCellViewModel", @"audioMessageViewModel", @"messageMetadata"]) {
+    for (NSString *name in @[@"audio", @"audioAsset", @"music", @"originalAudio", @"originalAudioInfo", @"clipsAudio", @"sound", @"musicInfo", @"musicMetadata", @"originalSoundInfo", @"audioTrack", @"sundialMusicAsset", @"sundialOriginalAudioAsset", @"videoURLProvider", @"asMusicInfoFragment", @"musicAssetInfo", @"musicConsumptionInfo", @"media", @"item", @"viewModel", @"message", @"messageCellViewModel", @"audioMessageViewModel", @"messageMetadata"]) {
         id nested = SCIAudioObjectForSelector(mediaObject, name) ?: SCIAudioKVCObject(mediaObject, name);
         if (nested && nested != mediaObject) {
-            NSURL *url = SCIAudioBestURLFromObject(nested, visited, depth + 1);
+            NSURL *url = SCIAudioKeyLooksAudioLike(name) ? (SCIAudioURLFromValue(nested) ?: SCIAudioURLFromCollectionValue(nested)) : nil;
+            if (!url) url = SCIAudioBestURLFromObject(nested, visited, depth + 1);
+            if (url) return url;
+        }
+    }
+
+    for (NSString *key in @[@"audio", @"audio_asset", @"music", @"music_info", @"music_metadata", @"music_asset_info", @"audio_asset_info", @"clips_audio", @"clips_metadata", @"original_audio", @"original_audio_info", @"original_sound_info", @"audio_track"]) {
+        id nested = SCIAudioFieldCacheValue(mediaObject, key);
+        if (nested && nested != mediaObject) {
+            NSURL *url = SCIAudioURLFromValue(nested) ?: SCIAudioBestURLFromObject(nested, visited, depth + 1);
             if (url) return url;
         }
     }
@@ -166,7 +474,12 @@ static NSURL *SCIAudioBestURLFromObject(id mediaObject, NSMutableSet<NSValue *> 
                 } @catch (__unused NSException *exception) {
                     value = nil;
                 }
-                NSURL *url = SCIAudioBestURLFromObject(value, visited, depth + 1);
+
+                NSString *ivarName = [NSString stringWithUTF8String:ivar_getName(ivar) ?: ""];
+                BOOL ivarIsAudioURL = SCIAudioKeyLooksAudioLike(ivarName) ||
+                                      (SCIAudioObjectLooksAudioLike(mediaObject) && SCIAudioKeyLooksGenericURLLike(ivarName));
+                NSURL *url = ivarIsAudioURL ? (SCIAudioURLFromValue(value) ?: SCIAudioURLFromCollectionValue(value)) : nil;
+                if (!url) url = SCIAudioBestURLFromObject(value, visited, depth + 1);
                 if (url) {
                     free(ivars);
                     return url;
@@ -294,18 +607,22 @@ static NSString *SCIAudioBasename(SCIAudioItem *item) {
     NSURL *direct = SCIAudioBestURLFromObject(mediaObject, [NSMutableSet set], 0);
     if (direct) return direct;
 
-    NSString *manifest = [SCIDashParser dashManifestForMedia:mediaObject];
-    NSArray<SCIDashRepresentation *> *representations = [SCIDashParser parseManifest:manifest ?: @""];
-    SCIDashRepresentation *best = nil;
-    for (SCIDashRepresentation *rep in representations) {
-        if (![rep.contentType.lowercaseString containsString:@"audio"] || !rep.url) continue;
-        if (!best || rep.bandwidth > best.bandwidth) best = rep;
-    }
-    return best.url;
+    return SCIAudioURLFromDashManifest([SCIDashParser dashManifestForMedia:mediaObject]);
+}
+
++ (NSURL *)bestAudioDownloadURLFromMediaObject:(id)mediaObject {
+    return [self bestAudioURLFromMediaObject:mediaObject] ?: SCIAudioFallbackVideoURLFromMediaObject(mediaObject);
 }
 
 + (SCIAudioItem *)audioItemFromMediaObject:(id)mediaObject source:(SCIAudioSource)source {
+    return [self audioItemFromMediaObject:mediaObject source:source allowVideoFallback:NO];
+}
+
++ (SCIAudioItem *)audioItemFromMediaObject:(id)mediaObject source:(SCIAudioSource)source allowVideoFallback:(BOOL)allowVideoFallback {
     NSURL *url = [self bestAudioURLFromMediaObject:mediaObject];
+    if (!url && allowVideoFallback) {
+        url = SCIAudioFallbackVideoURLFromMediaObject(mediaObject);
+    }
     if (!url) return nil;
     SCIAudioItem *item = [SCIAudioItem itemWithURL:url source:source];
     item.duration = SCIAudioDurationForObject(mediaObject);

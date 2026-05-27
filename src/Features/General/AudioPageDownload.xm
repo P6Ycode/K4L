@@ -15,6 +15,7 @@
 #import "../../AssetUtils.h"
 
 static NSInteger const kSCIAudioPageDownloadButtonTag = 1351;
+static const void *kSCIAudioPageButtonKey = &kSCIAudioPageButtonKey;
 static NSString * const kSCIAudioPageDefaultActionKey = @"general_audio_page_default_action";
 static NSString * const kSCIAudioPageActionShare = @"share";
 static NSString * const kSCIAudioPageActionConvertShare = @"convert_share";
@@ -230,11 +231,21 @@ static UIColor *SCIAudioPageBackgroundColorFromAnchor(UIView *anchor) {
     if (anchor.layer.backgroundColor && CGColorGetAlpha(anchor.layer.backgroundColor) > 0.01) {
         return [UIColor colorWithCGColor:anchor.layer.backgroundColor];
     }
-    /// TODO: fix (use custom colors)
-    if (@available(iOS 13.0, *)) {
-        return UIColor.secondarySystemFillColor;
-    }
-    return [UIColor colorWithWhite:0.0 alpha:0.08];
+    return [SCIUtils SCIColor_InstagramSecondaryBackground];
+}
+
+static void SCIAudioPagePinEdges(UIView *view, UIView *host) {
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [view.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+        [view.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
+        [view.topAnchor constraintEqualToAnchor:host.topAnchor],
+        [view.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
+    ]];
+}
+
+static UIButton *SCIAudioPageButtonForHost(UIView *host) {
+    return objc_getAssociatedObject(host, kSCIAudioPageButtonKey);
 }
 
 static void SCIAudioPageInstallButton(UIView *bar) {
@@ -243,45 +254,62 @@ static void SCIAudioPageInstallButton(UIView *bar) {
         return;
     }
     UIView *anchor = SCIAudioPageButtonAnchor(bar);
-    SCIChromeButton *button = (SCIChromeButton *)[bar viewWithTag:kSCIAudioPageDownloadButtonTag];
-    if (![button isKindOfClass:SCIChromeButton.class] || [button isKindOfClass:SCIActionMenuButton.class]) {
-        if (button) [button removeFromSuperview];
-        button = [[SCIChromeButton alloc] initWithSymbol:@"" pointSize:22.0 diameter:32.0];
-        button.tag = kSCIAudioPageDownloadButtonTag;
-        button.translatesAutoresizingMaskIntoConstraints = YES;
+    UIView *host = [bar viewWithTag:kSCIAudioPageDownloadButtonTag];
+    UIButton *button = [host isKindOfClass:UIView.class] ? SCIAudioPageButtonForHost(host) : nil;
+    if (![button isKindOfClass:UIButton.class] || [button isKindOfClass:SCIChromeButton.class]) {
+        if (host) [host removeFromSuperview];
+        host = [UIView new];
+        host.tag = kSCIAudioPageDownloadButtonTag;
+        host.translatesAutoresizingMaskIntoConstraints = YES;
+        host.clipsToBounds = NO;
+
+        SCIChromeCanvas *canvas = [SCIChromeCanvas new];
+        canvas.userInteractionEnabled = YES;
+        [host addSubview:canvas];
+        SCIAudioPagePinEdges(canvas, host);
+
+        // Keep a native UIButton as the menu source so iOS 26 can morph the
+        // button image with the menu, but put it inside SCIChromeCanvas so
+        // Hide UI on Capture redacts it instead of removing it from screen.
+        button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.showsMenuAsPrimaryAction = NO;
+        button.adjustsImageWhenHighlighted = YES;
         [button addTarget:bar action:@selector(sci_audioPageDownloadTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [bar addSubview:button];
+        [canvas.contentContainer addSubview:button];
+        SCIAudioPagePinEdges(button, canvas.contentContainer);
+        objc_setAssociatedObject(host, kSCIAudioPageButtonKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [bar addSubview:host];
     }
     if (!anchor) {
-        if (CGRectIsEmpty(button.frame)) {
-            button.hidden = YES;
+        if (CGRectIsEmpty(host.frame)) {
+            host.hidden = YES;
         }
         return;
     }
 
     NSString *defaultAction = [SCIUtils getStringPref:kSCIAudioPageDefaultActionKey];
     if (defaultAction.length == 0) defaultAction = kSCIAudioPageActionShare;
-    
+
     BOOL isNone = [defaultAction isEqualToString:@"none"];
     NSString *iconName = isNone ? @"action" : SCIAudioPageIconForAction(defaultAction);
-    
+
     CGFloat side = MAX(28.0, CGRectGetHeight(anchor.frame));
-    CGFloat iconPointSize = MAX(16.0, MIN(22.0, side - 10.0));
-    
-    [button setIconResource:iconName pointSize:iconPointSize];
-    button.iconTint = UIColor.labelColor;
+
+    UIImage *icon = [SCIAssetUtils instagramIconNamed:iconName pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+    [button setImage:icon forState:UIControlStateNormal];
     button.tintColor = UIColor.labelColor;
-    button.iconView.tintColor = UIColor.labelColor;
-    button.bubbleColor = SCIAudioPageBackgroundColorFromAnchor(anchor);
+    button.backgroundColor = SCIAudioPageBackgroundColorFromAnchor(anchor);
+    button.layer.cornerRadius = side / 2.0;
+    button.clipsToBounds = YES;
     if (!button.menu) {
         button.menu = SCIAudioPageMenuForButton(button);
     }
     button.showsMenuAsPrimaryAction = isNone;
-    
-    button.frame = CGRectMake(CGRectGetMinX(anchor.frame) - side - 8.0, CGRectGetMidY(anchor.frame) - side / 2.0, side, side);
+
+    host.frame = CGRectMake(CGRectGetMinX(anchor.frame) - side - 8.0, CGRectGetMidY(anchor.frame) - side / 2.0, side, side);
     button.hidden = NO;
-    [bar bringSubviewToFront:button];
+    host.hidden = NO;
+    [bar bringSubviewToFront:host];
 }
 
 %group SCIAudioPageDownloadHooks
@@ -296,6 +324,21 @@ static void SCIAudioPageInstallButton(UIView *bar) {
 %hook _TtC16IGAudioPageSwift26IGAudioPageHeaderActionBar
 - (void)layoutSubviews {
     %orig;
+    // Only install/reposition if the button doesn't exist yet or the anchor moved.
+    // Avoid touching the button mid-animation (menu morph) which breaks Liquid Glass.
+    UIView *existing = [(UIView *)self viewWithTag:kSCIAudioPageDownloadButtonTag];
+    if ([existing isKindOfClass:UIView.class] && !existing.hidden && !CGRectIsEmpty(existing.frame)) {
+        UIView *anchor = SCIAudioPageButtonAnchor((UIView *)self);
+        if (anchor) {
+            CGFloat side = MAX(28.0, CGRectGetHeight(anchor.frame));
+            CGRect expected = CGRectMake(CGRectGetMinX(anchor.frame) - side - 8.0,
+                                        CGRectGetMidY(anchor.frame) - side / 2.0,
+                                        side, side);
+            if (CGRectEqualToRect(existing.frame, expected)) {
+                return; // Nothing changed, don't touch the button.
+            }
+        }
+    }
     SCIAudioPageInstallButton((UIView *)self);
 }
 %end

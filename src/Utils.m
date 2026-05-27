@@ -6,6 +6,7 @@
 #import "Shared/MediaPreview/SCIMediaCacheManager.h"
 #import "Shared/Gallery/SCIGalleryPaths.h"
 #import "Shared/UI/SCIIGAlertPresenter.h"
+#import "Settings/SCIPreferenceAvailability.h"
 #import "Settings/SCIPreferences.h"
 
 static NSString *SCITrimmedLogBody(NSString *body) {
@@ -486,6 +487,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 + (BOOL)getBoolPref:(NSString *)key {
     if (![key length]) return NO;
+    if (!SCIPrefIsAvailable(key)) return NO;
     id value = SCIPrefValueWithMasterOverlay(key);
     if ([value respondsToSelector:@selector(boolValue)]) return [value boolValue];
     return NO;
