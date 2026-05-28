@@ -9,7 +9,8 @@ typedef NS_ENUM(NSInteger, SCIActionButtonSource) {
 	SCIActionButtonSourceReels = 2,
 	SCIActionButtonSourceStories = 3,
 	SCIActionButtonSourceDirect = 4,
-    SCIActionButtonSourceProfile = 5
+    SCIActionButtonSourceProfile = 5,
+    SCIActionButtonSourceInstants = 6
 };
 
 FOUNDATION_EXPORT NSString * const kSCIActionNone;

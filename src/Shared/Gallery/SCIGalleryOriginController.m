@@ -236,7 +236,32 @@ static NSString *SCIGalleryMediaURLStringFromMetadata(SCIGallerySaveMetadata *me
 + (void)populateMetadata:(SCIGallerySaveMetadata *)metadata fromMedia:(id)media {
     if (!metadata || !media) return;
 
+    NSString *explicitUsername = SCIGalleryStringForSelector(media, @"sourceUsername");
+    if (explicitUsername.length > 0) {
+        metadata.sourceUsername = explicitUsername;
+        if (metadata.sourceProfileURLString.length == 0) {
+            metadata.sourceProfileURLString = SCIGalleryProfileURLStringForUsername(explicitUsername);
+        }
+    }
+
+    NSString *explicitUserPK = SCIGalleryStringForSelector(media, @"sourceUserPK");
+    if (explicitUserPK.length > 0) metadata.sourceUserPK = explicitUserPK;
+
+    NSString *explicitMediaPK = SCIGalleryStringForSelector(media, @"sourceMediaPK");
+    if (explicitMediaPK.length > 0) metadata.sourceMediaPK = explicitMediaPK;
+
+    NSString *explicitMediaURL = SCIGalleryStringForSelector(media, @"sourceMediaURLString");
+    if (explicitMediaURL.length > 0) metadata.sourceMediaURLString = explicitMediaURL;
+
+    id explicitPostedDate = SCIObjectForSelector(media, @"importPostedDate") ?: SCIKVCObject(media, @"importPostedDate");
+    NSDate *postedDateOverride = [explicitPostedDate isKindOfClass:NSDate.class] ? (NSDate *)explicitPostedDate : SCIGalleryDateFromTimestampValue(explicitPostedDate);
+    if (postedDateOverride) metadata.importPostedDate = postedDateOverride;
+
+    id backingMedia = SCIObjectForSelector(media, @"backingMedia") ?: SCIKVCObject(media, @"backingMedia");
+    if (backingMedia) media = backingMedia;
+
     NSString *username = SCIUsernameFromMediaObject(media);
+    if (username.length == 0) username = explicitUsername;
     id user = SCIGalleryUserFromMedia(media);
     [self populateProfileMetadata:metadata username:username user:user];
 

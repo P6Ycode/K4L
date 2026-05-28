@@ -59,35 +59,7 @@ inject_ffmpeg_frameworks() {
     rm -rf "$temp_dir"
 }
 
-inject_ffmpeg_bundle_into_deb() {
-    local base_deb="$1"
-    local temp_dir
-    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/scinsta-ffmpeg-deb.XXXXXX")"
 
-    dpkg-deb -R "$base_deb" "$temp_dir"
-
-    local dylib_dir
-    dylib_dir="$(find "$temp_dir" -name "SCInsta.dylib" -exec dirname {} \; | head -n 1)"
-    if [ -z "$dylib_dir" ]; then
-        rm -rf "$temp_dir"
-        echo -e '\033[1m\033[0;31mCould not locate SCInsta.dylib inside package payload.\033[0m'
-        exit 1
-    fi
-
-    local prefix=""
-    if [[ "$dylib_dir" == *"/var/jb/"* ]]; then
-        prefix="var/jb/"
-    fi
-
-    local bundle_dir="$temp_dir/${prefix}Library/MobileSubstrate/DynamicLibraries/FFmpegKit"
-    mkdir -p "$bundle_dir"
-    for framework in "${FFMPEG_FRAMEWORKS[@]}"; do
-        ditto "$framework" "$bundle_dir/$(basename "$framework")"
-    done
-
-    dpkg-deb -b "$temp_dir" "$base_deb" >/dev/null
-    rm -rf "$temp_dir"
-}
 
 ensure_flexing_submodule() {
     if [ -z "$(ls -A modules/FLEXing 2>/dev/null)" ]; then
@@ -470,16 +442,6 @@ then
     make package
 
     ensure_ffmpeg_frameworks
-    echo -e '\033[1m\033[32mInjecting FFmpeg frameworks bundle into .deb...\033[0m'
-    (
-        cd packages
-        base_deb="$(ls -t *.deb | head -n 1)"
-        if [ -z "$base_deb" ]; then
-            echo -e '\033[1m\033[0;31mNo .deb package found in packages/.\033[0m'
-            exit 1
-        fi
-        inject_ffmpeg_bundle_into_deb "$base_deb"
-    )
 
     echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
 
@@ -496,16 +458,6 @@ then
     make package
 
     ensure_ffmpeg_frameworks
-    echo -e '\033[1m\033[32mInjecting FFmpeg frameworks bundle into .deb...\033[0m'
-    (
-        cd packages
-        base_deb="$(ls -t *.deb | head -n 1)"
-        if [ -z "$base_deb" ]; then
-            echo -e '\033[1m\033[0;31mNo .deb package found in packages/.\033[0m'
-            exit 1
-        fi
-        inject_ffmpeg_bundle_into_deb "$base_deb"
-    )
 
     echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
 

@@ -3,9 +3,9 @@
 
 #import "../../Utils.h"
 
-static NSString * const kSCIQuickSnapDisableCreationPref = @"msgs_disable_instants_creation";
-static NSString * const kSCIQuickSnapConfirmCapturePref = @"msgs_confirm_instants_capture";
-static NSString * const kSCIQuickSnapSkipCameraAfterViewingPref = @"msgs_skip_instants_camera_after_viewing";
+static NSString * const kSCIQuickSnapDisableCreationPref = @"instants_disable_creation";
+static NSString * const kSCIQuickSnapConfirmCapturePref = @"instants_confirm_capture";
+static NSString * const kSCIQuickSnapSkipCameraAfterViewingPref = @"instants_skip_camera_after_viewing";
 
 typedef void (*SCIQuickSnapVoidIMP)(id, SEL);
 typedef void (*SCIQuickSnapVoidOneArgIMP)(id, SEL, id);

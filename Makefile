@@ -12,7 +12,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = SCInsta
 
 $(TWEAK_NAME)_FILES = $(shell find src -type f \( -iname \*.x -o -iname \*.xm -o -iname \*.m \))
-$(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation CoreGraphics Photos CoreServices SystemConfiguration SafariServices Security QuartzCore AVFoundation AVKit CoreData LocalAuthentication ImageIO UniformTypeIdentifiers
+$(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation CoreGraphics Photos CoreServices SystemConfiguration SafariServices Security QuartzCore AVFoundation AVKit CoreData LocalAuthentication ImageIO UniformTypeIdentifiers Accelerate
 $(TWEAK_NAME)_PRIVATE_FRAMEWORKS = Preferences
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-unsupported-availability-guard -Wno-unused-value -Wno-deprecated-declarations -Wno-nullability-completeness -Wno-unused-function -Wno-incompatible-pointer-types
 $(TWEAK_NAME)_LOGOSFLAGS = --c warnings=none
@@ -28,3 +28,15 @@ endif
 CCFLAGS += -std=c++11
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+
+after-stage::
+	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support/SCInsta.bundle/FFmpegKit
+	@cp -a modules/ffmpegkit/*.framework $(THEOS_STAGING_DIR)/Library/Application\ Support/SCInsta.bundle/FFmpegKit/
+	@for fw in $(THEOS_STAGING_DIR)/Library/Application\ Support/SCInsta.bundle/FFmpegKit/*.framework; do \
+		name=$$(basename "$$fw" .framework); \
+		install_name_tool -id "@loader_path/../$$name.framework/$$name" "$$fw/$$name"; \
+		for dep in libavcodec libavdevice libavfilter libavformat libavutil libswresample libswscale; do \
+			install_name_tool -change "@rpath/$$dep.framework/$$dep" "@loader_path/../$$dep.framework/$$dep" "$$fw/$$name" 2>/dev/null || true; \
+		done; \
+		ldid -S "$$fw/$$name"; \
+	done

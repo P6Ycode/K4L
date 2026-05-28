@@ -31,6 +31,7 @@ NSString *SCIActionButtonTopicKeyForSource(SCIActionButtonSource source) {
         case SCIActionButtonSourceStories: return @"stories";
         case SCIActionButtonSourceDirect: return @"msgs";
         case SCIActionButtonSourceProfile: return @"profile";
+        case SCIActionButtonSourceInstants: return @"instants";
     }
 }
 
@@ -41,6 +42,7 @@ NSString *SCIActionButtonTopicTitleForSource(SCIActionButtonSource source) {
         case SCIActionButtonSourceStories: return @"Stories";
         case SCIActionButtonSourceDirect: return @"Messages";
         case SCIActionButtonSourceProfile: return @"Profile";
+        case SCIActionButtonSourceInstants: return @"Instants";
     }
 }
 
@@ -92,6 +94,17 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionViewThumbnail,
                 kSCIActionOpenTopicSettings
             ];
+        case SCIActionButtonSourceInstants:
+            return @[
+                kSCIActionDownloadLibrary,
+                kSCIActionDownloadShare,
+                kSCIActionCopyDownloadLink,
+                kSCIActionCopyMedia,
+                kSCIActionDownloadGallery,
+                kSCIActionExpand,
+                kSCIActionViewThumbnail,
+                kSCIActionOpenTopicSettings
+            ];
         case SCIActionButtonSourceProfile:
             return @[
                 kSCIActionDownloadLibrary,
@@ -118,6 +131,7 @@ NSArray<NSString *> *SCIActionButtonBulkDownloadSupportedActionsForSource(SCIAct
             ];
         case SCIActionButtonSourceDirect:
         case SCIActionButtonSourceProfile:
+        case SCIActionButtonSourceInstants:
             return @[];
     }
 }
@@ -133,6 +147,7 @@ NSArray<NSString *> *SCIActionButtonBulkCopySupportedActionsForSource(SCIActionB
             ];
         case SCIActionButtonSourceDirect:
         case SCIActionButtonSourceProfile:
+        case SCIActionButtonSourceInstants:
             return @[];
     }
 }
@@ -186,11 +201,14 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
         : ((source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
             ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionCopyCaption]
             : @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia]);
-    NSArray<NSString *> *moreActions = (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
-        ? @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings]
-        : ((source == SCIActionButtonSourceStories)
-            ? @[kSCIActionExpand, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings]
-            : @[kSCIActionExpand, kSCIActionOpenTopicSettings]);
+    NSArray<NSString *> *moreActions;
+    if (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels) {
+        moreActions = @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings];
+    } else if (source == SCIActionButtonSourceStories) {
+        moreActions = @[kSCIActionExpand, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings];
+    } else {
+        moreActions = @[kSCIActionExpand, kSCIActionOpenTopicSettings];
+    }
 
     [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"download"
                                                               title:@"Download"

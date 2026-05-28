@@ -159,16 +159,9 @@ static void SCIFFmpegPersistLoaderFailure(NSArray<NSString *> *details) {
 static NSArray<NSString *> *SCIFFmpegCandidateBinaryPaths(void) {
     NSMutableArray<NSString *> *paths = [NSMutableArray array];
 
-    // Deb install: FFmpegKit is packaged beside SCInsta.dylib.
-    NSString *dylibDir = SCIFFmpegDylibDirectory();
-    if (dylibDir.length > 0) {
-        [paths addObject:[dylibDir stringByAppendingPathComponent:@"FFmpegKit/ffmpegkit.framework/ffmpegkit"]];
-    }
-
-    // Rootless/rootful fallback paths. Some jailbreaks normalize the loaded
-    // tweak path differently than the package payload location.
-    [paths addObject:@"/var/jb/Library/MobileSubstrate/DynamicLibraries/FFmpegKit/ffmpegkit.framework/ffmpegkit"];
-    [paths addObject:@"/Library/MobileSubstrate/DynamicLibraries/FFmpegKit/ffmpegkit.framework/ffmpegkit"];
+    // Deb install: FFmpegKit is packaged in the SCInsta.bundle.
+    [paths addObject:@"/var/jb/Library/Application Support/SCInsta.bundle/FFmpegKit/ffmpegkit.framework/ffmpegkit"];
+    [paths addObject:@"/Library/Application Support/SCInsta.bundle/FFmpegKit/ffmpegkit.framework/ffmpegkit"];
 
     // Sideloaded IPA: FFmpegKit injected alongside Instagram's own Frameworks
     NSString *mainBundlePath = [NSBundle mainBundle].bundlePath;
@@ -184,7 +177,8 @@ static NSArray<NSString *> *SCIFFmpegCandidateBinaryPaths(void) {
     return paths;
 }
 
-static void SCIFFmpegPreloadSiblingLibraries(NSString *ffmpegBinaryPath) {
+static NSArray<NSString *> *SCIFFmpegPreloadSiblingLibraries(NSString *ffmpegBinaryPath) {
+    NSMutableArray<NSString *> *errors = [NSMutableArray array];
     NSString *frameworkRoot = [[[ffmpegBinaryPath stringByDeletingLastPathComponent] stringByDeletingLastPathComponent] copy];
     NSArray<NSString *> *libraries = @[
         @"libavutil",
@@ -200,9 +194,16 @@ static void SCIFFmpegPreloadSiblingLibraries(NSString *ffmpegBinaryPath) {
     for (NSString *library in libraries) {
         NSString *path = [frameworkRoot stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.framework/%@", library, library]];
         if ([fileManager fileExistsAtPath:path]) {
-            dlopen(path.UTF8String, RTLD_NOW | RTLD_GLOBAL);
+            void *handle = dlopen(path.UTF8String, RTLD_NOW | RTLD_GLOBAL);
+            if (!handle) {
+                const char *dlError = dlerror();
+                [errors addObject:[NSString stringWithFormat:@"dlopen failed for sibling %@\n%s", library, dlError ?: "unknown"]];
+            }
+        } else {
+            [errors addObject:[NSString stringWithFormat:@"Missing sibling: %@", path]];
         }
     }
+    return errors;
 }
 
 static void SCIFFmpegEnsureLoaded(void) {
@@ -219,7 +220,11 @@ static void SCIFFmpegEnsureLoaded(void) {
             continue;
         }
 
-        SCIFFmpegPreloadSiblingLibraries(candidate);
+        NSArray<NSString *> *siblingErrors = SCIFFmpegPreloadSiblingLibraries(candidate);
+        if (siblingErrors.count > 0) {
+            [errors addObjectsFromArray:siblingErrors];
+            continue; // Stop trying this candidate if its siblings fail
+        }
         void *handle = dlopen(candidate.UTF8String, RTLD_NOW | RTLD_GLOBAL);
         if (!handle) {
             const char *dlError = dlerror();

@@ -61,12 +61,12 @@
     encodingSettings.userInfo = @{@"enabled": @(ffmpegAvailable)};
 
     SCISetting *encodingLogs = [SCISetting navigationCellWithTitle:@"View Encoding Logs"
-                                                          subtitle:(ffmpegAvailable ? @"" : @"Requires FFmpegKit")
+                                                          subtitle:@""
                                                               icon:SCISettingsIcon(@"logs")
                                                     viewController:[SCIMediaFFmpeg logsViewController]];
-    encodingLogs.userInfo = @{@"enabled": @(ffmpegAvailable)};
+    encodingLogs.userInfo = @{@"enabled": @YES};
 
-    NSString *qualityFooter = ffmpegAvailable ? @"\"High\" merges DASH files for best quality. \"High (Ignore Dash)\" uses ready-to-play files. \"Always Ask\" prompts for selection." : @"FFmpegKit is required for video quality options and encoding features.";
+    NSString *qualityFooter = ffmpegAvailable ? @"\"High\" merges DASH files for best quality. \"Default\" uses ready-to-play files. \"Always Ask\" prompts for selection." : @"FFmpegKit is required for video quality options and encoding features.";
 
     return SCITopicNavigationSetting(@"General", @"settings", 24.0, @[
         SCITopicSection(@"Behavior", @[

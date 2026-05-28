@@ -3,6 +3,7 @@
 #import "Topics/SCIAboutSettingsProvider.h"
 #import "Topics/SCIFeedSettingsProvider.h"
 #import "Topics/SCIGeneralSettingsProvider.h"
+#import "Topics/SCIInstantsSettingsProvider.h"
 #import "Topics/SCIInterfaceSettingsProvider.h"
 #import "Topics/SCIGallerySettingsProvider.h"
 #import "Topics/SCIMessagesSettingsProvider.h"
@@ -24,6 +25,7 @@
                 [SCIStoriesSettingsProvider rootSetting],
                 [SCIReelsSettingsProvider rootSetting],
                 [SCIMessagesSettingsProvider rootSetting],
+                [SCIInstantsSettingsProvider rootSetting],
                 [SCIProfileSettingsProvider rootSetting]
             ]
         },

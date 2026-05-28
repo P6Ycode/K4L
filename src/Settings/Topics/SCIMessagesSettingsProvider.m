@@ -85,13 +85,6 @@ static NSArray *SCIMessagesSettingsSections(void) {
            @"2. Moves to the next visual item when available or dismisses.\n"
            @"3. View-once messages behave like normal visual messages.\n"
            @"4. Allows screen capture of visual messages."),
-        SCITopicSection(@"Instants", @[
-            [SCISetting switchCellWithTitle:@"Disable Instants Creation" icon:SCISettingsIcon(@"instants") defaultsKey:@"msgs_disable_instants_creation"],
-            [SCISetting switchCellWithTitle:@"Skip Camera After Instants" icon:SCISettingsIcon(@"camera") defaultsKey:@"msgs_skip_instants_camera_after_viewing"],
-            [SCISetting switchCellWithTitle:@"Confirm Instant Capture" icon:SCISettingsIcon(@"instants_burst") defaultsKey:@"msgs_confirm_instants_capture"]
-        ], @"1. Blocks the Instant shutter button without disabling received Instants.\n"
-           @"2. Skips the camera page Instagram opens after viewing the last Instant.\n"
-           @"3. Shows a confirmation alert before capturing an Instant."),
         SCITopicSection(@"Vanish Mode", @[
             [SCISetting switchCellWithTitle:@"Disable Swipe-Up Gesture" icon:SCISettingsIcon(@"arrow_up") defaultsKey:@"msgs_disable_vanish_swipe_up"],
             [SCISetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_hide_vanish_screenshot"],

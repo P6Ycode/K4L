@@ -245,11 +245,17 @@ UIMenu *SCINotificationProgressSubtitleStyleMenu(void) {
 
 UIMenu *SCIMediaVideoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Always Ask", nil, nil, @"general_media_vid_quality", @"always_ask", NO),
-        SCIMenuCommand(@"High", nil, nil, @"general_media_vid_quality", @"high", NO),
-        SCIMenuCommand(@"High (Ignore Dash)", nil, nil, @"general_media_vid_quality", @"high_ignore_dash", NO),
-        SCIMenuCommand(@"Medium", nil, nil, @"general_media_vid_quality", @"medium", NO),
-        SCIMenuCommand(@"Low", nil, nil, @"general_media_vid_quality", @"low", NO)
+        SCIMenuCommand(@"Default", nil, nil, @"general_media_vid_quality", @"high_ignore_dash", NO),
+        [UIMenu menuWithTitle:@""
+                        image:nil
+                   identifier:nil
+                      options:UIMenuOptionsDisplayInline
+                     children:@[
+            SCIMenuCommand(@"Always Ask", nil, nil, @"general_media_vid_quality", @"always_ask", NO),
+            SCIMenuCommand(@"High", nil, nil, @"general_media_vid_quality", @"high", NO),
+            SCIMenuCommand(@"Medium", nil, nil, @"general_media_vid_quality", @"medium", NO),
+            SCIMenuCommand(@"Low", nil, nil, @"general_media_vid_quality", @"low", NO)
+        ]]
     ]];
 }
 

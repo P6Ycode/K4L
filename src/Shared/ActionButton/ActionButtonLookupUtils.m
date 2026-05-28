@@ -306,6 +306,7 @@ static NSString *SCIShallowUsernameFromObject(id object) {
 
 	for (NSString *stringSelector in @[
 		@"username",
+		@"sourceUsername",
 		@"authorUsername",
 		@"senderUsername",
 		@"ownerUsername"

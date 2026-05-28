@@ -303,6 +303,7 @@ static UIColor *SCIActionButtonTintForSource(SCIActionButtonSource source) {
 		case SCIActionButtonSourceReels:
 		case SCIActionButtonSourceStories:
 		case SCIActionButtonSourceDirect:
+		case SCIActionButtonSourceInstants:
 		default:
 			return [UIColor whiteColor];
 	}
@@ -324,6 +325,8 @@ static SCIGallerySource SCIGallerySourceForActionSource(SCIActionButtonSource so
 			return SCIGallerySourceDMs;
         case SCIActionButtonSourceProfile:
             return SCIGallerySourceProfile;
+        case SCIActionButtonSourceInstants:
+            return SCIGallerySourceInstants;
 		default:
 			return SCIGallerySourceOther;
 	}
@@ -340,6 +343,7 @@ static SCIAudioSource SCIAudioSourceForActionSource(SCIActionButtonSource source
 		case SCIActionButtonSourceDirect:
 			return SCIAudioSourceDMs;
 		case SCIActionButtonSourceProfile:
+		case SCIActionButtonSourceInstants:
 		default:
 			return SCIAudioSourceOther;
 	}
@@ -354,6 +358,8 @@ static NSString *SCIDownloadURLNounForActionSource(SCIActionButtonSource source)
         case SCIActionButtonSourceFeed:
         case SCIActionButtonSourceProfile:
             return @"Post";
+        case SCIActionButtonSourceInstants:
+            return @"Instant";
         case SCIActionButtonSourceDirect:
         default:
             return @"Media";
@@ -1015,6 +1021,32 @@ static NSURL *SCICoverURLForMediaObject(id mediaObject) {
 static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
 	if (!mediaObject) return nil;
 
+    NSURL *instantsURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaMediaURL") ?: SCIKVCObject(mediaObject, @"scinstaMediaURL"));
+    if (instantsURL) {
+        SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
+        entry.mediaObject = mediaObject;
+        entry.metadataObject = mediaObject;
+        if (SCIIsVideoExtension(instantsURL.pathExtension)) {
+            entry.videoURL = instantsURL;
+        } else {
+            entry.photoURL = instantsURL;
+        }
+        return entry;
+    }
+
+    NSURL *directURL = SCIURLFromValue(mediaObject);
+    if (directURL) {
+        SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
+        entry.mediaObject = mediaObject;
+        entry.metadataObject = mediaObject;
+        if (SCIIsVideoExtension(directURL.pathExtension)) {
+            entry.videoURL = directURL;
+        } else {
+            entry.photoURL = directURL;
+        }
+        return entry;
+    }
+
     mediaObject = SCIUnderlyingMediaObjectForAction(mediaObject);
 
 	SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
@@ -1079,6 +1111,11 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
 	if (!media) return @[];
 
 	NSMutableArray<SCIResolvedMediaEntry *> *entries = [NSMutableArray array];
+
+    SCIResolvedMediaEntry *directEntry = SCIEntryFromMediaObject(media);
+    if (directEntry) {
+        return @[directEntry];
+    }
 
     NSArray *directCollection = SCIArrayFromCollection(media);
     if (directCollection.count > 0) {
@@ -2197,6 +2234,12 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 	NSString *username = (context.source == SCIActionButtonSourceDirect)
 		? SCIDirectUsernameFromController(context.controller)
 		: SCIUsernameFromMediaObject(media);
+    if (context.source == SCIActionButtonSourceInstants) {
+        NSString *explicitUsername = SCIStringFromValue(SCIObjectForSelector(metadataObject, @"sourceUsername") ?: SCIKVCObject(metadataObject, @"sourceUsername"));
+        if (explicitUsername.length > 0) {
+            username = explicitUsername;
+        }
+    }
 	if (username.length == 0) username = SCIUsernameFromMediaObject(metadataObject);
 	if (username.length == 0) {
 		for (SCIResolvedMediaEntry *entry in entries) {
@@ -2288,7 +2331,7 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 			button.layer.shadowRadius = 1.8;
 			button.layer.shadowOffset = CGSizeMake(0.0, 1.0);
 		}
-	} else if (source == SCIActionButtonSourceStories || source == SCIActionButtonSourceDirect) {
+	} else if (source == SCIActionButtonSourceStories || source == SCIActionButtonSourceDirect || source == SCIActionButtonSourceInstants) {
 		if (isChrome) {
 			SCIChromeButton *chromeButton = (SCIChromeButton *)button;
 			chromeButton.iconView.layer.shadowColor = [UIColor blackColor].CGColor;
