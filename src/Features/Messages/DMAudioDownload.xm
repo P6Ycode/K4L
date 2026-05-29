@@ -400,17 +400,20 @@ static void SCIDMPresentAudioActions(UIView *view, SCIAudioSource source) {
                                                         title:@"Audio"
                                                       message:nil
                                                       actions:@[
+        [SCIIGAlertAction actionWithTitle:@"Save to Files" style:SCIIGAlertActionStyleDefault handler:^{
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionSaveToFiles item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadAudio];
+        }],
         [SCIIGAlertAction actionWithTitle:@"Share" style:SCIIGAlertActionStyleDefault handler:^{
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioShare];
         }],
         [SCIIGAlertAction actionWithTitle:@"Save to Gallery" style:SCIIGAlertActionStyleDefault handler:^{
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadGallery];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioGallery];
         }],
         [SCIIGAlertAction actionWithTitle:@"Play" style:SCIIGAlertActionStyleDefault handler:^{
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionPlay item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionPlay item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationPlayAudio];
         }],
         [SCIIGAlertAction actionWithTitle:@"Copy Download URL" style:SCIIGAlertActionStyleDefault handler:^{
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:item presenter:presenter sourceView:view metadata:metadata notificationIdentifier:kSCINotificationCopyAudioURL];
         }],
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]
     ]];
@@ -486,17 +489,20 @@ static void SCIDMPresentDownloadAudioActionsForViewModel(id viewModel) {
                                                         title:@"Audio"
                                                       message:nil
                                                       actions:@[
+        [SCIIGAlertAction actionWithTitle:@"Save to Files" style:SCIIGAlertActionStyleDefault handler:^{
+            [SCIAudioDownloadCoordinator performAction:SCIAudioActionSaveToFiles item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudio];
+        }],
         [SCIIGAlertAction actionWithTitle:@"Share" style:SCIIGAlertActionStyleDefault handler:^{
-            [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+            [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioShare];
         }],
         [SCIIGAlertAction actionWithTitle:@"Save to Gallery" style:SCIIGAlertActionStyleDefault handler:^{
-            [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadGallery];
+            [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioGallery];
         }],
         [SCIIGAlertAction actionWithTitle:@"Play" style:SCIIGAlertActionStyleDefault handler:^{
-            [SCIAudioDownloadCoordinator performAction:SCIAudioActionPlay item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+            [SCIAudioDownloadCoordinator performAction:SCIAudioActionPlay item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationPlayAudio];
         }],
         [SCIIGAlertAction actionWithTitle:@"Copy Download URL" style:SCIIGAlertActionStyleDefault handler:^{
-            [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+            [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:audioItem presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationCopyAudioURL];
         }],
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]
     ]];

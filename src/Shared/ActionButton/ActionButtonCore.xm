@@ -1600,7 +1600,7 @@ static BOOL SCIFeedEntryMayHaveDownloadableAudio(SCIResolvedMediaEntry *entry, i
         }
     }
 
-    return entry.videoURL != nil;
+    return NO;
 }
 
 static BOOL SCIFeedEntryMayHaveDirectAudioURL(SCIResolvedMediaEntry *entry, id media) {
@@ -1924,14 +1924,17 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
         if ([identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
             audioAction = SCIAudioActionConvertAndSaveToGallery;
         } else if ([identifier isEqualToString:kSCIActionDownloadAudio]) {
-            audioAction = SCIAudioActionShare;
+            audioAction = SCIAudioActionSaveToFiles;
         }
         [SCIAudioDownloadCoordinator performAction:audioAction
                                              item:audioItem
                                         presenter:SCIActionContextPresenter(context)
                                        sourceView:SCIActionContextAnchorView(context)
                                          metadata:meta
-                           notificationIdentifier:identifier];
+                           notificationIdentifier:identifier
+                                 playbackSource:SCIPlaybackSourceForActionSource(context.source)
+                                  pausePlayback:SCIPausePlaybackBlockForContext(context)
+                                 resumePlayback:SCIResumePlaybackBlockForContext(context)];
         return YES;
     }
 
@@ -1957,7 +1960,10 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
                                         presenter:SCIActionContextPresenter(context)
                                        sourceView:SCIActionContextAnchorView(context)
                                          metadata:meta
-                           notificationIdentifier:identifier];
+                           notificationIdentifier:identifier
+                                 playbackSource:SCIPlaybackSourceForActionSource(context.source)
+                                  pausePlayback:SCIPausePlaybackBlockForContext(context)
+                                 resumePlayback:SCIResumePlaybackBlockForContext(context)];
         return YES;
     }
 

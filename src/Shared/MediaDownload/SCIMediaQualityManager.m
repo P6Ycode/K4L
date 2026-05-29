@@ -8,6 +8,7 @@
 #import "../../Utils.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
+#import "../MediaPreview/SCIMediaItem.h"
 #import "../UI/SCISwitch.h"
 #import "../../Settings/SCISetting.h"
 #import "../../Settings/SCISettingsViewController.h"
@@ -1321,6 +1322,20 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
         [SCIFullScreenMediaPlayer showRemoteImageURL:option.primaryURL];
         return;
     }
+    if (option.kind == SCIMediaOptionKindAudioDash) {
+        SCIMediaItem *item = [SCIMediaItem itemWithFileURL:option.primaryURL];
+        item.mediaType = SCIMediaItemTypeAudio;
+        item.title = option.title.length > 0 ? option.title : @"Audio";
+        [SCIFullScreenMediaPlayer showMediaItems:@[item]
+                                 startingAtIndex:0
+                                        metadata:nil
+                                  playbackSource:SCIFullScreenPlaybackSourceUnknown
+                                      sourceView:self.view
+                                      controller:self
+                                   pausePlayback:nil
+                                  resumePlayback:nil];
+        return;
+    }
 
     AVPlayerViewController *controller = [[AVPlayerViewController alloc] init];
     controller.player = [AVPlayer playerWithURL:option.primaryURL];
@@ -1333,7 +1348,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
 
     if (option.primaryURL.absoluteString.length > 0) {
-        NSString *title = option.kind == SCIMediaOptionKindPhotoProgressive ? @"Copy URL" : option.kind == SCIMediaOptionKindAudioDash ? @"Copy Audio URL" : @"Copy Video URL";
+        NSString *title = option.kind == SCIMediaOptionKindPhotoProgressive ? @"Copy URL" : option.kind == SCIMediaOptionKindAudioDash ? @"Copy Download URL" : @"Copy Video URL";
         [children addObject:[UIAction actionWithTitle:title image:SCIMediaIcon(@"link", kSCIMediaOptionIconPointSize) identifier:nil handler:^(__unused UIAction *action) {
             [UIPasteboard generalPasteboard].string = option.primaryURL.absoluteString;
         }]];
@@ -1359,18 +1374,20 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
             [self previewOption:option];
         }]];
 
-        [children addObject:[UIAction actionWithTitle:@"Extract Thumbnail" image:SCIMediaIcon(@"photo_gallery", kSCIMediaOptionIconPointSize) identifier:nil handler:^(__unused UIAction *action) {
-            AVAsset *asset = [AVURLAsset URLAssetWithURL:option.primaryURL options:nil];
-            AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
-            generator.appliesPreferredTrackTransform = YES;
-            CGImageRef imageRef = [generator copyCGImageAtTime:CMTimeMakeWithSeconds(MAX(option.duration > 0.5 ? MIN(1.0, option.duration / 3.0) : 0.0, 0.0), 600) actualTime:nil error:nil];
-            if (!imageRef) {
-                return;
-            }
-            UIImage *image = [UIImage imageWithCGImage:imageRef];
-            CGImageRelease(imageRef);
-            [SCIFullScreenMediaPlayer showImage:image];
-        }]];
+        if (option.kind != SCIMediaOptionKindAudioDash) {
+            [children addObject:[UIAction actionWithTitle:@"Extract Thumbnail" image:SCIMediaIcon(@"photo_gallery", kSCIMediaOptionIconPointSize) identifier:nil handler:^(__unused UIAction *action) {
+                AVAsset *asset = [AVURLAsset URLAssetWithURL:option.primaryURL options:nil];
+                AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+                generator.appliesPreferredTrackTransform = YES;
+                CGImageRef imageRef = [generator copyCGImageAtTime:CMTimeMakeWithSeconds(MAX(option.duration > 0.5 ? MIN(1.0, option.duration / 3.0) : 0.0, 0.0), 600) actualTime:nil error:nil];
+                if (!imageRef) {
+                    return;
+                }
+                UIImage *image = [UIImage imageWithCGImage:imageRef];
+                CGImageRelease(imageRef);
+                [SCIFullScreenMediaPlayer showImage:image];
+            }]];
+        }
     }
 
     return [UIMenu menuWithChildren:children];

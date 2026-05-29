@@ -6,6 +6,7 @@
 #import "../../Shared/MediaDownload/SCIMediaFFmpeg.h"
 #import "../../Shared/MediaDownload/SCIMediaQualityManager.h"
 #import "../../Utils.h"
+#import "../../AssetUtils.h"
 
 @implementation SCIGeneralSettingsProvider
 
@@ -24,18 +25,17 @@
 
 + (UIMenu *)audioPageDefaultActionMenu {
     NSArray<NSDictionary *> *items = @[
-        @{@"title": @"Share Audio", @"value": @"share", @"icon": @"share"},
-        @{@"title": @"Convert & Share", @"value": @"convert_share", @"icon": @"share"},
-        @{@"title": @"Save Original to Gallery", @"value": @"gallery", @"icon": @"media"},
-        @{@"title": @"Convert & Save to Gallery", @"value": @"convert_gallery", @"icon": @"media"},
-        @{@"title": @"Play Audio", @"value": @"play", @"icon": @"play"},
-        @{@"title": @"Copy Audio URL", @"value": @"copy_url", @"icon": @"link"},
+        @{@"title": @"Save to Files", @"value": @"files", @"icon": @"audio_download"},
+        @{@"title": @"Share", @"value": @"share", @"icon": @"share"},
+        @{@"title": @"Save to Gallery", @"value": @"gallery", @"icon": @"media"},
+        @{@"title": @"Play", @"value": @"play", @"icon": @"play"},
+        @{@"title": @"Copy Download URL", @"value": @"copy_url", @"icon": @"link"},
         @{@"title": @"None", @"value": @"none", @"icon": @"action"}
     ];
     NSMutableArray<UICommand *> *commands = [NSMutableArray array];
     for (NSDictionary *item in items) {
         [commands addObject:[UICommand commandWithTitle:item[@"title"]
-                                                  image:SCISettingsIcon(item[@"icon"])
+                                                  image:[SCIAssetUtils instagramIconNamed:item[@"icon"] pointSize:22.0]
                                                  action:@selector(menuChanged:)
                                            propertyList:@{@"defaultsKey": @"general_audio_page_default_action", @"value": item[@"value"], @"iconName": item[@"icon"]}]];
     }
@@ -132,10 +132,10 @@
             encodingLogs
         ], qualityFooter),
         SCITopicSection(@"Audio", @[
-            [SCISetting switchCellWithTitle:@"Audio Downloads" icon:SCISettingsIcon(@"audio") defaultsKey:@"general_audio_download_enabled"],
-            [SCISetting switchCellWithTitle:@"Audio Page Button" icon:SCISettingsIcon(@"download") defaultsKey:@"general_audio_page_download" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Audio Downloads" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"general_audio_download_enabled"],
+            [SCISetting switchCellWithTitle:@"Audio Page Button" icon:SCISettingsIcon(@"audio_page") defaultsKey:@"general_audio_page_download" requiresRestart:YES],
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Audio Page Default Action" icon:SCISettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SCISettingsIcon(@"action"))
-        ], @"Adds audio actions for audio pages and media action buttons. Regram-style processing preserves original audio when possible and converts to M4A for converted actions."),
+        ], @"Adds audio actions for audio pages and media action buttons."),
         SCITopicSection(@"Storage", @[
             [SCISetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SCISettingsIcon(@"trash") action:^(void) {
                 [SCIUtils cleanCache];

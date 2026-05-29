@@ -98,8 +98,8 @@ static NSArray *SCIMessagesSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Download Notes Audio" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio" requiresRestart:YES]
         ], @"Note Theming enables Instagram's note theme picker. Custom Note Themes add custom emoji, background, and text color options."),
         SCITopicSection(@"Audio", @[
-            [SCISetting switchCellWithTitle:@"Download Audio Messages" icon:SCISettingsIcon(@"download") defaultsKey:@"msgs_download_audio_messages" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Upload Audio Messages" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_upload_audio_messages" requiresRestart:YES]
+            [SCISetting switchCellWithTitle:@"Download Audio Messages" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Upload Audio Messages" icon:SCISettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages" requiresRestart:YES]
         ], @"Downloads add audio actions to supported voice/audio message views. Upload converts selected audio or video to M4A when a compatible Instagram sender is available."),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Audio Call" icon:SCISettingsIcon(@"call") defaultsKey:kSCIMessagesAudioCallConfirmKey],

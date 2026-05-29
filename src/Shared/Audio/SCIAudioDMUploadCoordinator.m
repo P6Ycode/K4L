@@ -131,15 +131,15 @@ static void SCIAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 
     [SCIIGAlertPresenter presentActionSheetFromViewController:presenter
                                                         title:@"Send Audio Message"
-                                                      message:nil
+                                                      message:@"Choose an audio or video file to convert and send as a voice note."
                                                       actions:@[
-        [SCIIGAlertAction actionWithTitle:@"Select Audio/Video from Files" style:SCIIGAlertActionStyleDefault handler:^{
+        [SCIIGAlertAction actionWithTitle:@"Select from Files" style:SCIIGAlertActionStyleDefault handler:^{
         [coordinator presentFilesPicker];
         }],
         [SCIIGAlertAction actionWithTitle:@"Select from Gallery" style:SCIIGAlertActionStyleDefault handler:^{
             [coordinator presentGalleryPicker];
         }],
-        [SCIIGAlertAction actionWithTitle:@"Select Video from Library" style:SCIIGAlertActionStyleDefault handler:^{
+        [SCIIGAlertAction actionWithTitle:@"Select from Photos" style:SCIIGAlertActionStyleDefault handler:^{
             [coordinator presentLibraryPicker];
         }],
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:^{

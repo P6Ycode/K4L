@@ -1,7 +1,6 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <substrate.h>
-#import <AVKit/AVKit.h>
 
 #import "../../Utils.h"
 #import "../../Downloader/Download.h"
@@ -17,6 +16,7 @@
 static NSInteger const kSCIAudioPageDownloadButtonTag = 1351;
 static const void *kSCIAudioPageButtonKey = &kSCIAudioPageButtonKey;
 static NSString * const kSCIAudioPageDefaultActionKey = @"general_audio_page_default_action";
+static NSString * const kSCIAudioPageActionFiles = @"files";
 static NSString * const kSCIAudioPageActionShare = @"share";
 static NSString * const kSCIAudioPageActionConvertShare = @"convert_share";
 static NSString * const kSCIAudioPageActionGallery = @"gallery";
@@ -110,37 +110,32 @@ static SCIAudioItem *SCIAudioPageItem(NSURL *url, SCIGallerySaveMetadata *metada
     return item;
 }
 
-static void SCIAudioPagePlay(NSURL *url, UIView *sourceView) {
-    AVPlayerViewController *playerVC = [[AVPlayerViewController alloc] init];
-    playerVC.player = [AVPlayer playerWithURL:url];
-    UIViewController *presenter = SCIAudioPageControllerForView(sourceView) ?: topMostController();
-    [presenter presentViewController:playerVC animated:YES completion:^{
-        [playerVC.player play];
-    }];
-}
-
 static void SCIAudioPageRunAction(NSString *action, NSURL *url, UIView *sourceView, SCIGallerySaveMetadata *metadata) {
     if (![SCIUtils getBoolPref:@"general_audio_download_enabled"] && ![action isEqualToString:kSCIAudioPageActionPlay]) {
         SCINotify(kSCINotificationDownloadShare, @"Audio downloads disabled", nil, @"error_filled", SCINotificationToneError);
         return;
     }
     SCIAudioItem *item = SCIAudioPageItem(url, metadata);
-    if ([action isEqualToString:kSCIAudioPageActionGallery]) {
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionSaveToGallery item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadGallery];
+    UIViewController *presenter = SCIAudioPageControllerForView(sourceView) ?: topMostController();
+    if ([action isEqualToString:kSCIAudioPageActionFiles]) {
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionSaveToFiles item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudio];
+    } else if ([action isEqualToString:kSCIAudioPageActionGallery]) {
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioGallery];
     } else if ([action isEqualToString:kSCIAudioPageActionConvertGallery]) {
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadGallery];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndSaveToGallery item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioGallery];
     } else if ([action isEqualToString:kSCIAudioPageActionPlay]) {
-        SCIAudioPagePlay(url, sourceView);
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionPlay item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationPlayAudio];
     } else if ([action isEqualToString:kSCIAudioPageActionCopyURL]) {
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionCopyURL item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationCopyAudioURL];
     } else if ([action isEqualToString:kSCIAudioPageActionConvertShare]) {
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioShare];
     } else {
-        [SCIAudioDownloadCoordinator performAction:SCIAudioActionShare item:item presenter:SCIAudioPageControllerForView(sourceView) sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadShare];
+        [SCIAudioDownloadCoordinator performAction:SCIAudioActionConvertAndShare item:item presenter:presenter sourceView:sourceView metadata:metadata notificationIdentifier:kSCINotificationDownloadAudioShare];
     }
 }
 
 static NSString *SCIAudioPageIconForAction(NSString *action) {
+    if ([action isEqualToString:kSCIAudioPageActionFiles]) return @"audio_download";
     if ([action isEqualToString:kSCIAudioPageActionGallery]) return @"media";
     if ([action isEqualToString:kSCIAudioPageActionConvertGallery]) return @"media";
     if ([action isEqualToString:kSCIAudioPageActionConvertShare]) return @"share";
@@ -194,12 +189,11 @@ static UIMenu *SCIAudioPageMenuForButton(UIButton *button) {
                       identifier:nil
                          options:0
                         children:@[
-        SCIAudioPageMenuAction(@"Share Audio", kSCIAudioPageActionShare, kSCIActionDownloadAudio, @"share", button),
-        SCIAudioPageMenuAction(@"Convert & Share", kSCIAudioPageActionConvertShare, kSCIActionDownloadAudioShare, @"share", button),
-        SCIAudioPageMenuAction(@"Save Audio to Gallery", kSCIAudioPageActionGallery, kSCIActionDownloadAudioGallery, @"media", button),
-        SCIAudioPageMenuAction(@"Convert & Save to Gallery", kSCIAudioPageActionConvertGallery, kSCIActionDownloadAudioGallery, @"media", button),
-        SCIAudioPageMenuAction(@"Play Audio", kSCIAudioPageActionPlay, kSCIActionPlayAudio, @"play", button),
-        SCIAudioPageMenuAction(@"Copy Audio URL", kSCIAudioPageActionCopyURL, kSCIActionCopyAudioURL, @"link", button)
+        SCIAudioPageMenuAction(@"Save to Files", kSCIAudioPageActionFiles, kSCIActionDownloadAudio, @"audio_download", button),
+        SCIAudioPageMenuAction(@"Share", kSCIAudioPageActionShare, kSCIActionDownloadAudioShare, @"share", button),
+        SCIAudioPageMenuAction(@"Save to Gallery", kSCIAudioPageActionGallery, kSCIActionDownloadAudioGallery, @"media", button),
+        SCIAudioPageMenuAction(@"Play", kSCIAudioPageActionPlay, kSCIActionPlayAudio, @"play", button),
+        SCIAudioPageMenuAction(@"Copy Download URL", kSCIAudioPageActionCopyURL, kSCIActionCopyAudioURL, @"link", button)
     ]];
 }
 

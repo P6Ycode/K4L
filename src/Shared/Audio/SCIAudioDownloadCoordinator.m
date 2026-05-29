@@ -531,9 +531,10 @@ static NSString *SCIAudioNotificationIdentifier(NSString *provided, SCIAudioActi
             return kSCINotificationDownloadGallery;
         case SCIAudioActionCopyURL:
             return kSCINotificationDownloadShare;
+        case SCIAudioActionSaveToFiles:
+            return kSCINotificationDownloadAudio;
         case SCIAudioActionShare:
         case SCIAudioActionConvertAndShare:
-        case SCIAudioActionSaveToFiles:
         case SCIAudioActionPlay:
         default:
             return kSCINotificationDownloadShare;
@@ -600,6 +601,28 @@ static NSString *SCIAudioBasename(SCIAudioItem *item) {
     return [NSString stringWithFormat:@"scinsta_audio_%@", identifier];
 }
 
+static void SCIAudioPresentSaveToFiles(NSURL *fileURL, UIViewController *presenter, UIView *sourceView, NSString *identifier) {
+    if (!fileURL.isFileURL) return;
+    UIViewController *controller = presenter ?: topMostController();
+    if (!controller) {
+        SCINotify(identifier, @"Could not open Files", nil, @"error_filled", SCINotificationToneError);
+        return;
+    }
+
+    UIDocumentPickerViewController *picker = nil;
+    if (@available(iOS 14.0, *)) {
+        picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[fileURL] asCopy:YES];
+    } else {
+        picker = [[UIDocumentPickerViewController alloc] initWithURL:fileURL inMode:UIDocumentPickerModeExportToService];
+    }
+    picker.modalPresentationStyle = UIModalPresentationFormSheet;
+    if (sourceView) {
+        picker.popoverPresentationController.sourceView = sourceView;
+        picker.popoverPresentationController.sourceRect = sourceView.bounds;
+    }
+    [controller presentViewController:picker animated:YES completion:nil];
+}
+
 @implementation SCIAudioDownloadCoordinator
 
 + (NSURL *)bestAudioURLFromMediaObject:(id)mediaObject {
@@ -639,6 +662,26 @@ static NSString *SCIAudioBasename(SCIAudioItem *item) {
            sourceView:(UIView *)sourceView
              metadata:(SCIGallerySaveMetadata *)metadata
  notificationIdentifier:(NSString *)notificationIdentifier {
+    [self performAction:action
+                   item:item
+              presenter:presenter
+             sourceView:sourceView
+               metadata:metadata
+ notificationIdentifier:notificationIdentifier
+         playbackSource:SCIFullScreenPlaybackSourceUnknown
+          pausePlayback:nil
+         resumePlayback:nil];
+}
+
++ (void)performAction:(SCIAudioAction)action
+                 item:(SCIAudioItem *)item
+            presenter:(UIViewController *)presenter
+           sourceView:(UIView *)sourceView
+             metadata:(SCIGallerySaveMetadata *)metadata
+ notificationIdentifier:(NSString *)notificationIdentifier
+       playbackSource:(SCIFullScreenPlaybackSource)playbackSource
+        pausePlayback:(SCIMediaPreviewPlaybackBlock)pausePlayback
+       resumePlayback:(SCIMediaPreviewPlaybackBlock)resumePlayback {
     if (!item.url) {
         SCINotify(SCIAudioNotificationIdentifier(notificationIdentifier, action), @"Could not find audio URL", nil, @"error_filled", SCINotificationToneError);
         return;
@@ -659,25 +702,41 @@ static NSString *SCIAudioBasename(SCIAudioItem *item) {
         [SCIFullScreenMediaPlayer showMediaItems:@[previewItem]
                                  startingAtIndex:0
                                         metadata:previewItem.galleryMetadata
-                                  playbackSource:SCIFullScreenPlaybackSourceUnknown
+                                  playbackSource:playbackSource
                                       sourceView:sourceView
                                       controller:presenter
-                                   pausePlayback:nil
-                                  resumePlayback:nil];
+                                   pausePlayback:pausePlayback
+                                  resumePlayback:resumePlayback];
         return;
     }
 
+    BOOL saveToFilesAction = (action == SCIAudioActionSaveToFiles);
     BOOL convert = (action == SCIAudioActionConvertAndShare || action == SCIAudioActionConvertAndSaveToGallery);
-    DownloadAction downloadAction = (action == SCIAudioActionSaveToGallery || action == SCIAudioActionConvertAndSaveToGallery) ? saveToGallery : share;
+    DownloadAction downloadAction = saveToFilesAction ? downloadOnly : ((action == SCIAudioActionSaveToGallery || action == SCIAudioActionConvertAndSaveToGallery) ? saveToGallery : share);
     SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:downloadAction showProgress:SCINotificationIsEnabled(identifier)];
     delegate.notificationIdentifier = identifier;
     delegate.pendingGallerySaveMetadata = SCIAudioMetadataFromItem(item, metadata);
+    if (saveToFilesAction) {
+        __weak UIViewController *weakPresenter = presenter;
+        __weak UIView *weakSourceView = sourceView;
+        __weak SCIDownloadDelegate *weakDelegate = delegate;
+        delegate.completionBlock = ^(NSURL * _Nullable fileURL, NSError * _Nullable error) {
+            if (!fileURL || error) return;
+            [weakDelegate.progressView dismiss];
+            SCIAudioPresentSaveToFiles(fileURL, weakPresenter, weakSourceView, identifier);
+        };
+    }
 
     NSString *scheme = item.url.scheme.lowercaseString;
     if (!item.url.isFileURL && ![@[@"http", @"https"] containsObject:scheme]) {
         [delegate beginCustomProgressWithTitle:@"Downloading audio" subtitle:nil];
         [delegate showCustomErrorWithTitle:@"Audio download failed"
                                   subtitle:@"Instagram exposed an unsupported audio URL. Refresh the thread and try again."];
+        return;
+    }
+
+    if (saveToFilesAction && item.url.isFileURL && !SCIAudioShouldConvertURL(item.url, convert)) {
+        SCIAudioPresentSaveToFiles(item.url, presenter, sourceView, identifier);
         return;
     }
 
