@@ -24,6 +24,7 @@ static NSString * const kListCellID = @"SCIGalleryListCell";
 static NSString * const kFolderCellID = @"SCIGalleryFolderCell";
 
 static NSString * const kSortModeKey    = @"gallery_sort_mode";
+static NSString * const kSortGroupByTypeKey = @"gallery_sort_group_by_type";
 static NSString * const kViewModeKey    = @"gallery_view_mode"; // 0 = grid, 1 = list
 static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 
@@ -85,6 +86,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
 // Sort
 @property (nonatomic, assign) SCIGallerySortMode sortMode;
+@property (nonatomic, assign) BOOL sortGroupByMediaType;
 
 // Filter
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *filterTypes;
@@ -143,6 +145,13 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
         NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
         _sortMode = (SCIGallerySortMode)[d integerForKey:kSortModeKey];
+        _sortGroupByMediaType = [d boolForKey:kSortGroupByTypeKey];
+        if (_sortMode == SCIGallerySortModeTypeAsc || _sortMode == SCIGallerySortModeTypeDesc) {
+            _sortMode = SCIGallerySortModeDateAddedDesc;
+            _sortGroupByMediaType = YES;
+            [d setInteger:_sortMode forKey:kSortModeKey];
+            [d setBool:_sortGroupByMediaType forKey:kSortGroupByTypeKey];
+        }
         _viewMode = (SCIGalleryViewMode)[d integerForKey:kViewModeKey];
     }
     return self;
@@ -526,7 +535,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
 - (NSFetchRequest *)currentFetchRequest {
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SCIGalleryFile"];
-    NSMutableArray<NSSortDescriptor *> *sortDescriptors = [[SCIGallerySortViewController sortDescriptorsForMode:self.sortMode] mutableCopy];
+    NSMutableArray<NSSortDescriptor *> *sortDescriptors = [[SCIGallerySortViewController sortDescriptorsForMode:self.sortMode groupByMediaType:self.sortGroupByMediaType] mutableCopy];
     if ([[NSUserDefaults standardUserDefaults] boolForKey:kFavoritesAtTopKey] && !self.filterFavoritesOnly) {
         [sortDescriptors insertObject:[NSSortDescriptor sortDescriptorWithKey:@"isFavorite" ascending:NO] atIndex:0];
     }
@@ -1465,6 +1474,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     SCIGallerySortViewController *vc = [[SCIGallerySortViewController alloc] init];
     vc.delegate = self;
     vc.currentSortMode = self.sortMode;
+    vc.currentGroupByMediaType = self.sortGroupByMediaType;
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
     [self configureGallerySheetForNavigation:nav];
 
@@ -1474,8 +1484,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
             UISheetPresentationControllerDetent *compact = [UISheetPresentationControllerDetent
                 customDetentWithIdentifier:@"scinsta.gallery.sort.compact"
                                    resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                CGFloat target = MIN(335.0, context.maximumDetentValue * 0.46);
-                return MAX(305.0, target);
+                CGFloat target = MIN(385.0, context.maximumDetentValue * 0.54);
+                return MAX(355.0, target);
             }];
             sheet.detents = @[compact];
             sheet.selectedDetentIdentifier = compact.identifier;
@@ -1507,9 +1517,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
             UISheetPresentationControllerDetent *expanded = [UISheetPresentationControllerDetent
                 customDetentWithIdentifier:@"scinsta.gallery.filter.expanded"
                                    resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                CGFloat maximum = showsUsernameSection ? 635.0 : 555.0;
-                CGFloat minimum = showsUsernameSection ? 570.0 : 505.0;
-                CGFloat fraction = showsUsernameSection ? 0.92 : 0.88;
+                CGFloat maximum = showsUsernameSection ? 575.0 : 495.0;
+                CGFloat minimum = showsUsernameSection ? 510.0 : 445.0;
+                CGFloat fraction = showsUsernameSection ? 0.84 : 0.78;
                 CGFloat target = MIN(maximum, context.maximumDetentValue * fraction);
                 return MIN(context.maximumDetentValue, MAX(minimum, target));
             }];
@@ -1524,9 +1534,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [self presentViewController:nav animated:YES completion:nil];
 }
 
-- (void)sortController:(SCIGallerySortViewController *)controller didSelectSortMode:(SCIGallerySortMode)mode {
+- (void)sortController:(SCIGallerySortViewController *)controller didSelectSortMode:(SCIGallerySortMode)mode groupByMediaType:(BOOL)groupByMediaType {
     self.sortMode = mode;
+    self.sortGroupByMediaType = groupByMediaType;
     [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:kSortModeKey];
+    [[NSUserDefaults standardUserDefaults] setBool:groupByMediaType forKey:kSortGroupByTypeKey];
     [self refetch];
 }
 

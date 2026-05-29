@@ -9,22 +9,24 @@ typedef NS_ENUM(NSInteger, SCIGallerySortMode) {
     SCIGallerySortModeNameDesc,           // Z→A
     SCIGallerySortModeSizeDesc,           // Largest first
     SCIGallerySortModeSizeAsc,            // Smallest first
-    SCIGallerySortModeTypeAsc,            // Images then videos
-    SCIGallerySortModeTypeDesc,           // Videos then images
+    SCIGallerySortModeTypeAsc,            // Legacy: grouped by media type
+    SCIGallerySortModeTypeDesc,           // Legacy: grouped by media type
 };
 
 @class SCIGallerySortViewController;
 
 @protocol SCIGallerySortViewControllerDelegate <NSObject>
-- (void)sortController:(SCIGallerySortViewController *)controller didSelectSortMode:(SCIGallerySortMode)mode;
+- (void)sortController:(SCIGallerySortViewController *)controller didSelectSortMode:(SCIGallerySortMode)mode groupByMediaType:(BOOL)groupByMediaType;
 @end
 
 @interface SCIGallerySortViewController : UIViewController
 
 @property (nonatomic, weak) id<SCIGallerySortViewControllerDelegate> delegate;
 @property (nonatomic, assign) SCIGallerySortMode currentSortMode;
+@property (nonatomic, assign) BOOL currentGroupByMediaType;
 
 + (NSArray<NSSortDescriptor *> *)sortDescriptorsForMode:(SCIGallerySortMode)mode;
++ (NSArray<NSSortDescriptor *> *)sortDescriptorsForMode:(SCIGallerySortMode)mode groupByMediaType:(BOOL)groupByMediaType;
 + (NSString *)labelForMode:(SCIGallerySortMode)mode;
 
 @end

@@ -162,7 +162,6 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
         [self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-32],
     ]];
 
-    [self.contentStack addArrangedSubview:[self createFavoritesRow]];
     [self.contentStack addArrangedSubview:[self sectionTitle:@"Type"]];
     [self.contentStack addArrangedSubview:[self createTypeRow]];
     [self.contentStack addArrangedSubview:[self sectionTitle:@"Source"]];
@@ -174,7 +173,7 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
         [self.contentStack addArrangedSubview:[self createUsernameRow]];
     }
     [self.contentStack addArrangedSubview:[self sectionTitle:@"Options"]];
-    [self.contentStack addArrangedSubview:[self createClearRow]];
+    [self.contentStack addArrangedSubview:[self createOptionsRow]];
 }
 
 - (BOOL)isPresentedAtFullscreenHeight {
@@ -329,8 +328,10 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     [row addSubview:icon];
 
     UILabel *label = [[UILabel alloc] init];
-    label.text = @"Favorites only";
+    label.text = @"Favorites";
     label.font = [UIFont systemFontOfSize:kSCIGalleryFilterChipLabelPointSize weight:UIFontWeightMedium];
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.78;
     label.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
     label.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:label];
@@ -352,6 +353,16 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     return row;
 }
 
+- (UIView *)createOptionsRow {
+    UIStackView *row = [[UIStackView alloc] init];
+    row.axis = UILayoutConstraintAxisHorizontal;
+    row.spacing = 8;
+    row.distribution = UIStackViewDistributionFillEqually;
+    [row addArrangedSubview:[self createFavoritesRow]];
+    [row addArrangedSubview:[self createClearRow]];
+    return row;
+}
+
 - (UIView *)createClearRow {
     UIControl *row = [[UIControl alloc] init];
     row.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
@@ -367,6 +378,8 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     UILabel *label = [[UILabel alloc] init];
     label.text = @"Clear filters";
     label.font = [UIFont systemFontOfSize:kSCIGalleryFilterChipLabelPointSize weight:UIFontWeightMedium];
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.78;
     label.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:label];
 

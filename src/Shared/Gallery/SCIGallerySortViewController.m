@@ -15,9 +15,8 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
         case SCIGallerySortModeSizeAsc:
             return @"size_small";
         case SCIGallerySortModeTypeAsc:
-            return @"photo";
         case SCIGallerySortModeTypeDesc:
-            return @"video";
+            return @"photo_gallery";
     }
     return @"sort";
 }
@@ -63,33 +62,45 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
 @end
 
 @interface SCIGallerySortViewController ()
-@property (nonatomic, strong) NSMutableArray<SCIGallerySortChip *> *chips;
+@property (nonatomic, strong) NSMutableArray<SCIGallerySortChip *> *sortChips;
+@property (nonatomic, strong) NSMutableArray<UIButton *> *groupChips;
 @end
 
 @implementation SCIGallerySortViewController
 
 + (NSArray<NSSortDescriptor *> *)sortDescriptorsForMode:(SCIGallerySortMode)mode {
+    return [self sortDescriptorsForMode:mode groupByMediaType:NO];
+}
+
++ (NSArray<NSSortDescriptor *> *)sortDescriptorsForMode:(SCIGallerySortMode)mode groupByMediaType:(BOOL)groupByMediaType {
+    NSMutableArray<NSSortDescriptor *> *descriptors = [NSMutableArray array];
+    if (groupByMediaType || mode == SCIGallerySortModeTypeAsc || mode == SCIGallerySortModeTypeDesc) {
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"mediaType" ascending:YES]];
+    }
+
     switch (mode) {
         case SCIGallerySortModeDateAddedDesc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
-        case SCIGallerySortModeDateAddedAsc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:YES]];
-        case SCIGallerySortModeNameAsc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:YES selector:@selector(localizedCaseInsensitiveCompare:)]];
-        case SCIGallerySortModeNameDesc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:NO selector:@selector(localizedCaseInsensitiveCompare:)]];
-        case SCIGallerySortModeSizeDesc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:NO]];
-        case SCIGallerySortModeSizeAsc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:YES]];
         case SCIGallerySortModeTypeAsc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"mediaType" ascending:YES],
-                     [NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
         case SCIGallerySortModeTypeDesc:
-            return @[[NSSortDescriptor sortDescriptorWithKey:@"mediaType" ascending:NO],
-                     [NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
+            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
+            break;
+        case SCIGallerySortModeDateAddedAsc:
+            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:YES]];
+            break;
+        case SCIGallerySortModeNameAsc:
+            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:YES selector:@selector(localizedCaseInsensitiveCompare:)]];
+            break;
+        case SCIGallerySortModeNameDesc:
+            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:NO selector:@selector(localizedCaseInsensitiveCompare:)]];
+            break;
+        case SCIGallerySortModeSizeDesc:
+            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:NO]];
+            break;
+        case SCIGallerySortModeSizeAsc:
+            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:YES]];
+            break;
     }
-    return @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
+    return descriptors.count ? descriptors : @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
 }
 
 + (NSString *)labelForMode:(SCIGallerySortMode)mode {
@@ -100,15 +111,16 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
         case SCIGallerySortModeNameDesc:      return @"Name Z-A";
         case SCIGallerySortModeSizeDesc:      return @"Largest first";
         case SCIGallerySortModeSizeAsc:       return @"Smallest first";
-        case SCIGallerySortModeTypeAsc:       return @"Images first";
-        case SCIGallerySortModeTypeDesc:      return @"Audio first";
+        case SCIGallerySortModeTypeAsc:
+        case SCIGallerySortModeTypeDesc:      return @"Newest first";
     }
     return @"Newest first";
 }
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _chips = [NSMutableArray new];
+        _sortChips = [NSMutableArray new];
+        _groupChips = [NSMutableArray new];
         _currentSortMode = SCIGallerySortModeDateAddedDesc;
     }
     return self;
@@ -134,17 +146,17 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
 
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:safe.topAnchor constant:20],
+        [stack.topAnchor constraintEqualToAnchor:safe.topAnchor constant:14],
         [stack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
         [stack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
         [stack.bottomAnchor constraintLessThanOrEqualToAnchor:safe.bottomAnchor constant:-20],
     ]];
 
+    [stack addArrangedSubview:[self sectionTitle:@"Order"]];
     NSArray<NSArray<NSNumber *> *> *rows = @[
         @[@(SCIGallerySortModeDateAddedDesc), @(SCIGallerySortModeDateAddedAsc)],
         @[@(SCIGallerySortModeNameAsc),       @(SCIGallerySortModeNameDesc)],
         @[@(SCIGallerySortModeSizeDesc),      @(SCIGallerySortModeSizeAsc)],
-        @[@(SCIGallerySortModeTypeAsc),       @(SCIGallerySortModeTypeDesc)],
     ];
 
     for (NSInteger i = 0; i < rows.count; i++) {
@@ -164,17 +176,73 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
             [chip addTarget:self action:@selector(chipTapped:) forControlEvents:UIControlEventTouchUpInside];
             [chip.heightAnchor constraintEqualToConstant:44].active = YES;
             [row addArrangedSubview:chip];
-            [self.chips addObject:chip];
+            [self.sortChips addObject:chip];
         }
         [stack addArrangedSubview:row];
+    }
+
+    [stack addArrangedSubview:[self sectionTitle:@"Grouping"]];
+    UIStackView *groupRow = [[UIStackView alloc] init];
+    groupRow.axis = UILayoutConstraintAxisHorizontal;
+    groupRow.spacing = 10;
+    groupRow.distribution = UIStackViewDistributionFillEqually;
+    [groupRow addArrangedSubview:[self groupChipWithTitle:@"None" icon:@"circle_off" selected:!self.currentGroupByMediaType tag:0]];
+    [groupRow addArrangedSubview:[self groupChipWithTitle:@"Media type" icon:@"photo_gallery" selected:self.currentGroupByMediaType tag:1]];
+    [stack addArrangedSubview:groupRow];
+}
+
+- (UILabel *)sectionTitle:(NSString *)title {
+    UILabel *label = [[UILabel alloc] init];
+    label.text = title;
+    label.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
+    label.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    return label;
+}
+
+- (UIButton *)groupChipWithTitle:(NSString *)title icon:(NSString *)icon selected:(BOOL)selected tag:(NSInteger)tag {
+    UIButton *chip = [UIButton buttonWithType:UIButtonTypeSystem];
+    chip.tag = tag;
+    chip.layer.cornerRadius = 12;
+    chip.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 12);
+    chip.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+    chip.titleLabel.adjustsFontSizeToFitWidth = YES;
+    chip.titleLabel.minimumScaleFactor = 0.78;
+    [chip setTitle:title forState:UIControlStateNormal];
+    [chip setImage:[SCIAssetUtils instagramIconNamed:icon pointSize:14.0] forState:UIControlStateNormal];
+    chip.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
+    [chip.heightAnchor constraintEqualToConstant:44].active = YES;
+    [chip addTarget:self action:@selector(groupChipTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.groupChips addObject:chip];
+    [self updateGroupChip:chip selected:selected];
+    return chip;
+}
+
+- (void)updateGroupChip:(UIButton *)chip selected:(BOOL)selected {
+    if (selected) {
+        chip.backgroundColor = [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.18];
+        chip.tintColor = [SCIUtils SCIColor_Primary];
+        [chip setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
+    } else {
+        chip.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
+        chip.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+        [chip setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
     }
 }
 
 - (void)chipTapped:(SCIGallerySortChip *)chip {
     self.currentSortMode = chip.mode;
-    for (SCIGallerySortChip *c in self.chips) c.selectedChip = (c.mode == chip.mode);
-    if ([self.delegate respondsToSelector:@selector(sortController:didSelectSortMode:)]) {
-        [self.delegate sortController:self didSelectSortMode:self.currentSortMode];
+    for (SCIGallerySortChip *c in self.sortChips) c.selectedChip = (c.mode == chip.mode);
+    if ([self.delegate respondsToSelector:@selector(sortController:didSelectSortMode:groupByMediaType:)]) {
+        [self.delegate sortController:self didSelectSortMode:self.currentSortMode groupByMediaType:self.currentGroupByMediaType];
+    }
+    [self dismissController];
+}
+
+- (void)groupChipTapped:(UIButton *)chip {
+    self.currentGroupByMediaType = chip.tag == 1;
+    for (UIButton *c in self.groupChips) [self updateGroupChip:c selected:(c.tag == chip.tag)];
+    if ([self.delegate respondsToSelector:@selector(sortController:didSelectSortMode:groupByMediaType:)]) {
+        [self.delegate sortController:self didSelectSortMode:self.currentSortMode groupByMediaType:self.currentGroupByMediaType];
     }
     [self dismissController];
 }
