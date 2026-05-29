@@ -13,6 +13,10 @@ id SCIObjectForSelector(id target, NSString *selectorName) {
 	SEL selector = NSSelectorFromString(selectorName);
 	if (![target respondsToSelector:selector]) return nil;
 
+	NSMethodSignature *signature = [target methodSignatureForSelector:selector];
+	const char *returnType = signature.methodReturnType;
+	if (!returnType || (returnType[0] != '@' && returnType[0] != '#')) return nil;
+
 	return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 

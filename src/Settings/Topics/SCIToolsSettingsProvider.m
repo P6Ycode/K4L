@@ -13,6 +13,7 @@
 @property (nonatomic, assign) BOOL importMode;
 @property (nonatomic, assign) BOOL includeSettings;
 @property (nonatomic, assign) BOOL includeGallery;
+@property (nonatomic, assign) BOOL includeDeletedMessages;
 - (instancetype)initWithImportMode:(BOOL)importMode;
 @end
 
@@ -23,6 +24,7 @@
         _importMode = importMode;
         _includeSettings = YES;
         _includeGallery = YES;
+        _includeDeletedMessages = YES;
     }
     return self;
 }
@@ -42,10 +44,10 @@
 
 - (void)setupTransferActionItem {
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[SCIAssetUtils instagramIconNamed:(self.importMode ? @"arrow_down" : @"arrow_up")]
-                                                                              style:(UIBarButtonItemStyle)2 // done/prominent
+                                                                              style:UIBarButtonItemStylePlain
                                                                              target:self
                                                                              action:@selector(runTransfer)];
-    self.navigationItem.rightBarButtonItem.tintColor = [UIColor clearColor];
+    self.navigationItem.rightBarButtonItem.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
 }
 
 - (void)rebuildSections {
@@ -63,7 +65,14 @@
     }];
     galleryRow.userInfo = @{@"checkmarked": @(self.includeGallery)};
 
-    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow], self.importMode ? @"A restart prompt appears after a successful import." : nil)];
+    SCISetting *deletedMessagesRow = [SCISetting buttonCellWithTitle:@"Deleted Messages" subtitle:@"" icon:SCISettingsIcon(@"messages") action:^{
+        self.includeDeletedMessages = !self.includeDeletedMessages;
+        [self rebuildSections];
+        [self updateActionEnabled];
+    }];
+    deletedMessagesRow.userInfo = @{@"checkmarked": @(self.includeDeletedMessages)};
+
+    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow, deletedMessagesRow], self.importMode ? @"A restart prompt appears after a successful import." : nil)];
     [self replaceSections:sections];
 }
 
@@ -85,16 +94,16 @@
 }
 
 - (void)updateActionEnabled {
-    self.navigationItem.rightBarButtonItem.enabled = self.includeSettings || self.includeGallery;
+    self.navigationItem.rightBarButtonItem.enabled = self.includeSettings || self.includeGallery || self.includeDeletedMessages;
 }
 
 - (void)runTransfer {
-    if (!(self.includeSettings || self.includeGallery)) return;
+    if (!(self.includeSettings || self.includeGallery || self.includeDeletedMessages)) return;
     UIViewController *presenter = self.navigationController ?: self;
     if (self.importMode) {
-        [[SCISettingsTransferManager sharedManager] importFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery];
+        [[SCISettingsTransferManager sharedManager] importFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery includeDeletedMessages:self.includeDeletedMessages];
     } else {
-        [[SCISettingsTransferManager sharedManager] exportFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery];
+        [[SCISettingsTransferManager sharedManager] exportFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery includeDeletedMessages:self.includeDeletedMessages];
     }
 }
 
@@ -113,7 +122,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
                                                                     icon:SCISettingsIcon(@"arrow_down")
                                                           viewController:[[SCISettingsTransferSelectionViewController alloc] initWithImportMode:YES]],
                                   [SCIUtils SCIColor_InstagramPrimaryText])
-        ], @"Choose to export or import settings, Gallery media or both."),
+        ], @"Choose to export or import settings, Gallery media, unsent messages logs."),
         SCITopicSection(@"Reset", @[
             SCISettingApplyIconTint([SCISetting buttonCellWithTitle:@"Reset All Settings"
                                                             subtitle:@""

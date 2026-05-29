@@ -34,6 +34,7 @@ FOUNDATION_EXPORT NSString * const kSCIActionExpand;
 FOUNDATION_EXPORT NSString * const kSCIActionViewThumbnail;
 FOUNDATION_EXPORT NSString * const kSCIActionCopyCaption;
 FOUNDATION_EXPORT NSString * const kSCIActionOpenTopicSettings;
+FOUNDATION_EXPORT NSString * const kSCIActionDeletedMessagesLog;
 FOUNDATION_EXPORT NSString * const kSCIActionRepost;
 FOUNDATION_EXPORT NSString * const kSCIActionToggleStorySeenUserRule;
 FOUNDATION_EXPORT NSString * const kSCIActionStoryMentionsSheet;

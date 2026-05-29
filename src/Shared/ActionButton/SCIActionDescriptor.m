@@ -39,6 +39,7 @@
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionViewThumbnail title:@"View Thumbnail" iconName:@"photo_gallery"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionCopyCaption title:@"Copy Caption" iconName:@"caption"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionOpenTopicSettings title:@"Settings" iconName:@"settings"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDeletedMessagesLog title:@"Deleted Messages Log" iconName:@"logs"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionRepost title:@"Repost" iconName:@"repost"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionToggleStorySeenUserRule title:@"Toggle Story User Rule" iconName:@"eye"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionStoryMentionsSheet title:@"Story Mentions" iconName:@"mention"],

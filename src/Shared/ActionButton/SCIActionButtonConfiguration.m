@@ -94,6 +94,7 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionDownloadGallery,
                 kSCIActionExpand,
                 kSCIActionViewThumbnail,
+                kSCIActionDeletedMessagesLog,
                 kSCIActionOpenTopicSettings
             ];
         case SCIActionButtonSourceInstants:
@@ -209,6 +210,8 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
         moreActions = @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings];
     } else if (source == SCIActionButtonSourceStories) {
         moreActions = @[kSCIActionExpand, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings];
+    } else if (source == SCIActionButtonSourceDirect) {
+        moreActions = @[kSCIActionExpand, kSCIActionDeletedMessagesLog, kSCIActionOpenTopicSettings];
     } else {
         moreActions = @[kSCIActionExpand, kSCIActionOpenTopicSettings];
     }

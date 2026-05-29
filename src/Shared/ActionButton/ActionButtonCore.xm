@@ -22,6 +22,7 @@
 #import "../Stories/SCIStoryContext.h"
 #import "../UI/SCINotificationCenter.h"
 #import "../UI/SCIChrome.h"
+#import "../../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesViewController.h"
 
 NSString * const kSCIActionNone = @"none";
 NSString * const kSCIActionDownloadLibrary = @"download_library";
@@ -44,6 +45,7 @@ NSString * const kSCIActionExpand = @"expand";
 NSString * const kSCIActionViewThumbnail = @"view_thumbnail";
 NSString * const kSCIActionCopyCaption = @"copy_caption";
 NSString * const kSCIActionOpenTopicSettings = @"open_topic_settings";
+NSString * const kSCIActionDeletedMessagesLog = @"deleted_messages_log";
 NSString * const kSCIActionRepost = @"repost";
 NSString * const kSCIActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
 NSString * const kSCIActionStoryMentionsSheet = @"story_mentions_sheet";
@@ -559,8 +561,8 @@ static BOOL SCIExecuteProfileCopyAction(NSString *identifier, SCIActionButtonCon
 static BOOL SCIActionMediaLooksLikeReel(id media) {
     if (!media) return NO;
     for (NSString *selectorName in @[@"isReelMedia", @"isClipsMedia", @"isClipsItem", @"isReel", @"isInstagramReel"]) {
-        id value = SCIObjectForSelector(media, selectorName);
-        if ([value respondsToSelector:@selector(boolValue)] && [value boolValue]) return YES;
+        NSNumber *value = [SCIUtils numericValueForObj:media selectorName:selectorName];
+        if (value.boolValue) return YES;
     }
     for (NSString *key in @[@"productType", @"mediaType", @"mediaSource", @"inventorySource", @"clipsTabEntryPoint"]) {
         NSString *value = SCIStringFromValue(SCIObjectForSelector(media, key));
@@ -1643,6 +1645,9 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
     if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionOpenTopicSettings]) {
         return SCIResolvedSettingsTitleForContext(context).length > 0;
     }
+    if (context.source == SCIActionButtonSourceDirect && [identifier isEqualToString:kSCIActionDeletedMessagesLog]) {
+        return YES;
+    }
 
     if (entries.count == 0) return NO;
 
@@ -2215,6 +2220,10 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
         }
         SCINotify(identifier, @"Opened settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
         [SCIUtils showSettingsForTopicTitle:settingsTitle];
+        return YES;
+    }
+    if (context.source == SCIActionButtonSourceDirect && [identifier isEqualToString:kSCIActionDeletedMessagesLog]) {
+        [SCIDeletedMessagesViewController presentFromViewController:SCIActionContextPresenter(context)];
         return YES;
     }
 

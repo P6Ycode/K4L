@@ -4,6 +4,7 @@
 #import "../SCISettingsViewController.h"
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 #import "../../Shared/Messages/SCIDirectSeenContext.h"
+#import "../../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesViewController.h"
 #import "../../Utils.h"
 
 static NSString * const kSCIMessagesActionButtonEnabledKey = @"msgs_action_btn";
@@ -71,11 +72,19 @@ static NSArray *SCIMessagesSettingsSections(void) {
              @"5. Marks messages as seen automatically when you react to a message.\n"
              @"6. Prevents typing indicators from being shown to others."),
         SCITopicSection(@"", @[
-            /// TODO: fix
             [SCISetting switchCellWithTitle:@"Keep Deleted Messages" icon:SCISettingsIcon(@"history") defaultsKey:@"msgs_keep_deleted"],
+            [SCISetting switchCellWithTitle:@"Visual Indicator" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_indicate_unsent"],
+            [SCISetting switchCellWithTitle:@"Unsent Toast" icon:SCISettingsIcon(@"undo") defaultsKey:@"msgs_unsent_toast"],
+            [SCISetting switchCellWithTitle:@"Log Deleted Messages" icon:SCISettingsIcon(@"logs") defaultsKey:@"msgs_deleted_log"],
+            [SCISetting switchCellWithTitle:@"Log Removed Reactions" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_deleted_log_reactions"],
+            [SCISetting switchCellWithTitle:@"Respect Seen Chat List" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_deleted_log_respect_seen_list"],
+            [SCISetting navigationCellWithTitle:@"Deleted Messages Log"
+                                       subtitle:@""
+                                           icon:SCISettingsIcon(@"messages")
+                                 viewController:[SCIDeletedMessagesViewController new]],
             [SCISetting switchCellWithTitle:@"No Suggested Chats" icon:SCISettingsIcon(@"question") defaultsKey:@"msgs_hide_suggested_chats"],
             [SCISetting switchCellWithTitle:@"Confirm Inbox Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"msgs_confirm_refresh"]
-        ], nil),
+        ], @"Keep Deleted Messages preserves remotely unsent messages in chat. Log Deleted Messages records the content and media before removal. Respect Seen Chat List skips chats in your manual-seen include/exclude list."),
         SCITopicSection(@"Visual Messages", @[
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_manual_visual_seen"],
             [SCISetting switchCellWithTitle:@"Advance After Manual Seen" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"msgs_advance_visual_on_seen"],

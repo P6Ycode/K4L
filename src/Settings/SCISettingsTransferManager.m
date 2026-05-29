@@ -10,12 +10,14 @@
 #import "../Shared/Gallery/SCIGalleryCoreDataStack.h"
 #import "../Shared/Gallery/SCIGalleryManager.h"
 #import "../Shared/Gallery/SCIGalleryPaths.h"
+#import "../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesStorage.h"
 
 @interface SCISettingsTransferManager () <UIDocumentPickerDelegate>
 @property (nonatomic, weak) UIViewController *presentingController;
 @property (nonatomic, strong) UIDocumentPickerViewController *activeDocumentPicker;
 @property (nonatomic, assign) BOOL pendingImportSettings;
 @property (nonatomic, assign) BOOL pendingImportGallery;
+@property (nonatomic, assign) BOOL pendingImportDeletedMessages;
 @property (nonatomic, assign) BOOL isImportMode;
 @end
 
@@ -531,8 +533,10 @@ static BOOL SCIIsValidSettingsTransferBundleRoot(NSString *bundleRoot) {
     if (bundleRoot.length == 0) return NO;
     NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
     NSString *galleryPath = [bundleRoot stringByAppendingPathComponent:@"Gallery"];
+    NSString *deletedMessagesPath = [bundleRoot stringByAppendingPathComponent:@"DeletedMessages"];
     return [[NSFileManager defaultManager] fileExistsAtPath:prefsPath] ||
-           [[NSFileManager defaultManager] fileExistsAtPath:galleryPath];
+           [[NSFileManager defaultManager] fileExistsAtPath:galleryPath] ||
+           [[NSFileManager defaultManager] fileExistsAtPath:deletedMessagesPath];
 }
 
 static NSString *SCIResolvedSettingsTransferBundleRoot(NSURL *pickedURL) {
@@ -586,12 +590,13 @@ static NSString *SCIResolvedImportBundleRootForPickedURL(NSURL *pickedURL, NSErr
     return SCIExpandSerializedSettingsTransferArchive(pickedURL, error);
 }
 
-static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGallery) {
+static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGallery, BOOL includeDeletedMessages) {
     return @{
         @"format_version": @2,
         @"created_at": [NSDate date],
         @"includes_settings": @(includeSettings),
         @"includes_gallery": @(includeGallery),
+        @"includes_deleted_messages": @(includeDeletedMessages),
         @"included_keys": includeSettings ? [[SCIExportedPreferenceKeys() allObjects] sortedArrayUsingSelector:@selector(compare:)] : @[]
     };
 }
@@ -654,7 +659,11 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 }
 
 - (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery {
-    if (!includeSettings && !includeGallery) return;
+    [self exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:NO];
+}
+
+- (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages {
+    if (!includeSettings && !includeGallery && !includeDeletedMessages) return;
     self.presentingController = controller;
     self.isImportMode = NO;
 
@@ -662,6 +671,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     NSString *bundleRoot = [root stringByAppendingPathComponent:@"SCInstaExportBundle"];
     NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
     NSString *galleryDestination = [bundleRoot stringByAppendingPathComponent:@"Gallery"];
+    NSString *deletedMessagesDestination = [bundleRoot stringByAppendingPathComponent:@"DeletedMessages"];
     NSString *manifestPath = [bundleRoot stringByAppendingPathComponent:@"manifest.plist"];
 
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -687,7 +697,25 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
         }
     }
 
-    [SCITransferManifest(includeSettings, includeGallery) writeToFile:manifestPath atomically:YES];
+    if (includeDeletedMessages) {
+        NSError *copyError = nil;
+        NSString *source = [SCIDeletedMessagesStorage storageRootPath];
+        if ([fm fileExistsAtPath:source]) {
+            if (![fm copyItemAtPath:source toPath:deletedMessagesDestination error:&copyError]) {
+                SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                return;
+            }
+        } else if (![fm createDirectoryAtPath:deletedMessagesDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
+            SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+            return;
+        }
+        NSString *keepalivePath = [deletedMessagesDestination stringByAppendingPathComponent:@".scinsta_keep"];
+        if (![fm fileExistsAtPath:keepalivePath]) {
+            [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
+        }
+    }
+
+    [SCITransferManifest(includeSettings, includeGallery, includeDeletedMessages) writeToFile:manifestPath atomically:YES];
 
     NSError *archiveError = nil;
     NSString *archivePath = [root stringByAppendingPathComponent:@"SCInsta.zip"];
@@ -701,7 +729,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[archiveURL] asCopy:YES];
     picker.delegate = self;
     self.activeDocumentPicker = picker;
-    SCILog(@"Transfer", @"Presenting export document picker settings=%@ gallery=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no");
+    SCILog(@"Transfer", @"Presenting export document picker settings=%@ gallery=%@ deletedMessages=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no", includeDeletedMessages ? @"yes" : @"no");
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presenter = SCIDocumentPickerPresenter(controller);
         if (!presenter || !presenter.view.window) {
@@ -716,10 +744,15 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 }
 
 - (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery {
-    if (!includeSettings && !includeGallery) return;
+    [self importFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:NO];
+}
+
+- (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages {
+    if (!includeSettings && !includeGallery && !includeDeletedMessages) return;
     self.presentingController = controller;
     self.pendingImportSettings = includeSettings;
     self.pendingImportGallery = includeGallery;
+    self.pendingImportDeletedMessages = includeDeletedMessages;
     self.isImportMode = YES;
     UIDocumentPickerViewController *picker = nil;
     UTType *archiveType = SCISettingsTransferArchiveType();
@@ -731,7 +764,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:contentTypes asCopy:YES];
     picker.delegate = self;
     self.activeDocumentPicker = picker;
-    SCILog(@"Transfer", @"Presenting import document picker settings=%@ gallery=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no");
+    SCILog(@"Transfer", @"Presenting import document picker settings=%@ gallery=%@ deletedMessages=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no", includeDeletedMessages ? @"yes" : @"no");
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presenter = SCIDocumentPickerPresenter(controller);
         if (!presenter || !presenter.view.window) {
@@ -748,6 +781,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
     self.pendingImportSettings = NO;
     self.pendingImportGallery = NO;
+    self.pendingImportDeletedMessages = NO;
     self.presentingController = nil;
     self.activeDocumentPicker = nil;
     self.isImportMode = NO;
@@ -769,24 +803,30 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     NSString *bundleRoot = SCIResolvedImportBundleRootForPickedURL(url, &archiveError);
     NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
     NSString *galleryPath = [bundleRoot stringByAppendingPathComponent:@"Gallery"];
+    NSString *deletedMessagesPath = [bundleRoot stringByAppendingPathComponent:@"DeletedMessages"];
     NSString *manifestPath = [bundleRoot stringByAppendingPathComponent:@"manifest.plist"];
     NSDictionary *manifest = bundleRoot.length > 0 ? [NSDictionary dictionaryWithContentsOfFile:manifestPath] : nil;
     NSDictionary *prefs = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath] ? [NSDictionary dictionaryWithContentsOfFile:prefsPath] : nil;
     BOOL archiveHasSettings = [prefs isKindOfClass:[NSDictionary class]];
     BOOL archiveHasGallery = [[NSFileManager defaultManager] fileExistsAtPath:galleryPath];
+    BOOL archiveHasDeletedMessages = [[NSFileManager defaultManager] fileExistsAtPath:deletedMessagesPath];
     BOOL importSettings = self.pendingImportSettings;
     BOOL importGallery = self.pendingImportGallery;
+    BOOL importDeletedMessages = self.pendingImportDeletedMessages;
     self.pendingImportSettings = NO;
     self.pendingImportGallery = NO;
+    self.pendingImportDeletedMessages = NO;
 
     if (manifest && [manifest isKindOfClass:[NSDictionary class]]) {
         NSNumber *manifestSettings = manifest[@"includes_settings"];
         NSNumber *manifestGallery = manifest[@"includes_gallery"];
+        NSNumber *manifestDeletedMessages = manifest[@"includes_deleted_messages"];
         if ([manifestSettings respondsToSelector:@selector(boolValue)]) archiveHasSettings = manifestSettings.boolValue && archiveHasSettings;
         if ([manifestGallery respondsToSelector:@selector(boolValue)]) archiveHasGallery = manifestGallery.boolValue && archiveHasGallery;
+        if ([manifestDeletedMessages respondsToSelector:@selector(boolValue)]) archiveHasDeletedMessages = manifestDeletedMessages.boolValue && archiveHasDeletedMessages;
     }
 
-    if ((importSettings && !archiveHasSettings) || (importGallery && !archiveHasGallery) || (!archiveHasSettings && !archiveHasGallery)) {
+    if ((importSettings && !archiveHasSettings) || (importGallery && !archiveHasGallery) || (importDeletedMessages && !archiveHasDeletedMessages) || (!archiveHasSettings && !archiveHasGallery && !archiveHasDeletedMessages)) {
         if (scoped) [url stopAccessingSecurityScopedResource];
         NSString *message = archiveError.localizedDescription ?: @"Archive contents were invalid.";
         SCINotify(kSCINotificationSettingsImport, @"Import failed", message, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
@@ -817,11 +857,22 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
         [[SCIGalleryCoreDataStack shared] reloadPersistentContainer];
     }
 
+    if (importDeletedMessages) {
+        NSError *deletedMessagesError = nil;
+        if (![SCIDeletedMessagesStorage replaceStorageWithDirectoryAtPath:deletedMessagesPath error:&deletedMessagesError]) {
+            if (scoped) [url stopAccessingSecurityScopedResource];
+            SCINotify(kSCINotificationSettingsImport, @"Import failed", deletedMessagesError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+            return;
+        }
+    }
+
     if (scoped) [url stopAccessingSecurityScopedResource];
 
-    NSString *subtitle = importSettings && importGallery
-        ? @"Settings and Gallery media were restored. Reconfigure Gallery lock if needed."
-        : (importSettings ? @"Settings were restored." : @"Gallery media were restored. Reconfigure Gallery lock if needed.");
+    NSMutableArray<NSString *> *restored = [NSMutableArray array];
+    if (importSettings) [restored addObject:@"preferences"];
+    if (importGallery) [restored addObject:@"Gallery"];
+    if (importDeletedMessages) [restored addObject:@"unsent messages"];
+    NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
     SCINotify(kSCINotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
     [SCIUtils showRestartConfirmation];
 }

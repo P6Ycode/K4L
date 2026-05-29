@@ -1258,6 +1258,7 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
                                                                              style:UIBarButtonItemStylePlain
                                                                             target:self
                                                                             action:@selector(closeTapped)];
+    self.navigationItem.leftBarButtonItem.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
 }
 
 - (NSArray<SCIMediaOptionSection *> *)sections {

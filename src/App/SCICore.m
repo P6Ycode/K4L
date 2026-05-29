@@ -60,6 +60,8 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"msgs_indicate_unsent": @(NO),
         @"msgs_unsent_toast": @(NO),
         @"msgs_deleted_log": @(NO),
+        @"msgs_deleted_log_reactions": @(NO),
+        @"msgs_deleted_log_respect_seen_list": @(NO),
         @"profile_photo_zoom": @(NO),
         @"profile_follow_indicator": @(NO),
         @"feed_action_btn": @(NO),
