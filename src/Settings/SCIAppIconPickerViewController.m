@@ -164,6 +164,8 @@ static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    self.selectedIdentifier = [SCIAppIconCatalog currentAppIconIdentifier];
+    [self.collectionView reloadData];
     [self scrollToSelectedIconIfNeeded];
 }
 

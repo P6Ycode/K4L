@@ -32,7 +32,10 @@ static CGFloat const kDismissFinalBackdropAlpha = 0.1;
 static NSTimeInterval const kPresentationFadeDuration = 0.22;
 static NSTimeInterval const kDismissFadeDuration = 0.18;
 static NSTimeInterval const kPreviewChromeAnimationDuration = 0.25;
-static CGFloat const kVideoPlayerControlBottomInset = 48.0;
+// The bottom toolbar is a real UIToolbar now, so the navigation controller folds
+// it into the safe area that AVPlayerViewController already respects. No manual
+// control inset is needed; keep it at zero so the scrubber sits just above it.
+static CGFloat const kVideoPlayerControlBottomInset = 0.0;
 static CGFloat const kGalleryPreviewMenuIconPointSize = 22.0;
 
 static UIImage *SCIGalleryPreviewMenuIcon(NSString *resourceName) {
@@ -109,14 +112,15 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 
 @property (nonatomic, strong) UIBarButtonItem *topFavoriteItem;
 
-@property (nonatomic, strong) UIView *bottomBar;
-@property (nonatomic, strong) UIButton *savePhotosButton;
-@property (nonatomic, strong) UIButton *saveGalleryButton;
-@property (nonatomic, strong) UIButton *deleteGalleryButton;
-@property (nonatomic, strong) UIButton *shareButton;
-@property (nonatomic, strong) UIButton *clipboardButton;
-@property (nonatomic, strong) UIButton *bulkActionsButton;
-@property (nonatomic, strong) UIButton *galleryOriginButton;
+@property (nonatomic, strong) UIBarButtonItem *savePhotosItem;
+@property (nonatomic, strong) UIBarButtonItem *saveGalleryItem;
+@property (nonatomic, strong) UIBarButtonItem *deleteGalleryItem;
+@property (nonatomic, strong) UIBarButtonItem *shareItem;
+@property (nonatomic, strong) UIBarButtonItem *clipboardItem;
+@property (nonatomic, strong) UIBarButtonItem *bulkActionsItem;
+@property (nonatomic, strong) UIBarButtonItem *galleryOriginItem;
+@property (nonatomic, assign) BOOL bulkActionsItemVisible;
+@property (nonatomic, assign) BOOL galleryOriginItemVisible;
 
 @property (nonatomic, assign) BOOL isToolbarVisible;
 @property (nonatomic, assign) BOOL isSingleItemMode;
@@ -461,40 +465,66 @@ fromViewController:(UIViewController *)presenter {
 #pragma mark - Bottom Bar
 
 - (void)setupBottomBar {
-    _bottomBar = SCIMediaChromeInstallBottomBar(self.view);
+    UINavigationController *nav = self.navigationController;
+    SCIMediaChromeConfigureBottomToolbar(nav.toolbar);
 
-    _savePhotosButton = SCIMediaChromeBottomButton(@"download", @"Save to Photos");
-    [_savePhotosButton addTarget:self action:@selector(saveToPhotos) forControlEvents:UIControlEventTouchUpInside];
-
-    _shareButton = SCIMediaChromeBottomButton(@"share", @"Share");
-    [_shareButton addTarget:self action:@selector(shareMedia) forControlEvents:UIControlEventTouchUpInside];
-
-    _clipboardButton = SCIMediaChromeBottomButton(@"copy", @"Copy");
-    [_clipboardButton addTarget:self action:@selector(copyMedia) forControlEvents:UIControlEventTouchUpInside];
+    _savePhotosItem = SCIMediaChromeBottomBarButtonItem(@"download", @"Save to Photos", self, @selector(saveToPhotos));
+    _shareItem = SCIMediaChromeBottomBarButtonItem(@"share", @"Share", self, @selector(shareMedia));
+    _clipboardItem = SCIMediaChromeBottomBarButtonItem(@"copy", @"Copy", self, @selector(copyMedia));
 
     if (!_isFromGallery && _items.count > 1) {
-        _bulkActionsButton = SCIMediaChromeBottomButton(@"more", @"Download All");
-        _bulkActionsButton.showsMenuAsPrimaryAction = YES;
+        _bulkActionsItem = SCIMediaChromeBottomBarButtonItem(@"more", @"Download All", nil, nil);
     }
 
     if (_isFromGallery) {
-        _galleryOriginButton = SCIMediaChromeBottomButton(@"more", @"More");
+        _galleryOriginItem = SCIMediaChromeBottomBarButtonItem(@"more", @"More", nil, nil);
 
-        _deleteGalleryButton = SCIMediaChromeBottomButton(@"trash", @"Delete from Gallery");
-        _deleteGalleryButton.tintColor = [SCIUtils SCIColor_InstagramDestructive];
-        [_deleteGalleryButton addTarget:self action:@selector(deleteFromGallery) forControlEvents:UIControlEventTouchUpInside];
+        _deleteGalleryItem = SCIMediaChromeBottomBarButtonItem(@"trash", @"Delete from Gallery", self, @selector(deleteFromGallery));
+        _deleteGalleryItem.tintColor = [SCIUtils SCIColor_InstagramDestructive];
     } else {
-        _saveGalleryButton = SCIMediaChromeBottomButton(@"media", @"Save to Gallery");
-        [_saveGalleryButton addTarget:self action:@selector(saveToGallery) forControlEvents:UIControlEventTouchUpInside];
+        _saveGalleryItem = SCIMediaChromeBottomBarButtonItem(@"media", @"Save to Gallery", self, @selector(saveToGallery));
     }
 
-    NSArray<UIView *> *row = _isFromGallery
-        ? @[_savePhotosButton, _shareButton, _clipboardButton, _galleryOriginButton, _deleteGalleryButton]
-        : (_bulkActionsButton
-            ? @[_savePhotosButton, _shareButton, _clipboardButton, _saveGalleryButton, _bulkActionsButton]
-            : @[_savePhotosButton, _shareButton, _clipboardButton, _saveGalleryButton]);
+    [self rebuildBottomToolbarItems];
+    [nav setToolbarHidden:NO animated:NO];
 
-    SCIMediaChromeInstallBottomRow(_bottomBar, row);
+    // Start with transparent bars (letterboxed content). On iOS <= 18 we switch
+    // to a material backing when the image is zoomed in behind the bars.
+    SCIMediaChromeSetBarsMaterialActive(nav, NO);
+}
+
+- (void)rebuildBottomToolbarItems {
+    NSMutableArray<UIBarButtonItem *> *primary = [NSMutableArray array];
+    NSMutableArray<UIBarButtonItem *> *trailing = [NSMutableArray array];
+    [primary addObject:_savePhotosItem];
+    [primary addObject:_shareItem];
+    [primary addObject:_clipboardItem];
+
+    if (_isFromGallery) {
+        // Delete stays in the primary group; "more" breaks out into its own
+        // trailing capsule, sitting after the trash icon.
+        if (_deleteGalleryItem) {
+            [primary addObject:_deleteGalleryItem];
+        }
+        if (_galleryOriginItem && _galleryOriginItemVisible) {
+            [trailing addObject:_galleryOriginItem];
+        }
+    } else {
+        if (_saveGalleryItem) {
+            [primary addObject:_saveGalleryItem];
+        }
+        // "Download all" / bulk actions overflow gets its own trailing capsule.
+        if (_bulkActionsItem && _bulkActionsItemVisible) {
+            [trailing addObject:_bulkActionsItem];
+        }
+    }
+
+    self.toolbarItems = SCIMediaChromeBottomToolbarItemsWithTrailingGroup(primary, trailing);
+}
+
+/// Anchor view for popovers/action sheets presented from the bottom toolbar.
+- (UIView *)bottomBarAnchorView {
+    return self.navigationController.toolbar ?: self.view;
 }
 
 #pragma mark - Page View Controller
@@ -673,6 +703,11 @@ fromViewController:(UIViewController *)presenter {
     [self prepareViewControllerForDisplay:currentVC];
     [self prepareAdjacentViewControllersAroundIndex:newIndex];
 
+    // Match the bar material to the newly visible page's zoom state.
+    BOOL zoomed = [currentVC isKindOfClass:[SCIFullScreenImageViewController class]]
+        && ((SCIFullScreenImageViewController *)currentVC).isZoomed;
+    SCIMediaChromeSetBarsMaterialActive(self.navigationController, zoomed);
+
     for (UIViewController *prevVC in previousViewControllers) {
         if ([prevVC isKindOfClass:[SCIFullScreenVideoViewController class]]) {
             [(SCIFullScreenVideoViewController *)prevVC pause];
@@ -689,15 +724,23 @@ fromViewController:(UIViewController *)presenter {
 - (void)mediaContent:(UIViewController *)controller didFailWithError:(NSError *)error {
 }
 
+- (void)mediaContent:(UIViewController *)controller didChangeZoomState:(BOOL)isZoomed {
+    // Only adapt for the visible page.
+    if (controller != self.pageViewController.viewControllers.firstObject) return;
+    SCIMediaChromeSetBarsMaterialActive(self.navigationController, isZoomed);
+}
+
 #pragma mark - UI Updates
 
 - (void)updateUI {
     [self updateCounter];
     [self updateFavoriteButton];
     [self updateGalleryOriginButton];
-    if (self.bulkActionsButton) {
-        self.bulkActionsButton.menu = [self bulkActionsMenu];
-        self.bulkActionsButton.hidden = (self.bulkActionsButton.menu == nil);
+    if (self.bulkActionsItem) {
+        UIMenu *menu = [self bulkActionsMenu];
+        self.bulkActionsItem.menu = menu;
+        self.bulkActionsItemVisible = (menu != nil);
+        [self rebuildBottomToolbarItems];
     }
 }
 
@@ -839,44 +882,44 @@ fromViewController:(UIViewController *)presenter {
 }
 
 - (void)updateGalleryOriginButton {
-    if (!_galleryOriginButton) return;
+    if (!_galleryOriginItem) return;
 
     SCIGalleryFile *file = self.currentItem.galleryFile;
     BOOL hasOriginal = file.hasOpenableOriginalMedia;
     BOOL hasProfile = file.hasOpenableProfile;
     NSInteger actionCount = (hasOriginal ? 1 : 0) + (hasProfile ? 1 : 0);
 
-    _galleryOriginButton.hidden = !file;
-    [_galleryOriginButton removeTarget:self action:@selector(performSingleGalleryOriginAction) forControlEvents:UIControlEventTouchUpInside];
+    _galleryOriginItemVisible = (file != nil);
+    _galleryOriginItem.target = nil;
+    _galleryOriginItem.action = nil;
 
     if (actionCount <= 0) {
-        [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(@"more") forState:UIControlStateNormal];
-        _galleryOriginButton.accessibilityLabel = @"More";
-        _galleryOriginButton.enabled = NO;
-        _galleryOriginButton.alpha = 0.55;
-        _galleryOriginButton.menu = nil;
-        _galleryOriginButton.showsMenuAsPrimaryAction = NO;
+        _galleryOriginItem.image = SCIMediaChromeBottomBarIcon(@"more");
+        _galleryOriginItem.accessibilityLabel = @"More";
+        _galleryOriginItem.enabled = NO;
+        _galleryOriginItem.menu = nil;
+        [self rebuildBottomToolbarItems];
         return;
     }
 
-    _galleryOriginButton.enabled = YES;
-    _galleryOriginButton.alpha = 1.0;
+    _galleryOriginItem.enabled = YES;
 
     if (actionCount == 1) {
         NSString *resourceName = hasProfile ? @"user_circle" : @"external_link";
         NSString *label = hasProfile ? @"Open Profile" : @"Open Original Post";
-        [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(resourceName) forState:UIControlStateNormal];
-        _galleryOriginButton.accessibilityLabel = label;
-        _galleryOriginButton.menu = nil;
-        _galleryOriginButton.showsMenuAsPrimaryAction = NO;
-        [_galleryOriginButton addTarget:self action:@selector(performSingleGalleryOriginAction) forControlEvents:UIControlEventTouchUpInside];
+        _galleryOriginItem.image = SCIMediaChromeBottomBarIcon(resourceName);
+        _galleryOriginItem.accessibilityLabel = label;
+        _galleryOriginItem.menu = nil;
+        _galleryOriginItem.target = self;
+        _galleryOriginItem.action = @selector(performSingleGalleryOriginAction);
+        [self rebuildBottomToolbarItems];
         return;
     }
 
-    [_galleryOriginButton setImage:SCIMediaChromeBottomIcon(@"more") forState:UIControlStateNormal];
-    _galleryOriginButton.accessibilityLabel = @"More";
-    _galleryOriginButton.menu = [self galleryOriginMenuForCurrentItem];
-    _galleryOriginButton.showsMenuAsPrimaryAction = YES;
+    _galleryOriginItem.image = SCIMediaChromeBottomBarIcon(@"more");
+    _galleryOriginItem.accessibilityLabel = @"More";
+    _galleryOriginItem.menu = [self galleryOriginMenuForCurrentItem];
+    [self rebuildBottomToolbarItems];
 }
 
 #pragma mark - Toolbar Toggle
@@ -884,19 +927,48 @@ fromViewController:(UIViewController *)presenter {
 - (void)toggleToolbar {
     _isToolbarVisible = !_isToolbarVisible;
     UINavigationController *navigationController = self.navigationController;
+    BOOL visible = _isToolbarVisible;
     [navigationController setNavigationBarHidden:NO animated:NO];
-    navigationController.navigationBar.userInteractionEnabled = _isToolbarVisible;
+
+    navigationController.navigationBar.userInteractionEnabled = visible;
+    navigationController.toolbar.userInteractionEnabled = visible;
     [self updateCurrentVideoPlayerControlInsetsAnimated:YES];
+
+    UIToolbar *toolbar = navigationController.toolbar;
+    BOOL fadeToolbarAlpha = YES;
+    if (@available(iOS 26.0, *)) {
+        // iOS 26's floating glass toolbar ignores alpha; drive it through the
+        // navigation controller's own hide transition instead.
+        fadeToolbarAlpha = NO;
+        if (visible) toolbar.alpha = 1.0;
+        [navigationController setToolbarHidden:!visible animated:YES];
+    } else if (visible) {
+        // Unhide and reset to transparent, then settle layout so the upcoming
+        // fade starts from alpha 0 instead of being snapped by a layout pass
+        // that re-asserts the managed toolbar alpha.
+        [navigationController setToolbarHidden:NO animated:NO];
+        toolbar.alpha = 0.0;
+        [navigationController.view layoutIfNeeded];
+    }
+
     [UIView animateWithDuration:kPreviewChromeAnimationDuration
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
         [self setNeedsStatusBarAppearanceUpdate];
         [navigationController setNeedsStatusBarAppearanceUpdate];
-        CGFloat alpha = self->_isToolbarVisible ? 1.0 : 0.0;
+        CGFloat alpha = visible ? 1.0 : 0.0;
         navigationController.navigationBar.alpha = alpha;
-        if (self->_bottomBar) self->_bottomBar.alpha = alpha;
+        if (fadeToolbarAlpha) {
+            toolbar.alpha = alpha;
+        }
     } completion:^(__unused BOOL finished) {
+        // On iOS <= 18 keep the hidden model in sync once the fade-out finishes,
+        // otherwise the controller re-asserts toolbar.alpha = 1 on a later layout
+        // pass and the bar pops back. Leave alpha at 0 - the show path resets it.
+        if (fadeToolbarAlpha && !visible) {
+            [navigationController setToolbarHidden:YES animated:NO];
+        }
         [self updateCurrentVideoPlayerControlInsetsAnimated:NO];
     }];
 }
@@ -1148,7 +1220,7 @@ fromViewController:(UIViewController *)presenter {
                                                    items:bulkItems
                                         actionIdentifier:kSCIActionDownloadAllLibrary
                                                presenter:self
-	                                              anchorView:self.bottomBar];
+	                                              anchorView:[self bottomBarAnchorView]];
                 return;
             }
             if ([identifier isEqualToString:kSCIActionDownloadAllShare]) {
@@ -1156,7 +1228,7 @@ fromViewController:(UIViewController *)presenter {
                                                    items:bulkItems
                                         actionIdentifier:kSCIActionDownloadAllShare
                                                presenter:self
-	                                              anchorView:self.bottomBar];
+	                                              anchorView:[self bottomBarAnchorView]];
                 return;
             }
             if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) {
@@ -1164,7 +1236,7 @@ fromViewController:(UIViewController *)presenter {
                                                    items:bulkItems
                                         actionIdentifier:kSCIActionDownloadAllGallery
                                                presenter:self
-	                                              anchorView:self.bottomBar];
+	                                              anchorView:[self bottomBarAnchorView]];
                 return;
             }
             if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) {
@@ -1172,7 +1244,7 @@ fromViewController:(UIViewController *)presenter {
                                                    items:bulkItems
                                         actionIdentifier:kSCIActionDownloadAllClipboard
                                                presenter:self
-	                                              anchorView:self.bottomBar];
+	                                              anchorView:[self bottomBarAnchorView]];
                 return;
             }
             if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) {
@@ -1243,7 +1315,7 @@ fromViewController:(UIViewController *)presenter {
     return [SCIMediaQualityManager handleDownloadAction:action
                                             identifier:feedbackIdentifier
                                              presenter:self
-	                                            sourceView:self.bottomBar
+	                                            sourceView:[self bottomBarAnchorView]
                                              mediaObject:item.sourceMediaObject
                                                photoURL:photoURL
                                                videoURL:videoURL
@@ -1261,7 +1333,7 @@ fromViewController:(UIViewController *)presenter {
     BOOL showProgress = SCINotificationIsEnabled(kSCINotificationMediaPreviewCopy);
     return [SCIMediaQualityManager handleCopyActionWithIdentifier:kSCINotificationMediaPreviewCopy
                                                         presenter:self
-	                                                       sourceView:self.bottomBar
+	                                                       sourceView:[self bottomBarAnchorView]
                                                         mediaObject:item.sourceMediaObject
                                                           photoURL:(item.mediaType == SCIMediaItemTypeImage ? sourceURL : nil)
                                                           videoURL:(item.mediaType == SCIMediaItemTypeVideo ? sourceURL : nil)
@@ -1367,9 +1439,10 @@ fromViewController:(UIViewController *)presenter {
         }
         SCINotify(kSCINotificationMediaPreviewShare, @"Opened share sheet", nil, @"share", SCINotificationToneInfo);
         UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[activityItem] applicationActivities:nil];
-	    if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad && self.bottomBar) {
-	        acVC.popoverPresentationController.sourceView = self.bottomBar;
-	        acVC.popoverPresentationController.sourceRect = self.bottomBar.bounds;
+	    if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+	        UIView *anchor = [self bottomBarAnchorView];
+	        acVC.popoverPresentationController.sourceView = anchor;
+	        acVC.popoverPresentationController.sourceRect = anchor.bounds;
 	    }
         [self presentViewController:acVC animated:YES completion:nil];
         return;
@@ -1555,11 +1628,17 @@ fromViewController:(UIViewController *)presenter {
                 duration = MIN(duration, kDismissMaximumDuration);
                 duration = MAX(kDismissMinimumDuration, duration);
 
+                // iOS 26's glass toolbar ignores alpha; hide its platter directly
+                // so it doesn't linger over the dismissing content.
+                if (@available(iOS 26.0, *)) {
+                    [self.navigationController setToolbarHidden:YES animated:YES];
+                }
+
                 [UIView animateWithDuration:duration delay:0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState animations:^{
                     self->_pageViewController.view.center = CGPointMake(self.interactiveDismissAnchorPoint.x, finalCenterY);
                     self.presentationBackdropView.alpha = 0.0;
                     self.navigationController.navigationBar.alpha = 0.0;
-                    if (self->_bottomBar) self->_bottomBar.alpha = 0.0;
+                    self.navigationController.toolbar.alpha = 0.0;
                 } completion:^(BOOL finished) {
                     [self finishInteractiveDismissal];
                 }];
@@ -1571,7 +1650,7 @@ fromViewController:(UIViewController *)presenter {
                     self.presentationBackdropView.alpha = 1.0;
                     CGFloat alpha = self->_isToolbarVisible ? 1.0 : 0.0;
                     self.navigationController.navigationBar.alpha = alpha;
-                    if (self->_bottomBar) self->_bottomBar.alpha = alpha;
+                    self.navigationController.toolbar.alpha = alpha;
                 } completion:^(BOOL finished) {
                     UIViewController *currentVC = self->_pageViewController.viewControllers.firstObject;
                     if ([currentVC isKindOfClass:[SCIFullScreenImageViewController class]]) {
@@ -1611,7 +1690,7 @@ fromViewController:(UIViewController *)presenter {
         self.presentationBackdropView.alpha = 1.0;
         CGFloat alpha = self->_isToolbarVisible ? 1.0 : 0.0;
         self.navigationController.navigationBar.alpha = alpha;
-        if (self->_bottomBar) self->_bottomBar.alpha = alpha;
+        self.navigationController.toolbar.alpha = alpha;
     };
     if (animated) {
         [UIView animateWithDuration:0.25 animations:animations];
@@ -1650,7 +1729,7 @@ fromViewController:(UIViewController *)presenter {
     self.presentationBackdropView.alpha = backdropAlpha;
     CGFloat fade = (self.isToolbarVisible ? 1.0 : 0.0) * backdropAlpha;
     self.navigationController.navigationBar.alpha = MAX(0.0, fade);
-    if (self.bottomBar) self.bottomBar.alpha = MAX(0.0, fade);
+    self.navigationController.toolbar.alpha = MAX(0.0, fade);
 }
 
 - (void)removeTransitionToViewForCancelledInteractiveDismissalIfNeeded {

@@ -12,7 +12,8 @@ static BOOL SCIIsIOSVersionAtLeast(NSString *version) {
 BOOL SCIPrefIsAvailable(NSString *key) {
     if (key.length == 0) return YES;
 
-    if ([key isEqualToString:kSCIPrefInterfaceLiquidGlass]) {
+    if ([key isEqualToString:kSCIPrefInterfaceLiquidGlass] ||
+        [key isEqualToString:kSCIPrefInterfaceLiquidGlassTabBarMode]) {
         return SCIIsIOSVersionAtLeast(@"26.0");
     }
 

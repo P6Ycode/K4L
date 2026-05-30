@@ -73,9 +73,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 @property (nonatomic, strong) NSFetchedResultsController *fetchedResultsController;
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UILabel *emptyStateLabel;
-/// Same floating pill toolbar chrome as media preview.
-@property (nonatomic, strong) UIView *bottomBar;
-@property (nonatomic, strong, nullable) UIStackView *bottomBarStack;
+// Bottom toolbar is the hosting navigation controller's native UIToolbar.
+// iOS 26 renders it as a Liquid Glass pill; earlier systems show a standard bar.
 
 // Folder navigation
 @property (nonatomic, copy, nullable) NSString *currentFolderPath;
@@ -190,16 +189,20 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self applyGalleryNavigationChrome];
-    [self installBottomToolbarIfNeeded];
     [self refreshNavigationItems];
     [self refreshBottomToolbarItems];
+    [self.navigationController setToolbarHidden:NO animated:animated];
     [self updateCollectionInsets];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    if (self.bottomBar.superview) {
-        [self.bottomBar removeFromSuperview];
+    // Hide the shared toolbar when navigating to a child that shouldn't show it
+    // (e.g. settings). Keep it visible when pushing another gallery screen so it
+    // doesn't flicker during the push animation; that screen manages its own.
+    UIViewController *incoming = self.navigationController.topViewController;
+    if (incoming && incoming != self && ![incoming isKindOfClass:[SCIGalleryViewController class]]) {
+        [self.navigationController setToolbarHidden:YES animated:animated];
     }
     if (self.navigationController.viewControllers.firstObject != self) return;
     if (self.isMovingFromParentViewController) return;
@@ -307,72 +310,42 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 }
 
 - (void)setupBottomToolbar {
-    [self installBottomToolbarIfNeeded];
     [self refreshBottomToolbarItems];
 }
 
-- (void)installBottomToolbarIfNeeded {
-    UIView *hostView = self.navigationController.view ?: self.view;
-    if (self.bottomBar && self.bottomBar.superview == hostView) {
-        return;
-    }
-
-    if (self.bottomBar.superview) {
-        [self.bottomBar removeFromSuperview];
-        self.bottomBar = nil;
-        self.bottomBarStack = nil;
-    }
-
-    self.bottomBar = SCIMediaChromeInstallBottomBar(hostView);
-}
-
-- (UIButton *)galleryBottomBarButtonWithResource:(NSString *)resourceName accessibility:(NSString *)label {
-    return SCIMediaChromeBottomButton(resourceName, label);
+- (UIBarButtonItem *)galleryBottomBarItemWithResource:(NSString *)resourceName accessibility:(NSString *)label action:(SEL)action {
+    return SCIMediaChromeBottomBarButtonItem(resourceName, label, self, action);
 }
 
 - (void)refreshBottomToolbarItems {
-    [self installBottomToolbarIfNeeded];
-    [self.bottomBarStack removeFromSuperview];
-    self.bottomBarStack = nil;
+    SCIMediaChromeConfigureBottomToolbar(self.navigationController.toolbar);
 
-    UIButton *searchBtn = [self galleryBottomBarButtonWithResource:@"search" accessibility:@"Search"];
-    [searchBtn addTarget:self action:@selector(activateSearch) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *searchItem = [self galleryBottomBarItemWithResource:@"search" accessibility:@"Search" action:@selector(activateSearch)];
 
+    NSArray<UIBarButtonItem *> *primary;
     if (self.selectionMode) {
-        UIButton *shareBtn = [self galleryBottomBarButtonWithResource:@"share" accessibility:@"Share selected"];
-        [shareBtn addTarget:self action:@selector(shareSelectedFiles) forControlEvents:UIControlEventTouchUpInside];
+        UIBarButtonItem *shareItem = [self galleryBottomBarItemWithResource:@"share" accessibility:@"Share selected" action:@selector(shareSelectedFiles)];
+        UIBarButtonItem *moveItem = [self galleryBottomBarItemWithResource:@"folder_move" accessibility:@"Move selected" action:@selector(moveSelectedFiles)];
+        UIBarButtonItem *favoriteItem = [self galleryBottomBarItemWithResource:@"heart" accessibility:@"Favorite selected" action:@selector(toggleFavoriteForSelectedFiles)];
+        UIBarButtonItem *deleteItem = [self galleryBottomBarItemWithResource:@"trash" accessibility:@"Delete selected" action:@selector(deleteSelectedFiles)];
+        deleteItem.tintColor = [SCIUtils SCIColor_InstagramDestructive];
 
-        UIButton *moveBtn = [self galleryBottomBarButtonWithResource:@"folder_move" accessibility:@"Move selected"];
-        [moveBtn addTarget:self action:@selector(moveSelectedFiles) forControlEvents:UIControlEventTouchUpInside];
+        primary = @[shareItem, moveItem, favoriteItem, deleteItem];
+    } else {
+        UIBarButtonItem *filterItem = [self galleryBottomBarItemWithResource:@"filter" accessibility:@"Filter" action:@selector(presentFilter)];
+        UIBarButtonItem *sortItem = [self galleryBottomBarItemWithResource:@"sort" accessibility:@"Sort" action:@selector(presentSort)];
 
-        UIButton *favoriteBtn = [self galleryBottomBarButtonWithResource:@"heart" accessibility:@"Favorite selected"];
-        [favoriteBtn addTarget:self action:@selector(toggleFavoriteForSelectedFiles) forControlEvents:UIControlEventTouchUpInside];
+        NSString *toggleResource = self.viewMode == SCIGalleryViewModeGrid ? @"list" : @"grid";
+        NSString *toggleAX = self.viewMode == SCIGalleryViewModeGrid ? @"List view" : @"Grid view";
+        UIBarButtonItem *toggleItem = [self galleryBottomBarItemWithResource:toggleResource accessibility:toggleAX action:@selector(toggleViewMode)];
 
-        UIButton *deleteBtn = [self galleryBottomBarButtonWithResource:@"trash" accessibility:@"Delete selected"];
-        [deleteBtn addTarget:self action:@selector(deleteSelectedFiles) forControlEvents:UIControlEventTouchUpInside];
-        deleteBtn.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+        UIBarButtonItem *folderItem = [self galleryBottomBarItemWithResource:@"folder" accessibility:@"New folder" action:@selector(presentCreateFolder)];
 
-        self.bottomBarStack = SCIMediaChromeInstallBottomRow(self.bottomBar, @[shareBtn, moveBtn, favoriteBtn, deleteBtn, searchBtn]);
-        return;
+        primary = @[toggleItem, sortItem, filterItem, folderItem];
     }
 
-    UIButton *filterBtn = [self galleryBottomBarButtonWithResource:@"filter" accessibility:@"Filter"];
-    [filterBtn addTarget:self action:@selector(presentFilter) forControlEvents:UIControlEventTouchUpInside];
-
-    UIButton *sortBtn = [self galleryBottomBarButtonWithResource:@"sort" accessibility:@"Sort"];
-    [sortBtn addTarget:self action:@selector(presentSort) forControlEvents:UIControlEventTouchUpInside];
-
-    NSString *toggleResource = self.viewMode == SCIGalleryViewModeGrid ? @"list" : @"grid";
-    NSString *toggleAX = self.viewMode == SCIGalleryViewModeGrid ? @"List view" : @"Grid view";
-    UIButton *toggleBtn = [self galleryBottomBarButtonWithResource:toggleResource accessibility:toggleAX];
-    [toggleBtn addTarget:self action:@selector(toggleViewMode) forControlEvents:UIControlEventTouchUpInside];
-
-    UIButton *folderBtn = [self galleryBottomBarButtonWithResource:@"folder" accessibility:@"New folder"];
-    [folderBtn addTarget:self action:@selector(presentCreateFolder) forControlEvents:UIControlEventTouchUpInside];
-
-    NSArray<UIView *> *row = @[toggleBtn, sortBtn, filterBtn, folderBtn, searchBtn];
-
-    self.bottomBarStack = SCIMediaChromeInstallBottomRow(self.bottomBar, row);
+    // Search lives in its own trailing capsule (iOS 26 Liquid Glass).
+    self.toolbarItems = SCIMediaChromeBottomToolbarItemsWithTrailingGroup(primary, @[searchItem]);
 }
 
 #pragma mark - Collection View
@@ -406,13 +379,16 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 }
 
 - (void)updateCollectionInsets {
-    CGFloat bottomInset = SCIMediaChromeFloatingBottomBarHeight + SCIMediaChromeFloatingBottomBarBottomMargin + self.view.safeAreaInsets.bottom;
+    // The hosting navigation controller folds the visible bottom toolbar into
+    // this view controller's safe area, and the collection view's automatic
+    // content-inset adjustment already accounts for it. Keep our manual bottom
+    // inset at zero so we don't double-count the toolbar height.
     UIEdgeInsets contentInsets = self.collectionView.contentInset;
-    contentInsets.bottom = bottomInset;
+    contentInsets.bottom = 0.0;
     self.collectionView.contentInset = contentInsets;
 
     UIEdgeInsets indicatorInsets = self.collectionView.scrollIndicatorInsets;
-    indicatorInsets.bottom = bottomInset;
+    indicatorInsets.bottom = 0.0;
     self.collectionView.scrollIndicatorInsets = indicatorInsets;
 }
 

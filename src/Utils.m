@@ -8,6 +8,7 @@
 #import "Shared/UI/SCIIGAlertPresenter.h"
 #import "Settings/SCIPreferenceAvailability.h"
 #import "Settings/SCIPreferences.h"
+#import "App/SCIStabilityGuard.h"
 
 static NSString *SCITrimmedLogBody(NSString *body) {
     return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -529,31 +530,12 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (_Bool)sci_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback {
-    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass] ? YES : fallback;
+    return [SCIUtils sci_isLiquidGlassEffectivelyEnabled] ? YES : fallback;
 }
 
-+ (BOOL)sci_liquidGlassHookPrefKey:(NSString *)key orig:(SCILiquidGlassBoolMsg)orig selfPtr:(id)selfPtr sel:(SEL)sel {
-    BOOL origVal = orig ? orig(selfPtr, sel) : NO;
-    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass] ? YES : origVal;
-}
-
-+ (BOOL)sci_anyLiquidGlassEnabled {
-    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass];
-}
-
-+ (void)applyLiquidGlassNavigationExperimentOverride {
-    Class navHelper = objc_getClass("IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper");
-    if (!navHelper || ![navHelper respondsToSelector:@selector(shared)]) {
-        return;
-    }
-
-    id shared = ((id (*)(id, SEL))objc_msgSend)(navHelper, @selector(shared));
-    if (!shared || ![shared respondsToSelector:@selector(overrideIsEnabled:)]) {
-        return;
-    }
-
-    BOOL on = [SCIUtils sci_anyLiquidGlassEnabled];
-    ((void (*)(id, SEL, BOOL))objc_msgSend)(shared, @selector(overrideIsEnabled:), on);
++ (BOOL)sci_isLiquidGlassEffectivelyEnabled {
+    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass] &&
+        !SCIStabilityGuardIsSafeStartupMode();
 }
 
 + (void)cleanCache {
@@ -611,6 +593,49 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     }
 
     [SCIUtils markCacheClearedNow];
+}
+
++ (unsigned long long)cacheSizeBytes {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *libraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) firstObject];
+    NSArray<NSURL *> *folders = @[
+        [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES],
+        [NSURL fileURLWithPath:[libraryFolder stringByAppendingPathComponent:@"Application Support/com.burbn.instagram/analytics"] isDirectory:YES],
+        [NSURL fileURLWithPath:[libraryFolder stringByAppendingPathComponent:@"Caches"] isDirectory:YES]
+    ];
+    NSArray<NSURLResourceKey> *resourceKeys = @[NSURLIsRegularFileKey, NSURLFileSizeKey];
+    unsigned long long totalBytes = 0;
+
+    for (NSURL *folderURL in folders) {
+        NSArray<NSURL *> *folderContents = [fileManager contentsOfDirectoryAtURL:folderURL
+                                                      includingPropertiesForKeys:resourceKeys
+                                                                         options:NSDirectoryEnumerationSkipsHiddenFiles
+                                                                           error:nil];
+        for (NSURL *itemURL in folderContents) {
+            NSDictionary<NSURLResourceKey, id> *values = [itemURL resourceValuesForKeys:resourceKeys error:nil];
+            if ([values[NSURLIsRegularFileKey] boolValue]) {
+                totalBytes += [values[NSURLFileSizeKey] unsignedLongLongValue];
+            }
+
+            NSDirectoryEnumerator<NSURL *> *enumerator = [fileManager enumeratorAtURL:itemURL
+                                                           includingPropertiesForKeys:resourceKeys
+                                                                              options:0
+                                                                         errorHandler:nil];
+            for (NSURL *fileURL in enumerator) {
+                values = [fileURL resourceValuesForKeys:resourceKeys error:nil];
+                if ([values[NSURLIsRegularFileKey] boolValue]) {
+                    totalBytes += [values[NSURLFileSizeKey] unsignedLongLongValue];
+                }
+            }
+        }
+    }
+
+    return totalBytes;
+}
+
++ (NSString *)formattedCacheSize {
+    return [NSByteCountFormatter stringFromByteCount:(long long)[self cacheSizeBytes]
+                                          countStyle:NSByteCountFormatterCountStyleFile];
 }
 
 + (NSString *)cacheAutoClearMode {

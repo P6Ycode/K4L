@@ -13,11 +13,12 @@ UIImage *SCISettingsSystemIcon(NSString *name, CGFloat pointSize, UIImageSymbolW
 SCISetting *SCISettingApplyIconTint(SCISetting *setting, UIColor * _Nullable tintColor);
 SCISetting *SCISettingApplySelectedMenuIcon(SCISetting *setting, UIImage * _Nullable fallbackIcon);
 SCISetting *SCITopicNavigationSetting(NSString *title, NSString *iconName, CGFloat iconSize, NSArray *sections);
-UIMenu *SCIActionButtonDefaultActionMenu(NSString *defaultsKey, NSString *topicTitle, NSArray<NSString *> *supportedActions);
+SCISetting *SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSource source);
 SCISetting *SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSource source, NSString *topicTitle, NSArray<NSString *> *supportedActions, NSArray<SCIActionMenuSection *> *defaultSections);
 UIMenu *SCIReelsTapControlMenu(void);
 UIMenu *SCINavigationIconOrderingMenu(void);
 UIMenu *SCISwipeBetweenTabsMenu(void);
+UIMenu *SCILiquidGlassTabBarStateMenu(void);
 UIMenu *SCISwipeCloseCommentsDirectionMenu(void);
 UIMenu *SCICacheAutoClearMenu(void);
 UIMenu *SCINotificationProgressSubtitleStyleMenu(void);

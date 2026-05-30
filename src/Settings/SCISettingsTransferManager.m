@@ -66,10 +66,7 @@ static BOOL SCIIsSCIPreferenceKey(NSString *key) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         exactKeys = [NSSet setWithArray:@[
-            @"app_first_run",
-            @"instagram.override.project.lucent.navigation",
-            @"IGLiquidGlassOverrideEnabled",
-            @"liquid_glass_override_enabled"
+            @"app_first_run"
         ]];
         prefixes = @[
             @"feed_",
@@ -108,9 +105,6 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
 
     [keys addObjectsFromArray:@[
         @"app_first_run",
-        @"instagram.override.project.lucent.navigation",
-        @"IGLiquidGlassOverrideEnabled",
-        @"liquid_glass_override_enabled",
         @"gallery_folders",
         @"gallery_sort_mode",
         @"gallery_view_mode",

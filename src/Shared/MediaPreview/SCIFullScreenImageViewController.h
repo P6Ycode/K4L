@@ -6,6 +6,9 @@
 @optional
 - (void)mediaContentDidTap:(UIViewController *)controller;
 - (void)mediaContent:(UIViewController *)controller didFailWithError:(NSError *)error;
+/// Reports the zoom state of the content so the host can adapt chrome (e.g.
+/// show a material backing behind the bars when content fills behind them).
+- (void)mediaContent:(UIViewController *)controller didChangeZoomState:(BOOL)isZoomed;
 @end
 
 NS_ASSUME_NONNULL_BEGIN

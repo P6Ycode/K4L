@@ -189,9 +189,6 @@ static const void *kSCIFlexThreeFingerGestureKey = &kSCIFlexThreeFingerGestureKe
 - (_Bool)isLiquidGlassIconBarButtonEnabled {
     return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
-- (_Bool)canUseInternalLiquidGlassDebugger {
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
-}
 %end
 
 // MARK: Bug reports

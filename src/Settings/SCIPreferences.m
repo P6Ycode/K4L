@@ -1,9 +1,14 @@
 #import "SCIPreferences.h"
 
 NSString * const kSCIPrefInterfaceLiquidGlass = @"interface_liquid_glass";
+NSString * const kSCIPrefInterfaceLiquidGlassTabBarMode = @"interface_liquid_glass_tabbar_mode";
 
 NSString *SCIPrefActionButtonConfigKey(NSString *topicKey) {
     return [NSString stringWithFormat:@"%@_action_btn_cfg", topicKey ?: @""];
+}
+
+NSString *SCIPrefActionButtonDefaultActionKey(NSString *topicKey) {
+    return [NSString stringWithFormat:@"%@_action_btn_default_action", topicKey ?: @""];
 }
 
 NSString *SCIPrefActionButtonBulkDownloadKey(NSString *topicKey) {

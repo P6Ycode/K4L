@@ -4,7 +4,6 @@
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 
 static NSString * const kSCIFeedActionButtonEnabledKey = @"feed_action_btn";
-static NSString * const kSCIFeedActionButtonDefaultActionKey = @"feed_action_btn_default_action";
 
 @implementation SCIFeedSettingsProvider
 
@@ -12,7 +11,7 @@ static NSString * const kSCIFeedActionButtonDefaultActionKey = @"feed_action_btn
     return SCITopicNavigationSetting(@"Feed", @"feed", 24.0, @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Feed Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIFeedActionButtonEnabledKey],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(kSCIFeedActionButtonDefaultActionKey, @"Feed", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceFeed))], SCISettingsIcon(@"action")),
+            SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSourceFeed),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceFeed, @"Feed", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceFeed), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceFeed))
         ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Layout", @[

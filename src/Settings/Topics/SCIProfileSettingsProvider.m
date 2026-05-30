@@ -74,7 +74,7 @@ static UIMenu *SCIProfileDefaultCopyInfoMenu(void) {
     return SCITopicNavigationSetting(@"Profile", @"user_circle", 24.0, @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Profile Action Button" icon:SCISettingsIcon(@"action") defaultsKey:@"profile_action_btn"],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(@"profile_action_btn_default_action", @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile))], SCISettingsIcon(@"action")),
+            SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSourceProfile),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceProfile, @"Profile", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceProfile)),
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Copy Info Default" icon:SCISettingsIcon(@"copy") menu:SCIProfileDefaultCopyInfoMenu()], SCISettingsIcon(@"copy"))
         ], @"Choose what tapping the action button does. Copy Info Default controls what gets copied when Default Tap Action is Copy Info."),

@@ -27,6 +27,8 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
 @property (nonatomic, strong, nullable) UIImage *icon;
 @property (nonatomic, strong, nullable) UIColor *iconTintColor;
 @property (nonatomic, copy, nullable) UIImage * (^iconProvider)(void);
+@property (nonatomic, copy, nullable) NSString * (^accessoryTextProvider)(void);
+@property (nonatomic, copy, nullable) BOOL (^enabledProvider)(void);
 @property (nonatomic, strong, nullable) UIColor *tintColor;
 @property (nonatomic, strong) NSString *defaultsKey;
 

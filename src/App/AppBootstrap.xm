@@ -63,20 +63,10 @@ static void SCIScheduleStagedFeatureHooks(void) {
     SCIStabilityGuardBeginLaunch();
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
-    if ([SCIUtils getBoolPref:@"interface_liquid_glass"]) {
-        [defaults setValue:@(YES) forKey:@"instagram.override.project.lucent.navigation"];
-    } else {
-        [defaults setValue:@(NO) forKey:@"instagram.override.project.lucent.navigation"];
-    }
-
-    if ([SCIUtils getBoolPref:@"interface_liquid_glass"]) {
-        [defaults setBool:YES forKey:@"liquid_glass_override_enabled"];
-        [defaults setBool:YES forKey:@"IGLiquidGlassOverrideEnabled"];
-    } else {
-        [defaults setBool:NO forKey:@"liquid_glass_override_enabled"];
-        [defaults setBool:NO forKey:@"IGLiquidGlassOverrideEnabled"];
-    }
-    [SCIUtils applyLiquidGlassNavigationExperimentOverride];
+    [defaults setBool:[SCIUtils sci_isLiquidGlassEffectivelyEnabled]
+               forKey:@"instagram.override.project.lucent.navigation"];
+    [defaults removeObjectForKey:@"liquid_glass_override_enabled"];
+    [defaults removeObjectForKey:@"IGLiquidGlassOverrideEnabled"];
     SCICoreInstallLaunchCriticalHooks();
     SCIStartupMark(@"launch critical hooks installed");
 

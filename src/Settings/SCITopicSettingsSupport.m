@@ -1,7 +1,9 @@
 #import "SCITopicSettingsSupport.h"
 #import "../Shared/UI/SCINotificationCenter.h"
+#import "SCIActionButtonDefaultActionPickerViewController.h"
 #import "SCIEditActionsListViewController.h"
 #import "SCIBulkActionMenuEditViewController.h"
+#import "SCIPreferences.h"
 
 #import "../AssetUtils.h"
 #import "../Utils.h"
@@ -84,6 +86,20 @@ SCISetting *SCITopicNavigationSetting(NSString *title, NSString *iconName, CGFlo
                                    [SCIUtils SCIColor_InstagramPrimaryText]);
 }
 
+SCISetting *SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSource source) {
+    SCISetting *setting = [SCISetting navigationCellWithTitle:@"Default Tap Action"
+                                                    subtitle:@""
+                                                        icon:SCISettingsIcon(@"action")
+                                              viewController:[[SCIActionButtonDefaultActionPickerViewController alloc] initWithSource:source]];
+    setting.accessoryTextProvider = ^NSString *{
+        return SCIActionButtonDefaultActionTitleForSource(source);
+    };
+    setting.iconProvider = ^UIImage *{
+        return SCISettingsIcon(SCIActionButtonDefaultActionIconNameForSource(source));
+    };
+    return setting;
+}
+
 static UICommand *SCIMenuCommand(NSString *title, NSString *imageName, NSString *fallback, NSString *defaultsKey, NSString *value, BOOL requiresRestart) {
     NSMutableDictionary *propertyList = [@{
         @"defaultsKey": defaultsKey,
@@ -108,58 +124,6 @@ static UICommand *SCIMenuCommand(NSString *title, NSString *imageName, NSString 
                                  image:image
                                 action:@selector(menuChanged:)
                           propertyList:[propertyList copy]];
-}
-
-static NSString *SCIActionButtonDisplayTitle(NSString *identifier, NSString *topicTitle) {
-    return SCIActionDescriptorDisplayTitle(identifier, topicTitle);
-}
-
-UIMenu *SCIActionButtonDefaultActionMenu(NSString *defaultsKey, NSString *topicTitle, NSArray<NSString *> *supportedActions) {
-    NSMutableArray<UIMenuElement *> *commands = [NSMutableArray array];
-
-    NSMutableOrderedSet<NSString *> *supportedSet = [NSMutableOrderedSet orderedSet];
-    for (NSString *identifier in supportedActions ?: @[]) {
-        if ([identifier isKindOfClass:[NSString class]] && identifier.length > 0) {
-            [supportedSet addObject:identifier];
-        }
-    }
-
-    NSArray<NSArray<NSString *> *> *groups = @[
-        @[kSCIActionDownloadLibrary, kSCIActionDownloadShare, kSCIActionDownloadGallery],
-        @[kSCIActionDownloadAudio, kSCIActionDownloadAudioShare, kSCIActionDownloadAudioGallery, kSCIActionPlayAudio, kSCIActionCopyAudioURL],
-        @[kSCIActionExpand, kSCIActionViewThumbnail],
-        @[kSCIActionCopyMedia, kSCIActionCopyDownloadLink, kSCIActionCopyCaption, kSCIActionProfileCopyInfo],
-        @[kSCIActionOpenTopicSettings, kSCIActionRepost]
-    ];
-
-    for (NSInteger groupIndex = 0; groupIndex < (NSInteger)groups.count; groupIndex++) {
-        NSArray<NSString *> *group = groups[groupIndex];
-        NSMutableArray<UIMenuElement *> *groupCommands = [NSMutableArray array];
-        for (NSString *identifier in group) {
-            if (![supportedSet containsObject:identifier]) continue;
-            [groupCommands addObject:SCIMenuCommand(SCIActionButtonDisplayTitle(identifier, topicTitle),
-                                                    SCIActionDescriptorIconName(identifier),
-                                                    nil,
-                                                    defaultsKey,
-                                                    identifier,
-                                                    NO)];
-        }
-        if (groupIndex == (NSInteger)groups.count - 1) {
-            [groupCommands addObject:SCIMenuCommand(@"None", @"action", nil, defaultsKey, kSCIActionNone, NO)];
-        }
-        if (groupCommands.count == 0) continue;
-        [commands addObject:[UIMenu menuWithTitle:@""
-                                            image:nil
-                                       identifier:nil
-                                          options:UIMenuOptionsDisplayInline
-                                         children:groupCommands]];
-    }
-
-    if (commands.count == 0) {
-        [commands addObject:SCIMenuCommand(@"None", @"action", nil, defaultsKey, kSCIActionNone, NO)];
-    }
-
-    return [UIMenu menuWithChildren:commands];
 }
 
 SCISetting *SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSource source, NSString *topicTitle, NSArray<NSString *> *supportedActions, NSArray<SCIActionMenuSection *> *defaultSections) {
@@ -211,6 +175,20 @@ UIMenu *SCISwipeBetweenTabsMenu(void) {
                      children:@[
             SCIMenuCommand(@"Enabled", nil, nil, @"interface_swipe_tabs", @"enabled", YES),
             SCIMenuCommand(@"Disabled", nil, nil, @"interface_swipe_tabs", @"disabled", YES)
+        ]]
+    ]];
+}
+
+UIMenu *SCILiquidGlassTabBarStateMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SCIMenuCommand(@"Default", nil, nil, kSCIPrefInterfaceLiquidGlassTabBarMode, @"default", YES),
+        [UIMenu menuWithTitle:@""
+                        image:nil
+                   identifier:nil
+                      options:UIMenuOptionsDisplayInline
+                     children:@[
+            SCIMenuCommand(@"Fixed", nil, nil, kSCIPrefInterfaceLiquidGlassTabBarMode, @"fixed", YES),
+            SCIMenuCommand(@"Hide on Scroll", nil, nil, kSCIPrefInterfaceLiquidGlassTabBarMode, @"hide", YES)
         ]]
     ]];
 }

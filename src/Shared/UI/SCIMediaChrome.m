@@ -3,13 +3,9 @@
 #import "../../Utils.h"
 
 CGFloat const SCIMediaChromeTopBarContentHeight = 44.0;
-CGFloat const SCIMediaChromeBottomBarHeight = 44.0;
-CGFloat const SCIMediaChromeFloatingBottomBarHeight = 60.0;
-CGFloat const SCIMediaChromeFloatingBottomBarBottomMargin = -12.0;
 
 static CGFloat const kSCIMediaChromeTopIconPointSize = 24.0;
 static CGFloat const kSCIMediaChromeBottomIconPointSize = 24.0;
-static CGFloat const kSCIMediaChromeFloatingBottomBarHorizontalMargin = 22.0;
 
 UIBlurEffect *SCIMediaChromeBlurEffect(void) {
     return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
@@ -132,97 +128,127 @@ void SCIMediaChromeSetTrailingTopBarItems(UINavigationItem *navigationItem, NSAr
     navigationItem.rightBarButtonItem = nil;
 }
 
-static UIVisualEffect *SCIMediaChromeLiquidGlassEffect(void) {
-    Class glassClass = NSClassFromString(@"UIGlassEffect");
-    SEL selector = NSSelectorFromString(@"effectWithStyle:");
-    if (!glassClass || ![glassClass respondsToSelector:selector]) {
-        return nil;
-    }
+#pragma mark - Bottom Toolbar
 
-    NSMethodSignature *signature = [glassClass methodSignatureForSelector:selector];
-    if (!signature) {
-        return nil;
-    }
-
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    NSInteger style = 0;
-    __unsafe_unretained UIVisualEffect *effect = nil;
-    invocation.target = glassClass;
-    invocation.selector = selector;
-    [invocation setArgument:&style atIndex:2];
-    [invocation invoke];
-    [invocation getReturnValue:&effect];
-    return effect;
+UIImage *SCIMediaChromeBottomBarIcon(NSString *resourceName) {
+    UIImage *icon = SCIMediaChromeBottomIcon(resourceName);
+    return [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
-static UIVisualEffect *SCIMediaChromeBottomBarEffect(void) {
+UIBarButtonItem *SCIMediaChromeBottomBarButtonItem(NSString *resourceName, NSString *accessibilityLabel, id target, SEL action) {
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:SCIMediaChromeBottomBarIcon(resourceName)
+                                                             style:UIBarButtonItemStylePlain
+                                                            target:target
+                                                            action:action];
+    item.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    item.accessibilityLabel = accessibilityLabel;
+    return item;
+}
+
+static UIBarButtonItem *SCIMediaChromeFlexibleSpace(void) {
+    return [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+}
+
+static UIBarButtonItem *SCIMediaChromeFixedSpace(CGFloat width) {
+    UIBarButtonItem *space = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
+    space.width = width;
+    return space;
+}
+
+NSArray<UIBarButtonItem *> *SCIMediaChromeBottomToolbarItems(NSArray<UIBarButtonItem *> *contentItems) {
+    if (contentItems.count == 0) {
+        return @[];
+    }
+
+    NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
+
     if (@available(iOS 26.0, *)) {
-        UIVisualEffect *glassEffect = SCIMediaChromeLiquidGlassEffect();
-        if (glassEffect) {
-            return glassEffect;
-        }
-    }
-    return SCIMediaChromeBlurEffect();
-}
-
-UIView *SCIMediaChromeInstallBottomBar(UIView *hostView) {
-    UIView *bar = [[UIView alloc] initWithFrame:CGRectZero];
-    bar.translatesAutoresizingMaskIntoConstraints = NO;
-    bar.backgroundColor = [UIColor clearColor];
-    [hostView addSubview:bar];
-
-    UIVisualEffectView *effectView = [[UIVisualEffectView alloc] initWithEffect:SCIMediaChromeBottomBarEffect()];
-    effectView.translatesAutoresizingMaskIntoConstraints = NO;
-    effectView.userInteractionEnabled = NO;
-    effectView.clipsToBounds = YES;
-    effectView.layer.cornerCurve = kCACornerCurveContinuous;
-    effectView.layer.cornerRadius = SCIMediaChromeFloatingBottomBarHeight / 2.0;
-    effectView.backgroundColor = [UIColor clearColor];
-    effectView.contentView.backgroundColor = [UIColor clearColor];
-    [bar addSubview:effectView];
-    [NSLayoutConstraint activateConstraints:@[
-        [effectView.topAnchor constraintEqualToAnchor:bar.topAnchor],
-        [effectView.bottomAnchor constraintEqualToAnchor:bar.bottomAnchor],
-        [effectView.leadingAnchor constraintEqualToAnchor:bar.leadingAnchor],
-        [effectView.trailingAnchor constraintEqualToAnchor:bar.trailingAnchor],
-    ]];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [bar.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:kSCIMediaChromeFloatingBottomBarHorizontalMargin],
-        [bar.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-kSCIMediaChromeFloatingBottomBarHorizontalMargin],
-        [bar.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:-SCIMediaChromeFloatingBottomBarBottomMargin],
-        [bar.heightAnchor constraintEqualToConstant:SCIMediaChromeFloatingBottomBarHeight],
-    ]];
-
-    return bar;
-}
-
-UIButton *SCIMediaChromeBottomButton(NSString *resourceName, NSString *accessibilityLabel) {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-    btn.translatesAutoresizingMaskIntoConstraints = NO;
-    [btn setImage:SCIMediaChromeBottomIcon(resourceName) forState:UIControlStateNormal];
-    btn.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    btn.accessibilityLabel = accessibilityLabel;
-    return btn;
-}
-
-UIStackView *SCIMediaChromeInstallBottomRow(UIView *bottomBar, NSArray<UIView *> *row) {
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:row];
-    stack.translatesAutoresizingMaskIntoConstraints = NO;
-    stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.distribution = UIStackViewDistributionFillEqually;
-    stack.alignment = UIStackViewAlignmentCenter;
-    [bottomBar addSubview:stack];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:bottomBar.topAnchor],
-        [stack.leadingAnchor constraintEqualToAnchor:bottomBar.leadingAnchor],
-        [stack.trailingAnchor constraintEqualToAnchor:bottomBar.trailingAnchor],
-        [stack.bottomAnchor constraintEqualToAnchor:bottomBar.bottomAnchor],
-    ]];
-    for (UIView *v in row) {
-        [v.heightAnchor constraintEqualToConstant:SCIMediaChromeFloatingBottomBarHeight].active = YES;
+        // Keep the content items adjacent so they share a single Liquid Glass
+        // capsule, and center the capsule with a flexible spacer on each end.
+        [items addObject:SCIMediaChromeFlexibleSpace()];
+        [items addObjectsFromArray:contentItems];
+        [items addObject:SCIMediaChromeFlexibleSpace()];
+        return items;
     }
 
-    return stack;
+    // Legacy: distribute evenly across a standard full-width bottom bar.
+    [items addObject:SCIMediaChromeFlexibleSpace()];
+    for (UIBarButtonItem *item in contentItems) {
+        [items addObject:item];
+        [items addObject:SCIMediaChromeFlexibleSpace()];
+    }
+    return items;
+}
+
+NSArray<UIBarButtonItem *> *SCIMediaChromeBottomToolbarItemsWithTrailingGroup(NSArray<UIBarButtonItem *> *primaryItems, NSArray<UIBarButtonItem *> *trailingItems) {
+    if (trailingItems.count == 0) {
+        return SCIMediaChromeBottomToolbarItems(primaryItems);
+    }
+    if (primaryItems.count == 0) {
+        return SCIMediaChromeBottomToolbarItems(trailingItems);
+    }
+
+    NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
+
+    if (@available(iOS 26.0, *)) {
+        // Both groups stay centered (flexible spacers on the outer ends) while a
+        // fixed gap between them splits the glass background into two capsules.
+        [items addObject:SCIMediaChromeFlexibleSpace()];
+        [items addObjectsFromArray:primaryItems];
+        [items addObject:SCIMediaChromeFixedSpace(8.0)];
+        [items addObjectsFromArray:trailingItems];
+        [items addObject:SCIMediaChromeFlexibleSpace()];
+        return items;
+    }
+
+    // Legacy: a single evenly-distributed bar containing every item.
+    NSMutableArray<UIBarButtonItem *> *combined = [NSMutableArray arrayWithArray:primaryItems];
+    [combined addObjectsFromArray:trailingItems];
+    return SCIMediaChromeBottomToolbarItems(combined);
+}
+
+void SCIMediaChromeConfigureBottomToolbar(UIToolbar *toolbar) {
+    if (!toolbar) {
+        return;
+    }
+    toolbar.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    toolbar.translucent = YES;
+}
+
+void SCIMediaChromeSetBarsMaterialActive(UINavigationController *navigationController, BOOL active) {
+    if (!navigationController) {
+        return;
+    }
+    // iOS 26+ Liquid Glass adapts on its own; leave the system appearance alone.
+    if (@available(iOS 26.0, *)) {
+        return;
+    }
+
+    UIColor *tint = [SCIUtils SCIColor_InstagramPrimaryText];
+
+    UINavigationBarAppearance *navAppearance = [[UINavigationBarAppearance alloc] init];
+    if (active) {
+        [navAppearance configureWithDefaultBackground];
+    } else {
+        [navAppearance configureWithTransparentBackground];
+    }
+    UINavigationBar *navBar = navigationController.navigationBar;
+    navBar.standardAppearance = navAppearance;
+    navBar.scrollEdgeAppearance = navAppearance;
+    navBar.compactAppearance = navAppearance;
+    navBar.tintColor = tint;
+
+    UIToolbarAppearance *toolbarAppearance = [[UIToolbarAppearance alloc] init];
+    if (active) {
+        [toolbarAppearance configureWithDefaultBackground];
+    } else {
+        [toolbarAppearance configureWithTransparentBackground];
+    }
+    UIToolbar *toolbar = navigationController.toolbar;
+    toolbar.standardAppearance = toolbarAppearance;
+    toolbar.scrollEdgeAppearance = toolbarAppearance;
+    if (@available(iOS 15.0, *)) {
+        toolbar.compactAppearance = toolbarAppearance;
+    }
+    toolbar.tintColor = tint;
 }

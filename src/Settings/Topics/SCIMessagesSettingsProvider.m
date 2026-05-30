@@ -8,7 +8,6 @@
 #import "../../Utils.h"
 
 static NSString * const kSCIMessagesActionButtonEnabledKey = @"msgs_action_btn";
-static NSString * const kSCIMessagesActionButtonDefaultActionKey = @"msgs_action_btn_default_action";
 static NSString * const kSCIMessagesAudioCallConfirmKey = @"msgs_confirm_audio_call";
 static NSString * const kSCIMessagesVideoCallConfirmKey = @"msgs_confirm_video_call";
 
@@ -47,7 +46,7 @@ static NSArray *SCIMessagesSettingsSections(void) {
     return @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Messages Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIMessagesActionButtonEnabledKey],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(kSCIMessagesActionButtonDefaultActionKey, @"Messages", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceDirect))], SCISettingsIcon(@"action")),
+            SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSourceDirect),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceDirect, @"Messages", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceDirect), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceDirect))
         ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Messaging", @[

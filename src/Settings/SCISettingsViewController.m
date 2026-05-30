@@ -118,6 +118,14 @@ static NSString *SCISettingsNormalizedQuery(NSString *query) {
     return [[query ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] localizedLowercaseString];
 }
 
+static NSString *SCISettingsAccessoryText(SCISetting *row) {
+    NSString *providedText = row.accessoryTextProvider ? row.accessoryTextProvider() : nil;
+    if ([providedText isKindOfClass:[NSString class]]) return providedText;
+
+    NSString *staticText = [row.userInfo[@"accessoryText"] isKindOfClass:[NSString class]] ? row.userInfo[@"accessoryText"] : nil;
+    return staticText;
+}
+
 static NSArray<NSString *> *SCISettingsSearchTokens(NSString *query) {
     NSString *normalized = SCISettingsNormalizedQuery(query);
     if (normalized.length == 0) return @[];
@@ -292,6 +300,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self setupNavigationItems];
+    [self.tableView reloadData];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -375,7 +384,9 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     cellContentConfig.textProperties.numberOfLines = 0;
     cellContentConfig.secondaryTextProperties.numberOfLines = 0;
     cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByWordWrapping;
-    BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) && SCIPrefIsAvailable(row.defaultsKey);
+    BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) &&
+        (!row.enabledProvider || row.enabledProvider()) &&
+        SCIPrefIsAvailable(row.defaultsKey);
 
     cellContentConfig.text = row.title;
 
@@ -496,6 +507,14 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
         }
 
         case SCITableCellButton: {
+            NSString *accessoryText = SCISettingsAccessoryText(row);
+            if (accessoryText.length > 0) {
+                cellContentConfig.secondaryText = accessoryText;
+                cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
+                cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
+                cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
+                                                                                   weight:UIFontWeightMedium];
+            }
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
             break;
         }
@@ -534,10 +553,12 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
         }
 
         case SCITableCellNavigation: {
-            NSString *accessoryText = [row.userInfo[@"accessoryText"] isKindOfClass:[NSString class]] ? row.userInfo[@"accessoryText"] : nil;
+            NSString *accessoryText = SCISettingsAccessoryText(row);
             if (rowEnabled && accessoryText.length > 0) {
                 cellContentConfig.secondaryText = accessoryText;
                 cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
+                cellContentConfig.secondaryTextProperties.numberOfLines = 1;
+                cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByTruncatingTail;
                 cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
                 cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
                                                                                    weight:UIFontWeightMedium];
@@ -668,7 +689,9 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     SCISetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
     if (!row) return;
-    BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) && SCIPrefIsAvailable(row.defaultsKey);
+    BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) &&
+        (!row.enabledProvider || row.enabledProvider()) &&
+        SCIPrefIsAvailable(row.defaultsKey);
     if (!rowEnabled) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         return;
@@ -680,6 +703,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     else if (row.type == SCITableCellButton) {
         if (row.action != nil) {
             row.action();
+            [tableView reloadData];
         }
     }
     else if (row.type == SCITableCellNavigation) {
@@ -915,6 +939,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
         if (row.action) {
             row.action();
         }
+        [self.tableView reloadData];
         return;
     }
 

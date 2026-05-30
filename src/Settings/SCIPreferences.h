@@ -3,12 +3,14 @@
 NS_ASSUME_NONNULL_BEGIN
 
 FOUNDATION_EXPORT NSString * const kSCIPrefInterfaceLiquidGlass;
+FOUNDATION_EXPORT NSString * const kSCIPrefInterfaceLiquidGlassTabBarMode;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 NSString *SCIPrefActionButtonConfigKey(NSString *topicKey);
+NSString *SCIPrefActionButtonDefaultActionKey(NSString *topicKey);
 NSString *SCIPrefActionButtonBulkDownloadKey(NSString *topicKey);
 NSString *SCIPrefActionButtonBulkCopyKey(NSString *topicKey);
 NSString *SCIPrefNotificationKey(NSString *identifier);

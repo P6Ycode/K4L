@@ -85,12 +85,20 @@
             [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:kSCIPrefInterfaceLiquidGlass];
             [SCIUtils showRestartConfirmation];
         };
+        SCISetting *tabBarState = [SCISetting menuCellWithTitle:@"Tab Bar State"
+                                                          icon:SCISettingsIcon(@"sort")
+                                                          menu:SCILiquidGlassTabBarStateMenu()];
+        tabBarState.defaultsKey = kSCIPrefInterfaceLiquidGlassTabBarMode;
+        tabBarState.enabledProvider = ^BOOL{
+            return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass];
+        };
         if (!liquidGlassAvailable) {
             liquidGlass.userInfo = @{@"enabled": @NO};
         }
         [sections addObject:SCITopicSection(@"Liquid Glass", @[
-            SCISettingApplyIconTint(liquidGlass, [UIColor systemOrangeColor])
-        ], @"Force-enable Liquid Glass UI across Instagram.")];
+            SCISettingApplyIconTint(liquidGlass, [UIColor systemOrangeColor]),
+            tabBarState
+        ], @"Force-enable Instagram's native Liquid Glass UI. Tab Bar State controls how the floating tab bar behaves while scrolling.")];
     }
 
     return SCITopicNavigationSetting(@"Interface", @"interface", 24.0, sections);

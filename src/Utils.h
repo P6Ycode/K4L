@@ -45,17 +45,12 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 /// IGDSLauncherConfig hooks: when Liquid Glass is on, returns YES; otherwise returns `fallback` (stock).
 + (_Bool)sci_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback;
 
-typedef BOOL (*SCILiquidGlassBoolMsg)(id, SEL);
-/// Runtime hooks: unset uses `orig`; when the pref exists and is on, returns YES.
-+ (BOOL)sci_liquidGlassHookPrefKey:(NSString *)key orig:(SCILiquidGlassBoolMsg)orig selfPtr:(id)selfPtr sel:(SEL)sel;
-
-/// True when any liquid-glass-related preference is explicitly enabled.
-+ (BOOL)sci_anyLiquidGlassEnabled;
-
-/// Calls Instagram navigation experiment override when the helper class exists.
-+ (void)applyLiquidGlassNavigationExperimentOverride;
+/// True when Liquid Glass is enabled and runtime suppression is inactive.
++ (BOOL)sci_isLiquidGlassEffectivelyEnabled;
 
 + (void)cleanCache;
++ (unsigned long long)cacheSizeBytes;
++ (NSString *)formattedCacheSize;
 + (NSString *)cacheAutoClearMode;
 + (BOOL)shouldAutomaticallyClearCacheNow;
 + (void)markCacheClearedNow;

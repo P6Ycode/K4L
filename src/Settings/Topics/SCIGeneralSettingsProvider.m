@@ -11,15 +11,16 @@
 @implementation SCIGeneralSettingsProvider
 
 + (SCISetting *)appIconSetting {
-    SCIAppIconItem *currentIcon = [SCIAppIconCatalog currentAppIcon];
-    NSString *currentTitle = currentIcon.displayName.length > 0 ? currentIcon.displayName : @"Default";
     SCIAppIconPickerViewController *controller = [[SCIAppIconPickerViewController alloc] initWithSelectedIdentifier:[SCIAppIconCatalog currentAppIconIdentifier]
                                                                                                           onSelect:nil];
     SCISetting *setting = [SCISetting navigationCellWithTitle:@"App Icon"
-                                                     subtitle:currentTitle
+                                                     subtitle:@""
                                                          icon:SCISettingsIcon(@"app")
                                                viewController:controller];
-    setting.userInfo = @{@"accessoryText": currentTitle};
+    setting.accessoryTextProvider = ^NSString *{
+        SCIAppIconItem *currentIcon = [SCIAppIconCatalog currentAppIcon];
+        return currentIcon.displayName.length > 0 ? currentIcon.displayName : @"Default";
+    };
     return setting;
 }
 
@@ -70,6 +71,14 @@
     encodingLogs.userInfo = @{@"enabled": @YES};
 
     NSString *qualityFooter = ffmpegAvailable ? @"\"High\" merges DASH files for best quality. \"Default\" uses ready-to-play files. \"Always Ask\" prompts for selection." : @"FFmpegKit is required for video quality options and encoding features.";
+
+    SCISetting *clearCacheSetting = [SCISetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SCISettingsIcon(@"trash") action:^(void) {
+        [SCIUtils cleanCache];
+        SCINotify(kSCINotificationSettingsClearCache, @"Cache cleared", nil, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
+    }];
+    clearCacheSetting.accessoryTextProvider = ^NSString *{
+        return [SCIUtils formattedCacheSize];
+    };
 
     return SCITopicNavigationSetting(@"General", @"settings", 24.0, @[
         SCITopicSection(@"Behavior", @[
@@ -140,10 +149,7 @@
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Audio Page Default Action" icon:SCISettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SCISettingsIcon(@"action"))
         ], @"Adds audio actions for audio pages and media action buttons."),
         SCITopicSection(@"Storage", @[
-            [SCISetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SCISettingsIcon(@"trash") action:^(void) {
-                [SCIUtils cleanCache];
-                SCINotify(kSCINotificationSettingsClearCache, @"Cache cleared", nil, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
-            }],
+            clearCacheSetting,
             [SCISetting menuCellWithTitle:@"Auto Clear Cache" icon:SCISettingsIcon(@"clock") menu:SCICacheAutoClearMenu()]
         ], @"Automatic clearing is checked whenever Instagram becomes active."),
         SCITopicSection(@"App", @[

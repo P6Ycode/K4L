@@ -16,6 +16,7 @@ static CGFloat const kZoomEpsilon = 0.02;
 @property (nonatomic, strong) UIButton *retryButton;
 @property (nonatomic, strong) UITapGestureRecognizer *doubleTapGesture;
 @property (nonatomic, assign) BOOL isLoadingImage;
+@property (nonatomic, assign) BOOL lastReportedZoomState;
 
 @end
 
@@ -264,6 +265,18 @@ static CGFloat const kZoomEpsilon = 0.02;
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView {
     [self sci_recenterZoomedImage];
+    [self notifyZoomStateIfChanged];
+}
+
+/// Notifies the delegate when the zoomed/unzoomed state flips so the host can
+/// adapt its chrome (material backing behind the bars when zoomed in).
+- (void)notifyZoomStateIfChanged {
+    BOOL zoomed = self.isZoomed;
+    if (zoomed == _lastReportedZoomState) return;
+    _lastReportedZoomState = zoomed;
+    if ([self.delegate respondsToSelector:@selector(mediaContent:didChangeZoomState:)]) {
+        [self.delegate mediaContent:self didChangeZoomState:zoomed];
+    }
 }
 
 #pragma mark - Gestures
@@ -297,11 +310,13 @@ static CGFloat const kZoomEpsilon = 0.02;
         [_scrollView setZoomScale:kMinZoom animated:NO];
         [self sci_recenterZoomedImage];
     }
+    [self notifyZoomStateIfChanged];
 }
 
 - (void)forceResetZoom {
     [_scrollView setZoomScale:kMinZoom animated:NO];
     [self updateImageViewFrame];
+    [self notifyZoomStateIfChanged];
 }
 
 #pragma mark - Cleanup

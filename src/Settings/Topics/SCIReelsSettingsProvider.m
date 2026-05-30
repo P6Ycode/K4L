@@ -4,7 +4,6 @@
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 
 static NSString * const kSCIReelsActionButtonEnabledKey = @"reels_action_btn";
-static NSString * const kSCIReelsActionButtonDefaultActionKey = @"reels_action_btn_default_action";
 
 @implementation SCIReelsSettingsProvider
 
@@ -12,7 +11,7 @@ static NSString * const kSCIReelsActionButtonDefaultActionKey = @"reels_action_b
     return SCITopicNavigationSetting(@"Reels", @"reels", 24.0, @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Reels Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIReelsActionButtonEnabledKey],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(kSCIReelsActionButtonDefaultActionKey, @"Reels", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceReels))], SCISettingsIcon(@"action")),
+            SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSourceReels),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceReels, @"Reels", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceReels), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceReels))
         ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Behavior", @[

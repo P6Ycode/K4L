@@ -6,7 +6,6 @@
 #import "../../Shared/Stories/SCIStoryContext.h"
 #import "../../Utils.h"
 static NSString * const kSCIStoriesActionButtonEnabledKey = @"stories_action_btn";
-static NSString * const kSCIStoriesActionButtonDefaultActionKey = @"stories_action_btn_default_action";
 
 static NSDictionary *SCIStoriesSeenReceiptsSection(void);
 static NSArray *SCIStoriesSettingsSections(void);
@@ -62,7 +61,7 @@ static NSArray *SCIStoriesSettingsSections(void) {
     return @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Stories Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIStoriesActionButtonEnabledKey],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(kSCIStoriesActionButtonDefaultActionKey, @"Stories", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceStories))], SCISettingsIcon(@"action")),
+            SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSourceStories),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceStories, @"Stories", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceStories), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceStories))
         ], @"1. Add an action button above the bottom story bar.\n"
            @"2. Choose the default action. Long press opens the full menu."),

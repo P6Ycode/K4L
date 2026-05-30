@@ -6,7 +6,6 @@
 #import "../../Utils.h"
 
 static NSString * const kSCIInstantsActionButtonEnabledKey = @"instants_action_btn";
-static NSString * const kSCIInstantsActionButtonDefaultActionKey = @"instants_action_btn_default_action";
 
 static NSArray *SCIInstantsSettingsSections(void);
 
@@ -28,7 +27,7 @@ static NSArray *SCIInstantsSettingsSections(void) {
     return @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Instants Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIInstantsActionButtonEnabledKey],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Default Tap Action" icon:SCISettingsIcon(@"action") menu:SCIActionButtonDefaultActionMenu(kSCIInstantsActionButtonDefaultActionKey, @"Instants", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceInstants))], SCISettingsIcon(@"action")),
+            SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSourceInstants),
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceInstants, @"Instants", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceInstants), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceInstants))
         ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Privacy", @[

@@ -312,7 +312,7 @@ static UIColor *SCIActionButtonTintForSource(SCIActionButtonSource source) {
 }
 
 static NSString *SCIDefaultActionPrefKeyForSource(SCIActionButtonSource source) {
-	return [NSString stringWithFormat:@"%@_action_btn_default_action", SCIActionButtonTopicKeyForSource(source)];
+	return SCIPrefActionButtonDefaultActionKey(SCIActionButtonTopicKeyForSource(source));
 }
 
 static SCIGallerySource SCIGallerySourceForActionSource(SCIActionButtonSource source) {

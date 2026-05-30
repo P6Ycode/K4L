@@ -1,7 +1,9 @@
 #import <substrate.h>
 #import <objc/runtime.h>
-#import "../../InstagramHeaders.h"
+
 #import "../../Utils.h"
+#import "../../Settings/SCIPreferences.h"
+#include "../../../modules/SCISideloadFix/fishhook/fishhook.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
@@ -10,50 +12,108 @@ typedef BOOL (*SCI_BOOL_MSG)(id self, SEL _cmd);
 typedef void (*SCI_VOID_MSG)(id self, SEL _cmd);
 typedef void (*SCI_SET_CGFLOAT_MSG)(id self, SEL _cmd, CGFloat value);
 
-static SCI_BOOL_MSG orig_liquidGlass_class_isEnabled;
-static BOOL hook_liquidGlass_class_isEnabled(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_liquidGlass_class_isEnabled selfPtr:self sel:_cmd];
+static BOOL SCIIsLiquidGlassEnabled(void) {
+    return [SCIUtils sci_isLiquidGlassEffectivelyEnabled];
 }
 
-static SCI_BOOL_MSG orig_nav_isEnabled;
-static BOOL hook_nav_isEnabled(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_nav_isEnabled selfPtr:self sel:_cmd];
+// MARK: - Native button experiment
+
+static SCI_BOOL_MSG orig_swizzleToggle_isEnabled;
+static BOOL hook_swizzleToggle_isEnabled(id self, SEL _cmd) {
+    return SCIIsLiquidGlassEnabled() ? YES : (orig_swizzleToggle_isEnabled ? orig_swizzleToggle_isEnabled(self, _cmd) : NO);
 }
 
-static SCI_BOOL_MSG orig_nav_isDefaultValueSet;
-static BOOL hook_nav_isDefaultValueSet(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_nav_isDefaultValueSet selfPtr:self sel:_cmd];
+static SCI_BOOL_MSG orig_navigationExperiment_isEnabled;
+static BOOL hook_navigationExperiment_isEnabled(id self, SEL _cmd) {
+    return SCIIsLiquidGlassEnabled() ? YES : (orig_navigationExperiment_isEnabled ? orig_navigationExperiment_isEnabled(self, _cmd) : NO);
 }
 
-static SCI_BOOL_MSG orig_nav_isHomeFeedHeaderEnabled;
-static BOOL hook_nav_isHomeFeedHeaderEnabled(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_nav_isHomeFeedHeaderEnabled selfPtr:self sel:_cmd];
+static SCI_BOOL_MSG orig_navigationExperiment_isHomeFeedHeaderEnabled;
+static BOOL hook_navigationExperiment_isHomeFeedHeaderEnabled(id self, SEL _cmd) {
+    return SCIIsLiquidGlassEnabled() ? YES : (orig_navigationExperiment_isHomeFeedHeaderEnabled ? orig_navigationExperiment_isHomeFeedHeaderEnabled(self, _cmd) : NO);
 }
 
-static SCI_BOOL_MSG orig_swizzle_isEnabled;
-static BOOL hook_swizzle_isEnabled(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_swizzle_isEnabled selfPtr:self sel:_cmd];
+// MARK: - Native surface feature symbols
+
+static BOOL (*orig_IGFloatingTabBarEnabled)(void);
+static BOOL (*orig_IGTabBarDynamicSizingEnabled)(void);
+static BOOL (*orig_IGTabBarEnhancedDynamicSizingEnabled)(void);
+static BOOL (*orig_IGTabBarHomecomingWithFloatingTabEnabled)(void);
+static BOOL (*orig_IGTabBarViewPointFixEnabled)(void);
+static NSInteger (*orig_IGTabBarStyleForLauncherSet)(NSInteger launcherSet);
+
+#define SCI_LIQUID_GLASS_BOOL_FISHHOOK(name) \
+    static BOOL hook_##name(void) { \
+        return SCIIsLiquidGlassEnabled() ? YES : (orig_##name ? orig_##name() : NO); \
+    }
+
+SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGFloatingTabBarEnabled)
+SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarDynamicSizingEnabled)
+SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarEnhancedDynamicSizingEnabled)
+SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarHomecomingWithFloatingTabEnabled)
+SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarViewPointFixEnabled)
+
+static NSInteger hook_IGTabBarStyleForLauncherSet(NSInteger launcherSet) {
+    return SCIIsLiquidGlassEnabled() ? 1 : (orig_IGTabBarStyleForLauncherSet ? orig_IGTabBarStyleForLauncherSet(launcherSet) : launcherSet);
 }
 
-static SCI_BOOL_MSG orig_badged_isLiquidGlass;
-static BOOL hook_badged_isLiquidGlass(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_badged_isLiquidGlass selfPtr:self sel:_cmd];
+// MARK: - Tab bar scroll state
+
+typedef NS_ENUM(NSInteger, SCILiquidGlassTabBarMode) {
+    SCILiquidGlassTabBarModeDefault = 0,
+    SCILiquidGlassTabBarModeFixed,
+    SCILiquidGlassTabBarModeHide,
+};
+
+static SCILiquidGlassTabBarMode SCICurrentLiquidGlassTabBarMode(void) {
+    NSString *mode = [SCIUtils getStringPref:kSCIPrefInterfaceLiquidGlassTabBarMode];
+    if ([mode isEqualToString:@"fixed"]) return SCILiquidGlassTabBarModeFixed;
+    if ([mode isEqualToString:@"hide"]) return SCILiquidGlassTabBarModeHide;
+    return SCILiquidGlassTabBarModeDefault;
 }
 
-static SCI_BOOL_MSG orig_videoBack_isLiquidGlass;
-static BOOL hook_videoBack_isLiquidGlass(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_videoBack_isLiquidGlass selfPtr:self sel:_cmd];
+static const void *kSCILiquidGlassTabBarHiddenKey = &kSCILiquidGlassTabBarHiddenKey;
+
+static void SCIApplyLiquidGlassTabBarHiddenState(UIView *bar, BOOL hidden) {
+    NSNumber *current = objc_getAssociatedObject(bar, kSCILiquidGlassTabBarHiddenKey);
+    if (current && current.boolValue == hidden) return;
+    objc_setAssociatedObject(bar, kSCILiquidGlassTabBarHiddenKey, @(hidden), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+    CGFloat dropY = CGRectGetHeight(bar.bounds) + 40.0;
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.9
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        bar.transform = hidden ? CGAffineTransformMakeTranslation(0.0, dropY) : CGAffineTransformIdentity;
+        bar.alpha = hidden ? 0.0 : 1.0;
+    } completion:nil];
 }
 
-static SCI_BOOL_MSG orig_videoCam_isLiquidGlass;
-static BOOL hook_videoCam_isLiquidGlass(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_videoCam_isLiquidGlass selfPtr:self sel:_cmd];
+static void (*orig_tabBar_setScaleProgress)(id self, SEL _cmd, double progress);
+static void hook_tabBar_setScaleProgress(id self, SEL _cmd, double progress) {
+    SCILiquidGlassTabBarMode mode = SCIIsLiquidGlassEnabled() ? SCICurrentLiquidGlassTabBarMode() : SCILiquidGlassTabBarModeDefault;
+    if (mode == SCILiquidGlassTabBarModeFixed) {
+        SCIApplyLiquidGlassTabBarHiddenState((UIView *)self, NO);
+        progress = 0.0;
+    } else if (mode == SCILiquidGlassTabBarModeHide) {
+        SCIApplyLiquidGlassTabBarHiddenState((UIView *)self, progress > 0.05);
+        progress = 0.0;
+    } else {
+        SCIApplyLiquidGlassTabBarHiddenState((UIView *)self, NO);
+    }
+    if (orig_tabBar_setScaleProgress) orig_tabBar_setScaleProgress(self, _cmd, progress);
 }
 
-static SCI_BOOL_MSG orig_alert_enableLiquidGlass;
-static BOOL hook_alert_enableLiquidGlass(id self, SEL _cmd) {
-    return [SCIUtils sci_liquidGlassHookPrefKey:@"interface_liquid_glass" orig:(SCILiquidGlassBoolMsg)orig_alert_enableLiquidGlass selfPtr:self sel:_cmd];
+static void (*orig_tabBar_scaleDownWithInteraction)(id self, SEL _cmd, id interaction);
+static void hook_tabBar_scaleDownWithInteraction(id self, SEL _cmd, id interaction) {
+    SCILiquidGlassTabBarMode mode = SCIIsLiquidGlassEnabled() ? SCICurrentLiquidGlassTabBarMode() : SCILiquidGlassTabBarModeDefault;
+    if (mode != SCILiquidGlassTabBarModeDefault) return;
+    if (orig_tabBar_scaleDownWithInteraction) orig_tabBar_scaleDownWithInteraction(self, _cmd, interaction);
 }
+
+// MARK: - Direct inbox separator workaround
 
 static Class SCIDirectInboxNavigationHeaderViewClass(void) {
     Class cls = objc_getClass("IGDirectInboxNavigationHeaderView");
@@ -64,29 +124,20 @@ static Class SCIDirectInboxNavigationHeaderViewClass(void) {
 }
 
 static UIView *SCIDirectInboxHeaderSeparatorView(id headerView) {
-    if (![headerView isKindOfClass:UIView.class]) {
-        return nil;
-    }
+    if (![headerView isKindOfClass:UIView.class]) return nil;
 
     NSArray<UIView *> *subviews = [(UIView *)headerView subviews];
-    if (subviews.count <= 1) {
-        return nil;
-    }
+    if (subviews.count <= 1) return nil;
 
     UIView *candidate = subviews[1];
-    if (![candidate isKindOfClass:UIView.class]) {
-        return nil;
-    }
+    if (![candidate isKindOfClass:UIView.class]) return nil;
 
     CGFloat height = MAX(candidate.bounds.size.height, candidate.frame.size.height);
-    if (subviews.count == 2 || height <= 3.0) {
-        return candidate;
-    }
-
-    return nil;
+    return (subviews.count == 2 || height <= 3.0) ? candidate : nil;
 }
 
 static void SCIRemoveDirectInboxHeaderSeparator(id headerView) {
+    if (!SCIIsLiquidGlassEnabled()) return;
     UIView *separator = SCIDirectInboxHeaderSeparatorView(headerView);
     separator.alpha = 0.0;
     separator.hidden = YES;
@@ -95,171 +146,58 @@ static void SCIRemoveDirectInboxHeaderSeparator(id headerView) {
 
 static SCI_VOID_MSG orig_directInboxHeader_layoutSubviews;
 static void hook_directInboxHeader_layoutSubviews(id self, SEL _cmd) {
-    if (orig_directInboxHeader_layoutSubviews) {
-        orig_directInboxHeader_layoutSubviews(self, _cmd);
-    }
+    if (orig_directInboxHeader_layoutSubviews) orig_directInboxHeader_layoutSubviews(self, _cmd);
     SCIRemoveDirectInboxHeaderSeparator(self);
 }
 
 static SCI_VOID_MSG orig_directInboxHeader_didMoveToWindow;
 static void hook_directInboxHeader_didMoveToWindow(id self, SEL _cmd) {
-    if (orig_directInboxHeader_didMoveToWindow) {
-        orig_directInboxHeader_didMoveToWindow(self, _cmd);
-    }
+    if (orig_directInboxHeader_didMoveToWindow) orig_directInboxHeader_didMoveToWindow(self, _cmd);
     SCIRemoveDirectInboxHeaderSeparator(self);
 }
 
 static SCI_SET_CGFLOAT_MSG orig_directInboxHeader_setSeparatorAlpha;
 static void hook_directInboxHeader_setSeparatorAlpha(id self, SEL _cmd, CGFloat alpha) {
     if (orig_directInboxHeader_setSeparatorAlpha) {
-        orig_directInboxHeader_setSeparatorAlpha(self, _cmd, 0.0);
+        orig_directInboxHeader_setSeparatorAlpha(self, _cmd, SCIIsLiquidGlassEnabled() ? 0.0 : alpha);
     }
     SCIRemoveDirectInboxHeaderSeparator(self);
 }
 
-%group SCILiquidGlassHooks
-
-%hook IGTabBar
-- (instancetype)initWithFrame:(CGRect)frame
-                defaultConfig:(id)defaultConfig
-            immersiveConfig:(id)immersiveConfig
-               backgroundView:(id)backgroundView
-                  launcherSet:(id)launcherSet {
-    NSUserDefaults *sciLGDefaults = [NSUserDefaults standardUserDefaults];
-    if ([sciLGDefaults objectForKey:@"interface_liquid_glass"] == nil || ![sciLGDefaults boolForKey:@"interface_liquid_glass"]) {
-        return %orig;
+static void SCIHookInstanceMethodIfPresent(Class cls, SEL selector, IMP replacement, IMP *original) {
+    if (cls && class_getInstanceMethod(cls, selector)) {
+        MSHookMessageEx(cls, selector, replacement, original);
     }
-
-    Class lgClass = objc_getClass("IGLiquidGlassInteractiveTabBar");
-    if (!lgClass) {
-        return %orig;
-    }
-
-    id replacement = [[lgClass alloc] initWithFrame:frame];
-    if (!replacement) {
-        return %orig;
-    }
-
-    if (defaultConfig && [replacement respondsToSelector:@selector(setConfig:)]) {
-        [replacement performSelector:@selector(setConfig:) withObject:defaultConfig];
-    }
-    if (immersiveConfig && [replacement respondsToSelector:@selector(setImmersiveConfig:)]) {
-        [replacement performSelector:@selector(setImmersiveConfig:) withObject:immersiveConfig];
-    }
-
-    return replacement;
-}
-%end
-
-%hook IGTabBarController
-- (NSInteger)tabBarStyle {
-    NSUserDefaults *sciLGTabDefaults = [NSUserDefaults standardUserDefaults];
-    if ([sciLGTabDefaults objectForKey:@"interface_liquid_glass"] != nil && [sciLGTabDefaults boolForKey:@"interface_liquid_glass"]) {
-        return 1;
-    }
-    return %orig;
-}
-%end
-
-%end
-
-static BOOL SCIAnyLiquidGlassPrefEnabled(void) {
-    return [SCIUtils sci_anyLiquidGlassEnabled];
 }
 
 extern "C" void SCIInstallLiquidGlassHooksIfEnabled(void) {
-    if (!SCIAnyLiquidGlassPrefEnabled()) return;
-
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    %init(SCILiquidGlassHooks);
+        int result = rebind_symbols((struct rebinding[]){
+            {"IGFloatingTabBarEnabled", (void *)hook_IGFloatingTabBarEnabled, (void **)&orig_IGFloatingTabBarEnabled},
+            {"IGTabBarDynamicSizingEnabled", (void *)hook_IGTabBarDynamicSizingEnabled, (void **)&orig_IGTabBarDynamicSizingEnabled},
+            {"IGTabBarEnhancedDynamicSizingEnabled", (void *)hook_IGTabBarEnhancedDynamicSizingEnabled, (void **)&orig_IGTabBarEnhancedDynamicSizingEnabled},
+            {"IGTabBarHomecomingWithFloatingTabEnabled", (void *)hook_IGTabBarHomecomingWithFloatingTabEnabled, (void **)&orig_IGTabBarHomecomingWithFloatingTabEnabled},
+            {"IGTabBarViewPointFixEnabled", (void *)hook_IGTabBarViewPointFixEnabled, (void **)&orig_IGTabBarViewPointFixEnabled},
+            {"IGTabBarStyleForLauncherSet", (void *)hook_IGTabBarStyleForLauncherSet, (void **)&orig_IGTabBarStyleForLauncherSet},
+        }, 6);
+        SCILog(@"LiquidGlass", @"Surface fishhook result=%d", result);
 
-    Class c = objc_getClass("IGLiquidGlass.IGLiquidGlass");
-    if (c) {
-        Method m = class_getClassMethod(c, @selector(isEnabled));
-        if (m) {
-            MSHookMessageEx(object_getClass((id)c), @selector(isEnabled), (IMP)hook_liquidGlass_class_isEnabled, (IMP *)&orig_liquidGlass_class_isEnabled);
-        }
-    }
+        Class cls = objc_getClass("IGLiquidGlassSwizzle.IGLiquidGlassSwizzleToggle");
+        SCIHookInstanceMethodIfPresent(cls, @selector(isEnabled), (IMP)hook_swizzleToggle_isEnabled, (IMP *)&orig_swizzleToggle_isEnabled);
 
-    c = objc_getClass("IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper");
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(isEnabled));
-        if (m) {
-            MSHookMessageEx(c, @selector(isEnabled), (IMP)hook_nav_isEnabled, (IMP *)&orig_nav_isEnabled);
-        }
-        m = class_getInstanceMethod(c, @selector(isDefaultValueSet));
-        if (m) {
-            MSHookMessageEx(c, @selector(isDefaultValueSet), (IMP)hook_nav_isDefaultValueSet, (IMP *)&orig_nav_isDefaultValueSet);
-        }
-        m = class_getInstanceMethod(c, @selector(isHomeFeedHeaderEnabled));
-        if (m) {
-            MSHookMessageEx(c, @selector(isHomeFeedHeaderEnabled), (IMP)hook_nav_isHomeFeedHeaderEnabled, (IMP *)&orig_nav_isHomeFeedHeaderEnabled);
-        }
-    }
+        cls = objc_getClass("IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper");
+        SCIHookInstanceMethodIfPresent(cls, @selector(isEnabled), (IMP)hook_navigationExperiment_isEnabled, (IMP *)&orig_navigationExperiment_isEnabled);
+        SCIHookInstanceMethodIfPresent(cls, @selector(isHomeFeedHeaderEnabled), (IMP)hook_navigationExperiment_isHomeFeedHeaderEnabled, (IMP *)&orig_navigationExperiment_isHomeFeedHeaderEnabled);
 
-    c = objc_getClass("IGLiquidGlassSwizzle.IGLiquidGlassSwizzleToggle");
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(isEnabled));
-        if (m) {
-            MSHookMessageEx(c, @selector(isEnabled), (IMP)hook_swizzle_isEnabled, (IMP *)&orig_swizzle_isEnabled);
-        } else {
-            m = class_getClassMethod(c, @selector(isEnabled));
-            if (m) {
-                MSHookMessageEx(object_getClass((id)c), @selector(isEnabled), (IMP)hook_swizzle_isEnabled, (IMP *)&orig_swizzle_isEnabled);
-            }
-        }
-    }
+        cls = objc_getClass("IGLiquidGlassInteractiveTabBar");
+        SCIHookInstanceMethodIfPresent(cls, @selector(setScaleProgress:), (IMP)hook_tabBar_setScaleProgress, (IMP *)&orig_tabBar_setScaleProgress);
+        SCIHookInstanceMethodIfPresent(cls, @selector(scaleDownWithInteraction:), (IMP)hook_tabBar_scaleDownWithInteraction, (IMP *)&orig_tabBar_scaleDownWithInteraction);
 
-    c = objc_getClass("IGBadgedNavigationButton");
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(_isLiquidGlassEnabled));
-        if (m) {
-            MSHookMessageEx(c, @selector(_isLiquidGlassEnabled), (IMP)hook_badged_isLiquidGlass, (IMP *)&orig_badged_isLiquidGlass);
-        }
-    }
-
-    c = objc_getClass("IGUnifiedVideoBackButton");
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(_isLiquidGlassEnabled));
-        if (m) {
-            MSHookMessageEx(c, @selector(_isLiquidGlassEnabled), (IMP)hook_videoBack_isLiquidGlass, (IMP *)&orig_videoBack_isLiquidGlass);
-        }
-    }
-
-    c = objc_getClass("IGUnifiedVideoCameraEntryPointButton");
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(_isLiquidGlassEnabled));
-        if (m) {
-            MSHookMessageEx(c, @selector(_isLiquidGlassEnabled), (IMP)hook_videoCam_isLiquidGlass, (IMP *)&orig_videoCam_isLiquidGlass);
-        }
-    }
-
-    c = objc_getClass("IGDSAlertDialogActionButton");
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(enableLiquidGlass));
-        if (m) {
-            MSHookMessageEx(c, @selector(enableLiquidGlass), (IMP)hook_alert_enableLiquidGlass, (IMP *)&orig_alert_enableLiquidGlass);
-        }
-    }
-
-    c = SCIDirectInboxNavigationHeaderViewClass();
-    if (c) {
-        Method m = class_getInstanceMethod(c, @selector(layoutSubviews));
-        if (m) {
-            MSHookMessageEx(c, @selector(layoutSubviews), (IMP)hook_directInboxHeader_layoutSubviews, (IMP *)&orig_directInboxHeader_layoutSubviews);
-        }
-
-        m = class_getInstanceMethod(c, @selector(didMoveToWindow));
-        if (m) {
-            MSHookMessageEx(c, @selector(didMoveToWindow), (IMP)hook_directInboxHeader_didMoveToWindow, (IMP *)&orig_directInboxHeader_didMoveToWindow);
-        }
-
-        m = class_getInstanceMethod(c, @selector(setSeparatorAlpha:));
-        if (m) {
-            MSHookMessageEx(c, @selector(setSeparatorAlpha:), (IMP)hook_directInboxHeader_setSeparatorAlpha, (IMP *)&orig_directInboxHeader_setSeparatorAlpha);
-        }
-    }
+        cls = SCIDirectInboxNavigationHeaderViewClass();
+        SCIHookInstanceMethodIfPresent(cls, @selector(layoutSubviews), (IMP)hook_directInboxHeader_layoutSubviews, (IMP *)&orig_directInboxHeader_layoutSubviews);
+        SCIHookInstanceMethodIfPresent(cls, @selector(didMoveToWindow), (IMP)hook_directInboxHeader_didMoveToWindow, (IMP *)&orig_directInboxHeader_didMoveToWindow);
+        SCIHookInstanceMethodIfPresent(cls, @selector(setSeparatorAlpha:), (IMP)hook_directInboxHeader_setSeparatorAlpha, (IMP *)&orig_directInboxHeader_setSeparatorAlpha);
     });
 }
 
