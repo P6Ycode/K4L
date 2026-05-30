@@ -20,6 +20,22 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 + (NSArray<SCIDeletedMessage *> *)messagesForSenderPK:(NSString *)senderPK
                                             ownerPK:(NSString *)ownerPK;
 
+// All captured messages in a thread (every sender, including the owner's own
+// unsends), oldest-first by sent time — used to render a chat-style view.
++ (NSArray<SCIDeletedMessage *> *)messagesForThreadId:(NSString *)threadId
+                                              ownerPK:(NSString *)ownerPK;
+
+// Single-sender group built from stored records, or nil when that sender has
+// no captured messages for this account. Used to deep-link from a chat.
++ (nullable SCIDeletedMessageGroup *)groupForSenderPK:(NSString *)senderPK
+                                              ownerPK:(NSString *)ownerPK;
+
+// Group for the non-owner sender in a given thread, or nil when the thread has
+// no captured messages. Used to deep-link from an open chat where only the
+// threadId is reliably known.
++ (nullable SCIDeletedMessageGroup *)groupForThreadId:(NSString *)threadId
+                                              ownerPK:(NSString *)ownerPK;
+
 #pragma mark - Write
 
 // Insert / replace by message_id. Newest-first ordering preserved on disk.

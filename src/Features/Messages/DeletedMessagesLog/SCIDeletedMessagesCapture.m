@@ -898,12 +898,19 @@ static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
 }
 
 static void sciDownloadMedia(NSString *urlString, NSString *messageId,
-                             NSString *ownerPk, BOOL isThumbnail) {
+                             NSString *ownerPk, BOOL isThumbnail,
+                             SCIDeletedMessageKind kind) {
     if (!urlString.length || !messageId.length) return;
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) return;
 
     NSString *ext = url.pathExtension.length ? url.pathExtension : (isThumbnail ? @"jpg" : @"bin");
+    // Voice notes are served with a video container extension (.mp4) even though
+    // they are audio-only. Force an audio extension so the file is typed as audio
+    // everywhere downstream (preview player, share, save).
+    if (!isThumbnail && kind == SCIDeletedMessageKindVoice) {
+        ext = @"m4a";
+    }
     NSString *fname = isThumbnail
         ? [NSString stringWithFormat:@"thumb_%@.%@", messageId, ext]
         : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId
@@ -1101,9 +1108,109 @@ void sciDMCaptureNoteRemoveKeys(NSArray *keys, id applicator,
             if (m.kind == SCIDeletedMessageKindVideo && audioURL.length && m.mediaURL.length) {
                 sciDownloadAndMuxVideo(m.mediaURL, audioURL, sid, owner);
             } else if (!isDeeplinkOnly && m.mediaURL.length) {
-                sciDownloadMedia(m.mediaURL, sid, owner, NO);
+                sciDownloadMedia(m.mediaURL, sid, owner, NO, m.kind);
             }
-            if (m.thumbnailURL.length) sciDownloadMedia(m.thumbnailURL, sid, owner, YES);
+            if (m.thumbnailURL.length) sciDownloadMedia(m.thumbnailURL, sid, owner, YES, m.kind);
         }
     });
+}
+
+#pragma mark - Reaction unsend capture
+
+static BOOL sciReactionCaptureEnabled(void) {
+    return [SCIUtils getBoolPref:@"msgs_deleted_log_reactions"];
+}
+
+// Best-effort one-line preview of the message a reaction was attached to.
+static NSString *sciReactionTargetPreview(id targetMessage) {
+    if (!targetMessage) return nil;
+    @try {
+        NSDictionary *snap = sciBuildSnapshot(targetMessage, nil);
+        NSString *txt = snap[@"text"];
+        if ([txt isKindOfClass:[NSString class]] && txt.length) {
+            NSString *oneLine = [txt stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+            if (oneLine.length > 80) oneLine = [[oneLine substringToIndex:77] stringByAppendingString:@"..."];
+            return oneLine;
+        }
+        NSNumber *kindNum = snap[@"kind"];
+        if ([kindNum isKindOfClass:[NSNumber class]]) {
+            SCIDeletedMessageKind k = (SCIDeletedMessageKind)kindNum.integerValue;
+            if (k != SCIDeletedMessageKindUnknown && k != SCIDeletedMessageKindText) {
+                return [SCIDeletedMessageKindLocalizedName(k) lowercaseString];
+            }
+        }
+    } @catch (__unused id e) {}
+    return nil;
+}
+
+NSDictionary *sciDMCaptureNoteReactionUnsend(id reaction,
+                                             NSString *reactorPk,
+                                             id targetMessage,
+                                             NSString *targetMessageId,
+                                             id applicator,
+                                             NSString *ownerPk,
+                                             NSString *threadId) {
+    if (!sciReactionCaptureEnabled() || !reaction) return nil;
+
+    NSString *owner = ownerPk.length ? [ownerPk copy] : @"";
+
+    // Emoji + reactor + timestamp from IGDirectMessageReaction.
+    NSString *emoji = sciStrIvar(reaction, "_userBasedReaction_emojiUnicode");
+    NSString *pk = reactorPk.length ? reactorPk : sciStrIvar(reaction, "_userBasedReaction_userId");
+    if (!pk.length) return nil;
+
+    NSDate *reactedAt = nil;
+    id ts = sciAnyIvar(reaction, "_userBasedReaction_serverTimestamp");
+    if ([ts isKindOfClass:[NSDate class]]) reactedAt = ts;
+
+    // The "message id" of a reaction record is synthetic but stable so repeated
+    // deltas dedupe: target message id + reactor + emoji.
+    NSString *recordId = [NSString stringWithFormat:@"reaction:%@:%@:%@",
+                          targetMessageId.length ? targetMessageId : @"?",
+                          pk,
+                          emoji.length ? emoji : @"?"];
+
+    NSString *targetPreview = sciReactionTargetPreview(targetMessage);
+
+    NSString *u = nil, *fn = nil, *pic = nil;
+    sciResolveSenderInfo(pk, &u, &fn, &pic);
+
+    NSDate *now = [NSDate date];
+    dispatch_async(sciCaptureQueue(), ^{
+        if (pk.length && [SCIDeletedMessagesStorage isSenderBlocked:pk ownerPK:owner]) return;
+
+        SCIDeletedMessage *m = [SCIDeletedMessage new];
+        m.messageId            = recordId;
+        m.threadId             = threadId ?: @"";
+        m.senderPk             = pk;
+        m.senderUsername       = u;
+        m.senderFullName       = fn;
+        m.senderProfilePicURL  = pic;
+        m.sentAt               = reactedAt ?: now;
+        m.capturedAt           = now;
+        m.deletedAt            = now;
+        m.kind                 = SCIDeletedMessageKindReaction;
+        m.reactionEmoji        = emoji;
+        m.reactionTargetPreview = targetPreview;
+        // Human-readable body used by previews / search.
+        if (emoji.length && targetPreview.length) {
+            m.text = [NSString stringWithFormat:@"Removed %@ from \"%@\"", emoji, targetPreview];
+        } else if (emoji.length) {
+            m.text = [NSString stringWithFormat:@"Removed reaction %@", emoji];
+        } else {
+            m.text = @"Removed a reaction";
+        }
+        m.previewText = m.text;
+        m.replyToMessageId = targetMessageId;
+
+        [SCIDeletedMessagesStorage saveMessage:m forOwnerPK:owner];
+    });
+
+    NSMutableDictionary *info = [NSMutableDictionary dictionary];
+    if (pk.length) info[@"senderPk"] = pk;
+    if (u.length) info[@"senderUsername"] = u;
+    if (fn.length) info[@"senderFullName"] = fn;
+    if (emoji.length) info[@"emoji"] = emoji;
+    if (targetPreview.length) info[@"targetPreview"] = targetPreview;
+    return info.copy;
 }

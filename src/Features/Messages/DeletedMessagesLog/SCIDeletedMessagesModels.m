@@ -11,6 +11,7 @@ NSString *SCIDeletedMessageKindToString(SCIDeletedMessageKind kind) {
         case SCIDeletedMessageKindShare:   return @"share";
         case SCIDeletedMessageKindLink:    return @"link";
         case SCIDeletedMessageKindAudioShare: return @"audio_share";
+        case SCIDeletedMessageKindReaction: return @"reaction";
         case SCIDeletedMessageKindOther:   return @"other";
         case SCIDeletedMessageKindUnknown:
         default:                           return @"unknown";
@@ -28,6 +29,7 @@ SCIDeletedMessageKind SCIDeletedMessageKindFromString(NSString *s) {
     if ([s isEqualToString:@"share"])   return SCIDeletedMessageKindShare;
     if ([s isEqualToString:@"link"])    return SCIDeletedMessageKindLink;
     if ([s isEqualToString:@"audio_share"]) return SCIDeletedMessageKindAudioShare;
+    if ([s isEqualToString:@"reaction"]) return SCIDeletedMessageKindReaction;
     if ([s isEqualToString:@"other"])   return SCIDeletedMessageKindOther;
     return SCIDeletedMessageKindUnknown;
 }
@@ -43,6 +45,7 @@ NSString *SCIDeletedMessageKindLocalizedName(SCIDeletedMessageKind kind) {
         case SCIDeletedMessageKindShare:   return @"Share";
         case SCIDeletedMessageKindLink:    return @"Link";
         case SCIDeletedMessageKindAudioShare: return @"Audio";
+        case SCIDeletedMessageKindReaction: return @"Reaction";
         case SCIDeletedMessageKindOther:   return @"Other";
         case SCIDeletedMessageKindUnknown:
         default:                           return @"Unknown";
@@ -50,16 +53,21 @@ NSString *SCIDeletedMessageKindLocalizedName(SCIDeletedMessageKind kind) {
 }
 
 NSString *SCIDeletedMessageKindSymbol(SCIDeletedMessageKind kind) {
+    return SCIDeletedMessageKindSymbolFilled(kind, NO);
+}
+
+NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageKind kind, BOOL filled) {
     switch (kind) {
         case SCIDeletedMessageKindText:    return @"text";
-        case SCIDeletedMessageKindPhoto:   return @"photo";
-        case SCIDeletedMessageKindVideo:   return @"video_filled";
-        case SCIDeletedMessageKindVoice:   return @"voice";
-        case SCIDeletedMessageKindGif:     return @"gif";
-        case SCIDeletedMessageKindSticker: return @"sticker";
+        case SCIDeletedMessageKindPhoto:   return filled ? @"photo_filled" : @"photo";
+        case SCIDeletedMessageKindVideo:   return filled ? @"video_filled" : @"video";
+        case SCIDeletedMessageKindVoice:   return filled ? @"voice_filled" : @"voice";
+        case SCIDeletedMessageKindGif:     return filled ? @"gif_filled" : @"gif";
+        case SCIDeletedMessageKindSticker: return filled ? @"sticker_filled" : @"sticker";
         case SCIDeletedMessageKindShare:   return @"share";
         case SCIDeletedMessageKindLink:    return @"link";
         case SCIDeletedMessageKindAudioShare: return @"audio";
+        case SCIDeletedMessageKindReaction: return @"reactions";
         case SCIDeletedMessageKindOther:   return @"messages";
         case SCIDeletedMessageKindUnknown:
         default:                           return @"messages";
@@ -109,6 +117,8 @@ static double sciDouble(id v) {
     m.width                = sciDouble(dict[@"width"]);
     m.height               = sciDouble(dict[@"height"]);
     m.replyToMessageId     = sciStr(dict[@"reply_to_id"]);
+    m.reactionEmoji        = sciStr(dict[@"reaction_emoji"]);
+    m.reactionTargetPreview = sciStr(dict[@"reaction_target"]);
     if (!m.messageId.length || !m.senderPk.length) return nil;
     return m;
 }
@@ -138,6 +148,8 @@ static double sciDouble(id v) {
     if (self.width > 0)            d[@"width"]                 = @(self.width);
     if (self.height > 0)           d[@"height"]                = @(self.height);
     if (self.replyToMessageId.length) d[@"reply_to_id"]        = self.replyToMessageId;
+    if (self.reactionEmoji.length)    d[@"reaction_emoji"]     = self.reactionEmoji;
+    if (self.reactionTargetPreview.length) d[@"reaction_target"] = self.reactionTargetPreview;
     return d;
 }
 

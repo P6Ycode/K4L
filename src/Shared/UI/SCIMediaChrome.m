@@ -88,6 +88,18 @@ UIBarButtonItem *SCIMediaChromeTopBarButtonItemWithTint(NSString *resourceName, 
     return item;
 }
 
+UIBarButtonItem *SCIMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMenu *menu, NSString *accessibilityLabel) {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    [button setImage:SCIMediaChromeTopBarIcon(resourceName) forState:UIControlStateNormal];
+    button.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    button.menu = menu;
+    button.showsMenuAsPrimaryAction = YES;
+    button.accessibilityLabel = accessibilityLabel;
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:button];
+    item.accessibilityLabel = accessibilityLabel;
+    return item;
+}
+
 void SCIMediaChromeSetLeadingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items) {
     if (!navigationItem) {
         return;

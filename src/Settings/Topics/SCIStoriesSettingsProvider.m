@@ -94,11 +94,14 @@ static NSArray *SCIStoriesSettingsSections(void) {
 @implementation SCIStoriesSettingsProvider
 
 + (SCISetting *)rootSetting {
-    return SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Stories"
-                                                              subtitle:@""
-                                                                  icon:SCISettingsIcon(@"story")
-                                                        viewController:[[SCIStoriesSettingsViewController alloc] init]],
-                                   [SCIUtils SCIColor_InstagramPrimaryText]);
+    SCISetting *setting = [SCISetting navigationCellWithTitle:@"Stories"
+                                                     subtitle:@""
+                                                         icon:SCISettingsIcon(@"story")
+                                               viewController:[[SCIStoriesSettingsViewController alloc] init]];
+    setting.searchSectionsProvider = ^NSArray *{
+        return SCIStoriesSettingsSections();
+    };
+    return SCISettingApplyIconTint(setting, [SCIUtils SCIColor_InstagramPrimaryText]);
 }
 
 @end

@@ -11,6 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// Destination folder for imports from Settings (same as current gallery folder when opened from the gallery).
 @property (nonatomic, copy, nullable) NSString *importDestinationFolderPath;
 
++ (NSArray *)searchSections;
+
 @end
 
 NS_ASSUME_NONNULL_END

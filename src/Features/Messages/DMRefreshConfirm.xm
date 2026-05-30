@@ -72,8 +72,8 @@ static void SCIConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
     } cancelHandler:^{
         sSCIDMRefreshAlertVisible = NO;
         SCIDMEndRefreshIfNeeded(self, arg);
-    } title:@"Confirm Messages Refresh"
-      message:@"Are you sure you want to refresh your inbox?"];
+    } title:@"Confirm Inbox Refresh"
+      message:@"Refreshing your inbox will reload direct messages from the server."];
 }
 
 static void replaced_inboxRefreshControlArg(id self, SEL _cmd, id arg) {
@@ -110,8 +110,8 @@ static BOOL replaced_executePullToRefreshWithParams(id self, SEL _cmd, id params
     } cancelHandler:^{
         sSCIDMRefreshAlertVisible = NO;
         SCIDMEndRefreshIfNeeded(self, nil);
-    } title:@"Confirm Messages Refresh"
-      message:@"Are you sure you want to refresh your inbox?"];
+    } title:@"Confirm Inbox Refresh"
+      message:@"Refreshing your inbox will reload direct messages from the server."];
 
     return NO;
 }

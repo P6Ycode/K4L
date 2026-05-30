@@ -83,6 +83,7 @@ NSString *SCIActionButtonTitleForIdentifier(NSString *identifier);
 UIImage *SCIActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size);
 BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *context, BOOL isDefaultTap);
 NSArray<NSString *> *SCIConfiguredBulkActionIdentifiersForSource(SCIActionButtonSource source);
+NSArray *SCIActionButtonCarouselChildren(id _Nullable media);
 void SCIArmPendingRepostFeedback(SCIActionButtonContext *context);
 NSDictionary<NSString *, NSString *> * _Nullable SCIConsumePendingRepostFeedback(SCIActionButtonSource source);
 void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);

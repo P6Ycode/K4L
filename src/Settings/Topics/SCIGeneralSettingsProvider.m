@@ -59,6 +59,9 @@
                                                                   icon:SCISettingsIcon(@"settings")
                                                         viewController:[SCIMediaQualityManager encodingSettingsViewController]];
     encodingSettings.userInfo = @{@"enabled": @(ffmpegAvailable)};
+    encodingSettings.searchSectionsProvider = ^NSArray *{
+        return [SCIMediaQualityManager encodingSettingsSearchSections];
+    };
 
     SCISetting *encodingLogs = [SCISetting navigationCellWithTitle:@"View Encoding Logs"
                                                           subtitle:@""

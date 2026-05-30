@@ -22,14 +22,34 @@
 
 %hook IGUFIButtonWithCountsView
 - (void)setCountString:(id)string showButton:(BOOL)showButton {
-    return %orig([SCIUtils getBoolPref:@"feed_hide_metrics"] ? @"" : string, showButton);
+    if ([self.superview isKindOfClass:%c(IGUFIInteractionCountsView)]) {
+        IGUFIInteractionCountsView *countsView = (IGUFIInteractionCountsView *)self.superview;
+        UIView *likesView = [countsView valueForKey:@"_likesView"];
+        UIView *commentsView = [countsView valueForKey:@"_commentsView"];
+        UIView *repostView = [countsView valueForKey:@"_repostView"];
+        UIView *sendView = [countsView valueForKey:@"_sendView"];
+        
+        if (self == likesView && [SCIUtils getBoolPref:@"feed_hide_like_count"]) {
+            return %orig(@"", showButton);
+        } else if (self == commentsView && [SCIUtils getBoolPref:@"feed_hide_comment_count"]) {
+            return %orig(@"", showButton);
+        } else if (self == repostView && [SCIUtils getBoolPref:@"feed_hide_repost_count"]) {
+            return %orig(@"", showButton);
+        } else if (self == sendView && [SCIUtils getBoolPref:@"feed_hide_reshare_count"]) {
+            return %orig(@"", showButton);
+        }
+    }
+    return %orig(string, showButton);
 }
 %end
 
 %end
 
 void SCIInstallHideMetricsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"feed_hide_metrics"] &&
+    if (![SCIUtils getBoolPref:@"feed_hide_like_count"] &&
+        ![SCIUtils getBoolPref:@"feed_hide_comment_count"] &&
+        ![SCIUtils getBoolPref:@"feed_hide_repost_count"] &&
+        ![SCIUtils getBoolPref:@"feed_hide_reshare_count"] &&
         ![SCIUtils getBoolPref:@"reels_hide_like_count"] &&
         ![SCIUtils getBoolPref:@"reels_hide_reshare_count"] &&
         ![SCIUtils getBoolPref:@"reels_hide_comment_count"] &&

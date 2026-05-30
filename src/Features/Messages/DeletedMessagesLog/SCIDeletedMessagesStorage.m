@@ -162,6 +162,22 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
     return out;
 }
 
++ (NSArray<SCIDeletedMessage *> *)messagesForThreadId:(NSString *)threadId ownerPK:(NSString *)ownerPK {
+    if (!threadId.length) return @[];
+    NSMutableArray<SCIDeletedMessage *> *out = [NSMutableArray array];
+    for (SCIDeletedMessage *m in [self allMessagesForOwnerPK:ownerPK]) {
+        if ([m.threadId isEqualToString:threadId]) [out addObject:m];
+    }
+    // Chronological by original send time (fall back to deletion time) so the
+    // conversation reads top-to-bottom like a real chat.
+    [out sortUsingComparator:^NSComparisonResult(SCIDeletedMessage *a, SCIDeletedMessage *b) {
+        NSDate *da = a.sentAt ?: a.deletedAt ?: a.capturedAt ?: [NSDate distantPast];
+        NSDate *db = b.sentAt ?: b.deletedAt ?: b.capturedAt ?: [NSDate distantPast];
+        return [da compare:db];
+    }];
+    return out;
+}
+
 + (NSArray<SCIDeletedMessageGroup *> *)groupedBySenderForOwnerPK:(NSString *)ownerPK {
     NSArray<SCIDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];
     NSMutableDictionary<NSString *, NSMutableArray<SCIDeletedMessage *> *> *byPk = [NSMutableDictionary dictionary];
@@ -194,6 +210,41 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
         return [db compare:da];
     }];
     return groups;
+}
+
++ (SCIDeletedMessageGroup *)groupForSenderPK:(NSString *)senderPK ownerPK:(NSString *)ownerPK {
+    if (!senderPK.length) return nil;
+    NSArray<SCIDeletedMessage *> *msgs = [self messagesForSenderPK:senderPK ownerPK:ownerPK];
+    if (!msgs.count) return nil;
+    SCIDeletedMessage *latest = msgs.firstObject;   // already newest-first
+    SCIDeletedMessageGroup *g = [SCIDeletedMessageGroup new];
+    g.senderPk            = senderPK;
+    g.senderUsername      = latest.senderUsername;
+    g.senderFullName      = latest.senderFullName;
+    g.senderProfilePicURL = latest.senderProfilePicURL;
+    NSDictionary *flags   = sciSenderFlags(senderPK, ownerPK);
+    g.isPinned            = [flags[@"pinned"] boolValue];
+    g.isBlocked           = [flags[@"blocked"] boolValue];
+    g.messages            = msgs;
+    return g;
+}
+
++ (SCIDeletedMessageGroup *)groupForThreadId:(NSString *)threadId ownerPK:(NSString *)ownerPK {
+    if (!threadId.length) return nil;
+    // Pick the non-owner sender that appears in this thread. Captured messages
+    // store threadId, so we can map a chat to its sender without participant PKs.
+    NSArray<SCIDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];
+    NSString *senderPK = nil;
+    for (SCIDeletedMessage *m in all) {
+        if (![m.threadId isEqualToString:threadId]) continue;
+        if (m.senderPk.length && ![m.senderPk isEqualToString:ownerPK]) {
+            senderPK = m.senderPk;
+            break;
+        }
+        // Fall back to whatever sender we have (e.g. own unsends in a self-thread).
+        if (!senderPK.length && m.senderPk.length) senderPK = m.senderPk;
+    }
+    return senderPK.length ? [self groupForSenderPK:senderPK ownerPK:ownerPK] : nil;
 }
 
 #pragma mark - Write

@@ -3,6 +3,7 @@
 #import "../../InstagramHeaders.h"
 #import "../../Shared/Messages/SCIDirectSeenContext.h"
 #import "../../Shared/Messages/SCIDirectUserResolver.h"
+#import "../../Shared/UI/SCINotificationCenter.h"
 #import "DeletedMessagesLog/SCIDeletedMessagesCapture.h"
 #import "DeletedMessagesLog/SCIDeletedMessagesStorage.h"
 #import <objc/runtime.h>
@@ -16,6 +17,8 @@
 #define SCI_SENDER_MAP_MAX		3000
 #define SCI_CONTENT_MAP_MAX		2500
 #define SCI_PRESERVED_MAX		200
+#define SCI_UNSENT_TOAST_DEDUPE_MAX	200
+#define SCI_UNSENT_TOAST_DEDUPE_TTL	5.0
 #define SCI_PRESERVED_IDS_KEY	@"SCIPreservedMsgIdsByPk"
 #define SCI_PRESERVED_LEGACY_KEY	@"SCIPreservedMsgIds"
 #define SCI_PRESERVED_TAG		1399
@@ -25,14 +28,20 @@ static NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *sciPreserved
 static NSMutableDictionary<NSString *, NSString *> *sciSenderPkBySid;
 static NSMutableDictionary<NSString *, NSString *> *sciSenderNameBySid;
 static NSMutableDictionary<NSString *, NSString *> *sciContentClassBySid;
+static NSMutableDictionary<NSString *, NSNumber *> *sciSentByOwnerBySid;
 static NSMutableSet<NSString *> *sciPendingLocalSids;
+static NSMutableDictionary<NSString *, NSDate *> *sciUnsentToastDedupe;
+// Reaction unsend previews collected during a single _applyThreadUpdates pass,
+// drained by new_applyUpdates to fire reaction toasts.
+static NSMutableArray<NSDictionary *> *sciPendingReactionPreviews;
 static char kSCIPreservedIndicatorOwnMessageKey;
+static char kSCIPreservedIndicatorStyleKey;
 
 static void sciUpdateCellIndicator(id cell);
 
 static inline BOOL sciKeepDeletedEnabled(void) { return [SCIUtils getBoolPref:@"msgs_keep_deleted"]; }
 static inline BOOL sciDeletedLogEnabled(void) { return [SCIUtils getBoolPref:@"msgs_deleted_log"]; }
-static inline BOOL sciIndicatorEnabled(void) { return [SCIUtils getBoolPref:@"msgs_indicate_unsent"]; }
+static inline BOOL sciIndicatorEnabled(void) { return sciKeepDeletedEnabled(); }
 static inline BOOL sciReactionLogEnabled(void) { return [SCIUtils getBoolPref:@"msgs_deleted_log_reactions"]; }
 
 static BOOL sciThreadBlockedBySeenList(NSString *threadId) {
@@ -127,6 +136,11 @@ static NSMutableDictionary<NSString *, NSString *> *sciContentMap(void) {
 	return sciContentClassBySid;
 }
 
+static NSMutableDictionary<NSString *, NSNumber *> *sciSentByOwnerMap(void) {
+	if (!sciSentByOwnerBySid) sciSentByOwnerBySid = NSMutableDictionary.dictionary;
+	return sciSentByOwnerBySid;
+}
+
 static NSMutableSet<NSString *> *sciPendingLocalSet(void) {
 	if (!sciPendingLocalSids) sciPendingLocalSids = NSMutableSet.set;
 	return sciPendingLocalSids;
@@ -151,6 +165,13 @@ static void sciTrackContentClass(NSString *sid, NSString *cls) {
 	NSMutableDictionary *m = sciContentMap();
 	m[sid] = cls;
 	sciTrimMap(m, SCI_CONTENT_MAP_MAX);
+}
+
+static void sciTrackSentByOwner(NSString *sid, BOOL sentByOwner) {
+	if (!sid.length) return;
+	NSMutableDictionary *m = sciSentByOwnerMap();
+	m[sid] = @(sentByOwner);
+	sciTrimMap(m, SCI_SENDER_MAP_MAX);
 }
 
 static BOOL sciIsReactionOrActionLog(NSString *sid) {
@@ -344,10 +365,109 @@ static void sciTrackDeleteForYouKeys(NSArray *keys) {
 	}
 }
 
+static BOOL sciReactionNotifyEnabled(void) {
+	return SCINotificationIsEnabled(kSCINotificationUnsentReaction);
+}
+
+// Resolve the message a reaction targeted, for a preview. Best-effort: the
+// in-memory weak cache, then the applicator's per-thread state.
+static id sciReactionTargetMessage(NSString *messageId, id applicator, NSString *threadId) {
+	if (!messageId.length) return nil;
+	@try {
+		Ivar iv = class_getInstanceVariable([applicator class], "_cache");
+		id cache = iv ? object_getIvar(applicator, iv) : nil;
+		SEL sel = NSSelectorFromString(@"threadClientStateForThreadId:");
+		if (cache && threadId.length && [cache respondsToSelector:sel]) {
+			id state = ((id(*)(id, SEL, id))objc_msgSend)(cache, sel, threadId);
+			if (state) {
+				for (Class c = [state class]; c && c != [NSObject class]; c = class_getSuperclass(c)) {
+					Ivar di = class_getInstanceVariable(c, "_messagesByServerId");
+					if (!di) continue;
+					id dict = object_getIvar(state, di);
+					if ([dict isKindOfClass:NSDictionary.class]) return ((NSDictionary *)dict)[messageId];
+					break;
+				}
+			}
+		}
+	} @catch (__unused id e) {}
+	return nil;
+}
+
+// Examine one content mutation; if it is an "unreact by another user" event,
+// capture + collect a toast preview. Returns YES when a reaction was handled.
+static BOOL sciHandleReactionMutation(id mutation, NSString *messageId, NSString *ownerPk, NSString *threadId, id applicator) {
+	if (!mutation) return NO;
+
+	// Only "unreact by other" — `_unreact_reaction` is set when someone removes
+	// a reaction they placed. `_unreactSelf_reaction` is the owner's own removal.
+	id reaction = sciIvar(mutation, "_unreact_reaction");
+	if (!reaction) return NO;
+
+	NSString *reactorPk = sciStringValue(sciIvar(mutation, "_unreact_userPk"));
+	if (!reactorPk.length) reactorPk = sciStringValue(sciIvar(reaction, "_userBasedReaction_userId"));
+	// Skip the owner removing their own reaction.
+	if (reactorPk.length && ownerPk.length && [reactorPk isEqualToString:ownerPk]) return NO;
+	if (reactorPk.length && [SCIDeletedMessagesStorage isSenderBlocked:reactorPk ownerPK:ownerPk]) return YES;
+
+	BOOL logOn = sciReactionLogEnabled();
+	BOOL notifyOn = sciReactionNotifyEnabled();
+	if (!logOn && !notifyOn) return YES;
+
+	id target = sciReactionTargetMessage(messageId, applicator, threadId);
+
+	NSDictionary *info = nil;
+	if (logOn) {
+		info = sciDMCaptureNoteReactionUnsend(reaction, reactorPk, target, messageId, applicator, ownerPk, threadId);
+	}
+	if (notifyOn) {
+		// Build a lightweight preview even when logging is off.
+		NSMutableDictionary *preview = info ? [info mutableCopy] : [NSMutableDictionary dictionary];
+		if (!preview[@"senderPk"] && reactorPk.length) preview[@"senderPk"] = reactorPk;
+		if (!preview[@"emoji"]) {
+			NSString *emoji = sciStringValue(sciIvar(reaction, "_userBasedReaction_emojiUnicode"));
+			if (emoji.length) preview[@"emoji"] = emoji;
+		}
+		if (!preview[@"senderUsername"] && reactorPk.length) {
+			NSString *uname = sciDirectUserResolverUsernameForPK(reactorPk);
+			if (uname.length) preview[@"senderUsername"] = uname;
+		}
+		if (preview.count) {
+			if (!sciPendingReactionPreviews) sciPendingReactionPreviews = NSMutableArray.array;
+			[sciPendingReactionPreviews addObject:preview.copy];
+		}
+	}
+	return YES;
+}
+
+static void sciProcessReactionMutations(id update, NSString *ownerPk, NSString *threadId, id applicator) {
+	if (!update) return;
+	if (!sciReactionLogEnabled() && !sciReactionNotifyEnabled()) return;
+
+	// Single mutation.
+	id singleMutation = sciIvar(update, "_mutateMessage_contentMutation");
+	if (singleMutation) {
+		NSString *mid = sciStringValue(sciIvar(update, "_mutateMessage_messageId"));
+		sciHandleReactionMutation(singleMutation, mid, ownerPk, threadId, applicator);
+	}
+
+	// Multiple mutations — array of IGDirectMessageContentMutationPair (KVC).
+	id multi = sciIvar(update, "_mutateMultipleMessages_contentMutations");
+	if ([multi isKindOfClass:NSArray.class]) {
+		for (id pair in (NSArray *)multi) {
+			NSString *mid = nil;
+			id mutation = nil;
+			@try { mid = sciStringValue([pair valueForKey:@"messageId"]); } @catch (__unused id e) {}
+			@try { mutation = [pair valueForKey:@"contentMutation"]; } @catch (__unused id e) {}
+			if (mutation) sciHandleReactionMutation(mutation, mid, ownerPk, threadId, applicator);
+		}
+	}
+}
+
 static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *threadId, id applicator, NSMutableSet<NSString *> *preserved, NSMutableSet<NSString *> *detected, NSMutableArray<NSDictionary *> *previews) {
 	if (!update || !ownerPk.length) return NO;
 
 	sciCaptureMessagesFromUpdate(update);
+	sciProcessReactionMutations(update, ownerPk, threadId, applicator);
 
 	NSArray *keys = sciIvar(update, "_removeMessages_messageKeys");
 	if (![keys isKindOfClass:NSArray.class] || !keys.count) return NO;
@@ -384,6 +504,7 @@ static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *thre
 		if (reactionOrActionLog && !sciReactionLogEnabled()) continue;
 		NSString *senderPk = sciSenderMap()[sid];
 		if (senderPk.length && [SCIDeletedMessagesStorage isSenderBlocked:senderPk ownerPK:ownerPk]) continue;
+		if (senderPk.length) sciTrackSentByOwner(sid, [senderPk isEqualToString:ownerPk]);
 
 		if (keepOn && !reactionOrActionLog) {
 			if (bucket) [bucket addObject:sid];
@@ -511,18 +632,112 @@ static NSString *sciDisplayNameForPreview(NSDictionary *preview, NSString *fallb
 	return fallback.length ? fallback : @"Someone";
 }
 
-static void sciShowUnsentToast(NSDictionary *preview, NSString *fallbackSender, NSString *ownerAccount) {
+static NSString *sciUnsentToastDedupeComponent(NSString *value) {
+	if (![value isKindOfClass:NSString.class]) return @"";
+	NSString *trimmed = [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+	if (!trimmed.length) return @"";
+	trimmed = [trimmed lowercaseString];
+	if (trimmed.length > 160) trimmed = [trimmed substringToIndex:160];
+	return trimmed;
+}
+
+static NSArray<NSString *> *sciUnsentToastDedupeKeys(NSDictionary *preview, NSString *fallbackSid, NSString *sender, SCIDeletedMessageKind kind, NSString *text) {
+	NSMutableArray<NSString *> *keys = NSMutableArray.array;
+	NSString *messageId = [preview[@"messageId"] isKindOfClass:NSString.class] ? preview[@"messageId"] : nil;
+	if (!messageId.length) messageId = fallbackSid;
+	NSString *threadId = [preview[@"threadId"] isKindOfClass:NSString.class] ? preview[@"threadId"] : nil;
+	if (messageId.length) {
+		NSString *cleanMessageId = sciUnsentToastDedupeComponent(messageId);
+		[keys addObject:[NSString stringWithFormat:@"id|%@", cleanMessageId]];
+		if (threadId.length) {
+			[keys addObject:[NSString stringWithFormat:@"idthread|%@|%@", sciUnsentToastDedupeComponent(threadId), cleanMessageId]];
+		}
+		return keys;
+	}
+	[keys addObject:[NSString stringWithFormat:@"fallback|%ld|%@|%@",
+		(long)kind,
+		sciUnsentToastDedupeComponent(sender),
+		sciUnsentToastDedupeComponent(text)]];
+	return keys;
+}
+
+static BOOL sciShouldShowUnsentToast(NSArray<NSString *> *dedupeKeys) {
+	if (!dedupeKeys.count) return YES;
+	if (!sciUnsentToastDedupe) sciUnsentToastDedupe = NSMutableDictionary.dictionary;
+
+	NSDate *now = NSDate.date;
+	for (NSString *key in [sciUnsentToastDedupe.allKeys copy]) {
+		NSDate *date = sciUnsentToastDedupe[key];
+		if (![date isKindOfClass:NSDate.class] || [now timeIntervalSinceDate:date] > SCI_UNSENT_TOAST_DEDUPE_TTL) {
+			[sciUnsentToastDedupe removeObjectForKey:key];
+		}
+	}
+
+	for (NSString *dedupeKey in dedupeKeys) {
+		NSDate *existing = sciUnsentToastDedupe[dedupeKey];
+		if ([existing isKindOfClass:NSDate.class] && [now timeIntervalSinceDate:existing] <= SCI_UNSENT_TOAST_DEDUPE_TTL) {
+			return NO;
+		}
+	}
+
+	while (sciUnsentToastDedupe.count >= SCI_UNSENT_TOAST_DEDUPE_MAX) {
+		NSString *oldestKey = nil;
+		NSDate *oldestDate = nil;
+		for (NSString *key in sciUnsentToastDedupe) {
+			NSDate *date = sciUnsentToastDedupe[key];
+			if (![date isKindOfClass:NSDate.class] || !oldestDate || [date compare:oldestDate] == NSOrderedAscending) {
+				oldestDate = [date isKindOfClass:NSDate.class] ? date : nil;
+				oldestKey = key;
+			}
+		}
+		if (!oldestKey.length) break;
+		[sciUnsentToastDedupe removeObjectForKey:oldestKey];
+	}
+
+	for (NSString *dedupeKey in dedupeKeys) {
+		if (dedupeKey.length) sciUnsentToastDedupe[dedupeKey] = now;
+	}
+	return YES;
+}
+
+static void sciShowUnsentToast(NSDictionary *preview, NSString *fallbackSender, NSString *ownerAccount, NSString *fallbackSid) {
 	NSString *sender = preview ? sciDisplayNameForPreview(preview, fallbackSender) : (fallbackSender.length ? fallbackSender : @"Someone");
 	SCIDeletedMessageKind kind = [preview[@"kind"] isKindOfClass:NSNumber.class] ? (SCIDeletedMessageKind)[preview[@"kind"] integerValue] : SCIDeletedMessageKindUnknown;
 	NSString *text = sciTrimmedSingleLinePreview(preview[@"previewText"] ?: preview[@"text"]);
+	NSArray<NSString *> *dedupeKeys = sciUnsentToastDedupeKeys(preview, fallbackSid, sender, kind, text);
+	if (!sciShouldShowUnsentToast(dedupeKeys)) return;
 	NSString *kindPhrase = sciNotificationKindPhrase(kind);
-	NSString *title = [NSString stringWithFormat:@"%@ unsent %@", sender, kindPhrase];
+	NSString *title = [NSString stringWithFormat:@"%@ unsent a %@", sender, kindPhrase];
 	NSString *subtitle = text.length ? [NSString stringWithFormat:@"\"%@\"", text] : nil;
 	if (ownerAccount.length) {
 		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ · %@", title, subtitle] : title;
 		title = ownerAccount;
 	}
-	SCINotify(kSCINotificationUnsentMessage, title, subtitle, @"xmark", SCINotificationToneError);
+	SCINotify(kSCINotificationUnsentMessage, title, subtitle, @"undo_filled", SCINotificationToneInfo);
+}
+
+static void sciShowUnsentReactionToast(NSDictionary *preview, NSString *ownerAccount) {
+	if (![preview isKindOfClass:NSDictionary.class]) return;
+	NSString *sender = sciDisplayNameForPreview(preview, @"Someone");
+	NSString *emoji = [preview[@"emoji"] isKindOfClass:NSString.class] ? preview[@"emoji"] : nil;
+	NSString *targetPreview = sciTrimmedSingleLinePreview(preview[@"targetPreview"]);
+
+	// Dedupe on sender + emoji + target so rapid duplicate deltas don't spam.
+	NSString *dedupeKey = [NSString stringWithFormat:@"reaction|%@|%@|%@",
+		sciUnsentToastDedupeComponent(sender),
+		sciUnsentToastDedupeComponent(emoji),
+		sciUnsentToastDedupeComponent(targetPreview)];
+	if (!sciShouldShowUnsentToast(@[dedupeKey])) return;
+
+	NSString *title = emoji.length
+		? [NSString stringWithFormat:@"%@ removed a %@ reaction", sender, emoji]
+		: [NSString stringWithFormat:@"%@ removed a reaction", sender];
+	NSString *subtitle = targetPreview.length ? [NSString stringWithFormat:@"On \"%@\"", targetPreview] : nil;
+	if (ownerAccount.length) {
+		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ · %@", title, subtitle] : title;
+		title = ownerAccount;
+	}
+	SCINotify(kSCINotificationUnsentReaction, title, subtitle, @"reactions", SCINotificationToneInfo);
 }
 
 static void sciRefreshVisibleCellIndicators(void) {
@@ -553,9 +768,10 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 
 	BOOL keepOn = sciKeepDeletedEnabled();
 	BOOL logOn = sciDeletedLogEnabled();
-	BOOL toastOn = [SCIUtils getBoolPref:@"msgs_unsent_toast"];
+	BOOL toastOn = SCINotificationIsEnabled(kSCINotificationUnsentMessage);
+	BOOL reactionOn = sciReactionLogEnabled() || SCINotificationIsEnabled(kSCINotificationUnsentReaction);
 
-	if (!keepOn && !logOn && !toastOn) {
+	if (!keepOn && !logOn && !toastOn && !reactionOn) {
 		orig_applyUpdates(self, _cmd, updates, completion, userAccess);
 		return;
 	}
@@ -564,6 +780,10 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 	NSMutableSet *preserved = NSMutableSet.set;
 	NSMutableSet *detected = NSMutableSet.set;
 	NSMutableArray<NSDictionary *> *previews = NSMutableArray.array;
+
+	// Reaction previews accumulate into a global during processing; reset so we
+	// only fire toasts for this pass.
+	sciPendingReactionPreviews = NSMutableArray.array;
 
 	if (ownerPk.length && [updates isKindOfClass:NSArray.class]) {
 		for (id update in (NSArray *)updates) {
@@ -576,7 +796,10 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 
 	orig_applyUpdates(self, _cmd, updates, completion, userAccess);
 
-	if (!preserved.count && !detected.count) return;
+	NSArray<NSDictionary *> *reactionPreviews = sciPendingReactionPreviews.count ? [sciPendingReactionPreviews copy] : nil;
+	sciPendingReactionPreviews = nil;
+
+	if (!preserved.count && !detected.count && !reactionPreviews.count) return;
 
 	NSString *sid = preserved.anyObject ?: detected.anyObject;
 	NSString *senderName = sid.length ? sciSenderNameMap()[sid] : nil;
@@ -593,12 +816,15 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 
 	dispatch_async(dispatch_get_main_queue(), ^{
 		if (foreground) sciRefreshVisibleCellIndicators();
-		if (toastOn) {
+		if (toastOn && (preserved.count || detected.count)) {
 			if (previews.count) {
-				for (NSDictionary *preview in previews) sciShowUnsentToast(preview, senderName, ownerName);
+				for (NSDictionary *preview in previews) sciShowUnsentToast(preview, senderName, ownerName, sid);
 			} else {
-				sciShowUnsentToast(nil, senderName, ownerName);
+				sciShowUnsentToast(nil, senderName, ownerName, sid);
 			}
+		}
+		if (reactionPreviews.count) {
+			for (NSDictionary *preview in reactionPreviews) sciShowUnsentReactionToast(preview, ownerName);
 		}
 	});
 }
@@ -649,6 +875,8 @@ static BOOL sciCellIsPreserved(id cell) {
 static BOOL sciCellSenderIsCurrentUser(id cell) {
 	NSString *sid = sciCellServerId(cell);
 	if (!sid.length) return NO;
+	NSNumber *sentByOwner = sciSentByOwnerMap()[sid];
+	if ([sentByOwner isKindOfClass:NSNumber.class]) return sentByOwner.boolValue;
 	NSString *senderPk = sciSenderMap()[sid];
 	NSString *currentPk = sciCurrentUserPk();
 	return senderPk.length && currentPk.length && [senderPk isEqualToString:currentPk];
@@ -678,6 +906,51 @@ static void sciSetTrailingAccessoriesHidden(id cell, BOOL hidden) {
 	}
 }
 
+static CGRect sciMessageContentRectInHost(id cell, UIView *content, UIView *host) {
+	if (!content || !host) return CGRectZero;
+	CGRect rect = [host convertRect:content.bounds fromView:content];
+	if (CGRectGetWidth(rect) > 1.0 && CGRectGetHeight(rect) > 1.0) return rect;
+
+	CGSize size = CGSizeZero;
+	if ([cell respondsToSelector:@selector(messageContentSize)]) {
+		@try { size = ((CGSize (*)(id, SEL))objc_msgSend)(cell, @selector(messageContentSize)); } @catch (__unused id e) {}
+	}
+	if (size.width <= 1.0 || size.height <= 1.0) return rect;
+
+	CGFloat xOffset = 0.0;
+	Ivar ivar = class_getInstanceVariable([cell class], "_messageBubbleXOffset");
+	if (ivar) {
+		@try {
+			ptrdiff_t off = ivar_getOffset(ivar);
+			xOffset = *(double *)((char *)(__bridge void *)cell + off);
+		} @catch (__unused id e) {}
+	}
+
+	CGRect hostBounds = host.bounds;
+	CGFloat x = xOffset;
+	if (x <= 0.0 || x > CGRectGetWidth(hostBounds)) x = CGRectGetMinX(rect);
+	CGFloat y = CGRectGetMidY(rect) - (size.height / 2.0);
+	if (!isfinite(y) || y < 0.0 || y > CGRectGetHeight(hostBounds)) y = CGRectGetMidY(hostBounds) - (size.height / 2.0);
+	return CGRectMake(x, y, size.width, size.height);
+}
+
+static void sciPositionIndicatorBadge(UIView *badge, id cell, UIView *content, UIView *host, BOOL sentByCurrentUser) {
+	if (!badge || !content || !host) return;
+	CGRect contentRect = sciMessageContentRectInHost(cell, content, host);
+	CGFloat badgeSize = 20.0;
+	CGFloat gap = 5.0;
+	CGFloat x = sentByCurrentUser ? CGRectGetMinX(contentRect) - badgeSize - gap : CGRectGetMaxX(contentRect) + gap;
+	CGFloat y = CGRectGetMidY(contentRect) - (badgeSize / 2.0);
+
+	if (!isfinite(x) || !isfinite(y)) {
+		badge.hidden = YES;
+		return;
+	}
+
+	badge.hidden = NO;
+	badge.frame = CGRectMake(x, y, badgeSize, badgeSize);
+}
+
 static void sciUpdateCellIndicator(id cell) {
 	if (![cell isKindOfClass:UIView.class]) return;
 
@@ -701,42 +974,44 @@ static void sciUpdateCellIndicator(id cell) {
 	sciSetTrailingAccessoriesHidden(cell, YES);
 	BOOL sentByCurrentUser = sciCellSenderIsCurrentUser(cell);
 	NSNumber *oldDirection = old ? objc_getAssociatedObject(old, &kSCIPreservedIndicatorOwnMessageKey) : nil;
-	if (old && [oldDirection isKindOfClass:NSNumber.class] && oldDirection.boolValue == sentByCurrentUser) return;
-	if (old) [old removeFromSuperview];
-
+	NSString *oldStyle = old ? objc_getAssociatedObject(old, &kSCIPreservedIndicatorStyleKey) : nil;
 	UIView *content = sciIvar(cell, "_messageContentContainerView") ?: view;
+	UIView *host = nil;
+	if ([cell isKindOfClass:UICollectionViewCell.class]) host = ((UICollectionViewCell *)cell).contentView;
+	if (!host) host = view;
+
+	if (old && [oldDirection isKindOfClass:NSNumber.class] && oldDirection.boolValue == sentByCurrentUser && [oldStyle isEqualToString:@"undo_filled_secondary_circle"] && old.superview == host) {
+		sciPositionIndicatorBadge(old, cell, content, host, sentByCurrentUser);
+		return;
+	}
+	if (old) [old removeFromSuperview];
 
 	UIView *badge = UIView.new;
 	badge.tag = SCI_PRESERVED_TAG;
-	badge.backgroundColor = [SCIUtils SCIColor_InstagramDestructive] ?: [SCIUtils SCIColor_InstagramPrimaryText];
-	badge.layer.cornerRadius = 9.0;
+	badge.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
+	badge.layer.cornerRadius = 10.0;
 	badge.layer.masksToBounds = YES;
-	badge.translatesAutoresizingMaskIntoConstraints = NO;
 	badge.accessibilityLabel = @"Unsent";
+	badge.userInteractionEnabled = NO;
 	objc_setAssociatedObject(badge, &kSCIPreservedIndicatorOwnMessageKey, @(sentByCurrentUser), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(badge, &kSCIPreservedIndicatorStyleKey, @"undo_filled_secondary_circle", OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-	UIImageView *icon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"xmark"
-	                                                                               pointSize:9.0
+	UIImageView *icon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"undo_filled"
+	                                                                               pointSize:16.0
 	                                                                           renderingMode:UIImageRenderingModeAlwaysTemplate]];
-	icon.tintColor = [SCIUtils SCIColor_InstagramBackground] ?: UIColor.whiteColor;
+	icon.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
 	icon.contentMode = UIViewContentModeScaleAspectFit;
 	icon.translatesAutoresizingMaskIntoConstraints = NO;
 	[badge addSubview:icon];
 
-	[view addSubview:badge];
+	[host addSubview:badge];
+	sciPositionIndicatorBadge(badge, cell, content, host, sentByCurrentUser);
 
-	NSLayoutConstraint *horizontal = sentByCurrentUser
-		? [badge.trailingAnchor constraintEqualToAnchor:content.leadingAnchor constant:-5.0]
-		: [badge.leadingAnchor constraintEqualToAnchor:content.trailingAnchor constant:5.0];
 	[NSLayoutConstraint activateConstraints:@[
-		horizontal,
-		[badge.centerYAnchor constraintEqualToAnchor:content.centerYAnchor],
-		[badge.widthAnchor constraintEqualToConstant:18.0],
-		[badge.heightAnchor constraintEqualToConstant:18.0],
 		[icon.centerXAnchor constraintEqualToAnchor:badge.centerXAnchor],
 		[icon.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
-		[icon.widthAnchor constraintEqualToConstant:10.0],
-		[icon.heightAnchor constraintEqualToConstant:10.0],
+		[icon.widthAnchor constraintEqualToConstant:12.0],
+		[icon.heightAnchor constraintEqualToConstant:12.0],
 	]];
 }
 
@@ -754,7 +1029,11 @@ static void new_configureCell(id self, SEL _cmd, id vm, id ringSpec, id launcher
 		}
 
 		NSString *pk = sciStringValue(sciIvar(meta, "_senderPk"));
-		if (pk.length) sciTrackSenderPk(sid, pk);
+		if (pk.length) {
+			sciTrackSenderPk(sid, pk);
+			NSString *currentPk = sciCurrentUserPk();
+			if (currentPk.length) sciTrackSentByOwner(sid, [pk isEqualToString:currentPk]);
+		}
 	}
 
 	sciUpdateCellIndicator(self);

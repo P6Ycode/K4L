@@ -9,6 +9,7 @@
 #import "../../Shared/Messages/SCIDirectSeenContext.h"
 #import "../../Shared/Stories/SCIStoryContext.h"
 #import "../../Shared/UI/SCIChrome.h"
+#import "../Messages/DeletedMessagesLog/SCIDeletedMessagesViewController.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -266,6 +267,54 @@ void SCIMarkDirectThreadSeenAfterReaction(id source) {
     SCITriggerAutoSeenForSource(source, @"reaction");
 }
 
+// Resolves the 1:1 chat partner from a thread context. Returns nil PK for
+// group chats or when the participant list can't be narrowed to a single
+// non-owner user — callers fall back to the full log in that case.
+static void SCIDirectResolveChatPartner(SCIDirectThreadContext *context, NSString **outPK, NSString **outName) {
+    if (outPK) *outPK = nil;
+    if (outName) *outName = nil;
+    if (!context || context.isGroup) return;
+
+    NSArray<NSDictionary *> *users = context.users;
+    if (![users isKindOfClass:NSArray.class] || users.count == 0) return;
+
+    // Current account PK so we can exclude ourselves from the participant list.
+    NSString *currentPk = nil;
+    @try {
+        for (UIWindow *w in UIApplication.sharedApplication.windows) {
+            id session = nil;
+            @try { session = [w valueForKey:@"userSession"]; } @catch (__unused id e) {}
+            id user = session ? [session valueForKey:@"user"] : nil;
+            for (NSString *key in @[@"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId"]) {
+                id v = nil;
+                @try { v = [user valueForKey:key]; } @catch (__unused id e) {}
+                if ([v isKindOfClass:NSString.class] && [v length]) { currentPk = v; break; }
+                if ([v isKindOfClass:NSNumber.class]) { currentPk = [v stringValue]; break; }
+            }
+            if (currentPk.length) break;
+        }
+    } @catch (__unused id e) {}
+
+    NSMutableArray<NSDictionary *> *others = [NSMutableArray array];
+    for (NSDictionary *u in users) {
+        if (![u isKindOfClass:NSDictionary.class]) continue;
+        NSString *pk = [u[@"pk"] isKindOfClass:NSString.class] ? u[@"pk"] : nil;
+        if (!pk.length) continue;
+        if (currentPk.length && [pk isEqualToString:currentPk]) continue;
+        [others addObject:u];
+    }
+
+    // Only a clean 1:1 (exactly one other participant) deep-links.
+    if (others.count != 1) return;
+
+    NSDictionary *partner = others.firstObject;
+    NSString *pk = [partner[@"pk"] isKindOfClass:NSString.class] ? partner[@"pk"] : nil;
+    NSString *username = [partner[@"username"] isKindOfClass:NSString.class] ? partner[@"username"] : nil;
+    NSString *fullName = [partner[@"fullName"] isKindOfClass:NSString.class] ? partner[@"fullName"] : nil;
+    if (outPK) *outPK = pk;
+    if (outName) *outName = username.length ? username : fullName;
+}
+
 static UIMenu *SCIDirectSeenButtonMenu(id source) {
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
     SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(source);
@@ -290,6 +339,24 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
         }];
         [children addObject:toggleAction];
     }
+
+    UIImage *logImage = [SCIAssetUtils instagramIconNamed:@"message" pointSize:22.0];
+    NSString *partnerPK = nil;
+    NSString *partnerName = nil;
+    SCIDirectResolveChatPartner(context, &partnerPK, &partnerName);
+    NSString *threadId = context.isGroup ? nil : context.threadId;
+    UIAction *logAction = [UIAction actionWithTitle:@"Deleted Messages"
+                                              image:logImage
+                                         identifier:nil
+                                            handler:^(__unused UIAction *action) {
+        if (threadId.length || partnerPK.length) {
+            [SCIDeletedMessagesViewController presentForThreadId:threadId senderPK:partnerPK senderName:partnerName fromViewController:nil];
+        } else {
+            // Group chat or unresolved participant — open the full list.
+            [SCIDeletedMessagesViewController presentFromViewController:nil];
+        }
+    }];
+    [children addObject:logAction];
 
     UIImage *settingsImage = [SCIAssetUtils instagramIconNamed:@"settings" pointSize:22.0];
     UIAction *settingsAction = [UIAction actionWithTitle:@"Messages Settings"

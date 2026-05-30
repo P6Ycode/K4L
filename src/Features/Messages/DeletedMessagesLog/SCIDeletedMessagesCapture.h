@@ -39,6 +39,21 @@ NSArray<NSDictionary *> *sciDMCapturePreviewMetadataForKeys(NSArray * _Nullable 
                                                             NSString * _Nullable ownerPk,
                                                             NSString * _Nullable threadId);
 
+// Reaction unsend: someone removed a reaction they had placed on a message.
+// `reaction` is an IGDirectMessageReaction; `reactorPk` is the user who removed
+// it; `targetMessage` (optional) is the message the reaction was on, used to
+// build a short preview. Persists a reaction record gated by
+// `msgs_deleted_log_reactions`. Returns the saved record's sender display info
+// as a dict for the toast (keys: senderPk/senderUsername/senderFullName/emoji),
+// or nil when nothing was stored.
+NSDictionary * _Nullable sciDMCaptureNoteReactionUnsend(id _Nullable reaction,
+                                                        NSString * _Nullable reactorPk,
+                                                        id _Nullable targetMessage,
+                                                        NSString * _Nullable targetMessageId,
+                                                        id _Nullable applicator,
+                                                        NSString * _Nullable ownerPk,
+                                                        NSString * _Nullable threadId);
+
 #ifdef __cplusplus
 }
 #endif

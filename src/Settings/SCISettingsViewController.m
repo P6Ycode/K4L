@@ -115,20 +115,104 @@ static UIImage *SCISettingsSizedRemoteImage(UIImage *image, BOOL circular) {
 }
 
 static NSString *SCISettingsNormalizedQuery(NSString *query) {
-    return [[query ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
+    return [[query ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] localizedLowercaseString];
 }
 
-static BOOL SCISettingsStringMatchesQuery(NSString *string, NSString *query) {
-    if (query.length == 0) return YES;
-    return [[string ?: @"" lowercaseString] containsString:query];
+static NSArray<NSString *> *SCISettingsSearchTokens(NSString *query) {
+    NSString *normalized = SCISettingsNormalizedQuery(query);
+    if (normalized.length == 0) return @[];
+
+    NSMutableArray<NSString *> *tokens = [NSMutableArray array];
+    NSCharacterSet *separators = [[NSCharacterSet alphanumericCharacterSet] invertedSet];
+    for (NSString *token in [normalized componentsSeparatedByCharactersInSet:separators]) {
+        if (token.length > 0) {
+            [tokens addObject:token];
+        }
+    }
+    return tokens;
 }
 
-static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSString *path, NSString *sectionTitle) {
+static void SCISettingsAppendSearchString(NSMutableArray<NSString *> *strings, id value) {
+    if ([value isKindOfClass:[NSString class]] && [value length] > 0) {
+        [strings addObject:value];
+    } else if ([value respondsToSelector:@selector(stringValue)]) {
+        NSString *stringValue = [value stringValue];
+        if (stringValue.length > 0) [strings addObject:stringValue];
+    }
+}
+
+static void SCISettingsCollectMenuSearchStrings(UIMenu *menu, NSMutableArray<NSString *> *strings) {
+    if (![menu isKindOfClass:[UIMenu class]]) return;
+    SCISettingsAppendSearchString(strings, menu.title);
+
+    for (UIMenuElement *element in menu.children ?: @[]) {
+        if ([element isKindOfClass:[UIMenu class]]) {
+            SCISettingsCollectMenuSearchStrings((UIMenu *)element, strings);
+            continue;
+        }
+
+        SCISettingsAppendSearchString(strings, element.title);
+        if ([element isKindOfClass:[UICommand class]]) {
+            NSDictionary *propertyList = ((UICommand *)element).propertyList;
+            SCISettingsAppendSearchString(strings, propertyList[@"defaultsKey"]);
+            SCISettingsAppendSearchString(strings, propertyList[@"value"]);
+            SCISettingsAppendSearchString(strings, propertyList[@"iconName"]);
+        }
+    }
+}
+
+static NSString *SCISettingsRowSearchHaystack(SCISetting *row, NSString *path, NSString *sectionTitle, NSString *sectionFooter) {
+    NSMutableArray<NSString *> *strings = [NSMutableArray array];
+    SCISettingsAppendSearchString(strings, row.title);
+    SCISettingsAppendSearchString(strings, row.subtitle);
+    SCISettingsAppendSearchString(strings, row.defaultsKey);
+    SCISettingsAppendSearchString(strings, row.placeholder);
+    SCISettingsAppendSearchString(strings, row.label);
+    SCISettingsAppendSearchString(strings, row.singularLabel);
+    SCISettingsAppendSearchString(strings, row.searchKeywords);
+    SCISettingsAppendSearchString(strings, path);
+    SCISettingsAppendSearchString(strings, sectionTitle);
+    SCISettingsAppendSearchString(strings, sectionFooter);
+
+    NSString *accessoryText = [row.userInfo[@"accessoryText"] isKindOfClass:[NSString class]] ? row.userInfo[@"accessoryText"] : nil;
+    SCISettingsAppendSearchString(strings, accessoryText);
+    SCISettingsCollectMenuSearchStrings(row.baseMenu, strings);
+    return SCISettingsNormalizedQuery([strings componentsJoinedByString:@" "]);
+}
+
+static BOOL SCISettingsRowMatchesTokens(SCISetting *row, NSArray<NSString *> *tokens, NSString *path, NSString *sectionTitle, NSString *sectionFooter) {
     if (![row isKindOfClass:[SCISetting class]]) return NO;
-    return SCISettingsStringMatchesQuery(row.title, query) ||
-           SCISettingsStringMatchesQuery(row.subtitle, query) ||
-           SCISettingsStringMatchesQuery(path, query) ||
-           SCISettingsStringMatchesQuery(sectionTitle, query);
+    if (tokens.count == 0) return YES;
+
+    NSString *haystack = SCISettingsRowSearchHaystack(row, path, sectionTitle, sectionFooter);
+    for (NSString *token in tokens) {
+        if ([haystack rangeOfString:token].location == NSNotFound) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
+static NSArray<NSString *> *SCISettingsPathComponentsByAppending(NSArray<NSString *> *components, NSString *component) {
+    if (component.length == 0) return components ?: @[];
+    NSMutableArray<NSString *> *result = [NSMutableArray arrayWithArray:components ?: @[]];
+    [result addObject:component];
+    return [result copy];
+}
+
+static NSString *SCISettingsBreadcrumbText(NSArray<NSString *> *components) {
+    return [components componentsJoinedByString:@" \u203a "];
+}
+
+static UIImage *SCISettingsBreadcrumbChevronImage(void) {
+    UIImage *image = [SCIAssetUtils instagramIconNamed:@"chevron_right"
+                                            pointSize:12.0
+                                        renderingMode:UIImageRenderingModeAlwaysTemplate];
+    if (!image) {
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightSemibold];
+        image = [[UIImage systemImageNamed:@"chevron.right" withConfiguration:config] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+    return image;
 }
 
 @implementation SCISettingsViewController
@@ -509,7 +593,66 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    if ([self isSearching] && [self.sections[section][@"breadcrumbComponents"] isKindOfClass:[NSArray class]]) {
+        return nil;
+    }
     return self.sections[section][@"header"];
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+    NSArray<NSString *> *components = self.sections[section][@"breadcrumbComponents"];
+    if (![self isSearching] || ![components isKindOfClass:[NSArray class]] || components.count == 0) {
+        return nil;
+    }
+
+    UITableViewHeaderFooterView *header = [[UITableViewHeaderFooterView alloc] initWithReuseIdentifier:nil];
+    UIStackView *stack = [[UIStackView alloc] initWithFrame:CGRectZero];
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.alignment = UIStackViewAlignmentCenter;
+    stack.spacing = 5.0;
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+
+    UIFont *font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+    UIColor *textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    UIColor *chevronColor = [SCIUtils SCIColor_InstagramTertiaryText];
+    UIImage *chevron = SCISettingsBreadcrumbChevronImage();
+
+    for (NSUInteger index = 0; index < components.count; index++) {
+        if (index > 0) {
+            if (chevron) {
+                UIImageView *imageView = [[UIImageView alloc] initWithImage:chevron];
+                imageView.tintColor = chevronColor;
+                imageView.contentMode = UIViewContentModeScaleAspectFit;
+                [imageView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+                [stack addArrangedSubview:imageView];
+            } else {
+                UILabel *separator = [UILabel new];
+                separator.text = @"\u203a";
+                separator.font = font;
+                separator.textColor = chevronColor;
+                [separator setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+                [stack addArrangedSubview:separator];
+            }
+        }
+
+        UILabel *label = [UILabel new];
+        label.text = components[index];
+        label.font = font;
+        label.textColor = textColor;
+        label.numberOfLines = 1;
+        label.lineBreakMode = NSLineBreakByTruncatingTail;
+        [stack addArrangedSubview:label];
+    }
+
+    [header.contentView addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.leadingAnchor constraintEqualToAnchor:header.contentView.layoutMarginsGuide.leadingAnchor],
+        [stack.trailingAnchor constraintLessThanOrEqualToAnchor:header.contentView.layoutMarginsGuide.trailingAnchor],
+        [stack.topAnchor constraintEqualToAnchor:header.contentView.topAnchor constant:8.0],
+        [stack.bottomAnchor constraintEqualToAnchor:header.contentView.bottomAnchor constant:-4.0]
+    ]];
+    header.accessibilityLabel = SCISettingsBreadcrumbText(components);
+    return header;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
@@ -664,13 +807,15 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 }
 
 - (NSMutableArray *)filterCurrentSettingsForQuery:(NSString *)query {
+    NSArray<NSString *> *tokens = SCISettingsSearchTokens(query);
     NSMutableArray *filteredSections = [NSMutableArray array];
     for (NSDictionary *section in self.originalSections) {
         NSArray *rows = section[@"rows"];
         NSMutableArray *matchedRows = [NSMutableArray array];
         NSString *sectionTitle = section[@"header"];
+        NSString *sectionFooter = section[@"footer"];
         for (SCISetting *row in rows) {
-            if (SCISettingsRowMatchesQuery(row, query, self.title, sectionTitle)) {
+            if (SCISettingsRowMatchesTokens(row, tokens, self.title, sectionTitle, sectionFooter)) {
                 [matchedRows addObject:row];
             }
         }
@@ -686,11 +831,14 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 
 - (NSMutableArray *)searchAllSettingsForQuery:(NSString *)query {
     NSMutableDictionary<NSString *, NSMutableArray<SCISetting *> *> *rowsByPath = [NSMutableDictionary dictionary];
+    NSMutableDictionary<NSString *, NSArray<NSString *> *> *componentsByPath = [NSMutableDictionary dictionary];
     NSMutableArray<NSString *> *orderedPaths = [NSMutableArray array];
+    NSArray<NSString *> *tokens = SCISettingsSearchTokens(query);
     [self collectSearchRowsFromSections:self.originalSections
-                                   path:self.title ?: @"Settings"
-                                  query:query
+                         pathComponents:@[]
+                                 tokens:tokens
                              rowsByPath:rowsByPath
+                       componentsByPath:componentsByPath
                            orderedPaths:orderedPaths];
 
     NSMutableArray *sections = [NSMutableArray array];
@@ -699,6 +847,7 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
         if (rows.count == 0) continue;
         [sections addObject:[@{
             @"header": path,
+            @"breadcrumbComponents": componentsByPath[path] ?: @[],
             @"rows": [rows mutableCopy],
             @"allowsReordering": @NO
         } mutableCopy]];
@@ -707,32 +856,40 @@ static BOOL SCISettingsRowMatchesQuery(SCISetting *row, NSString *query, NSStrin
 }
 
 - (void)collectSearchRowsFromSections:(NSArray *)sections
-                                  path:(NSString *)path
-                                 query:(NSString *)query
+                        pathComponents:(NSArray<NSString *> *)pathComponents
+                                tokens:(NSArray<NSString *> *)tokens
                             rowsByPath:(NSMutableDictionary<NSString *, NSMutableArray<SCISetting *> *> *)rowsByPath
+                      componentsByPath:(NSMutableDictionary<NSString *, NSArray<NSString *> *> *)componentsByPath
                           orderedPaths:(NSMutableArray<NSString *> *)orderedPaths {
     for (NSDictionary *section in sections) {
         NSString *sectionTitle = section[@"header"];
-        NSString *sectionPath = sectionTitle.length > 0 ? [NSString stringWithFormat:@"%@ / %@", path, sectionTitle] : path;
+        NSString *sectionFooter = section[@"footer"];
+        NSArray<NSString *> *sectionPathComponents = SCISettingsPathComponentsByAppending(pathComponents, sectionTitle);
         for (SCISetting *row in section[@"rows"]) {
             if (![row isKindOfClass:[SCISetting class]]) continue;
 
-            if (SCISettingsRowMatchesQuery(row, query, sectionPath, sectionTitle)) {
-                NSMutableArray *rows = rowsByPath[sectionPath];
+            NSArray<NSString *> *rowPathComponents = sectionPathComponents.count > 0 ? sectionPathComponents : SCISettingsPathComponentsByAppending(pathComponents, row.title);
+            NSString *rowPath = SCISettingsBreadcrumbText(rowPathComponents);
+            if (SCISettingsRowMatchesTokens(row, tokens, rowPath, sectionTitle, sectionFooter)) {
+                NSString *resultPath = rowPath.length > 0 ? rowPath : (row.title ?: @"");
+                NSMutableArray *rows = rowsByPath[resultPath];
                 if (!rows) {
                     rows = [NSMutableArray array];
-                    rowsByPath[sectionPath] = rows;
-                    [orderedPaths addObject:sectionPath];
+                    rowsByPath[resultPath] = rows;
+                    componentsByPath[resultPath] = rowPathComponents;
+                    [orderedPaths addObject:resultPath];
                 }
                 [rows addObject:row];
             }
 
-            if (row.navSections.count > 0) {
-                NSString *childPath = row.title.length > 0 ? [NSString stringWithFormat:@"%@ / %@", path, row.title] : path;
-                [self collectSearchRowsFromSections:row.navSections
-                                               path:childPath
-                                              query:query
+            NSArray *childSections = row.navSections.count > 0 ? row.navSections : (row.searchSectionsProvider ? row.searchSectionsProvider() : nil);
+            if (childSections.count > 0) {
+                NSArray<NSString *> *childPathComponents = SCISettingsPathComponentsByAppending(pathComponents, row.title);
+                [self collectSearchRowsFromSections:childSections
+                                     pathComponents:childPathComponents
+                                             tokens:tokens
                                          rowsByPath:rowsByPath
+                                   componentsByPath:componentsByPath
                                        orderedPaths:orderedPaths];
             }
         }

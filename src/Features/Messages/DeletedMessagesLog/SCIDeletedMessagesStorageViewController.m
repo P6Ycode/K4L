@@ -1,15 +1,22 @@
 #import "SCIDeletedMessagesStorageViewController.h"
 
+#import "SCIDeletedMessagesAvatarCache.h"
+#import "SCIDeletedMessagesModels.h"
 #import "SCIDeletedMessagesStorage.h"
-#import "SCIDeletedMessagesViewController.h"
 #import "../../../Utils.h"
 #import "../../../Shared/UI/SCIIGAlertPresenter.h"
+#import "../../../Settings/SCITopicSettingsSupport.h"
 
-@interface SCIDeletedMessagesStorageViewController () <UITableViewDataSource, UITableViewDelegate>
-@property (nonatomic, strong) UITableView *tableView;
+@interface SCIDeletedMessagesStorageViewController ()
 @property (nonatomic, copy) NSString *ownerPK;
 @property (nonatomic, assign) NSUInteger messageCount;
+@property (nonatomic, assign) NSUInteger senderCount;
+@property (nonatomic, assign) NSUInteger textCount;
+@property (nonatomic, assign) NSUInteger mediaCount;
+@property (nonatomic, assign) NSUInteger voiceCount;
+@property (nonatomic, assign) NSUInteger otherCount;
 @property (nonatomic, assign) unsigned long long mediaBytes;
+@property (nonatomic, assign) unsigned long long avatarBytes;
 @end
 
 @implementation SCIDeletedMessagesStorageViewController
@@ -33,83 +40,119 @@ static NSString *SCIDMStorageOwnerPK(void) {
     return owners.firstObject ?: @"anon";
 }
 
+- (instancetype)init {
+    return [super initWithTitle:@"Storage" sections:@[] reduceMargin:NO];
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Storage";
-    self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
-    self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.tableView.dataSource = self;
-    self.tableView.delegate = self;
-    self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    [self.view addSubview:self.tableView];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-    ]];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadData) name:SCIDeletedMessagesDidChangeNotification object:nil];
-    [self reloadData];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadStatsAndRebuild) name:SCIDeletedMessagesDidChangeNotification object:nil];
+    [self reloadStatsAndRebuild];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self reloadStatsAndRebuild];
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)reloadData {
-    self.ownerPK = SCIDMStorageOwnerPK();
-    NSArray *messages = [SCIDeletedMessagesStorage allMessagesForOwnerPK:self.ownerPK];
-    self.messageCount = messages.count;
-    self.mediaBytes = [SCIDeletedMessagesStorage mediaSizeBytesForOwnerPK:self.ownerPK];
-    [self.tableView reloadData];
+- (void)reloadStatsAndRebuild {
+    [self reloadStats];
+    [self rebuildSections];
 }
 
-+ (NSString *)formatBytes:(unsigned long long)bytes {
+- (void)reloadStats {
+    self.ownerPK = SCIDMStorageOwnerPK();
+    NSArray<SCIDeletedMessage *> *messages = [SCIDeletedMessagesStorage allMessagesForOwnerPK:self.ownerPK];
+    self.messageCount = messages.count;
+
+    NSMutableSet<NSString *> *senders = [NSMutableSet set];
+    NSUInteger text = 0, media = 0, voice = 0, other = 0;
+    for (SCIDeletedMessage *message in messages) {
+        if (message.senderPk.length) [senders addObject:message.senderPk];
+        switch (message.kind) {
+            case SCIDeletedMessageKindText:
+                text++; break;
+            case SCIDeletedMessageKindPhoto:
+            case SCIDeletedMessageKindVideo:
+            case SCIDeletedMessageKindGif:
+            case SCIDeletedMessageKindSticker:
+                media++; break;
+            case SCIDeletedMessageKindVoice:
+            case SCIDeletedMessageKindAudioShare:
+                voice++; break;
+            default:
+                other++; break;
+        }
+    }
+    self.senderCount = senders.count;
+    self.textCount = text;
+    self.mediaCount = media;
+    self.voiceCount = voice;
+    self.otherCount = other;
+    self.mediaBytes = [SCIDeletedMessagesStorage mediaSizeBytesForOwnerPK:self.ownerPK];
+    self.avatarBytes = [[SCIDeletedMessagesAvatarCache shared] diskSizeBytes];
+}
+
+- (NSString *)formattedSize:(unsigned long long)bytes {
     return [NSByteCountFormatter stringFromByteCount:(long long)bytes countStyle:NSByteCountFormatterCountStyleFile];
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 2; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return section == 0 ? 2 : 2; }
+- (void)rebuildSections {
+    NSMutableArray *sections = [NSMutableArray array];
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"storage"];
-    if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"storage"];
-    cell.accessoryType = UITableViewCellAccessoryNone;
-    cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.selectedBackgroundView = [UIView new];
-    cell.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.detailTextLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
-    if (indexPath.section == 0 && indexPath.row == 0) {
-        cell.textLabel.text = @"Messages";
-        cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu", (unsigned long)self.messageCount];
-    } else if (indexPath.section == 0) {
-        cell.textLabel.text = @"Media";
-        cell.detailTextLabel.text = [SCIDeletedMessagesStorageViewController formatBytes:self.mediaBytes];
-    } else if (indexPath.row == 0) {
-        cell.textLabel.text = @"Clear media files";
-        cell.textLabel.textColor = [SCIUtils SCIColor_InstagramDestructive];
-        cell.detailTextLabel.text = nil;
-    } else {
-        cell.textLabel.text = @"Clear deleted message log";
-        cell.textLabel.textColor = [SCIUtils SCIColor_InstagramDestructive];
-        cell.detailTextLabel.text = nil;
+    unsigned long long totalDisk = self.mediaBytes + self.avatarBytes;
+    NSString *overviewSubtitle = [NSString stringWithFormat:@"%lu message%@ • %lu sender%@ • %@",
+                                  (unsigned long)self.messageCount, self.messageCount == 1 ? @"" : @"s",
+                                  (unsigned long)self.senderCount, self.senderCount == 1 ? @"" : @"s",
+                                  [self formattedSize:totalDisk]];
+
+    [sections addObject:SCITopicSection(@"Overview", @[
+        [SCISetting valueCellWithTitle:@"Logged" subtitle:overviewSubtitle icon:SCISettingsIcon(@"history")],
+    ], nil)];
+
+    NSMutableArray *breakdown = [NSMutableArray array];
+    [breakdown addObject:[SCISetting valueCellWithTitle:@"Text" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.textCount] icon:SCISettingsIcon(@"text")]];
+    [breakdown addObject:[SCISetting valueCellWithTitle:@"Photos & Videos" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.mediaCount] icon:SCISettingsIcon(@"photo")]];
+    [breakdown addObject:[SCISetting valueCellWithTitle:@"Voice & Audio" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.voiceCount] icon:SCISettingsIcon(@"microphone")]];
+    if (self.otherCount > 0) {
+        [breakdown addObject:[SCISetting valueCellWithTitle:@"Other" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.otherCount] icon:SCISettingsIcon(@"messages")]];
     }
-    return cell;
+    [sections addObject:SCITopicSection(@"Messages", breakdown, nil)];
+
+    [sections addObject:SCITopicSection(@"Disk Usage", @[
+        [SCISetting valueCellWithTitle:@"Captured Media" subtitle:[self formattedSize:self.mediaBytes] icon:SCISettingsIcon(@"media")],
+        [SCISetting valueCellWithTitle:@"Profile Pictures" subtitle:[self formattedSize:self.avatarBytes] icon:SCISettingsIcon(@"user_circle")],
+    ], @"Captured media and profile pictures are stored on-device for this account. Profile pictures refresh at most once a day.")];
+
+    __weak typeof(self) weakSelf = self;
+
+    SCISetting *clearMedia = [SCISetting buttonCellWithTitle:@"Clear Captured Media" subtitle:nil icon:SCISettingsIcon(@"media") action:^{
+        [weakSelf confirmClearMedia];
+    }];
+    clearMedia.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+    clearMedia.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
+
+    SCISetting *clearLog = [SCISetting buttonCellWithTitle:@"Clear Entire Log" subtitle:nil icon:SCISettingsIcon(@"trash") action:^{
+        [weakSelf confirmClearLog];
+    }];
+    clearLog.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+    clearLog.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
+
+    [sections addObject:SCITopicSection(@"Maintenance", @[clearMedia, clearLog],
+                                        @"Clearing captured media keeps the log text but frees disk space. Clearing the log removes everything for this account.")];
+
+    [self replaceSections:sections];
 }
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.section != 1) return;
-    if (indexPath.row == 0) [self clearMedia];
-    else [self clearLog];
-}
+#pragma mark - Actions
 
-- (void)clearMedia {
+- (void)confirmClearMedia {
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:@"Clear media files?"
+                                                  title:@"Clear captured media?"
                                                 message:@"This removes all captured media (photos, videos, voice notes) but keeps the message log."
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
@@ -123,18 +166,21 @@ static NSString *SCIDMStorageOwnerPK(void) {
                 message.thumbnailPath = nil;
                 [SCIDeletedMessagesStorage saveMessage:message forOwnerPK:self.ownerPK];
             }
+            [self reloadStatsAndRebuild];
         }],
     ]];
 }
 
-- (void)clearLog {
+- (void)confirmClearLog {
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:@"Clear deleted message log?"
-                                                message:@"This removes every logged deleted message and captured media for this account."
+                                                  title:@"Clear entire log?"
+                                                message:@"This removes every logged deleted message, captured media, and cached profile pictures for this account."
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
         [SCIIGAlertAction actionWithTitle:@"Clear" style:SCIIGAlertActionStyleDestructive handler:^{
             [SCIDeletedMessagesStorage resetForOwnerPK:self.ownerPK];
+            [[SCIDeletedMessagesAvatarCache shared] purge];
+            [self reloadStatsAndRebuild];
         }],
     ]];
 }

@@ -16,6 +16,9 @@ UIImage *SCIMediaChromeBottomIcon(NSString *resourceName);
 UIImage *SCIMediaChromeTopBarIcon(NSString *resourceName);
 UIBarButtonItem *SCIMediaChromeTopBarButtonItem(NSString *resourceName, id target, SEL action);
 UIBarButtonItem *SCIMediaChromeTopBarButtonItemWithTint(NSString *resourceName, id target, SEL action, UIColor *_Nullable tintColor, NSString *_Nullable accessibilityLabel);
+// Top-bar button styled like the others but backed by a UIButton that opens
+// `menu` as its primary action (single tap), matching the gallery chrome.
+UIBarButtonItem *SCIMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMenu *menu, NSString *_Nullable accessibilityLabel);
 void SCIMediaChromeSetLeadingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items);
 void SCIMediaChromeSetTrailingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items);
 

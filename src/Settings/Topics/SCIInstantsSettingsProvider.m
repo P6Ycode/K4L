@@ -51,11 +51,14 @@ static NSArray *SCIInstantsSettingsSections(void) {
 @implementation SCIInstantsSettingsProvider
 
 + (SCISetting *)rootSetting {
-    return SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Instants"
-                                                              subtitle:@""
-                                                                  icon:SCISettingsIcon(@"instants")
-                                                        viewController:[[SCIInstantsSettingsViewController alloc] init]],
-                                   [SCIUtils SCIColor_InstagramPrimaryText]);
+    SCISetting *setting = [SCISetting navigationCellWithTitle:@"Instants"
+                                                     subtitle:@""
+                                                         icon:SCISettingsIcon(@"instants")
+                                               viewController:[[SCIInstantsSettingsViewController alloc] init]];
+    setting.searchSectionsProvider = ^NSArray *{
+        return SCIInstantsSettingsSections();
+    };
+    return SCISettingApplyIconTint(setting, [SCIUtils SCIColor_InstagramPrimaryText]);
 }
 
 @end

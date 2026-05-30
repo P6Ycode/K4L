@@ -833,6 +833,8 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
         completionHandler(YES);
     }];
     deleteAction.image = SCISettingsIcon(@"trash");
+    deleteAction.backgroundColor = [SCIUtils SCIColor_InstagramDestructive];
+    deleteAction.accessibilityLabel = @"Remove";
     UISwipeActionsConfiguration *configuration = [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
     configuration.performsFirstActionWithFullSwipe = YES;
     return configuration;

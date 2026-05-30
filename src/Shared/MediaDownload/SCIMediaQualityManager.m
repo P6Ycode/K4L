@@ -1061,6 +1061,15 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
 @end
 
 @interface SCIMediaEncodingSettingsViewController : SCISettingsViewController
+- (NSArray *)searchSections;
+- (UIMenu *)speedMenu;
+- (UIMenu *)codecMenu;
+- (UIMenu *)presetMenu;
+- (UIMenu *)profileMenu;
+- (UIMenu *)levelMenu;
+- (UIMenu *)maxResMenu;
+- (UIMenu *)audioChannelsMenu;
+- (UIMenu *)pixelFormatMenu;
 @end
 
 @implementation SCIMediaEncodingSettingsViewController
@@ -1125,6 +1134,38 @@ static SCIMediaOption *SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) 
     }
 
     return sections;
+}
+
+- (NSArray *)searchSections {
+    SCISetting *ffmpegInfo = [SCISetting linkCellWithTitle:@"About FFmpeg Encoding" subtitle:@"Tap to learn more" imageUrl:@"https://ffmpeg.org/favicon.ico" url:@"https://trac.ffmpeg.org/wiki/Encode/H.264"];
+    ffmpegInfo.userInfo = @{@"remoteImageCircular": @NO};
+
+    return @[
+        SCITopicSection(@"", @[
+            [SCISetting switchCellWithTitle:@"Advanced Encoding" defaultsKey:@"general_media_adv_encoding"]
+        ], @"Advanced Encoding exposes codec, preset, bitrate, CRF, resolution, and audio overrides. In advanced mode, the selected video codec is used for DASH merges while audio remains copied."),
+        SCITopicSection(@"Video", @[
+            [SCISetting menuCellWithTitle:@"Encoding Speed" subtitle:nil menu:[self speedMenu]],
+            [SCISetting menuCellWithTitle:@"Video Codec" subtitle:nil menu:[self codecMenu]],
+            [SCISetting menuCellWithTitle:@"Preset" subtitle:nil menu:[self presetMenu]],
+            [SCISetting menuCellWithTitle:@"H.264 Profile" subtitle:nil menu:[self profileMenu]],
+            [SCISetting menuCellWithTitle:@"H.264 Level" subtitle:nil menu:[self levelMenu]]
+        ], @"Controls the libx264 encoding effort. Slower presets take longer but produce smaller files at the same visual quality. Ultrafast is fastest but produces larger files."),
+        SCITopicSection(@"Quality", @[
+            [SCISetting textFieldCellWithTitle:@"CRF" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"general_media_encoding_crf"],
+            [SCISetting textFieldCellWithTitle:@"Video Bitrate" placeholder:@"Auto" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"general_media_encoding_vid_bitrate_kbps"],
+            [SCISetting menuCellWithTitle:@"Max Resolution" subtitle:nil menu:[self maxResMenu]]
+        ], nil),
+        SCITopicSection(@"Audio", @[
+            [SCISetting textFieldCellWithTitle:@"Audio Bitrate" placeholder:@"128" keyboardType:UIKeyboardTypeNumberPad defaultsKey:@"general_media_encoding_audio_bitrate_kbps"],
+            [SCISetting menuCellWithTitle:@"Audio Channels" subtitle:nil menu:[self audioChannelsMenu]]
+        ], nil),
+        SCITopicSection(@"Advanced", @[
+            [SCISetting menuCellWithTitle:@"Pixel Format" subtitle:nil menu:[self pixelFormatMenu]],
+            [SCISetting switchCellWithTitle:@"Fast Start" defaultsKey:@"general_media_encoding_faststart"]
+        ], @"Fast Start moves MP4 metadata to the beginning of the file, allowing the video to start playing immediately when shared online or streamed."),
+        SCITopicSection(@"", @[ffmpegInfo], nil)
+    ];
 }
 
 - (UIMenu *)speedMenu {
@@ -1794,6 +1835,11 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
 
 + (UIViewController *)encodingSettingsViewController {
     return [[SCIMediaEncodingSettingsViewController alloc] init];
+}
+
++ (NSArray *)encodingSettingsSearchSections {
+    SCIMediaEncodingSettingsViewController *controller = [[SCIMediaEncodingSettingsViewController alloc] init];
+    return [controller searchSections] ?: @[];
 }
 
 @end

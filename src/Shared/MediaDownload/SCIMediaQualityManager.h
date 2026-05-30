@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
                           showProgress:(BOOL)showProgress;
 
 + (UIViewController *)encodingSettingsViewController;
++ (NSArray *)encodingSettingsSearchSections;
 
 @end
 

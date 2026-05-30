@@ -31,6 +31,33 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
 
 @implementation SCIGallerySettingsViewController
 
++ (NSArray *)searchSections {
+    return @[
+        SCITopicSection(@"Storage", @[
+            [SCISetting valueCellWithTitle:@"Total" subtitle:@"Gallery storage and file count" icon:SCISettingsIcon(@"info")],
+            [SCISetting valueCellWithTitle:@"Images" subtitle:@"Saved image count" icon:SCISettingsIcon(@"photo")],
+            [SCISetting valueCellWithTitle:@"Videos" subtitle:@"Saved video count" icon:SCISettingsIcon(@"video")],
+            [SCISetting valueCellWithTitle:@"Audio" subtitle:@"Saved audio count" icon:SCISettingsIcon(@"audio")]
+        ], nil),
+        SCITopicSection(@"Browsing", @[
+            [SCISetting switchCellWithTitle:@"Show Favorites at Top" icon:SCISettingsIcon(@"heart") defaultsKey:kFavoritesAtTopKey]
+        ], @"Pin favorites above other files inside the current sort and folder context."),
+        SCITopicSection(@"Lock", @[
+            [SCISetting switchCellWithTitle:@"Enable Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""],
+            [SCISetting buttonCellWithTitle:@"Change Passcode" subtitle:nil icon:SCISettingsIcon(@"key") action:^{}]
+        ], @"Lock the Gallery with a passcode or biometrics."),
+        SCITopicSection(@"Shortcuts", @[
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Quick Gallery Access" icon:SCISettingsIcon(@"circle_off") menu:SCIGalleryShortcutTargetMenu()], SCISettingsIcon(@"circle_off"))
+        ], @"Choose the tab that opens Gallery on long press. None disables the action."),
+        SCITopicSection(@"Import", @[
+            [SCISetting buttonCellWithTitle:@"Import from Files…" subtitle:nil icon:SCISettingsIcon(@"arrow_down") action:^{}]
+        ], @"Import from the Files app with full editable metadata."),
+        SCITopicSection(@"Delete", @[
+            [SCISetting buttonCellWithTitle:@"Delete Files" subtitle:nil icon:SCISettingsIcon(@"trash") action:^{}]
+        ], nil)
+    ];
+}
+
 - (instancetype)init {
     return [super initWithTitle:@"Gallery Settings" sections:@[] reduceMargin:NO];
 }
@@ -131,8 +158,8 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
         };
         [self.navigationController pushViewController:vc animated:YES];
     }];
-    deleteRow.tintColor = [UIColor systemRedColor];
-    deleteRow.iconTintColor = [UIColor systemRedColor];
+    deleteRow.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+    deleteRow.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
 
     [sections addObject:SCITopicSection(@"Delete", @[deleteRow], nil)];
 

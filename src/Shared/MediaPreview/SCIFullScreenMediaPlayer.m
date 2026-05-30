@@ -481,7 +481,7 @@ fromViewController:(UIViewController *)presenter {
         _galleryOriginButton = SCIMediaChromeBottomButton(@"more", @"More");
 
         _deleteGalleryButton = SCIMediaChromeBottomButton(@"trash", @"Delete from Gallery");
-        _deleteGalleryButton.tintColor = [UIColor systemRedColor];
+        _deleteGalleryButton.tintColor = [SCIUtils SCIColor_InstagramDestructive];
         [_deleteGalleryButton addTarget:self action:@selector(deleteFromGallery) forControlEvents:UIControlEventTouchUpInside];
     } else {
         _saveGalleryButton = SCIMediaChromeBottomButton(@"media", @"Save to Gallery");

@@ -1066,6 +1066,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         }],
         ]];
     }];
+    /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     deleteAction.attributes = UIMenuElementAttributesDestructive;
 
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
@@ -1115,6 +1116,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
                                                      image:folderDeleteImg
                                                 identifier:nil
                                                    handler:^(UIAction *a) { [weakSelf deleteFolder:folderPath]; }];
+        /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
         deleteAction.attributes = UIMenuElementAttributesDestructive;
 
         return [UIMenu menuWithTitle:@"" children:@[renameAction, deleteAction]];

@@ -1,5 +1,6 @@
 #import "SCIDeletedMessagesUserDetailViewController.h"
 
+#import "SCIDeletedMessageBubbleCell.h"
 #import "SCIDeletedMessagesChipBar.h"
 #import "SCIDeletedMessagesDate.h"
 #import "SCIDeletedMessagesFilter.h"
@@ -8,25 +9,70 @@
 #import "../../../AssetUtils.h"
 #import "../../../Shared/UI/SCIMediaChrome.h"
 #import "../../../Shared/UI/SCIIGAlertPresenter.h"
+#import "../../../Shared/MediaPreview/SCIFullScreenMediaPlayer.h"
 
-@interface SCIDeletedMessagesUserDetailViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating, SCIDeletedMessagesChipBarDelegate>
+@interface SCIDeletedMessagesUserDetailViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating, SCIDeletedMessagesChipBarDelegate, SCIDeletedMessageBubbleCellDelegate>
 @property (nonatomic, strong) SCIDeletedMessageGroup *group;
 @property (nonatomic, copy) NSString *ownerPK;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UISearchController *searchController;
 @property (nonatomic, strong) SCIDeletedMessagesChipBar *chipBar;
+@property (nonatomic, strong) NSLayoutConstraint *chipBarHeight;
+@property (nonatomic, strong) UIView *emptyStateView;
+@property (nonatomic, strong) UIImageView *emptyStateIcon;
+@property (nonatomic, strong) UILabel *emptyStateTitle;
+@property (nonatomic, strong) UILabel *emptyStateSubtitle;
 @property (nonatomic, strong) SCIDeletedMessagesFilter *filter;
 @property (nonatomic, copy) NSArray<SCIDeletedMessage *> *messages;
 @property (nonatomic, copy) NSArray<SCIDeletedMessage *> *visibleMessages;
+@property (nonatomic, copy, nullable) NSString *threadId;   // resolved from the group's messages
+@property (nonatomic, assign) BOOL shouldScrollToBottomOnReload;
+@property (nonatomic, strong) NSCache<NSString *, UIImage *> *thumbnailCache;
+@property (nonatomic, strong) dispatch_queue_t thumbnailQueue;
 @end
 
 @implementation SCIDeletedMessagesUserDetailViewController
+
+// Chip filter columns — see SCIDeletedMessagesViewController for the rationale.
+static NSArray<NSString *> *SCIDMDetailChipTitles(void) {
+    return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Share", @"Link", @"Reaction"];
+}
+static NSArray<NSString *> *SCIDMDetailChipSymbols(void) {
+    return @[@"text", @"photo", @"video", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
+}
+static NSArray<NSString *> *SCIDMDetailChipSelectedSymbols(void) {
+    return @[@"text", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"share", @"link", @"reactions"];
+}
+static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
+    switch (index) {
+        case 0: return SCIDeletedMessageKindText;
+        case 1: return SCIDeletedMessageKindPhoto;
+        case 2: return SCIDeletedMessageKindVideo;
+        case 3: return SCIDeletedMessageKindVoice;
+        case 4: return SCIDeletedMessageKindGif;
+        case 5: return SCIDeletedMessageKindSticker;
+        case 6: return SCIDeletedMessageKindShare;
+        case 7: return SCIDeletedMessageKindLink;
+        case 8: return SCIDeletedMessageKindReaction;
+        default: return SCIDeletedMessageKindUnknown;
+    }
+}
 
 - (instancetype)initWithGroup:(SCIDeletedMessageGroup *)group ownerPK:(NSString *)ownerPK {
     if ((self = [super init])) {
         _group = group;
         _ownerPK = ownerPK.length ? [ownerPK copy] : @"anon";
         _filter = [SCIDeletedMessagesFilter new];
+        // Default to oldest-first so the chat reads top-to-bottom.
+        _filter.sort = SCIDMSortOldest;
+        // Resolve the thread this sender's messages belong to so we can show the
+        // full conversation (their unsends + your own) in chat order.
+        for (SCIDeletedMessage *m in group.messages) {
+            if (m.threadId.length) { _threadId = [m.threadId copy]; break; }
+        }
+        _thumbnailCache = [NSCache new];
+        _thumbnailCache.countLimit = 120;
+        _thumbnailQueue = dispatch_queue_create("com.scinsta.deletedmessages.detailthumbs", DISPATCH_QUEUE_CONCURRENT);
     }
     return self;
 }
@@ -34,14 +80,9 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = self.group.senderUsername.length ? [@"@" stringByAppendingString:self.group.senderUsername] : @"Deleted Messages";
-    self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
+    self.view.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
 
-    UIBarButtonItem *moreItem = [[UIBarButtonItem alloc] initWithImage:SCIMediaChromeTopBarIcon(@"more")
-                                                                  style:UIBarButtonItemStylePlain
-                                                                 target:nil
-                                                                 action:nil];
-    moreItem.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    moreItem.menu = [self moreMenu];
+    UIBarButtonItem *moreItem = SCIMediaChromeTopBarMenuButtonItem(@"more", [self moreMenu], @"More");
     SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[moreItem]);
 
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
@@ -56,22 +97,29 @@
     self.chipBar = [[SCIDeletedMessagesChipBar alloc] initWithFrame:CGRectZero];
     self.chipBar.translatesAutoresizingMaskIntoConstraints = NO;
     self.chipBar.delegate = self;
-    [self.chipBar setItems:@[@"All", @"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Share", @"Link"]
-                   symbols:@[@"grid", @"text", @"photo", @"video", @"microphone", @"gif", @"sticker", @"share", @"link"]];
+    [self.chipBar setItems:SCIDMDetailChipTitles() symbols:SCIDMDetailChipSymbols() selectedSymbols:SCIDMDetailChipSelectedSymbols()];
     [self.view addSubview:self.chipBar];
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
-    self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.rowHeight = 64.0;
+    self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 90.0;
+    self.tableView.allowsSelection = NO;
+    [self.tableView registerClass:[SCIDeletedMessageBubbleCell class] forCellReuseIdentifier:SCIDeletedMessageBubbleCellReuseID];
     [self.view addSubview:self.tableView];
+
+    [self setupEmptyState];
+
+    self.chipBarHeight = [self.chipBar.heightAnchor constraintEqualToConstant:50.0];
     [NSLayoutConstraint activateConstraints:@[
         [self.chipBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.chipBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.chipBar.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        self.chipBarHeight,
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.topAnchor constraintEqualToAnchor:self.chipBar.bottomAnchor],
@@ -82,24 +130,132 @@
     [self reloadData];
 }
 
+- (void)setupEmptyState {
+    self.emptyStateView = [UIView new];
+    self.emptyStateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateView.hidden = YES;
+    [self.view addSubview:self.emptyStateView];
+
+    self.emptyStateIcon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"comment_empty" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate]];
+    self.emptyStateIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateIcon.contentMode = UIViewContentModeScaleAspectFit;
+    self.emptyStateIcon.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
+    [self.emptyStateView addSubview:self.emptyStateIcon];
+
+    self.emptyStateTitle = [UILabel new];
+    self.emptyStateTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateTitle.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    self.emptyStateTitle.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    self.emptyStateTitle.textAlignment = NSTextAlignmentCenter;
+    self.emptyStateTitle.numberOfLines = 0;
+    [self.emptyStateView addSubview:self.emptyStateTitle];
+
+    self.emptyStateSubtitle = [UILabel new];
+    self.emptyStateSubtitle.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateSubtitle.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightRegular];
+    self.emptyStateSubtitle.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    self.emptyStateSubtitle.textAlignment = NSTextAlignmentCenter;
+    self.emptyStateSubtitle.numberOfLines = 0;
+    [self.emptyStateView addSubview:self.emptyStateSubtitle];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.emptyStateView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-30.0],
+        [self.emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:40.0],
+        [self.emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-40.0],
+
+        [self.emptyStateIcon.topAnchor constraintEqualToAnchor:self.emptyStateView.topAnchor],
+        [self.emptyStateIcon.centerXAnchor constraintEqualToAnchor:self.emptyStateView.centerXAnchor],
+        [self.emptyStateIcon.widthAnchor constraintEqualToConstant:72.0],
+        [self.emptyStateIcon.heightAnchor constraintEqualToConstant:72.0],
+
+        [self.emptyStateTitle.topAnchor constraintEqualToAnchor:self.emptyStateIcon.bottomAnchor constant:18.0],
+        [self.emptyStateTitle.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor],
+        [self.emptyStateTitle.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor],
+
+        [self.emptyStateSubtitle.topAnchor constraintEqualToAnchor:self.emptyStateTitle.bottomAnchor constant:6.0],
+        [self.emptyStateSubtitle.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor],
+        [self.emptyStateSubtitle.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor],
+        [self.emptyStateSubtitle.bottomAnchor constraintEqualToAnchor:self.emptyStateView.bottomAnchor],
+    ]];
+}
+
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)reloadData {
-    self.messages = [SCIDeletedMessagesStorage messagesForSenderPK:self.group.senderPk ownerPK:self.ownerPK];
+    // When the thread is known, show the whole conversation (incoming + your
+    // own unsends) in chat order. Otherwise fall back to this sender only.
+    if (self.threadId.length) {
+        self.messages = [SCIDeletedMessagesStorage messagesForThreadId:self.threadId ownerPK:self.ownerPK];
+    } else {
+        self.messages = [SCIDeletedMessagesStorage messagesForSenderPK:self.group.senderPk ownerPK:self.ownerPK];
+    }
+    // A fresh data load should land on the newest message at the bottom.
+    self.shouldScrollToBottomOnReload = YES;
     [self applyFilter];
     [self rebuildMenus];
 }
 
 - (void)applyFilter {
     self.visibleMessages = [self.filter apply:self.messages ?: @[]];
+    [self updateChipBarVisibility];
+    [self updateEmptyState];
     [self.tableView reloadData];
+    if (self.shouldScrollToBottomOnReload) {
+        self.shouldScrollToBottomOnReload = NO;
+        [self scrollToBottomAnimated:NO];
+    }
+}
+
+// Jump to the latest (bottom-most) message, chat-style.
+- (void)scrollToBottomAnimated:(BOOL)animated {
+    NSInteger count = (NSInteger)self.visibleMessages.count;
+    if (count == 0) return;
+    // Defer until the table has laid out its rows so the offset is correct with
+    // self-sizing cells.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSInteger rows = [self.tableView numberOfRowsInSection:0];
+        if (rows == 0) return;
+        [self.tableView layoutIfNeeded];
+        NSIndexPath *last = [NSIndexPath indexPathForRow:rows - 1 inSection:0];
+        [self.tableView scrollToRowAtIndexPath:last atScrollPosition:UITableViewScrollPositionBottom animated:animated];
+    });
+}
+
+- (NSUInteger)distinctKindCount {
+    NSMutableSet<NSNumber *> *kinds = [NSMutableSet set];
+    for (SCIDeletedMessage *message in self.messages) [kinds addObject:@(message.kind)];
+    return kinds.count;
+}
+
+- (void)updateChipBarVisibility {
+    BOOL show = ([self distinctKindCount] >= 2) || [self.filter hasKindFilter];
+    BOOL hidden = !show;
+    if (self.chipBar.hidden != hidden) {
+        self.chipBar.hidden = hidden;
+        self.chipBarHeight.constant = hidden ? 0.0 : 50.0;
+    }
+}
+
+- (void)updateEmptyState {
+    BOOL isEmpty = (self.visibleMessages.count == 0);
+    self.emptyStateView.hidden = !isEmpty;
+    self.tableView.hidden = isEmpty;
+    if (!isEmpty) return;
+
+    if (![self.filter isEmpty]) {
+        self.emptyStateTitle.text = @"No matches";
+        self.emptyStateSubtitle.text = @"No messages match the current filters.";
+    } else {
+        self.emptyStateTitle.text = @"Nothing here yet";
+        self.emptyStateSubtitle.text = @"This sender's unsent messages will show up here.";
+    }
 }
 
 - (void)rebuildMenus {
-    NSArray<UIBarButtonItem *> *items = self.navigationItem.rightBarButtonItems;
-    if (items.count >= 1) items[0].menu = [self moreMenu];
+    // The more menu is deferred (self-refreshing); nothing to reassign.
 }
 
 - (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
@@ -109,39 +265,49 @@
 
 #pragma mark - Chip Bar
 
-- (void)chipBar:(SCIDeletedMessagesChipBar *)bar didSelectIndex:(NSInteger)index {
+- (void)chipBar:(SCIDeletedMessagesChipBar *)bar didChangeSelection:(NSSet<NSNumber *> *)selectedIndices {
     [self.filter clearKinds];
-    if (index > 0) {
-        [self.filter toggleKind:(SCIDeletedMessageKind)index];
+    for (NSNumber *index in selectedIndices) {
+        SCIDeletedMessageKind kind = SCIDMDetailChipKindForIndex(index.integerValue);
+        if (kind != SCIDeletedMessageKindUnknown) [self.filter toggleKind:kind];
     }
     [self applyFilter];
 }
 
 #pragma mark - Menus
 
+// The bar button keeps a stable menu whose children are resolved fresh each
+// time it opens, so pin/block titles always reflect current state without
+// needing to reassign the bar button item's menu.
 - (UIMenu *)moreMenu {
+    __weak typeof(self) weakSelf = self;
+    UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+        completion([weakSelf moreMenuElements]);
+    }];
+    return [UIMenu menuWithTitle:@"" children:@[deferred]];
+}
+
+- (NSArray<UIMenuElement *> *)moreMenuElements {
     __weak typeof(self) weakSelf = self;
 
     UIAction *pinAction = [UIAction actionWithTitle:(self.group.isPinned ? @"Unpin Sender" : @"Pin Sender")
-                                              image:[SCIAssetUtils instagramIconNamed:(self.group.isPinned ? @"pin_filled" : @"pin") pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                              image:[SCIAssetUtils instagramIconNamed:(self.group.isPinned ? @"pin_filled" : @"pin_outline") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                          identifier:nil
                                             handler:^(__unused UIAction *a) {
         [SCIDeletedMessagesStorage setSenderPinned:!weakSelf.group.isPinned senderPK:weakSelf.group.senderPk ownerPK:weakSelf.ownerPK];
         weakSelf.group.isPinned = !weakSelf.group.isPinned;
-        [weakSelf rebuildMenus];
     }];
 
     UIAction *blockAction = [UIAction actionWithTitle:(self.group.isBlocked ? @"Unblock Sender" : @"Block Sender")
-                                               image:[SCIAssetUtils instagramIconNamed:@"block" pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                               image:[SCIAssetUtils instagramIconNamed:self.group.isBlocked ? @"circle" : @"block" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
         [SCIDeletedMessagesStorage setSenderBlocked:!weakSelf.group.isBlocked senderPK:weakSelf.group.senderPk ownerPK:weakSelf.ownerPK];
         weakSelf.group.isBlocked = !weakSelf.group.isBlocked;
-        [weakSelf rebuildMenus];
     }];
 
     UIAction *deleteAction = [UIAction actionWithTitle:@"Delete Sender Log"
-                                                image:[SCIAssetUtils instagramIconNamed:@"trash" pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                image:[SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                            identifier:nil
                                               handler:^(__unused UIAction *a) {
         [SCIIGAlertPresenter presentAlertFromViewController:weakSelf
@@ -155,71 +321,85 @@
             }],
         ]];
     }];
+    /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     deleteAction.attributes = UIMenuElementAttributesDestructive;
 
     UIMenu *destructiveSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[deleteAction]];
 
-    return [UIMenu menuWithTitle:@"" children:@[pinAction, blockAction, destructiveSection]];
+    return @[pinAction, blockAction, destructiveSection];
 }
+
+#pragma mark - Table
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return self.visibleMessages.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"message"];
-    if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"message"];
+    SCIDeletedMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:SCIDeletedMessageBubbleCellReuseID forIndexPath:indexPath];
+    cell.delegate = self;
     SCIDeletedMessage *message = self.visibleMessages[indexPath.row];
-    NSString *title = message.text.length ? message.text : (message.previewText.length ? message.previewText : SCIDeletedMessageKindLocalizedName(message.kind));
-    cell.textLabel.text = title;
-    cell.textLabel.numberOfLines = 2;
-    cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ · %@", SCIDeletedMessageKindLocalizedName(message.kind), [SCIDeletedMessagesDate stringForDate:(message.deletedAt ?: message.capturedAt ?: message.sentAt)]];
-    cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.selectedBackgroundView = [UIView new];
-    cell.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
-    cell.textLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
-    cell.detailTextLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
-    cell.textLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular];
-    cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
-    UIImage *thumb = [self thumbnailForMessage:message];
-    if (thumb) {
-        cell.imageView.image = thumb;
-        cell.imageView.layer.cornerRadius = 6.0;
-        cell.imageView.clipsToBounds = YES;
-        cell.imageView.contentMode = UIViewContentModeScaleAspectFill;
-        cell.imageView.tintColor = nil;
-    } else {
-        cell.imageView.layer.cornerRadius = 0.0;
-        cell.imageView.clipsToBounds = NO;
-        cell.imageView.contentMode = UIViewContentModeScaleAspectFit;
-        cell.imageView.image = [SCIAssetUtils instagramIconNamed:SCIDeletedMessageKindSymbol(message.kind) pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
-        cell.imageView.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+
+    UIImage *cached = message.messageId.length ? [self.thumbnailCache objectForKey:message.messageId] : nil;
+    BOOL outgoing = self.ownerPK.length && [message.senderPk isEqualToString:self.ownerPK];
+    [cell configureWithMessage:message thumbnail:cached outgoing:outgoing];
+    if (!cached && [self messageHasThumbnail:message]) {
+        [self loadThumbnailForMessage:message atIndexPath:indexPath];
     }
-    cell.accessoryType = UITableViewCellAccessoryNone;
     return cell;
 }
 
-- (UIImage *)thumbnailForMessage:(SCIDeletedMessage *)message {
-    NSString *path = [SCIDeletedMessagesStorage absolutePathForRelativePath:(message.thumbnailPath ?: message.mediaPath) ownerPK:self.ownerPK];
-    if (!path.length || ![NSFileManager.defaultManager fileExistsAtPath:path]) return nil;
-    UIImage *image = [UIImage imageWithContentsOfFile:path];
-    if (!image) return nil;
-    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
-    format.scale = UIScreen.mainScreen.scale;
-    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(34.0, 34.0) format:format];
-    return [renderer imageWithActions:^(__unused UIGraphicsImageRendererContext *context) {
-        [image drawInRect:CGRectMake(0.0, 0.0, 34.0, 34.0)];
-    }];
+#pragma mark - Thumbnails
+
+- (BOOL)messageHasThumbnail:(SCIDeletedMessage *)message {
+    NSString *rel = message.thumbnailPath ?: message.mediaPath;
+    if (!rel.length) return NO;
+    NSString *path = [SCIDeletedMessagesStorage absolutePathForRelativePath:rel ownerPK:self.ownerPK];
+    return (path.length && [NSFileManager.defaultManager fileExistsAtPath:path]);
 }
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    SCIDeletedMessage *message = self.visibleMessages[indexPath.row];
-    if (message.text.length || message.previewText.length) {
-        UIPasteboard.generalPasteboard.string = message.text ?: message.previewText;
-        SCINotify(kSCINotificationUnsentMessage, @"Copied to clipboard", nil, @"circle_check_filled", SCINotificationToneSuccess);
-    }
+- (void)loadThumbnailForMessage:(SCIDeletedMessage *)message atIndexPath:(NSIndexPath *)indexPath {
+    NSString *rel = message.thumbnailPath ?: message.mediaPath;
+    NSString *path = [SCIDeletedMessagesStorage absolutePathForRelativePath:rel ownerPK:self.ownerPK];
+    if (!path.length) return;
+    NSString *messageId = message.messageId;
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(self.thumbnailQueue, ^{
+        UIImage *image = [UIImage imageWithContentsOfFile:path];
+        if (!image) return;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (messageId.length) [strongSelf.thumbnailCache setObject:image forKey:messageId];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // Update the live cell directly (a row reload can be missed during
+            // initial layout before visible rows are registered).
+            SCIDeletedMessageBubbleCell *cell = (SCIDeletedMessageBubbleCell *)[strongSelf.tableView cellForRowAtIndexPath:indexPath];
+            if ([cell isKindOfClass:[SCIDeletedMessageBubbleCell class]]) {
+                [cell applyLoadedThumbnail:image forMessageId:messageId];
+            }
+        });
+    });
 }
+
+#pragma mark - Bubble delegate
+
+- (void)bubbleCell:(SCIDeletedMessageBubbleCell *)cell didTapMediaForMessage:(SCIDeletedMessage *)message {
+    NSString *rel = message.mediaPath ?: message.thumbnailPath;
+    NSString *path = rel.length ? [SCIDeletedMessagesStorage absolutePathForRelativePath:rel ownerPK:self.ownerPK] : nil;
+    if (path.length && [NSFileManager.defaultManager fileExistsAtPath:path]) {
+        // SCIFullScreenMediaPlayer detects audio/video/image by extension and
+        // presents the right player — voice notes play here too.
+        [SCIFullScreenMediaPlayer showFileURL:[NSURL fileURLWithPath:path]];
+        return;
+    }
+    // Deep-link kinds (share/link) have no local blob — open the URL externally.
+    NSString *urlStr = message.mediaURL.length ? message.mediaURL : message.thumbnailURL;
+    NSURL *url = urlStr.length ? [NSURL URLWithString:urlStr] : nil;
+    if (url) [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+}
+
+#pragma mark - Context menu
 
 - (UIContextMenuConfiguration *)tableView:(UITableView *)tableView contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath point:(CGPoint)point {
     SCIDeletedMessage *message = self.visibleMessages[indexPath.row];
@@ -237,10 +417,11 @@
 
     if (message.text.length || message.previewText.length) {
         UIAction *copyAction = [UIAction actionWithTitle:@"Copy Text"
-                                                  image:[SCIAssetUtils instagramIconNamed:@"copy" pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                  image:[SCIAssetUtils instagramIconNamed:@"copy" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                              identifier:nil
                                                 handler:^(__unused UIAction *a) {
             UIPasteboard.generalPasteboard.string = message.text ?: message.previewText;
+            SCINotify(kSCINotificationUnsentMessage, @"Copied to clipboard", nil, @"circle_check_filled", SCINotificationToneSuccess);
         }];
         [children addObject:copyAction];
     }
@@ -248,7 +429,7 @@
     NSURL *mediaURL = [self localOrRemoteURLForMessage:message];
     if (mediaURL) {
         UIAction *shareAction = [UIAction actionWithTitle:@"Share"
-                                                   image:[SCIAssetUtils instagramIconNamed:@"share" pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                   image:[SCIAssetUtils instagramIconNamed:@"share" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                               identifier:nil
                                                  handler:^(__unused UIAction *a) {
             UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[mediaURL] applicationActivities:nil];
@@ -258,21 +439,23 @@
 
         if (![mediaURL isFileURL]) {
             UIAction *copyLinkAction = [UIAction actionWithTitle:@"Copy Link"
-                                                          image:[SCIAssetUtils instagramIconNamed:@"link" pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                          image:[SCIAssetUtils instagramIconNamed:@"link" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                                      identifier:nil
                                                         handler:^(__unused UIAction *a) {
                 UIPasteboard.generalPasteboard.string = mediaURL.absoluteString;
+                SCINotify(kSCINotificationUnsentMessage, @"Copied link", nil, @"circle_check_filled", SCINotificationToneSuccess);
             }];
             [children addObject:copyLinkAction];
         }
     }
 
     UIAction *deleteAction = [UIAction actionWithTitle:@"Delete"
-                                                image:[SCIAssetUtils instagramIconNamed:@"trash" pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                image:[SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                            identifier:nil
                                               handler:^(__unused UIAction *a) {
         [SCIDeletedMessagesStorage deleteMessageId:message.messageId forOwnerPK:weakSelf.ownerPK];
     }];
+    /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     deleteAction.attributes = UIMenuElementAttributesDestructive;
 
     UIMenu *destructiveSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[deleteAction]];
@@ -291,10 +474,13 @@
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     SCIDeletedMessage *message = self.visibleMessages[indexPath.row];
-    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:@"Delete" handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
         [SCIDeletedMessagesStorage deleteMessageId:message.messageId forOwnerPK:self.ownerPK];
         completionHandler(YES);
     }];
+    deleteAction.image = [SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+    deleteAction.backgroundColor = [SCIUtils SCIColor_InstagramDestructive];
+    deleteAction.accessibilityLabel = @"Delete";
     return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
 }
 

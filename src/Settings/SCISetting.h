@@ -56,6 +56,8 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
 
 @property (nonatomic, strong) NSArray *navSections;
 @property (nonatomic, strong) UIViewController *navViewController;
+@property (nonatomic, copy, nullable) NSArray * (^searchSectionsProvider)(void);
+@property (nonatomic, copy, nullable) NSString *searchKeywords;
 
 + (instancetype)staticCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle

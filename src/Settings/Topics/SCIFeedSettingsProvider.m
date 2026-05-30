@@ -22,8 +22,13 @@ static NSString * const kSCIFeedActionButtonDefaultActionKey = @"feed_action_btn
             [SCISetting switchCellWithTitle:@"Hide Suggested Accounts" icon:SCISettingsIcon(@"users") defaultsKey:@"general_hide_suggested_users_feed"],
             [SCISetting switchCellWithTitle:@"Hide Suggested Reels" icon:SCISettingsIcon(@"reels_gallery") defaultsKey:@"feed_hide_suggested_reels"],
             [SCISetting switchCellWithTitle:@"Hide Suggested Threads" icon:SCISettingsIcon(@"threads") defaultsKey:@"feed_hide_suggested_threads"],
-            [SCISetting switchCellWithTitle:@"Hide Repost Button" icon:SCISettingsIcon(@"repost") defaultsKey:@"feed_hide_repost_btn" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Metrics" icon:SCISettingsIcon(@"info") defaultsKey:@"feed_hide_metrics"]
+            [SCISetting switchCellWithTitle:@"Hide Repost Button" icon:SCISettingsIcon(@"repost") defaultsKey:@"feed_hide_repost_btn" requiresRestart:YES]
+        ], nil),
+        SCITopicSection(@"Metrics", @[
+            [SCISetting switchCellWithTitle:@"Hide Like Count" icon:SCISettingsIcon(@"heart") defaultsKey:@"feed_hide_like_count"],
+            [SCISetting switchCellWithTitle:@"Hide Comment Count" icon:SCISettingsIcon(@"comment") defaultsKey:@"feed_hide_comment_count"],
+            [SCISetting switchCellWithTitle:@"Hide Repost Count" icon:SCISettingsIcon(@"repost") defaultsKey:@"feed_hide_repost_count"],
+            [SCISetting switchCellWithTitle:@"Hide Reshare Count" icon:SCISettingsIcon(@"messages") defaultsKey:@"feed_hide_reshare_count"]
         ], nil),
         SCITopicSection(@"Media", @[
             [SCISetting switchCellWithTitle:@"Long Press to Expand" icon:SCISettingsIcon(@"expand") defaultsKey:@"feed_long_press_expand"],

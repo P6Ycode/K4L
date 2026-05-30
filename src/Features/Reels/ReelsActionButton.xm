@@ -49,12 +49,7 @@ static id SCIReelsFindMediaIvar(UIView *view) {
 }
 
 static NSArray *SCIReelsCarouselChildren(id parentMedia) {
-	if (!parentMedia) return nil;
-	NSArray *children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"carouselMedia"));
-	if (children.count == 0) children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"carouselChildren"));
-	if (children.count == 0) children = SCIArrayFromCollection(SCIObjectForSelector(parentMedia, @"children"));
-	if (children.count == 0) children = SCIArrayFromCollection(SCIKVCObject(parentMedia, @"carousel_media"));
-	return children;
+	return SCIActionButtonCarouselChildren(parentMedia);
 }
 
 static NSInteger SCIReelsCarouselCurrentIndex(UIView *carouselCell, id parentMedia) {
@@ -132,6 +127,12 @@ static UIView *SCIReelsCarouselCellFromView(UIView *view) {
 }
 
 static id SCIReelsMediaProvider(UIView *sourceView) {
+	UIView *carouselCell = SCIReelsCarouselCellFromView(sourceView);
+	if (carouselCell) {
+		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
+		if (SCIReelsCarouselChildren(parentMedia).count > 0) return parentMedia;
+	}
+
 	UIView *videoCell = SCIReelsFindSuperviewOfClass(sourceView, @"IGSundialViewerVideoCell");
 	if (videoCell) {
 		id media = SCIReelsFindMediaIvar(videoCell);
@@ -144,7 +145,6 @@ static id SCIReelsMediaProvider(UIView *sourceView) {
 		if (media) return media;
 	}
 
-	UIView *carouselCell = SCIReelsCarouselCellFromView(sourceView);
 	if (carouselCell) {
 		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
 		if (parentMedia) return SCIReelsCurrentCarouselChildMedia(carouselCell, parentMedia);

@@ -683,7 +683,7 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
     UIViewController *presenter = SCIInstantsTopPresenter();
     NSMutableArray<SCIIGAlertAction *> *actions = [NSMutableArray array];
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Photos Library" style:SCIIGAlertActionStyleDefault handler:^{
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Photos" style:SCIIGAlertActionStyleDefault handler:^{
         UIImagePickerController *picker = [[UIImagePickerController alloc] init];
         picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
         picker.mediaTypes = @[@"public.image"];
@@ -692,7 +692,7 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
         [SCIInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
     }]];
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Files" style:SCIIGAlertActionStyleDefault handler:^{
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Files" style:SCIIGAlertActionStyleDefault handler:^{
         UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeImage ] asCopy:YES];
         picker.allowsMultipleSelection = NO;
         picker.delegate = [SCIInstantsDocumentPickerDelegate shared];
@@ -700,7 +700,7 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
     }]];
 
     if ([SCIGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]]) {
-        [actions addObject:[SCIIGAlertAction actionWithTitle:@"Gallery" style:SCIIGAlertActionStyleDefault handler:^{
+        [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Gallery" style:SCIIGAlertActionStyleDefault handler:^{
             SCIGalleryPickerViewController *galleryPicker = [[SCIGalleryPickerViewController alloc]
                 initWithTitle:@"Choose Photo"
             allowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]
@@ -718,8 +718,8 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
 
     [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]];
     if (![SCIIGAlertPresenter presentActionSheetFromViewController:presenter
-                                                            title:@"Choose Photo"
-                                                          message:nil
+                                                            title:@"Upload Photo"
+                                                          message:@"Choose a photo to position and crop, then send as an Instant."
                                                           actions:actions]) {
         UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
         [feedback impactOccurred];

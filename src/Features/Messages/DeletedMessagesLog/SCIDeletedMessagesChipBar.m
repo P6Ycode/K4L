@@ -6,6 +6,9 @@
 @property (nonatomic, strong) UIScrollView *scroll;
 @property (nonatomic, strong) UIStackView *stack;
 @property (nonatomic, strong) NSArray<UIButton *> *chips;
+@property (nonatomic, strong) NSMutableSet<NSNumber *> *selection;
+@property (nonatomic, copy) NSArray<NSString *> *symbols;
+@property (nonatomic, copy) NSArray<NSString *> *selectedSymbols;
 @end
 
 @implementation SCIDeletedMessagesChipBar
@@ -14,6 +17,7 @@
     self = [super initWithFrame:frame];
     if (!self) return self;
     self.backgroundColor = [UIColor clearColor];
+    _selection = [NSMutableSet set];
 
     _scroll = [UIScrollView new];
     _scroll.translatesAutoresizingMaskIntoConstraints = NO;
@@ -46,6 +50,14 @@
 - (CGSize)intrinsicContentSize { return CGSizeMake(UIViewNoIntrinsicMetric, 50); }
 
 - (void)setItems:(NSArray<NSString *> *)titles symbols:(NSArray<NSString *> *)symbols {
+    [self setItems:titles symbols:symbols selectedSymbols:nil];
+}
+
+- (void)setItems:(NSArray<NSString *> *)titles
+         symbols:(NSArray<NSString *> *)symbols
+ selectedSymbols:(NSArray<NSString *> *)selectedSymbols {
+    self.symbols = symbols;
+    self.selectedSymbols = selectedSymbols;
     for (UIView *v in self.stack.arrangedSubviews) {
         [self.stack removeArrangedSubview:v];
         [v removeFromSuperview];
@@ -73,31 +85,50 @@
         [chips addObject:c];
     }
     self.chips = chips;
+    [self.selection removeAllObjects];
     [self refreshSelection];
 }
 
-- (void)setSelectedIndex:(NSInteger)idx {
-    _selectedIndex = idx;
+- (NSSet<NSNumber *> *)selectedIndices {
+    return [self.selection copy];
+}
+
+- (void)clearSelection {
+    if (self.selection.count == 0) return;
+    [self.selection removeAllObjects];
     [self refreshSelection];
 }
 
 - (void)refreshSelection {
     for (NSInteger i = 0; i < (NSInteger)self.chips.count; i++) {
         UIButton *chip = self.chips[i];
-        BOOL selected = (i == self.selectedIndex);
+        BOOL selected = [self.selection containsObject:@(i)];
         chip.backgroundColor = selected ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramSecondaryBackground];
         chip.tintColor = selected ? [SCIUtils SCIColor_InstagramBackground] : [SCIUtils SCIColor_InstagramPrimaryText];
         [chip setTitleColor:(selected ? [SCIUtils SCIColor_InstagramBackground] : [SCIUtils SCIColor_InstagramPrimaryText]) forState:UIControlStateNormal];
         chip.layer.borderColor = (selected ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramSeparator]).CGColor;
+
+        // Swap to the filled glyph when selected (when a selected variant exists).
+        NSString *baseSym = (i < (NSInteger)self.symbols.count) ? self.symbols[i] : nil;
+        NSString *selSym = (selected && i < (NSInteger)self.selectedSymbols.count) ? self.selectedSymbols[i] : nil;
+        NSString *sym = selSym.length ? selSym : baseSym;
+        if (sym.length) {
+            UIImage *image = [SCIAssetUtils instagramIconNamed:sym pointSize:14.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+            [chip setImage:image forState:UIControlStateNormal];
+        }
     }
 }
 
 - (void)chipTapped:(UIButton *)c {
-    if (c.tag == self.selectedIndex) return;
-    self.selectedIndex = c.tag;
+    NSNumber *key = @(c.tag);
+    if ([self.selection containsObject:key]) {
+        [self.selection removeObject:key];   // retap deselects
+    } else {
+        [self.selection addObject:key];      // multi-select
+    }
     [self refreshSelection];
-    if ([self.delegate respondsToSelector:@selector(chipBar:didSelectIndex:)]) {
-        [self.delegate chipBar:self didSelectIndex:c.tag];
+    if ([self.delegate respondsToSelector:@selector(chipBar:didChangeSelection:)]) {
+        [self.delegate chipBar:self didChangeSelection:[self.selection copy]];
     }
     UIImpactFeedbackGenerator *fb = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [fb impactOccurred];

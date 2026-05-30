@@ -16,6 +16,8 @@ static const void *kSCIFeedExpandLongPressMarkerAssocKey = &kSCIFeedExpandLongPr
 @interface IGFeedItemPageVideoCell : UICollectionViewCell
 @end
 
+static id SCIFeedMediaForZoomFromView(UIView *view);
+
 static BOOL SCIFeedLongPressExpandEnabled(void) {
 	return [SCIUtils getBoolPref:@"feed_long_press_expand"];
 }
@@ -85,7 +87,11 @@ static id SCIFeedMediaFromBarView(UIView *barView) {
 	id media = [SCIUtils getIvarForObj:target name:"_media"];
 	if (!media) media = SCIObjectForSelector(target, @"media");
 	if (!media) media = SCIKVCObject(target, @"media");
-	return media;
+
+	id hierarchyMedia = SCIFeedMediaForZoomFromView(barView);
+	if (SCIActionButtonCarouselChildren(hierarchyMedia).count > 0) return hierarchyMedia;
+	if (SCIActionButtonCarouselChildren(media).count > 0) return media;
+	return media ?: hierarchyMedia;
 }
 
 static UIView *SCIFeedAnyButtonFromBarView(UIView *barView) {
@@ -276,16 +282,7 @@ static NSInteger SCIFeedCarouselPageIndexFromView(UIView *view) {
 }
 
 static NSArray *SCIFeedCarouselChildren(id media) {
-	if (!media) return @[];
-
-	for (NSString *selectorName in @[@"carouselMedia", @"carouselChildren", @"children", @"carousel_media"]) {
-		id value = SCIObjectForSelector(media, selectorName);
-		if (!value) value = SCIKVCObject(media, selectorName);
-		NSArray *items = SCIArrayFromCollection(value);
-		if (items.count > 0) return items;
-	}
-
-	return @[];
+	return SCIActionButtonCarouselChildren(media);
 }
 
 static BOOL SCIFeedIsCarouselMedia(id media) {

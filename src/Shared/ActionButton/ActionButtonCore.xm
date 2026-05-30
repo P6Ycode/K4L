@@ -1109,15 +1109,23 @@ static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
 	return entry;
 }
 
+NSArray *SCIActionButtonCarouselChildren(id media) {
+    if (!media) return @[];
+
+    for (NSString *selectorName in @[@"items", @"carouselMedia", @"carouselChildren", @"children", @"carousel_media"]) {
+        id value = SCIObjectForSelector(media, selectorName);
+        if (!value) value = SCIKVCObject(media, selectorName);
+        NSArray *items = SCIArrayFromCollection(value);
+        if (items.count > 0) return items;
+    }
+
+    return @[];
+}
+
 static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
 	if (!media) return @[];
 
 	NSMutableArray<SCIResolvedMediaEntry *> *entries = [NSMutableArray array];
-
-    SCIResolvedMediaEntry *directEntry = SCIEntryFromMediaObject(media);
-    if (directEntry) {
-        return @[directEntry];
-    }
 
     NSArray *directCollection = SCIArrayFromCollection(media);
     if (directCollection.count > 0) {
@@ -1139,20 +1147,7 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
         if (entries.count > 0) return entries;
     }
 
-	NSArray *items = SCIArrayFromCollection(SCIObjectForSelector(media, @"items"));
-	if (items.count == 0) items = SCIArrayFromCollection(SCIKVCObject(media, @"items"));
-
-    if (items.count == 0) {
-        for (NSString *selectorName in @[@"carouselMedia", @"carouselChildren", @"children", @"carousel_media"]) {
-            items = SCIArrayFromCollection(SCIObjectForSelector(media, selectorName));
-            if (items.count == 0) {
-                items = SCIArrayFromCollection(SCIKVCObject(media, selectorName));
-            }
-            if (items.count > 0) {
-                break;
-            }
-        }
-    }
+	NSArray *items = SCIActionButtonCarouselChildren(media);
 
 	if (items.count > 0) {
 		for (id item in items) {
@@ -1172,6 +1167,9 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
 			}
 		}
 	} else {
+        SCIResolvedMediaEntry *directEntry = SCIEntryFromMediaObject(media);
+        if (directEntry) return @[directEntry];
+
         id nested = SCIObjectForSelector(media, @"media");
         if (!nested) nested = SCIKVCObject(media, @"media");
 		SCIResolvedMediaEntry *singleEntry = SCIEntryFromMediaObject(nested);
@@ -1754,17 +1752,19 @@ static NSString *SCIResolvedDefaultActionIdentifier(NSArray<NSString *> *visible
 static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
 											  SCIActionButtonConfiguration *configuration,
 											  NSArray<NSString *> *visibleActions,
-											  NSString *defaultIdentifier) {
+											  NSString *defaultIdentifier,
+                                              NSUInteger bulkEntryCount) {
     NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleStorySeenUserRule]
         ? SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context))
         : @"";
     NSString *profileInfoSignature = (context.source == SCIActionButtonSourceProfile)
         ? SCIProfileInfoSignature(SCIResolveMediaForContext(context))
         : @"";
-	return [NSString stringWithFormat:@"%@|%@|%@|%@|%@|%@",
+	return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@",
 			SCIActionButtonTopicKeyForSource(context.source),
 			defaultIdentifier ?: @"",
 			[visibleActions componentsJoinedByString:@","],
+            (unsigned long)bulkEntryCount,
             dynamicStoryRuleTitle ?: @"",
             profileInfoSignature ?: @"",
 			configuration.dictionaryRepresentation.description ?: @""];
@@ -2434,7 +2434,9 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 																						  topicTitle:context.settingsTitle ?: SCIActionButtonTopicTitleForSource(context.source)
 																					supportedActions:context.supportedActions ?: SCIActionButtonSupportedActionsForSource(context.source)
 																					 defaultSections:SCIActionButtonDefaultSectionsForSource(context.source)];
-	NSString *menuSignature = SCIActionButtonMenuSignature(context, configuration, visibleActions, defaultIdentifier);
+    id bulkMedia = SCIResolveBulkMediaForContext(context);
+    NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
+	NSString *menuSignature = SCIActionButtonMenuSignature(context, configuration, visibleActions, defaultIdentifier, bulkEntries.count);
 	NSString *existingSignature = objc_getAssociatedObject(button, kSCIActionButtonMenuSignatureAssocKey);
 	if ([existingSignature isEqualToString:menuSignature] && button.menu != nil) {
 		button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
@@ -2479,8 +2481,8 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 
     NSArray<NSString *> *configuredBulkDownloadIdentifiers = SCIActionButtonConfiguredBulkDownloadActionsForSource(context.source);
     NSArray<NSString *> *configuredBulkCopyIdentifiers = SCIActionButtonConfiguredBulkCopyActionsForSource(context.source);
-    BOOL hasBulkMedia = (SCIDownloadableEntries(entries).count > 1);
-    NSString *bulkUsername = hasBulkMedia ? SCIResolvedBulkUsernameForContext(context, entries, media) : nil;
+    BOOL hasBulkMedia = (bulkEntries.count > 1);
+    NSString *bulkUsername = hasBulkMedia ? SCIResolvedBulkUsernameForContext(context, bulkEntries, bulkMedia) : nil;
 	NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray array];
 	NSArray<SCIActionMenuSection *> *menuSections = [configuration visibleSections];
 	BOOL firstGroup = YES;
@@ -2529,7 +2531,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 
         if (groupElements.count == 0) continue;
         if (hasBulkMedia && [group.identifier isEqualToString:@"download"]) {
-            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, entries, bulkUsername, media, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
+            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
             if (bulkElement) {
                 NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
                 [groupElements removeAllObjects];
@@ -2543,7 +2545,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
                 [groupElements addObject:bulkElement];
             }
         } else if (hasBulkMedia && [group.identifier isEqualToString:@"copy"]) {
-            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, entries, bulkUsername, media, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
+            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
             if (bulkElement) {
                 NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
                 [groupElements removeAllObjects];
@@ -2560,7 +2562,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		if (!firstGroup) {
 			[menuElements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[]]];
 		}
-		if (group.collapsible) {
+		if (group.collapsible && groupElements.count > 1) {
 			UIImage *sectionImage = nil;
 			if (group.iconName.length > 0) {
 				sectionImage = [[[SCIAssetUtils instagramIconNamed:group.iconName pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];

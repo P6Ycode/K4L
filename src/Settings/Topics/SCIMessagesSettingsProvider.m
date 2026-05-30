@@ -58,23 +58,24 @@ static NSArray *SCIMessagesSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Mark Seen on Reaction" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_seen_on_reaction"],
             [SCISetting switchCellWithTitle:@"Disable Typing Status" icon:SCISettingsIcon(@"keyboard") defaultsKey:@"msgs_disable_typing"],
             [SCISetting switchCellWithTitle:@"Hide Reels Blend Button" icon:SCISettingsIcon(@"blend") defaultsKey:@"msgs_hide_reels_blend"],
+            [SCISetting switchCellWithTitle:@"No Suggested Chats" icon:SCISettingsIcon(@"question") defaultsKey:@"msgs_hide_suggested_chats"],
         ], manualSeen
            ? @"1. Prevents automatic seen receipts and adds a button to mark the chat as seen.\n"
              @"2. Excluded Chats use Instagram's normal seen behavior and can be managed from the eye button, inbox long press, or this list.\n"
              @"3. Marks messages as seen automatically when you send a new message.\n"
              @"4. Marks messages as seen automatically when you send a quoted reply.\n"
              @"5. Marks messages as seen automatically when you react to a message.\n"
-             @"6. Prevents typing indicators from being shown to others."
+             @"6. Prevents typing indicators from being shown to others.\n"
+             @"7. Hides suggested chats from the inbox."
            : @"1. Messages use Instagram's normal seen behavior except chats in Included Chats.\n"
              @"2. Included Chats require the eye button or enabled auto seen triggers to mark seen and can be managed from the eye button, inbox long press, or this list.\n"
              @"3. Marks messages as seen automatically when you send a new message.\n"
              @"4. Marks messages as seen automatically when you send a quoted reply.\n"
              @"5. Marks messages as seen automatically when you react to a message.\n"
-             @"6. Prevents typing indicators from being shown to others."),
+             @"6. Prevents typing indicators from being shown to others.\n"
+             @"7. Hides suggested chats from the inbox."),
         SCITopicSection(@"", @[
-            [SCISetting switchCellWithTitle:@"Keep Deleted Messages" icon:SCISettingsIcon(@"history") defaultsKey:@"msgs_keep_deleted"],
-            [SCISetting switchCellWithTitle:@"Visual Indicator" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_indicate_unsent"],
-            [SCISetting switchCellWithTitle:@"Unsent Toast" icon:SCISettingsIcon(@"undo") defaultsKey:@"msgs_unsent_toast"],
+            [SCISetting switchCellWithTitle:@"Keep Deleted Messages" icon:SCISettingsIcon(@"undo_circle") defaultsKey:@"msgs_keep_deleted"],
             [SCISetting switchCellWithTitle:@"Log Deleted Messages" icon:SCISettingsIcon(@"logs") defaultsKey:@"msgs_deleted_log"],
             [SCISetting switchCellWithTitle:@"Log Removed Reactions" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_deleted_log_reactions"],
             [SCISetting switchCellWithTitle:@"Respect Seen Chat List" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_deleted_log_respect_seen_list"],
@@ -82,9 +83,8 @@ static NSArray *SCIMessagesSettingsSections(void) {
                                        subtitle:@""
                                            icon:SCISettingsIcon(@"messages")
                                  viewController:[SCIDeletedMessagesViewController new]],
-            [SCISetting switchCellWithTitle:@"No Suggested Chats" icon:SCISettingsIcon(@"question") defaultsKey:@"msgs_hide_suggested_chats"],
             [SCISetting switchCellWithTitle:@"Confirm Inbox Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"msgs_confirm_refresh"]
-        ], @"Keep Deleted Messages preserves remotely unsent messages in chat. Log Deleted Messages records the content and media before removal. Respect Seen Chat List skips chats in your manual-seen include/exclude list."),
+        ], @"Keep Deleted Messages preserves remotely unsent messages in chat and marks them with an undo-circle indicator. Log Deleted Messages records the content and media before removal. Respect Seen Chat List skips chats in your manual-seen include/exclude list."),
         SCITopicSection(@"Visual Messages", @[
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_manual_visual_seen"],
             [SCISetting switchCellWithTitle:@"Advance After Manual Seen" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"msgs_advance_visual_on_seen"],
@@ -126,11 +126,14 @@ static NSArray *SCIMessagesSettingsSections(void) {
 @implementation SCIMessagesSettingsProvider
 
 + (SCISetting *)rootSetting {
-    return SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Messages"
-                                                              subtitle:@""
-                                                                  icon:SCISettingsIcon(@"messages")
-                                                        viewController:[[SCIMessagesSettingsViewController alloc] init]],
-                                   [SCIUtils SCIColor_InstagramPrimaryText]);
+    SCISetting *setting = [SCISetting navigationCellWithTitle:@"Messages"
+                                                     subtitle:@""
+                                                         icon:SCISettingsIcon(@"messages")
+                                               viewController:[[SCIMessagesSettingsViewController alloc] init]];
+    setting.searchSectionsProvider = ^NSArray *{
+        return SCIMessagesSettingsSections();
+    };
+    return SCISettingApplyIconTint(setting, [SCIUtils SCIColor_InstagramPrimaryText]);
 }
 
 @end
