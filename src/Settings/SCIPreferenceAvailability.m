@@ -17,6 +17,10 @@ BOOL SCIPrefIsAvailable(NSString *key) {
         return SCIIsIOSVersionAtLeast(@"26.0");
     }
 
+    if ([key isEqualToString:kSCIPrefInstantsDisableCameraControl]) {
+        return SCIDeviceHasCameraControl();
+    }
+
     if ([key hasPrefix:@"tools_flex_"]) {
         return SCIFlexIsBundled();
     }

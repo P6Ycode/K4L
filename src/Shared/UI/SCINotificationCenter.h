@@ -34,6 +34,7 @@ FOUNDATION_EXPORT NSString * const kSCINotificationThreadMessagesMarkSeen;
 FOUNDATION_EXPORT NSString * const kSCINotificationDirectThreadSeenRule;
 FOUNDATION_EXPORT NSString * const kSCINotificationUnsentMessage;
 FOUNDATION_EXPORT NSString * const kSCINotificationUnsentReaction;
+FOUNDATION_EXPORT NSString * const kSCINotificationInstantsCaptureBlocked;
 
 FOUNDATION_EXPORT NSString * const kSCINotificationProfileCopyInfo;
 

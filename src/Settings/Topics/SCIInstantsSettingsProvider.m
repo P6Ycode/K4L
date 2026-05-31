@@ -2,6 +2,7 @@
 
 #import "../SCITopicSettingsSupport.h"
 #import "../SCISettingsViewController.h"
+#import "../SCIPreferenceAvailability.h"
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
 #import "../../Utils.h"
 
@@ -34,20 +35,39 @@ static NSArray *SCIInstantsSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Allow Screenshots" icon:SCISettingsIcon(@"warning") defaultsKey:@"instants_allow_screenshot"],
         ], @"Bypass screenshot and screen recording detection in the Instants viewer."),
         SCITopicSection(@"Creation", @[
-            [SCISetting switchCellWithTitle:@"Disable Instants Creation" icon:SCISettingsIcon(@"instants") defaultsKey:@"instants_disable_creation"],
+            ({  SCISetting *s = [SCISetting switchCellWithTitle:@"Disable Instants Creation" icon:SCISettingsIcon(@"instants") defaultsKey:@"instants_disable_creation"];
+                s.switchChangeHandler = ^(BOOL isOn) {
+                    [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"instants_disable_creation"];
+                    [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIQuickSnapCreationPrefChangedNotification" object:nil];
+                };
+                s;
+            }),
             [SCISetting switchCellWithTitle:@"Skip Camera After Instants" icon:SCISettingsIcon(@"camera") defaultsKey:@"instants_skip_camera_after_viewing"],
+            ({  BOOL cameraControlAvailable = SCIPrefIsAvailable(@"instants_disable_camera_control");
+                SCISetting *s = [SCISetting switchCellWithTitle:@"Disable Camera Control"
+                                                       subtitle:cameraControlAvailable ? @"" : @"Requires an iPhone with Camera Control"
+                                                           icon:SCISettingsSystemIcon(@"button.vertical.right.press", 20.0, UIImageSymbolWeightRegular)
+                                                    defaultsKey:@"instants_disable_camera_control"];
+                s;
+            }),
             [SCISetting switchCellWithTitle:@"Upload from Gallery" icon:SCISettingsIcon(@"media") defaultsKey:@"instants_upload_from_gallery"],
-        ], @"1. Blocks the Instant shutter button without disabling received Instants.\n"
+        ], @"1. Blocks Instant capture (photo and video) without disabling received Instants. The shutter is darkened.\n"
            @"2. Skips the camera page Instagram opens after viewing the last Instant.\n"
-           @"3. Adds a gallery button to the Instants camera to upload from Photos, Files, or Gallery."),
+           @"3. Stops the hardware Camera Control button (iPhone 16/17) from taking an Instant.\n"
+           @"4. Adds a gallery button to the Instants camera to upload from Photos, Files, or Gallery."),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Instant Capture" icon:SCISettingsIcon(@"instants_burst") defaultsKey:@"instants_confirm_capture"],
             [SCISetting switchCellWithTitle:@"Confirm Instant Reaction" icon:SCISettingsIcon(@"reactions") defaultsKey:@"instants_confirm_reaction"],
-        ], @"Shows confirmation alerts before the selected Instant actions are sent."),
+        ], @"1. Asks for confirmation when you send a captured Instant, freezing the preview so the exact frame is kept until you confirm.\n"
+           @"2. Shows a confirmation alert before an Instant reaction is sent."),
     ];
 }
 
 @implementation SCIInstantsSettingsProvider
+
++ (UIViewController *)makeSettingsViewController {
+    return [[SCIInstantsSettingsViewController alloc] init];
+}
 
 + (SCISetting *)rootSetting {
     SCISetting *setting = [SCISetting navigationCellWithTitle:@"Instants"

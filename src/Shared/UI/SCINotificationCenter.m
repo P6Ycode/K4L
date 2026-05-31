@@ -34,6 +34,7 @@ SCI_NOTIF_CONST(kSCINotificationThreadMessagesMarkSeen, "thread_messages_mark_se
 SCI_NOTIF_CONST(kSCINotificationDirectThreadSeenRule, "direct_thread_seen_rule");
 SCI_NOTIF_CONST(kSCINotificationUnsentMessage, "unsent_message");
 SCI_NOTIF_CONST(kSCINotificationUnsentReaction, "unsent_reaction");
+SCI_NOTIF_CONST(kSCINotificationInstantsCaptureBlocked, "instants_capture_blocked");
 
 SCI_NOTIF_CONST(kSCINotificationProfileCopyInfo, "profile_copy_info");
 
@@ -152,6 +153,9 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
             SCINotificationItem(kSCINotificationDirectThreadSeenRule, @"Chat Seen List Changes", @"eye"),
             SCINotificationItem(kSCINotificationUnsentMessage, @"Unsent Message", @"undo"),
             SCINotificationItem(kSCINotificationUnsentReaction, @"Removed Reaction", @"reactions"),
+        ]},
+        @{@"title": @"Instants", @"items": @[
+            SCINotificationItem(kSCINotificationInstantsCaptureBlocked, @"Instant Capture Blocked", @"lock"),
         ]},
         @{@"title": @"Profile", @"items": @[
             SCINotificationItem(kSCINotificationProfileCopyInfo, @"Copy Profile Info", @"copy"),

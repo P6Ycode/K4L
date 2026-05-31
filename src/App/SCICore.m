@@ -131,6 +131,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"msgs_custom_note_themes": @(NO),
         @"instants_disable_creation": @(NO),
         @"instants_confirm_capture": @(YES),
+        @"instants_disable_camera_control": @(NO),
         @"instants_skip_camera_after_viewing": @(NO),
         @"instants_action_btn": @(NO),
         @"instants_action_btn_default_action": @"none",

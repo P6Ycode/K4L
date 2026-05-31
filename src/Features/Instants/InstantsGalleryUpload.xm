@@ -12,6 +12,8 @@
 #import "../../Shared/Gallery/SCIGalleryFile.h"
 #import "../../Shared/UI/SCIIGAlertPresenter.h"
 #import "../../Shared/UI/SCIChrome.h"
+#import "../../Settings/Topics/SCIInstantsSettingsProvider.h"
+#import "../../Shared/Instants/SCIInstantsFrameInjector.h"
 
 static NSString * const kSCIInstantsUploadFromGalleryPref = @"instants_upload_from_gallery";
 
@@ -25,6 +27,22 @@ static __weak UIImage *sSCIInstantsCachedImage = nil;
 static int32_t sSCIInstantsCachedWidth = 0;
 static int32_t sSCIInstantsCachedHeight = 0;
 static OSType sSCIInstantsCachedFormat = 0;
+
+// Confirm-capture freeze: the injector keeps the most recent live pixel buffer so
+// freezeNow can snapshot it instantly. While frozen, that frame is replayed
+// downstream so the preview (and the resulting capture) is the exact frame the
+// user pressed the shutter on.
+static CVPixelBufferRef sSCIInstantsLatestLivePixelBuffer = NULL;
+static CVPixelBufferRef sSCIInstantsFrozenPixelBuffer = NULL;
+static BOOL sSCIInstantsIsFrozen = NO;
+static dispatch_queue_t SCIInstantsFreezeQueue(void) {
+    static dispatch_queue_t queue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        queue = dispatch_queue_create("com.socuul.scinsta.instants.freeze", DISPATCH_QUEUE_SERIAL);
+    });
+    return queue;
+}
 
 static const void *kSCIInstantsGalleryButtonKey = &kSCIInstantsGalleryButtonKey;
 static const void *kSCIInstantsGalleryFrameKey = &kSCIInstantsGalleryFrameKey;
@@ -533,6 +551,38 @@ static CVPixelBufferRef SCIInstantsRenderImageToPixelBuffer(UIImage *image,
     return pixelBuffer;
 }
 
+// Wrap an existing pixel buffer (a snapshotted live frame) into a fresh sample
+// buffer that carries the template's timing/format, so it can be replayed
+// downstream as if it were the current camera frame.
+static CMSampleBufferRef SCIInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
+                                                               CMSampleBufferRef templateBuffer) CF_RETURNS_RETAINED;
+static CMSampleBufferRef SCIInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
+                                                               CMSampleBufferRef templateBuffer) {
+    if (!pixelBuffer || !templateBuffer) return NULL;
+
+    CMVideoFormatDescriptionRef formatDescription = NULL;
+    if (CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault,
+                                                     pixelBuffer,
+                                                     &formatDescription) != noErr || !formatDescription) {
+        return NULL;
+    }
+
+    CMSampleTimingInfo timing = { kCMTimeInvalid, kCMTimeZero, kCMTimeInvalid };
+    CMSampleBufferGetSampleTimingInfo(templateBuffer, 0, &timing);
+
+    CMSampleBufferRef output = NULL;
+    CMSampleBufferCreateForImageBuffer(kCFAllocatorDefault,
+                                       pixelBuffer,
+                                       true,
+                                       NULL,
+                                       NULL,
+                                       formatDescription,
+                                       &timing,
+                                       &output);
+    CFRelease(formatDescription);
+    return output;
+}
+
 static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
                                                          CMSampleBufferRef templateBuffer) CF_RETURNS_RETAINED;
 static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
@@ -599,6 +649,41 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     id realDelegate = self.realDelegate;
     if (!realDelegate) return;
 
+    // Keep the most recent live frame so a confirm-capture freeze can snapshot it
+    // instantly. Cheap: just retain the current pixel buffer (no conversion).
+    CVPixelBufferRef livePixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    if (livePixelBuffer) {
+        CVPixelBufferRetain(livePixelBuffer);
+        dispatch_sync(SCIInstantsFreezeQueue(), ^{
+            if (sSCIInstantsLatestLivePixelBuffer) {
+                CVPixelBufferRelease(sSCIInstantsLatestLivePixelBuffer);
+            }
+            sSCIInstantsLatestLivePixelBuffer = livePixelBuffer;
+        });
+    }
+
+    // While frozen (confirm-capture), replay the snapshotted frame so the preview
+    // and the eventual capture are the exact frame the user pressed the shutter on.
+    __block CVPixelBufferRef frozen = NULL;
+    if (sSCIInstantsIsFrozen) {
+        dispatch_sync(SCIInstantsFreezeQueue(), ^{
+            if (sSCIInstantsFrozenPixelBuffer) {
+                frozen = CVPixelBufferRetain(sSCIInstantsFrozenPixelBuffer);
+            }
+        });
+    }
+    if (frozen) {
+        CMSampleBufferRef replacement = SCIInstantsSampleBufferForPixelBuffer(frozen, sampleBuffer);
+        CVPixelBufferRelease(frozen);
+        if (replacement) {
+            [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
+                                                                   didOutputSampleBuffer:replacement
+                                                                          fromConnection:connection];
+            CFRelease(replacement);
+            return;
+        }
+    }
+
     UIImage *pendingImage = SCIInstantsUploadFromGalleryEnabled() ? sSCIInstantsPendingImage : nil;
     if (pendingImage) {
         CMSampleBufferRef replacement = SCIInstantsSampleBufferForImage(pendingImage, sampleBuffer);
@@ -617,6 +702,43 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                                                                       fromConnection:connection];
     }
 }
+@end
+
+@implementation SCIInstantsFrameInjector
+
++ (BOOL)hasLiveFrame {
+    __block BOOL has = NO;
+    dispatch_sync(SCIInstantsFreezeQueue(), ^{
+        has = (sSCIInstantsLatestLivePixelBuffer != NULL);
+    });
+    return has;
+}
+
++ (void)freezeNow {
+    dispatch_sync(SCIInstantsFreezeQueue(), ^{
+        if (!sSCIInstantsLatestLivePixelBuffer) return;
+        if (sSCIInstantsFrozenPixelBuffer) {
+            CVPixelBufferRelease(sSCIInstantsFrozenPixelBuffer);
+        }
+        sSCIInstantsFrozenPixelBuffer = CVPixelBufferRetain(sSCIInstantsLatestLivePixelBuffer);
+        sSCIInstantsIsFrozen = YES;
+    });
+}
+
++ (void)clearFrozen {
+    dispatch_sync(SCIInstantsFreezeQueue(), ^{
+        sSCIInstantsIsFrozen = NO;
+        if (sSCIInstantsFrozenPixelBuffer) {
+            CVPixelBufferRelease(sSCIInstantsFrozenPixelBuffer);
+            sSCIInstantsFrozenPixelBuffer = NULL;
+        }
+    });
+}
+
++ (BOOL)isFrozen {
+    return sSCIInstantsIsFrozen;
+}
+
 @end
 
 @interface SCIInstantsImagePickerDelegate : NSObject <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
@@ -692,13 +814,6 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
         [SCIInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
     }]];
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Files" style:SCIIGAlertActionStyleDefault handler:^{
-        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeImage ] asCopy:YES];
-        picker.allowsMultipleSelection = NO;
-        picker.delegate = [SCIInstantsDocumentPickerDelegate shared];
-        [SCIInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
-    }]];
-
     if ([SCIGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]]) {
         [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Gallery" style:SCIIGAlertActionStyleDefault handler:^{
             SCIGalleryPickerViewController *galleryPicker = [[SCIGalleryPickerViewController alloc]
@@ -715,6 +830,21 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
             [SCIInstantsTopPresenter() presentViewController:nav animated:YES completion:nil];
         }]];
     }
+
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Files" style:SCIIGAlertActionStyleDefault handler:^{
+        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeImage ] asCopy:YES];
+        picker.allowsMultipleSelection = NO;
+        picker.delegate = [SCIInstantsDocumentPickerDelegate shared];
+        [SCIInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
+    }]];
+
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Instants Settings" style:SCIIGAlertActionStyleDefault handler:^{
+        UIViewController *settings = [SCIInstantsSettingsProvider makeSettingsViewController];
+        if (!settings) return;
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:settings];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [SCIInstantsTopPresenter() presentViewController:nav animated:YES completion:nil];
+    }]];
 
     [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]];
     if (![SCIIGAlertPresenter presentActionSheetFromViewController:presenter
@@ -895,8 +1025,16 @@ static void replaced_headerLayoutSubviews(id self, SEL _cmd) {
     SCIInstantsInstallGalleryButton((UIView *)self);
 }
 
+static BOOL SCIInstantsConfirmCaptureEnabled(void) {
+    return [SCIUtils getBoolPref:@"instants_confirm_capture"];
+}
+
 static void replaced_setSampleBufferDelegate(id self, SEL _cmd, id delegate, dispatch_queue_t queue) {
-    if (delegate && SCIInstantsUploadFromGalleryEnabled() && ![delegate isKindOfClass:SCIInstantsVideoBufferInjector.class]) {
+    // Wrap the camera's sample-buffer delegate when EITHER feature needs it:
+    // gallery upload (replace the feed with a chosen image) or confirm-capture
+    // (freeze the live frame while confirming so the sent frame is exact).
+    BOOL wants = SCIInstantsUploadFromGalleryEnabled() || SCIInstantsConfirmCaptureEnabled();
+    if (delegate && wants && ![delegate isKindOfClass:SCIInstantsVideoBufferInjector.class]) {
         SCIInstantsVideoBufferInjector *injector = [[SCIInstantsVideoBufferInjector alloc] init];
         injector.realDelegate = delegate;
         objc_setAssociatedObject(self, kSCIInstantsVideoInjectorKey, injector, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
