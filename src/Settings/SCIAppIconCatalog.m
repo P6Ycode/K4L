@@ -1,6 +1,7 @@
 #import "SCIAppIconCatalog.h"
 
 static NSString * const kSCIAppIconPrimaryIdentifier = @"";
+static NSString * const kSCIAppIconSelectionDefaultsKey = @"general_app_icon_identifier";
 
 @implementation SCIAppIconItem
 @end
@@ -128,8 +129,31 @@ static UIImage *SCIAppIconImageNamed(NSString *name) {
 }
 
 + (NSString *)currentAppIconIdentifier {
+    // UIApplication.alternateIconName is unreliable on re-signed / injected
+    // builds: it frequently reports nil even while an alternate icon is active
+    // (the setter still works). So we trust our own persisted record first and
+    // only fall back to the system value when we have nothing stored.
+    NSString *stored = [self storedSelectedIdentifier];
+    if (stored != nil) {
+        // Validate against what's actually installable; if the stored icon no
+        // longer exists in the bundle, drop back to the system value.
+        if (stored.length == 0 || [self appIconWithIdentifier:stored] != nil) {
+            return stored.length > 0 ? stored : kSCIAppIconPrimaryIdentifier;
+        }
+    }
+
     NSString *alternateIconName = UIApplication.sharedApplication.alternateIconName;
     return alternateIconName.length > 0 ? alternateIconName : kSCIAppIconPrimaryIdentifier;
+}
+
++ (NSString *)storedSelectedIdentifier {
+    id value = [[NSUserDefaults standardUserDefaults] objectForKey:kSCIAppIconSelectionDefaultsKey];
+    return [value isKindOfClass:[NSString class]] ? value : nil;
+}
+
++ (void)setStoredSelectedIdentifier:(NSString *)identifier {
+    [[NSUserDefaults standardUserDefaults] setObject:(identifier ?: kSCIAppIconPrimaryIdentifier)
+                                              forKey:kSCIAppIconSelectionDefaultsKey];
 }
 
 + (SCIAppIconItem *)currentAppIcon {

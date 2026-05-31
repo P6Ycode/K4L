@@ -22,6 +22,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable SCIAppIconItem *)appIconWithIdentifier:(nullable NSString *)identifier;
 + (nullable UIImage *)imageForAppIcon:(SCIAppIconItem *)item;
 
+/// Persist the user's chosen icon so the picker stays accurate even when
+/// UIApplication.alternateIconName reads nil on re-signed/injected builds.
++ (void)setStoredSelectedIdentifier:(nullable NSString *)identifier;
+
 @end
 
 NS_ASSUME_NONNULL_END

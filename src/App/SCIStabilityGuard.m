@@ -1,3 +1,13 @@
+// SCIStabilityGuard — a launch failsafe.
+//
+// Each launch records a start timestamp. If a launch never reaches the "stable"
+// mark (set ~5s after the app is active and all staged hooks installed) and the
+// next launch starts within kSCIStabilityRecentLaunchWindow, it's counted as an
+// incomplete launch. After kSCIStabilityFailureThreshold consecutive incomplete
+// launches the tweak enters *safe startup mode*: feature hooks are suppressed
+// (only Settings access remains) and Liquid Glass is disabled, so a hook that
+// crashes Instagram on launch can't lock the user out permanently. The user can
+// clear this from Tools > "Reset Safe Startup Mode" (SCIStabilityGuardReset).
 #import "SCIStabilityGuard.h"
 
 #import "../Utils.h"

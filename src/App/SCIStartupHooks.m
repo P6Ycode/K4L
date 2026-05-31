@@ -94,12 +94,14 @@ static void SCIInstallEssentialAccessHooks(void) {
 }
 
 void SCIInstallLaunchCriticalHooks(void) {
-    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
-        SCIInstallLiquidGlassHooksIfEnabled();
-    }
     if (SCIShouldSuppressFeatureHooks()) {
         SCIInstallEssentialAccessHooks();
         return;
+    }
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+        if ([SCIUtils sci_isLiquidGlassEffectivelyEnabled]) {
+            SCIInstallLiquidGlassHooksIfEnabled();
+        }
     }
     SCIInstallTweakLaunchCriticalHooks();
     SCIInstallAdBlockingEarlyHooksIfEnabled();

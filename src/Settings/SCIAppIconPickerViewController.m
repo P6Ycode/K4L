@@ -293,6 +293,7 @@ static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
             }
 
             self.selectedIdentifier = identifier;
+            [SCIAppIconCatalog setStoredSelectedIdentifier:identifier];
             if (self.onSelect) self.onSelect(identifier);
             [collectionView reloadData];
             SCINotify(@"settings_app_icon", @"App icon changed", item.displayName, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));

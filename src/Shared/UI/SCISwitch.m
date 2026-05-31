@@ -1,3 +1,8 @@
+// SCISwitch — a UISwitch subclass that keeps its on-tint and thumb-tint matched
+// to the SCInsta palette across trait/appearance changes (light/dark, app
+// becoming active, window changes). Color application is re-scheduled shortly
+// after state changes because the system can reset tints mid-animation,
+// particularly with the iOS 26 Liquid Glass switch styling.
 #import "SCISwitch.h"
 
 #import "../../Utils.h"
