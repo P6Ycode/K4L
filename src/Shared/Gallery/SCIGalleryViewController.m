@@ -1,6 +1,8 @@
 #import "SCIGalleryViewController.h"
 #import "SCIGalleryFile.h"
 #import "SCIGalleryGridCell.h"
+#import "SCIGalleryGridDensity.h"
+#import "SCIGalleryFolderChipBar.h"
 #import "SCIGalleryListCollectionCell.h"
 #import "SCIGalleryFolderCell.h"
 #import "SCIGalleryCoreDataStack.h"
@@ -22,6 +24,7 @@
 static NSString * const kGridCellID = @"SCIGalleryGridCell";
 static NSString * const kListCellID = @"SCIGalleryListCell";
 static NSString * const kFolderCellID = @"SCIGalleryFolderCell";
+static NSString * const kFolderChipHeaderID = @"SCIGalleryFolderChipHeader";
 
 static NSString * const kSortModeKey    = @"gallery_sort_mode";
 static NSString * const kSortGroupByTypeKey = @"gallery_sort_group_by_type";
@@ -29,7 +32,6 @@ static NSString * const kViewModeKey    = @"gallery_view_mode"; // 0 = grid, 1 =
 static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 
 static CGFloat const kGridSpacing = 2.0;
-static NSInteger const kGridColumns = 3;
 static CGFloat const kGalleryMenuIconPointSize = 22.0;
 static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
 
@@ -82,6 +84,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
 // View mode
 @property (nonatomic, assign) SCIGalleryViewMode viewMode;
+/// Number of columns in grid mode (clamped to kGridColumnsMin...kGridColumnsMax).
+@property (nonatomic, assign) NSInteger gridColumns;
 
 // Sort
 @property (nonatomic, assign) SCIGallerySortMode sortMode;
@@ -152,6 +156,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
             [d setBool:_sortGroupByMediaType forKey:kSortGroupByTypeKey];
         }
         _viewMode = (SCIGalleryViewMode)[d integerForKey:kViewModeKey];
+        _gridColumns = SCIGalleryGridColumns();
     }
     return self;
 }
@@ -165,6 +170,10 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleGalleryPreferencesChanged:)
                                                  name:@"SCIGalleryFavoritesSortPreferenceChanged"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleGridControlsPreferenceChanged:)
+                                                 name:kSCIGalleryGridControlsChangedNotification
                                                object:nil];
 
     [self setupCenteredTitle];
@@ -363,7 +372,13 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [_collectionView registerClass:[SCIGalleryGridCell class] forCellWithReuseIdentifier:kGridCellID];
     [_collectionView registerClass:[SCIGalleryListCollectionCell class] forCellWithReuseIdentifier:kListCellID];
     [_collectionView registerClass:[SCIGalleryFolderCell class] forCellWithReuseIdentifier:kFolderCellID];
+    [_collectionView registerClass:[SCIGalleryFolderChipBar class]
+         forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+                withReuseIdentifier:kFolderChipHeaderID];
     [self.view addSubview:_collectionView];
+
+    UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handleGridPinch:)];
+    [_collectionView addGestureRecognizer:pinch];
 
     [NSLayoutConstraint activateConstraints:@[
         [_collectionView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -417,6 +432,75 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [self.collectionView reloadData];
     [self updateEmptyState];
     [self refreshBottomToolbarItems];
+}
+
+#pragma mark - Grid Density
+
+- (void)setGridColumns:(NSInteger)gridColumns {
+    NSInteger clamped = MAX(kSCIGalleryGridColumnsMin, MIN(kSCIGalleryGridColumnsMax, gridColumns));
+    if (clamped == _gridColumns) return;
+    _gridColumns = clamped;
+    SCIGalleryGridSetColumns(clamped);
+}
+
+/// Applies a new column count with a smooth relayout. No-op outside grid mode.
+- (void)applyGridColumns:(NSInteger)columns animated:(BOOL)animated {
+    if (self.viewMode != SCIGalleryViewModeGrid) return;
+    NSInteger clamped = MAX(kSCIGalleryGridColumnsMin, MIN(kSCIGalleryGridColumnsMax, columns));
+    if (clamped == self.gridColumns) return;
+
+    self.gridColumns = clamped;
+
+    if (animated) {
+        [UIView animateWithDuration:0.25
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseInOut
+                         animations:^{
+            [self.collectionView.collectionViewLayout invalidateLayout];
+            [self.collectionView layoutIfNeeded];
+        } completion:^(__unused BOOL finished) {
+            // Username overlay visibility depends on density; refresh cells.
+            [self reconfigureVisibleGridCells];
+        }];
+    } else {
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self reconfigureVisibleGridCells];
+    }
+    [self refreshBottomToolbarItems];
+}
+
+/// Re-runs grid cell configuration for visible items (e.g. after a density
+/// change that toggles the username overlay) without a full reload.
+- (void)reconfigureVisibleGridCells {
+    if (self.viewMode != SCIGalleryViewModeGrid) return;
+    BOOL showsMeta = ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridShowSourceUsernameDisabledKey];
+    BOOL showsUsername = showsMeta && self.gridColumns <= 3;
+    for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
+        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+        if (![cell isKindOfClass:[SCIGalleryGridCell class]]) continue;
+        SCIGalleryFile *file = [self galleryFileForCollectionIndexPath:indexPath];
+        if (!file) continue;
+        [(SCIGalleryGridCell *)cell configureWithGalleryFile:file
+                                               selectionMode:self.selectionMode
+                                                    selected:[self.selectedFileIDs containsObject:file.identifier]
+                                                 showsSource:showsMeta
+                                               showsUsername:showsUsername];
+    }
+}
+
+- (void)handleGridPinch:(UIPinchGestureRecognizer *)pinch {
+    if (self.viewMode != SCIGalleryViewModeGrid) return;
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridPinchDisabledKey]) return;
+    if (pinch.state != UIGestureRecognizerStateChanged) return;
+    // Pinch out (scale > 1) -> fewer columns (bigger cells); pinch in -> more.
+    CGFloat threshold = 0.30;
+    if (pinch.scale > 1.0 + threshold && self.gridColumns > kSCIGalleryGridColumnsMin) {
+        [self applyGridColumns:SCIGalleryGridColumnsAdjacent(self.gridColumns, YES) animated:YES];
+        pinch.scale = 1.0;
+    } else if (pinch.scale < 1.0 - threshold && self.gridColumns < kSCIGalleryGridColumnsMax) {
+        [self applyGridColumns:SCIGalleryGridColumnsAdjacent(self.gridColumns, NO) animated:YES];
+        pinch.scale = 1.0;
+    }
 }
 
 #pragma mark - Empty State
@@ -477,7 +561,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
 - (void)updateEmptyState {
     NSInteger files = self.fetchedResultsController.fetchedObjects.count;
-    NSInteger folders = [self showsFolderSection] ? self.subfolders.count : 0;
+    NSInteger folders = [self showsFolderChips] ? self.subfolders.count : 0;
     BOOL hasFilters = self.filterTypes.count > 0 || self.filterSources.count > 0 || self.filterFavoritesOnly;
 
     BOOL isEmpty = (files == 0 && folders == 0);
@@ -600,7 +684,16 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 #pragma mark - UICollectionViewDataSource
 
 - (BOOL)showsFolderSection {
-    return self.viewMode == SCIGalleryViewModeList && self.searchQuery.length == 0;
+    // Folders are now presented as a horizontal chip strip in the section
+    // header (see showsFolderChips), not as full-width rows. Retiring the row
+    // section collapses the layout to a single files section in both modes.
+    return NO;
+}
+
+/// Folder chips show above the media in both grid and list modes, whenever the
+/// current folder has subfolders and the user isn't searching or selecting.
+- (BOOL)showsFolderChips {
+    return self.subfolders.count > 0 && self.searchQuery.length == 0 && !self.selectionMode;
 }
 
 - (BOOL)isFolderIndexPath:(NSIndexPath *)indexPath {
@@ -633,9 +726,14 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
     if (self.viewMode == SCIGalleryViewModeGrid) {
         SCIGalleryGridCell *cell = [cv dequeueReusableCellWithReuseIdentifier:kGridCellID forIndexPath:indexPath];
+        BOOL showsMeta = ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridShowSourceUsernameDisabledKey];
+        // Username caption only fits at roomy densities (2-3 columns).
+        BOOL showsUsername = showsMeta && self.gridColumns <= 3;
         [cell configureWithGalleryFile:file
                        selectionMode:self.selectionMode
-                            selected:[self.selectedFileIDs containsObject:file.identifier]];
+                            selected:[self.selectedFileIDs containsObject:file.identifier]
+                         showsSource:showsMeta
+                       showsUsername:showsUsername];
         return cell;
     }
 
@@ -645,6 +743,60 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
                         selected:[self.selectedFileIDs containsObject:file.identifier]];
     [cell setMoreActionsMenu:self.selectionMode ? nil : [self fileActionsMenuForFile:file]];
     return cell;
+}
+
+- (UICollectionReusableView *)collectionView:(UICollectionView *)cv
+           viewForSupplementaryElementOfKind:(NSString *)kind
+                                 atIndexPath:(NSIndexPath *)indexPath {
+    if (![kind isEqualToString:UICollectionElementKindSectionHeader]) {
+        return [[UICollectionReusableView alloc] init];
+    }
+
+    SCIGalleryFolderChipBar *header =
+        [cv dequeueReusableSupplementaryViewOfKind:kind
+                               withReuseIdentifier:kFolderChipHeaderID
+                                      forIndexPath:indexPath];
+
+    if (![self showsFolderChips]) {
+        return header;
+    }
+
+    NSArray<NSString *> *folders = self.subfolders;
+    NSMutableArray<NSString *> *names = [NSMutableArray arrayWithCapacity:folders.count];
+    NSMutableArray<NSNumber *> *counts = [NSMutableArray arrayWithCapacity:folders.count];
+    NSManagedObjectContext *ctx = [SCIGalleryCoreDataStack shared].viewContext;
+    for (NSString *path in folders) {
+        [names addObject:[path lastPathComponent]];
+        [counts addObject:@(SCIGalleryItemCountForFolderPath(ctx, path))];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [header configureWithFolderNames:names
+                              counts:counts
+                            onSelect:^(NSInteger index) {
+        [weakSelf openSubfolderAtIndex:index];
+    }
+                        menuProvider:^UIMenu * _Nullable(NSInteger index) {
+        return [weakSelf folderChipMenuForIndex:index];
+    }];
+    return header;
+}
+
+/// Opens the subfolder at `index` as a pushed child gallery.
+- (void)openSubfolderAtIndex:(NSInteger)index {
+    if (self.selectionMode) return;
+    if (index < 0 || index >= (NSInteger)self.subfolders.count) return;
+    NSString *subfolderPath = self.subfolders[index];
+    SCIGalleryViewController *child = [[SCIGalleryViewController alloc] initWithFolderPath:subfolderPath];
+    [self.navigationController pushViewController:child animated:YES];
+}
+
+/// Context menu (rename/delete/etc.) for the folder chip at `index`, reusing the
+/// same actions as the legacy folder rows.
+- (UIMenu *)folderChipMenuForIndex:(NSInteger)index {
+    if (index < 0 || index >= (NSInteger)self.subfolders.count) return nil;
+    NSString *folderPath = self.subfolders[index];
+    return [self folderActionsMenuForFolderPath:folderPath];
 }
 
 #pragma mark - UICollectionViewDelegateFlowLayout
@@ -657,8 +809,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         return CGSizeMake(width, 88);
     }
     if (self.viewMode == SCIGalleryViewModeGrid) {
-        CGFloat totalSpacing = kGridSpacing * (kGridColumns - 1);
-        CGFloat side = (width - totalSpacing) / kGridColumns;
+        NSInteger columns = MAX(kSCIGalleryGridColumnsMin, MIN(kSCIGalleryGridColumnsMax, self.gridColumns));
+        CGFloat totalSpacing = kGridSpacing * (columns - 1);
+        CGFloat side = floor((width - totalSpacing) / columns);
         return CGSizeMake(side, side);
     }
     return CGSizeMake(width, 88);
@@ -671,6 +824,15 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         return UIEdgeInsetsMake(10, 0, 6, 0);
     }
     return UIEdgeInsetsZero;
+}
+
+- (CGSize)collectionView:(UICollectionView *)cv
+                  layout:(UICollectionViewLayout *)layout
+referenceSizeForHeaderInSection:(NSInteger)section {
+    if (section == 0 && [self showsFolderChips]) {
+        return CGSizeMake(cv.bounds.size.width, [SCIGalleryFolderChipBar preferredHeight]);
+    }
+    return CGSizeZero;
 }
 
 - (CGFloat)collectionView:(UICollectionView *)cv
@@ -808,6 +970,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [self refreshNavigationItems];
     [self refreshBottomToolbarItems];
     [self animateSelectionModeTransition];
+    // Folder chips hide during selection; reflect the header change.
+    [self.collectionView.collectionViewLayout invalidateLayout];
 }
 
 - (void)exitSelectionMode {
@@ -817,6 +981,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [self refreshNavigationItems];
     [self refreshBottomToolbarItems];
     [self animateSelectionModeTransition];
+    // Folder chips return after leaving selection mode.
+    [self.collectionView.collectionViewLayout invalidateLayout];
 }
 
 - (void)toggleSelectionForFile:(SCIGalleryFile *)file {
@@ -1081,22 +1247,27 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggested) {
+        return [weakSelf folderActionsMenuForFolderPath:folderPath];
+    }];
+}
+
+- (UIMenu *)folderActionsMenuForFolderPath:(NSString *)folderPath {
+    __weak typeof(self) weakSelf = self;
     UIImage *folderRenameImg = SCIGalleryMenuActionIcon(@"edit");
-        UIAction *renameAction = [UIAction actionWithTitle:@"Rename Folder"
-                                                     image:folderRenameImg
-                                                identifier:nil
-                                                   handler:^(UIAction *a) { [weakSelf renameFolder:folderPath]; }];
+    UIAction *renameAction = [UIAction actionWithTitle:@"Rename Folder"
+                                                 image:folderRenameImg
+                                            identifier:nil
+                                               handler:^(UIAction *a) { [weakSelf renameFolder:folderPath]; }];
 
     UIImage *folderDeleteImg = SCIGalleryMenuActionIcon(@"trash");
-        UIAction *deleteAction = [UIAction actionWithTitle:@"Delete Folder"
-                                                     image:folderDeleteImg
-                                                identifier:nil
-                                                   handler:^(UIAction *a) { [weakSelf deleteFolder:folderPath]; }];
-        /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
-        deleteAction.attributes = UIMenuElementAttributesDestructive;
+    UIAction *deleteAction = [UIAction actionWithTitle:@"Delete Folder"
+                                                 image:folderDeleteImg
+                                            identifier:nil
+                                               handler:^(UIAction *a) { [weakSelf deleteFolder:folderPath]; }];
+    /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
+    deleteAction.attributes = UIMenuElementAttributesDestructive;
 
-        return [UIMenu menuWithTitle:@"" children:@[renameAction, deleteAction]];
-    }];
+    return [UIMenu menuWithTitle:@"" children:@[renameAction, deleteAction]];
 }
 
 #pragma mark - Folder CRUD
@@ -1543,6 +1714,12 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 - (void)handleGalleryPreferencesChanged:(NSNotification *)note {
     (void)note;
     [self refetch];
+}
+
+- (void)handleGridControlsPreferenceChanged:(NSNotification *)note {
+    (void)note;
+    [self refreshBottomToolbarItems];
+    [self reconfigureVisibleGridCells];
 }
 
 #pragma mark - Settings

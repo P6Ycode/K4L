@@ -212,6 +212,7 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"photo_gallery": @{@"candidates": @[@"ig_icon_photo_gallery_outline_24"]},
             @"pin": @{@"candidates": @[@"ig_icon_pin_outline_24"]},
             @"pin_filled": @{@"candidates": @[@"ig_icon_pin_filled_24"]},
+            @"pinch": @{@"candidates": @[@"ig_icon_fill_outline_24"]},
             @"play": @{@"candidates": @[@"ig_icon_play_prism_outline_24", @"ig_icon_play_outline_24"]},
             @"play_filled": @{@"candidates": @[@"ig_icon_play_prism_filled_24", @"ig_icon_play_filled_24"]},
             @"play_filled_32": @{@"candidates": @[@"ig_icon_play_prism_filled_32", @"ig_icon_play_filled_32"]},

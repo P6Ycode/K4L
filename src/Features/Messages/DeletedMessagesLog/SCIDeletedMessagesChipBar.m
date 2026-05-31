@@ -78,7 +78,6 @@
             c.contentEdgeInsets = UIEdgeInsetsMake(7, 12, 7, 12);
         }
         c.layer.cornerRadius = 15.0;
-        c.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         c.tag = i;
         [c addTarget:self action:@selector(chipTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.stack addArrangedSubview:c];
@@ -106,7 +105,6 @@
         chip.backgroundColor = selected ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramSecondaryBackground];
         chip.tintColor = selected ? [SCIUtils SCIColor_InstagramBackground] : [SCIUtils SCIColor_InstagramPrimaryText];
         [chip setTitleColor:(selected ? [SCIUtils SCIColor_InstagramBackground] : [SCIUtils SCIColor_InstagramPrimaryText]) forState:UIControlStateNormal];
-        chip.layer.borderColor = (selected ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramSeparator]).CGColor;
 
         // Swap to the filled glyph when selected (when a selected variant exists).
         NSString *baseSym = (i < (NSInteger)self.symbols.count) ? self.symbols[i] : nil;

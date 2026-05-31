@@ -9,6 +9,7 @@
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 #import "../../Settings/SCITopicSettingsSupport.h"
+#import "SCIGalleryGridDensity.h"
 
 static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 static NSString * const kGalleryLongPressTabKey = @"gallery_quick_access_tab";
@@ -113,6 +114,29 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
         [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
     };
     [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow], @"Pin favorites above other files inside the current sort and folder context.")];
+
+    // Grid section: pinch-to-zoom toggle. Defaults ON; the backing pref stores
+    // the *disabled* state, so the switch inverts.
+    SCISetting *pinchRow = [SCISetting switchCellWithTitle:@"Pinch to Zoom" icon:SCISettingsIcon(@"pinch") defaultsKey:@""];
+    pinchRow.switchValueProvider = ^BOOL{
+        return ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridPinchDisabledKey];
+    };
+    pinchRow.switchChangeHandler = ^(BOOL isOn) {
+        [[NSUserDefaults standardUserDefaults] setBool:!isOn forKey:kSCIGalleryGridPinchDisabledKey];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kSCIGalleryGridControlsChangedNotification object:nil];
+    };
+
+    SCISetting *sourceUsernameRow = [SCISetting switchCellWithTitle:@"Show Source & Username" icon:SCISettingsIcon(@"user_circle") defaultsKey:@""];
+    sourceUsernameRow.switchValueProvider = ^BOOL{
+        return ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridShowSourceUsernameDisabledKey];
+    };
+    sourceUsernameRow.switchChangeHandler = ^(BOOL isOn) {
+        [[NSUserDefaults standardUserDefaults] setBool:!isOn forKey:kSCIGalleryGridShowSourceUsernameDisabledKey];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kSCIGalleryGridControlsChangedNotification object:nil];
+    };
+
+    [sections addObject:SCITopicSection(@"Grid", @[pinchRow, sourceUsernameRow], @"Pinch the grid to change density (2, 3 or 5 columns). Source icon and username overlay on each grid item; the username shows at lower densities.")];
+
 
     SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
     NSMutableArray *lockRows = [NSMutableArray array];

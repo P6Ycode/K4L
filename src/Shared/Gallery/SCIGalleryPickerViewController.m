@@ -4,13 +4,23 @@
 
 #import "SCIGalleryCoreDataStack.h"
 #import "SCIGalleryFile.h"
-#import "SCIGalleryFolderCell.h"
+#import "SCIGalleryGridCell.h"
 #import "SCIGalleryListCollectionCell.h"
+#import "SCIGalleryFolderChipBar.h"
+#import "SCIGalleryGridDensity.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
 static NSString * const kSCIGalleryPickerListCellID = @"SCIGalleryPickerListCell";
-static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolderCell";
+static NSString * const kSCIGalleryPickerGridCellID = @"SCIGalleryPickerGridCell";
+static NSString * const kSCIGalleryPickerFolderChipHeaderID = @"SCIGalleryPickerFolderChipHeader";
+static NSString * const kSCIGalleryPickerViewModeKey = @"gallery_picker_view_mode"; // 0 = grid, 1 = list
+static CGFloat const kSCIGalleryPickerGridSpacing = 2.0;
+
+typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
+    SCIGalleryPickerViewModeGrid = 0,
+    SCIGalleryPickerViewModeList = 1,
+};
 
 @interface SCIGalleryPickerViewController () <UICollectionViewDataSource,
                                              UICollectionViewDelegate,
@@ -29,6 +39,8 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
 @property (nonatomic, strong) NSArray<SCIGalleryFile *> *files;
 @property (nonatomic, strong) NSMutableArray<NSString *> *selectedIDs;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, SCIGalleryFile *> *selectedFilesByID;
+@property (nonatomic, assign) SCIGalleryPickerViewMode viewMode;
+@property (nonatomic, assign) NSInteger gridColumns;
 @end
 
 @implementation SCIGalleryPickerViewController
@@ -90,31 +102,40 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
         _files = @[];
         _selectedIDs = [NSMutableArray array];
         _selectedFilesByID = [NSMutableDictionary dictionary];
+        _viewMode = (SCIGalleryPickerViewMode)[[NSUserDefaults standardUserDefaults] integerForKey:kSCIGalleryPickerViewModeKey];
+        _gridColumns = SCIGalleryGridColumns();
     }
     return self;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = UIColor.systemBackgroundColor;
+    // Match the real gallery: use the Instagram palette (dynamic colors that
+    // adapt to light/dark) rather than a plain system background or a forced
+    // appearance style.
+    self.view.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
     self.title = self.folderPath.length > 0 ? self.folderPath.lastPathComponent : self.pickerTitle;
 
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.minimumLineSpacing = 0.0;
-    layout.minimumInteritemSpacing = 0.0;
-    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:[self makeLayout]];
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collectionView.backgroundColor = UIColor.systemBackgroundColor;
+    self.collectionView.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
+    self.collectionView.alwaysBounceVertical = YES;
     [self.collectionView registerClass:SCIGalleryListCollectionCell.class forCellWithReuseIdentifier:kSCIGalleryPickerListCellID];
-    [self.collectionView registerClass:SCIGalleryFolderCell.class forCellWithReuseIdentifier:kSCIGalleryPickerFolderCellID];
+    [self.collectionView registerClass:SCIGalleryGridCell.class forCellWithReuseIdentifier:kSCIGalleryPickerGridCellID];
+    [self.collectionView registerClass:SCIGalleryFolderChipBar.class
+            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+                   withReuseIdentifier:kSCIGalleryPickerFolderChipHeaderID];
     [self.view addSubview:self.collectionView];
+
+    UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handleGridPinch:)];
+    [self.collectionView addGestureRecognizer:pinch];
 
     self.emptyLabel = [[UILabel alloc] init];
     self.emptyLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.emptyLabel.text = @"No matching Gallery files";
-    self.emptyLabel.textColor = UIColor.secondaryLabelColor;
+    self.emptyLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
     self.emptyLabel.textAlignment = NSTextAlignmentCenter;
     self.emptyLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
     self.emptyLabel.numberOfLines = 0;
@@ -130,17 +151,16 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
         [self.emptyLabel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
     ]];
 
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Cancel"
-                                                                             style:UIBarButtonItemStylePlain
-                                                                            target:self
-                                                                            action:@selector(cancelTapped)];
-    if (self.allowsMultipleSelection) {
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Add"
-                                                                                  style:UIBarButtonItemStyleDone
-                                                                                 target:self
-                                                                                 action:@selector(doneTapped)];
-        self.navigationItem.rightBarButtonItem.enabled = NO;
+    // Only the root picker shows "Cancel"; pushed folder screens keep the system
+    // back button (and its swipe-to-go-back gesture).
+    BOOL isRoot = (self.navigationController.viewControllers.firstObject == self || self.folderPath.length == 0);
+    if (isRoot) {
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Cancel"
+                                                                                 style:UIBarButtonItemStylePlain
+                                                                                target:self
+                                                                                action:@selector(cancelTapped)];
     }
+    [self refreshNavigationRightItems];
 
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.searchController.searchResultsUpdater = self;
@@ -252,6 +272,75 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
     [self updateDoneButton];
 }
 
+#pragma mark - View Mode & Density
+
+- (UICollectionViewLayout *)makeLayout {
+    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    if (self.viewMode == SCIGalleryPickerViewModeGrid) {
+        layout.minimumLineSpacing = kSCIGalleryPickerGridSpacing;
+        layout.minimumInteritemSpacing = kSCIGalleryPickerGridSpacing;
+    } else {
+        layout.minimumLineSpacing = 0.0;
+        layout.minimumInteritemSpacing = 0.0;
+    }
+    return layout;
+}
+
+- (void)setGridColumns:(NSInteger)gridColumns {
+    NSInteger clamped = MAX(kSCIGalleryGridColumnsMin, MIN(kSCIGalleryGridColumnsMax, gridColumns));
+    if (clamped == _gridColumns) return;
+    _gridColumns = clamped;
+    SCIGalleryGridSetColumns(clamped);
+}
+
+/// Trailing nav-bar items: the grid/list toggle, plus the "Add" confirm button
+/// when multi-selecting.
+- (void)refreshNavigationRightItems {
+    NSString *toggleResource = self.viewMode == SCIGalleryPickerViewModeGrid ? @"list" : @"grid";
+    NSString *toggleAX = self.viewMode == SCIGalleryPickerViewModeGrid ? @"List view" : @"Grid view";
+    UIBarButtonItem *toggleItem = [[UIBarButtonItem alloc] initWithImage:[SCIAssetUtils instagramIconNamed:toggleResource pointSize:22.0]
+                                                                   style:UIBarButtonItemStylePlain
+                                                                  target:self
+                                                                  action:@selector(togglePickerViewMode)];
+    toggleItem.accessibilityLabel = toggleAX;
+    toggleItem.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+
+    if (self.allowsMultipleSelection) {
+        UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithTitle:@"Add"
+                                                                    style:UIBarButtonItemStyleDone
+                                                                   target:self
+                                                                   action:@selector(doneTapped)];
+        addItem.enabled = self.selectedIDs.count > 0;
+        self.navigationItem.rightBarButtonItems = @[addItem, toggleItem];
+    } else {
+        self.navigationItem.rightBarButtonItems = @[toggleItem];
+    }
+}
+
+- (void)togglePickerViewMode {
+    self.viewMode = self.viewMode == SCIGalleryPickerViewModeGrid ? SCIGalleryPickerViewModeList : SCIGalleryPickerViewModeGrid;
+    [[NSUserDefaults standardUserDefaults] setInteger:self.viewMode forKey:kSCIGalleryPickerViewModeKey];
+    [self.collectionView setCollectionViewLayout:[self makeLayout] animated:NO];
+    [self.collectionView reloadData];
+    [self refreshNavigationRightItems];
+}
+
+- (void)handleGridPinch:(UIPinchGestureRecognizer *)pinch {
+    if (self.viewMode != SCIGalleryPickerViewModeGrid) return;
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridPinchDisabledKey]) return;
+    if (pinch.state != UIGestureRecognizerStateChanged) return;
+    CGFloat threshold = 0.30;
+    if (pinch.scale > 1.0 + threshold && self.gridColumns > kSCIGalleryGridColumnsMin) {
+        self.gridColumns = SCIGalleryGridColumnsAdjacent(self.gridColumns, YES);
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        pinch.scale = 1.0;
+    } else if (pinch.scale < 1.0 - threshold && self.gridColumns < kSCIGalleryGridColumnsMax) {
+        self.gridColumns = SCIGalleryGridColumnsAdjacent(self.gridColumns, NO);
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        pinch.scale = 1.0;
+    }
+}
+
 - (void)updateEmptyState {
     BOOL empty = self.subfolders.count == 0 && self.files.count == 0;
     self.emptyLabel.hidden = !empty;
@@ -260,11 +349,11 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
 
 - (void)updateDoneButton {
     if (!self.allowsMultipleSelection) return;
-    self.navigationItem.rightBarButtonItem.enabled = self.selectedIDs.count > 0;
+    [self refreshNavigationRightItems];
 }
 
-- (BOOL)isFolderIndexPath:(NSIndexPath *)indexPath {
-    return self.subfolders.count > 0 && indexPath.section == 0;
+- (BOOL)showsFolderChips {
+    return self.subfolders.count > 0 && self.searchQuery.length == 0;
 }
 
 - (void)cancelTapped {
@@ -289,23 +378,27 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
 }
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
-    return self.subfolders.count > 0 ? 2 : 1;
+    return 1;
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    if (self.subfolders.count > 0 && section == 0) return self.subfolders.count;
     return self.files.count;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    if ([self isFolderIndexPath:indexPath]) {
-        SCIGalleryFolderCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kSCIGalleryPickerFolderCellID forIndexPath:indexPath];
-        NSString *folder = self.subfolders[indexPath.item];
-        [cell configureWithFolderName:folder.lastPathComponent itemCount:[self eligibleFileCountForFolderPath:folder]];
-        return cell;
+    SCIGalleryFile *file = self.files[indexPath.item];
+    if (self.viewMode == SCIGalleryPickerViewModeGrid) {
+        SCIGalleryGridCell *gridCell = [collectionView dequeueReusableCellWithReuseIdentifier:kSCIGalleryPickerGridCellID forIndexPath:indexPath];
+        BOOL showsMeta = ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryGridShowSourceUsernameDisabledKey];
+        BOOL showsUsername = showsMeta && self.gridColumns <= 3;
+        [gridCell configureWithGalleryFile:file
+                             selectionMode:self.allowsMultipleSelection
+                                  selected:[self.selectedIDs containsObject:file.identifier]
+                               showsSource:showsMeta
+                             showsUsername:showsUsername];
+        return gridCell;
     }
 
-    SCIGalleryFile *file = self.files[indexPath.item];
     SCIGalleryListCollectionCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kSCIGalleryPickerListCellID forIndexPath:indexPath];
     [cell configureWithGalleryFile:file
                    selectionMode:self.allowsMultipleSelection
@@ -314,35 +407,74 @@ static NSString * const kSCIGalleryPickerFolderCellID = @"SCIGalleryPickerFolder
     return cell;
 }
 
+- (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView
+           viewForSupplementaryElementOfKind:(NSString *)kind
+                                 atIndexPath:(NSIndexPath *)indexPath {
+    if (![kind isEqualToString:UICollectionElementKindSectionHeader]) {
+        return [[UICollectionReusableView alloc] init];
+    }
+    SCIGalleryFolderChipBar *header =
+        [collectionView dequeueReusableSupplementaryViewOfKind:kind
+                                           withReuseIdentifier:kSCIGalleryPickerFolderChipHeaderID
+                                                  forIndexPath:indexPath];
+    if (![self showsFolderChips]) {
+        return header;
+    }
+
+    NSMutableArray<NSString *> *names = [NSMutableArray arrayWithCapacity:self.subfolders.count];
+    NSMutableArray<NSNumber *> *counts = [NSMutableArray arrayWithCapacity:self.subfolders.count];
+    for (NSString *path in self.subfolders) {
+        [names addObject:path.lastPathComponent];
+        [counts addObject:@([self eligibleFileCountForFolderPath:path])];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [header configureWithFolderNames:names
+                              counts:counts
+                            onSelect:^(NSInteger index) {
+        [weakSelf openSubfolderAtIndex:index];
+    }
+                        menuProvider:nil];
+    return header;
+}
+
+- (void)openSubfolderAtIndex:(NSInteger)index {
+    if (index < 0 || index >= (NSInteger)self.subfolders.count) return;
+    NSString *folder = self.subfolders[index];
+    SCIGalleryPickerViewController *child = [[SCIGalleryPickerViewController alloc] initWithFolderPath:folder
+                                                                                                title:self.pickerTitle
+                                                                                    allowedMediaTypes:self.allowedMediaTypes
+                                                                              allowsMultipleSelection:self.allowsMultipleSelection
+                                                                                           completion:self.completion];
+    child.selectedIDs = self.selectedIDs;
+    child.selectedFilesByID = self.selectedFilesByID;
+    [self.navigationController pushViewController:child animated:YES];
+}
+
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(UICollectionViewLayout *)layout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    return CGSizeMake(collectionView.bounds.size.width, 88.0);
+    CGFloat width = collectionView.bounds.size.width;
+    if (self.viewMode == SCIGalleryPickerViewModeGrid) {
+        NSInteger columns = MAX(kSCIGalleryGridColumnsMin, MIN(kSCIGalleryGridColumnsMax, self.gridColumns));
+        CGFloat totalSpacing = kSCIGalleryPickerGridSpacing * (columns - 1);
+        CGFloat side = floor((width - totalSpacing) / columns);
+        return CGSizeMake(side, side);
+    }
+    return CGSizeMake(width, 88.0);
 }
 
-- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView
-                        layout:(UICollectionViewLayout *)layout
-        insetForSectionAtIndex:(NSInteger)section {
-    if (self.subfolders.count > 0 && section == 0) {
-        return UIEdgeInsetsMake(10.0, 0.0, 6.0, 0.0);
+- (CGSize)collectionView:(UICollectionView *)collectionView
+                  layout:(UICollectionViewLayout *)layout
+referenceSizeForHeaderInSection:(NSInteger)section {
+    if (section == 0 && [self showsFolderChips]) {
+        return CGSizeMake(collectionView.bounds.size.width, [SCIGalleryFolderChipBar preferredHeight]);
     }
-    return UIEdgeInsetsZero;
+    return CGSizeZero;
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     [collectionView deselectItemAtIndexPath:indexPath animated:YES];
-    if ([self isFolderIndexPath:indexPath]) {
-        NSString *folder = self.subfolders[indexPath.item];
-        SCIGalleryPickerViewController *child = [[SCIGalleryPickerViewController alloc] initWithFolderPath:folder
-                                                                                                    title:self.pickerTitle
-                                                                                        allowedMediaTypes:self.allowedMediaTypes
-                                                                                  allowsMultipleSelection:self.allowsMultipleSelection
-                                                                                               completion:self.completion];
-        child.selectedIDs = self.selectedIDs;
-        child.selectedFilesByID = self.selectedFilesByID;
-        [self.navigationController pushViewController:child animated:YES];
-        return;
-    }
 
     SCIGalleryFile *file = self.files[indexPath.item];
     if (self.allowsMultipleSelection) {
