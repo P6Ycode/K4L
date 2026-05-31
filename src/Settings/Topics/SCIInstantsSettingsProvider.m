@@ -1,4 +1,5 @@
 #import "SCIInstantsSettingsProvider.h"
+#include <UIKit/UIKit.h>
 
 #import "../SCITopicSettingsSupport.h"
 #import "../SCISettingsViewController.h"
@@ -46,7 +47,7 @@ static NSArray *SCIInstantsSettingsSections(void) {
             ({  BOOL cameraControlAvailable = SCIPrefIsAvailable(@"instants_disable_camera_control");
                 SCISetting *s = [SCISetting switchCellWithTitle:@"Disable Camera Control"
                                                        subtitle:cameraControlAvailable ? @"" : @"Requires an iPhone with Camera Control"
-                                                           icon:SCISettingsSystemIcon(@"button.vertical.right.press", 20.0, UIImageSymbolWeightRegular)
+                                                           icon:SCISettingsSystemIcon(@"button.vertical.right.press", SCISettingsCellIconPointSize, UIImageSymbolWeightSemibold)
                                                     defaultsKey:@"instants_disable_camera_control"];
                 s;
             }),

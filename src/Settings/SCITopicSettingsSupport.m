@@ -30,11 +30,39 @@ UIImage *SCISettingsIcon(NSString *name) {
 }
 
 UIImage *SCISettingsSystemIcon(NSString *name, CGFloat pointSize, UIImageSymbolWeight weight) {
-    return [SCIAssetUtils resolvedImageNamed:name
-                                   pointSize:pointSize
-                                      weight:weight
-                                      source:SCIResolvedImageSourceSystemSymbol
-                               renderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImage *symbol = [SCIAssetUtils resolvedImageNamed:name
+                                              pointSize:pointSize
+                                                 weight:weight
+                                                 source:SCIResolvedImageSourceSystemSymbol
+                                          renderingMode:UIImageRenderingModeAlwaysTemplate];
+    if (!symbol) return nil;
+
+    // SF Symbols size by cap-height, so a wide/tall glyph (e.g.
+    // button.vertical.right.press) renders to a larger bounding box than the
+    // IG asset icons, which are a fixed square. Aspect-fit the symbol into the
+    // same square canvas so it lines up with the other settings rows.
+    CGFloat side = SCISettingsCellIconPointSize;
+    CGSize canvasSize = CGSizeMake(side, side);
+    CGSize sourceSize = symbol.size;
+    if (sourceSize.width <= 0.0 || sourceSize.height <= 0.0) {
+        return symbol;
+    }
+
+    CGFloat scale = MIN(canvasSize.width / sourceSize.width, canvasSize.height / sourceSize.height);
+    CGSize drawSize = CGSizeMake(sourceSize.width * scale, sourceSize.height * scale);
+    CGRect drawRect = CGRectMake((canvasSize.width - drawSize.width) / 2.0,
+                                 (canvasSize.height - drawSize.height) / 2.0,
+                                 drawSize.width,
+                                 drawSize.height);
+
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.opaque = NO;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:canvasSize format:format];
+    UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+        (void)context;
+        [symbol drawInRect:CGRectIntegral(drawRect)];
+    }];
+    return [normalized imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
 SCISetting *SCISettingApplyIconTint(SCISetting *setting, UIColor *tintColor) {
