@@ -52,6 +52,11 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
 @property (nonatomic, copy) void (^action)(void);
 @property (nonatomic, copy, nullable) BOOL (^switchValueProvider)(void);
 @property (nonatomic, copy, nullable) void (^switchChangeHandler)(BOOL isOn);
+/// When YES, the table reloads after `switchChangeHandler` runs. Default NO so
+/// the switch's native (Liquid Glass) toggle animation isn't cut short by a
+/// cell rebuild. Set YES only when the row's appearance must refresh on toggle
+/// and the handler doesn't already reload the table itself.
+@property (nonatomic) BOOL reloadsTableOnSwitchChange;
 
 @property (nonatomic, strong) UIMenu *baseMenu;
 @property (nonatomic, strong, nullable) NSDictionary *userInfo;

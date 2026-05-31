@@ -939,7 +939,13 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
         if (row.action) {
             row.action();
         }
-        [self.tableView reloadData];
+        // Avoid reloading by default: rebuilding the cell swaps in a fresh
+        // switch set non-animated, which cuts the native (Liquid Glass) toggle
+        // animation short. Handlers that need a table refresh either set
+        // reloadsTableOnSwitchChange or reload themselves (e.g. rebuildSections).
+        if (row.reloadsTableOnSwitchChange) {
+            [self.tableView reloadData];
+        }
         return;
     }
 
