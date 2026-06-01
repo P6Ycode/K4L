@@ -224,8 +224,8 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
     if (audioActions.count > 0) {
         [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"audio"
                                                                   title:@"Audio"
-                                                               iconName:@"audio"
-                                                            collapsible:NO
+                                                               iconName:@"audio_download"
+                                                            collapsible:YES
                                                                 actions:audioActions]];
     }
     [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"copy"
