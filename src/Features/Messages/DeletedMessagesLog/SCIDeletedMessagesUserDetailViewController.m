@@ -406,11 +406,22 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
 - (UIContextMenuConfiguration *)tableView:(UITableView *)tableView contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath point:(CGPoint)point {
     SCIDeletedMessage *message = self.visibleMessages[indexPath.row];
     __weak typeof(self) weakSelf = self;
-    return [UIContextMenuConfiguration configurationWithIdentifier:nil
+    return [UIContextMenuConfiguration configurationWithIdentifier:indexPath
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggested) {
         return [weakSelf contextMenuForMessage:message];
     }];
+}
+
+- (UITargetedPreview *)tableView:(UITableView *)tableView previewForHighlightingContextMenuWithConfiguration:(UIContextMenuConfiguration *)configuration {
+    id identifier = configuration.identifier;
+    NSIndexPath *indexPath = [identifier isKindOfClass:NSIndexPath.class] ? (NSIndexPath *)identifier : nil;
+    SCIDeletedMessageBubbleCell *cell = indexPath ? (SCIDeletedMessageBubbleCell *)[tableView cellForRowAtIndexPath:indexPath] : nil;
+    return [cell isKindOfClass:SCIDeletedMessageBubbleCell.class] ? [cell contextMenuTargetedPreview] : nil;
+}
+
+- (UITargetedPreview *)tableView:(UITableView *)tableView previewForDismissingContextMenuWithConfiguration:(UIContextMenuConfiguration *)configuration {
+    return [self tableView:tableView previewForHighlightingContextMenuWithConfiguration:configuration];
 }
 
 - (UIMenu *)contextMenuForMessage:(SCIDeletedMessage *)message {

@@ -823,7 +823,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         CGFloat side = floor((width - totalSpacing) / columns);
         return CGSizeMake(side, side);
     }
-    return CGSizeMake(width, 88);
+    return CGSizeMake(width, 72);
 }
 
 - (UIEdgeInsets)collectionView:(UICollectionView *)cv

@@ -320,6 +320,7 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
             SCIDeletedMessage *existing = existingById[m.messageId];
             if (!m.mediaPath.length) m.mediaPath = existing.mediaPath;
             if (!m.thumbnailPath.length) m.thumbnailPath = existing.thumbnailPath;
+            if (!m.mediaMimeType.length) m.mediaMimeType = existing.mediaMimeType;
             if (!m.stagedMediaPath.length) m.stagedMediaPath = existing.stagedMediaPath;
             if (!m.stagedThumbnailPath.length) m.stagedThumbnailPath = existing.stagedThumbnailPath;
             [incomingIds addObject:m.messageId];
@@ -483,7 +484,7 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
     return sciDirectorySize(sciMediaDirForOwner(ownerPK));
 }
 
-#pragma mark - Pending reconciliation and staged ephemeral media
+#pragma mark - Pending reconciliation and media recovery cache
 
 + (BOOL)savePendingCandidateSnapshot:(NSDictionary *)snapshot forOwnerPK:(NSString *)ownerPK {
     NSString *messageId = [snapshot[@"message_id"] isKindOfClass:[NSString class]] ? snapshot[@"message_id"] : nil;

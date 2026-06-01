@@ -28,6 +28,8 @@ extern NSString *const SCIDeletedMessageBubbleCellReuseID;
 // `messageId`. Avoids a full row reload (which can miss during initial layout).
 - (void)applyLoadedThumbnail:(UIImage *)thumbnail forMessageId:(NSString *)messageId;
 
+- (UITargetedPreview *)contextMenuTargetedPreview;
+
 @property (nonatomic, copy, readonly, nullable) NSString *messageId;
 
 @end

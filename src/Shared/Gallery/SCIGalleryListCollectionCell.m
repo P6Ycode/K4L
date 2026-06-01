@@ -17,6 +17,8 @@
 @property (nonatomic, strong) UIImageView *favoriteIcon;
 @property (nonatomic, strong) UIButton *moreButton;
 @property (nonatomic, strong) UIImageView *selectionIndicator;
+@property (nonatomic, strong) UIView *highlightOverlay;
+@property (nonatomic, strong) UIView *separator;
 @property (nonatomic, strong) NSLayoutConstraint *thumbnailLeadingConstraint;
 
 @end
@@ -31,7 +33,14 @@
 }
 
 - (void)setupViews {
-    self.contentView.backgroundColor = [UIColor clearColor];
+    self.contentView.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+
+    self.highlightOverlay = [[UIView alloc] init];
+    self.highlightOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    self.highlightOverlay.backgroundColor = [[SCIUtils SCIColor_InstagramPrimaryText] colorWithAlphaComponent:0.06];
+    self.highlightOverlay.hidden = YES;
+    self.highlightOverlay.userInteractionEnabled = NO;
+    [self.contentView addSubview:self.highlightOverlay];
 
     self.thumbnailView = [[UIImageView alloc] init];
     self.thumbnailView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -110,20 +119,30 @@
     self.moreButton.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
     [self.contentView addSubview:self.moreButton];
 
-    UILayoutGuide *margin = self.contentView.layoutMarginsGuide;
-    self.thumbnailLeadingConstraint = [self.thumbnailView.leadingAnchor constraintEqualToAnchor:margin.leadingAnchor constant:8];
+    self.thumbnailLeadingConstraint = [self.thumbnailView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16];
+
+    self.separator = [[UIView alloc] init];
+    self.separator.translatesAutoresizingMaskIntoConstraints = NO;
+    self.separator.backgroundColor = [SCIUtils SCIColor_InstagramSeparator];
+    [self.contentView addSubview:self.separator];
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.selectionIndicator.leadingAnchor constraintEqualToAnchor:margin.leadingAnchor constant:8],
+        [self.highlightOverlay.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.highlightOverlay.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [self.highlightOverlay.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [self.highlightOverlay.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+
+        [self.selectionIndicator.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
         [self.selectionIndicator.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
         [self.selectionIndicator.widthAnchor constraintEqualToConstant:20],
         [self.selectionIndicator.heightAnchor constraintEqualToConstant:20],
 
         self.thumbnailLeadingConstraint,
         [self.thumbnailView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [self.thumbnailView.widthAnchor constraintEqualToConstant:56],
-        [self.thumbnailView.heightAnchor constraintEqualToConstant:56],
+        [self.thumbnailView.widthAnchor constraintEqualToConstant:52],
+        [self.thumbnailView.heightAnchor constraintEqualToConstant:52],
 
-        [self.moreButton.trailingAnchor constraintEqualToAnchor:margin.trailingAnchor constant:-2],
+        [self.moreButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8],
         [self.moreButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
         [self.moreButton.widthAnchor constraintEqualToConstant:40],
         [self.moreButton.heightAnchor constraintEqualToConstant:40],
@@ -156,7 +175,17 @@
         [self.favoriteIcon.centerYAnchor constraintEqualToAnchor:self.titleLabel.centerYAnchor],
         [self.favoriteIcon.widthAnchor constraintEqualToConstant:14],
         [self.favoriteIcon.heightAnchor constraintEqualToConstant:14],
+
+        [self.separator.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:80],
+        [self.separator.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [self.separator.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+        [self.separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
     ]];
+}
+
+- (void)setHighlighted:(BOOL)highlighted {
+    [super setHighlighted:highlighted];
+    self.highlightOverlay.hidden = !highlighted;
 }
 
 - (void)prepareForReuse {
@@ -173,7 +202,7 @@
     self.selectionIndicator.hidden = YES;
     self.selectionIndicator.image = nil;
     self.selectionIndicator.alpha = 0.0;
-    self.thumbnailLeadingConstraint.constant = 8;
+    self.thumbnailLeadingConstraint.constant = 16.0;
     self.moreButton.hidden = NO;
     self.moreButton.alpha = 1.0;
 }
@@ -225,7 +254,7 @@
         self.moreButton.hidden = NO;
     }
 
-    self.thumbnailLeadingConstraint.constant = selectionMode ? 40.0 : 8.0;
+    self.thumbnailLeadingConstraint.constant = selectionMode ? 56.0 : 16.0;
 
     void (^applyState)(void) = ^{
         self.selectionIndicator.alpha = selectionMode ? 1.0 : 0.0;

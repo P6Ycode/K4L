@@ -182,6 +182,12 @@ static NSString *SCIDeletedFormatDuration(double seconds);
                      : [SCIUtils SCIColor_InstagramTertiaryBackground];
 }
 
+- (UITargetedPreview *)contextMenuTargetedPreview {
+    UIPreviewParameters *parameters = [UIPreviewParameters new];
+    parameters.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+    return [[UITargetedPreview alloc] initWithView:self.contentView parameters:parameters];
+}
+
 - (void)buildKindChip {
     _kindChip = [UIView new];
     _kindChip.translatesAutoresizingMaskIntoConstraints = NO;

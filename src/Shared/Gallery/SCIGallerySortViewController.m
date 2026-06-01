@@ -50,12 +50,10 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
         self.backgroundColor = [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.18];
         self.tintColor = [SCIUtils SCIColor_Primary];
         [self setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
-        self.layer.borderColor = [SCIUtils SCIColor_Primary].CGColor;
     } else {
         self.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
         self.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
         [self setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
-        self.layer.borderColor = [SCIUtils SCIColor_InstagramSeparator].CGColor;
     }
 }
 

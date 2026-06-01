@@ -127,9 +127,9 @@ static NSString *SCIDMStorageOwnerPK(void) {
 
     [sections addObject:SCITopicSection(@"Disk Usage", @[
         [SCISetting valueCellWithTitle:@"Captured Media" subtitle:[self formattedSize:self.mediaBytes] icon:SCISettingsIcon(@"media")],
-        [SCISetting valueCellWithTitle:@"Saved Disappearing Media" subtitle:[self formattedSize:self.stagedMediaBytes] icon:SCISettingsIcon(@"clock")],
+        [SCISetting valueCellWithTitle:@"Media Recovery Cache" subtitle:[self formattedSize:self.stagedMediaBytes] icon:SCISettingsIcon(@"clock")],
         [SCISetting valueCellWithTitle:@"Profile Pictures" subtitle:[self formattedSize:self.avatarBytes] icon:SCISettingsIcon(@"user_circle")],
-    ], @"View-once and view-twice media is saved on-device before an unsend so it remains recoverable. It is excluded from deleted-message exports until the message is unsent.")];
+    ], @"View-once, view-twice, GIF, and sticker media is cached on-device before an unsend so it remains recoverable. It is excluded from deleted-message exports until the message is unsent.")];
 
     __weak typeof(self) weakSelf = self;
 
@@ -139,7 +139,7 @@ static NSString *SCIDMStorageOwnerPK(void) {
     clearMedia.tintColor = [SCIUtils SCIColor_InstagramDestructive];
     clearMedia.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
 
-    SCISetting *clearStaged = [SCISetting buttonCellWithTitle:@"Clear Saved Disappearing Media" subtitle:nil icon:SCISettingsIcon(@"clock") action:^{
+    SCISetting *clearStaged = [SCISetting buttonCellWithTitle:@"Clear Media Recovery Cache" subtitle:nil icon:SCISettingsIcon(@"clock") action:^{
         [weakSelf confirmClearStagedMedia];
     }];
     clearStaged.tintColor = [SCIUtils SCIColor_InstagramDestructive];
@@ -152,7 +152,7 @@ static NSString *SCIDMStorageOwnerPK(void) {
     clearLog.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
 
     [sections addObject:SCITopicSection(@"Maintenance", @[clearMedia, clearStaged, clearLog],
-                                        @"Clearing saved disappearing media keeps lightweight message metadata for best-effort fallback after a future unsend. Clearing the log does not clear saved disappearing media.")];
+                                        @"Clearing the media recovery cache keeps lightweight message metadata for best-effort fallback after a future unsend. Clearing the log does not clear the recovery cache.")];
 
     [self replaceSections:sections];
 }
@@ -196,8 +196,8 @@ static NSString *SCIDMStorageOwnerPK(void) {
 
 - (void)confirmClearStagedMedia {
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:@"Clear saved disappearing media?"
-                                                message:@"This removes saved view-once and view-twice media. Lightweight metadata remains so SCInsta can still attempt a best-effort download after a future unsend."
+                                                  title:@"Clear media recovery cache?"
+                                                message:@"This removes pre-cached view-once, view-twice, GIF, and sticker media. Lightweight metadata remains so SCInsta can still attempt a best-effort download after a future unsend."
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
         [SCIIGAlertAction actionWithTitle:@"Clear Media" style:SCIIGAlertActionStyleDestructive handler:^{

@@ -5,6 +5,7 @@
 #import "../../../Utils.h"
 #import "../../../Shared/MediaDownload/SCIDashParser.h"
 #import "../../../Shared/MediaDownload/SCIMediaFFmpeg.h"
+#import "../../../Shared/MediaPreview/SCIImageFormat.h"
 #import <objc/runtime.h>
 
 #pragma mark - Lazy weak-ref cache
@@ -170,6 +171,117 @@ static id sciTryObjectSelector(id obj, NSString *name) {
     if (!obj || ![obj respondsToSelector:sel]) return nil;
     @try { return ((id(*)(id, SEL))objc_msgSend)(obj, sel); }
     @catch (__unused id e) { return nil; }
+}
+
+static BOOL sciBoolSelector(id obj, NSString *name, BOOL *found) {
+    if (found) *found = NO;
+    SEL sel = NSSelectorFromString(name);
+    if (!obj || ![obj respondsToSelector:sel]) return NO;
+    @try {
+        NSMethodSignature *sig = [obj methodSignatureForSelector:sel];
+        if (!sig) return NO;
+        NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+        inv.target = obj; inv.selector = sel;
+        [inv invoke];
+        BOOL value = NO;
+        [inv getReturnValue:&value];
+        if (found) *found = YES;
+        return value;
+    } @catch (__unused id e) { return NO; }
+}
+
+static BOOL sciBoolIvar(id obj, const char *name, BOOL *found) {
+    if (found) *found = NO;
+    if (!obj || !name) return NO;
+    Ivar iv = NULL;
+    for (Class c = [obj class]; c && !iv; c = class_getSuperclass(c)) iv = class_getInstanceVariable(c, name);
+    if (!iv) return NO;
+    const char *type = ivar_getTypeEncoding(iv);
+    if (!type || (type[0] != 'B' && type[0] != 'c')) return NO;
+    @try {
+        BOOL value = *(BOOL *)((uint8_t *)(__bridge void *)obj + ivar_getOffset(iv));
+        if (found) *found = YES;
+        return value;
+    } @catch (__unused id e) { return NO; }
+}
+
+static BOOL sciSemanticIsSticker(id obj, BOOL *found) {
+    BOOL value = sciBoolSelector(obj, @"isSticker", found);
+    if (found && *found) return value;
+    return sciBoolIvar(obj, "_isSticker", found);
+}
+
+static NSString *sciURLStringValue(id value) {
+    if ([value isKindOfClass:[NSURL class]]) return [(NSURL *)value absoluteString];
+    if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] ? value : nil;
+    return nil;
+}
+
+static id sciFindObjectWithClassNamesRecursive(id obj, NSSet<NSString *> *classNames, int depth,
+                                               NSMutableSet<NSValue *> *visited) {
+    if (!obj || depth < 0) return nil;
+    if ([classNames containsObject:NSStringFromClass([obj class])]) return obj;
+    if ([obj isKindOfClass:[NSString class]] || [obj isKindOfClass:[NSNumber class]]
+        || [obj isKindOfClass:[NSDate class]] || [obj isKindOfClass:[NSURL class]]) return nil;
+    if ([obj isKindOfClass:[NSArray class]]) {
+        for (id value in (NSArray *)obj) {
+            id found = sciFindObjectWithClassNamesRecursive(value, classNames, depth - 1, visited);
+            if (found) return found;
+        }
+        return nil;
+    }
+    if ([obj isKindOfClass:[NSDictionary class]]) {
+        for (id value in [(NSDictionary *)obj allValues]) {
+            id found = sciFindObjectWithClassNamesRecursive(value, classNames, depth - 1, visited);
+            if (found) return found;
+        }
+        return nil;
+    }
+    NSValue *box = [NSValue valueWithNonretainedObject:obj];
+    if ([visited containsObject:box]) return nil;
+    [visited addObject:box];
+    for (Class c = [obj class]; c && c != [NSObject class]; c = class_getSuperclass(c)) {
+        unsigned int count = 0;
+        Ivar *ivars = class_copyIvarList(c, &count);
+        for (unsigned int i = 0; i < count; i++) {
+            const char *type = ivar_getTypeEncoding(ivars[i]);
+            if (!type || type[0] != '@') continue;
+            id value = nil;
+            @try { value = object_getIvar(obj, ivars[i]); } @catch (__unused id e) {}
+            id found = sciFindObjectWithClassNamesRecursive(value, classNames, depth - 1, visited);
+            if (found) { free(ivars); return found; }
+        }
+        if (ivars) free(ivars);
+    }
+    return nil;
+}
+
+static id sciFindObjectWithClassNames(id obj, NSArray<NSString *> *classNames, int depth) {
+    return sciFindObjectWithClassNamesRecursive(obj, [NSSet setWithArray:classNames], depth, [NSMutableSet set]);
+}
+
+static NSString *sciGiphyMediaURL(id giphy) {
+    id imageModels = sciTryObjectSelector(giphy, @"imageModels");
+    if (![imageModels isKindOfClass:[NSDictionary class]]) return nil;
+    for (NSString *configName in @[@"webpConfig", @"gifConfig", @"mp4Config"]) {
+        for (id imageModel in [(NSDictionary *)imageModels allValues]) {
+            id config = sciTryObjectSelector(imageModel, configName);
+            NSString *url = sciURLStringValue(sciTryObjectSelector(config, @"url"));
+            if (url.length) return url;
+        }
+    }
+    return nil;
+}
+
+static NSString *sciStickerMediaURL(id sticker) {
+    id store = sciAnyIvar(sticker, "_storeSticker");
+    id facebook = sciAnyIvar(sticker, "_fbSticker");
+    for (NSString *selector in @[@"animatedPreviewImageURL", @"imageURL", @"fallbackImageURL",
+                                  @"staticPreviewImageURL", @"url"]) {
+        NSString *url = sciURLStringValue(sciTryObjectSelector(store ?: facebook, selector));
+        if (url.length) return url;
+    }
+    return nil;
 }
 
 static NSDate *sciDateFromSnapshotValue(id value) {
@@ -590,15 +702,36 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
     // Media branch — photo / video / voice / gif / sticker.
     id media = sciAnyIvar(content, "_media");
     if (media) {
+        id stickerPayload = sciAnyIvar(media, "_sticker") ?: sciTryObjectSelector(media, @"sticker");
+        id instamadilloGif = sciTryObjectSelector(media, @"gif")
+            ?: sciFindObjectWithClassNames(media, @[@"IGDirectInstamadilloGif"], 5);
+        id giphy = sciAnyIvar(media, "_thirdPartyAnimatedMedia_gif")
+            ?: sciFindObjectWithClassNames(media, @[@"IGGiphyGIFModel"], 5);
+        BOOL hasSemanticSticker = NO;
+        BOOL semanticSticker = sciSemanticIsSticker(instamadilloGif ?: giphy, &hasSemanticSticker);
+        if (!hasSemanticSticker) semanticSticker = sciBoolIvar(media, "_animatedMedia_isSticker", &hasSemanticSticker);
+
         NSMutableSet *vis = [NSMutableSet set];
         NSMutableSet<NSString *> *tokens = [NSMutableSet set];
         sciCollectIvarNames(media, 5, vis, tokens);
 
-        if (sciSetContainsAny(tokens, @[@"voice", @"audio"]))      kind = SCIDeletedMessageKindVoice;
+        if (stickerPayload || (hasSemanticSticker && semanticSticker)) kind = SCIDeletedMessageKindSticker;
+        else if (instamadilloGif || giphy)                         kind = SCIDeletedMessageKindGif;
+        else if (sciSetContainsAny(tokens, @[@"voice", @"audio"])) kind = SCIDeletedMessageKindVoice;
         else if (sciSetContainsAny(tokens, @[@"sticker"]))         kind = SCIDeletedMessageKindSticker;
         else if (sciSetContainsAny(tokens, @[@"giphy", @"gif", @"animated"])) kind = SCIDeletedMessageKindGif;
         else if (sciSetContainsAny(tokens, @[@"video", @"dashmanifest", @"playableurl"])) kind = SCIDeletedMessageKindVideo;
         else                                                       kind = SCIDeletedMessageKindPhoto;
+
+        if (kind == SCIDeletedMessageKindGif || kind == SCIDeletedMessageKindSticker) {
+            NSString *explicitURL = sciURLStringValue(sciTryObjectSelector(instamadilloGif, @"gifURL"));
+            if (!explicitURL.length) explicitURL = sciGiphyMediaURL(giphy);
+            if (!explicitURL.length && stickerPayload) explicitURL = sciStickerMediaURL(stickerPayload);
+            if (explicitURL.length) {
+                mediaURL = explicitURL;
+                mediaScore = 100;
+            }
+        }
 
         if (kind == SCIDeletedMessageKindVoice) {
             double dur = 0; NSArray *wf = nil;
@@ -684,6 +817,20 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
         }
 
         sciScanForURLsRecursive(media, 5, &mediaURL, &mediaScore, &thumbURL, &thumbScore, @"media");
+    }
+
+    // Some XMA and outgoing layouts keep animated media outside `_media`.
+    if (kind == SCIDeletedMessageKindUnknown) {
+        id animated = sciFindObjectWithClassNames(content, @[@"IGDirectInstamadilloGif", @"IGGiphyGIFModel"], 5);
+        if (animated) {
+            BOOL foundSticker = NO;
+            kind = sciSemanticIsSticker(animated, &foundSticker) && foundSticker
+                ? SCIDeletedMessageKindSticker : SCIDeletedMessageKindGif;
+            mediaURL = sciURLStringValue(sciTryObjectSelector(animated, @"gifURL"));
+            if (!mediaURL.length) mediaURL = sciGiphyMediaURL(animated);
+            if (mediaURL.length) mediaScore = 100;
+            sciScanForURLsRecursive(animated, 4, &mediaURL, &mediaScore, &thumbURL, &thumbScore, @"animatedMedia");
+        }
     }
 
     // Reshare branch.
@@ -892,6 +1039,44 @@ static void sciDownloadToTempFile(NSURL *url, void (^done)(NSURL *file, NSError 
     }] resume];
 }
 
+static BOOL sciAttachStagedPathToFinalizedMessage(NSString *relativePath,
+                                                   NSString *messageId,
+                                                   NSString *ownerPk,
+                                                   BOOL isThumbnail,
+                                                   NSString *mimeType) {
+    if (!relativePath.length || !messageId.length || !ownerPk.length) return NO;
+    for (SCIDeletedMessage *m in [SCIDeletedMessagesStorage allMessagesForOwnerPK:ownerPk]) {
+        if (![m.messageId isEqualToString:messageId]) continue;
+        NSString *promoted = [SCIDeletedMessagesStorage promoteStagedRelativePath:relativePath
+                                                                        messageId:messageId
+                                                                          ownerPK:ownerPk
+                                                                        thumbnail:isThumbnail];
+        if (!promoted.length) return NO;
+        if (isThumbnail) m.thumbnailPath = promoted;
+        else {
+            m.mediaPath = promoted;
+            if (mimeType.length) m.mediaMimeType = mimeType;
+        }
+        return [SCIDeletedMessagesStorage saveMessage:m forOwnerPK:ownerPk];
+    }
+    return NO;
+}
+
+static BOOL sciPersistStagedPath(NSString *relativePath,
+                                 NSString *messageId,
+                                 NSString *ownerPk,
+                                 BOOL isThumbnail,
+                                 NSString *mimeType) {
+    NSString *key = isThumbnail ? @"staged_thumbnail_path" : @"staged_media_path";
+    NSMutableDictionary *values = [NSMutableDictionary dictionaryWithObject:relativePath forKey:key];
+    if (!isThumbnail && mimeType.length) values[@"media_mime"] = mimeType;
+    BOOL patched = [SCIDeletedMessagesStorage patchPendingCandidateForMessageId:messageId
+                                                                         values:values
+                                                                        ownerPK:ownerPk];
+    BOOL attached = sciAttachStagedPathToFinalizedMessage(relativePath, messageId, ownerPk, isThumbnail, mimeType);
+    return patched || attached;
+}
+
 // DASH video reps are silent — download video + audio reps and mux to mp4.
 static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
                                     NSString *messageId, NSString *ownerPk,
@@ -901,6 +1086,17 @@ static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
     NSURL *vURL = [NSURL URLWithString:videoURL];
     NSURL *aURL = [NSURL URLWithString:audioURL];
     if (!vURL || !aURL) return;
+    NSString *fname = staged
+        ? [SCIDeletedMessagesStorage reserveRelativeStagedMediaPathForMessageId:messageId extension:@"mp4" ownerPK:ownerPk thumbnail:NO]
+        : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId extension:@"mp4" ownerPK:ownerPk];
+    NSString *abs = staged
+        ? [SCIDeletedMessagesStorage absoluteStagedPathForRelativePath:fname ownerPK:ownerPk]
+        : [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
+    if (!abs.length) return;
+    if ([[NSFileManager defaultManager] fileExistsAtPath:abs]) {
+        if (!staged || sciPersistStagedPath(fname, messageId, ownerPk, NO, @"video/mp4")) return;
+        [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
+    }
 
     dispatch_async(sciDownloadQueue(), ^{
         __block NSURL *vFile = nil, *aFile = nil;
@@ -926,20 +1122,15 @@ static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
             [[NSFileManager defaultManager] removeItemAtURL:vFile error:nil];
             [[NSFileManager defaultManager] removeItemAtURL:aFile error:nil];
             if (err || !outURL) return;
-            NSString *fname = staged
-                ? [SCIDeletedMessagesStorage reserveRelativeStagedMediaPathForMessageId:messageId extension:@"mp4" ownerPK:ownerPk thumbnail:NO]
-                : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId extension:@"mp4" ownerPK:ownerPk];
-            NSString *abs = staged
-                ? [SCIDeletedMessagesStorage absoluteStagedPathForRelativePath:fname ownerPK:ownerPk]
-                : [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
-            if (!abs.length) return;
-            [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
-            if (![[NSFileManager defaultManager] moveItemAtURL:outURL toURL:[NSURL fileURLWithPath:abs] error:nil]) return;
+            NSFileManager *fm = [NSFileManager defaultManager];
+            if ([fm fileExistsAtPath:abs]) {
+                [fm removeItemAtURL:outURL error:nil];
+            } else if (![fm moveItemAtURL:outURL toURL:[NSURL fileURLWithPath:abs] error:nil]) {
+                return;
+            }
             if (staged) {
-                if (![SCIDeletedMessagesStorage patchPendingCandidateForMessageId:messageId
-                                                                            values:@{@"staged_media_path": fname}
-                                                                           ownerPK:ownerPk]) {
-                    [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
+                if (!sciPersistStagedPath(fname, messageId, ownerPk, NO, @"video/mp4")) {
+                    [fm removeItemAtPath:abs error:nil];
                 }
                 return;
             }
@@ -978,24 +1169,45 @@ static void sciDownloadMedia(NSString *urlString, NSString *messageId,
         ? [SCIDeletedMessagesStorage absoluteStagedPathForRelativePath:fname ownerPK:ownerPk]
         : [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
     if (!abs.length) return;
-    if ([[NSFileManager defaultManager] fileExistsAtPath:abs]) return;
+    if ([[NSFileManager defaultManager] fileExistsAtPath:abs]) {
+        if (!staged || sciPersistStagedPath(fname, messageId, ownerPk, isThumbnail, nil)) return;
+        [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
+    }
 
     dispatch_async(sciDownloadQueue(), ^{
         NSURLSessionDataTask *task = [sciSharedSession() dataTaskWithURL:url
                                                        completionHandler:^(NSData *data, NSURLResponse *resp, NSError *err) {
             if (err || !data.length) return;
-            if (![data writeToFile:abs atomically:YES]) return;
+            NSString *detectedExt = SCIFileExtensionForMediaResponse(data, resp, url);
+            if (!detectedExt.length) detectedExt = ext;
+            if (!isThumbnail && kind == SCIDeletedMessageKindVoice) detectedExt = @"m4a";
+            NSString *writeName = fname;
+            NSString *writePath = abs;
+            if (![detectedExt.lowercaseString isEqualToString:ext.lowercaseString]) {
+                writeName = staged
+                    ? [SCIDeletedMessagesStorage reserveRelativeStagedMediaPathForMessageId:messageId extension:detectedExt ownerPK:ownerPk thumbnail:isThumbnail]
+                    : (isThumbnail
+                        ? [NSString stringWithFormat:@"thumb_%@.%@", messageId, detectedExt]
+                        : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId extension:detectedExt ownerPK:ownerPk]);
+                writePath = staged
+                    ? [SCIDeletedMessagesStorage absoluteStagedPathForRelativePath:writeName ownerPK:ownerPk]
+                    : [SCIDeletedMessagesStorage absolutePathForRelativePath:writeName ownerPK:ownerPk];
+            }
+            if (![data writeToFile:writePath atomically:YES]) return;
+            NSString *mimeType = SCIMIMETypeForImageFormat(SCIImageFormatForData(data)) ?: resp.MIMEType;
             if (staged) {
-                NSString *key = isThumbnail ? @"staged_thumbnail_path" : @"staged_media_path";
-                if (![SCIDeletedMessagesStorage patchPendingCandidateForMessageId:messageId values:@{key: fname} ownerPK:ownerPk]) {
-                    [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
+                if (!sciPersistStagedPath(writeName, messageId, ownerPk, isThumbnail, mimeType)) {
+                    [[NSFileManager defaultManager] removeItemAtPath:writePath error:nil];
                 }
                 return;
             }
             for (SCIDeletedMessage *m in [SCIDeletedMessagesStorage allMessagesForOwnerPK:ownerPk]) {
                 if (![m.messageId isEqualToString:messageId]) continue;
-                if (isThumbnail) m.thumbnailPath = fname;
-                else             m.mediaPath     = fname;
+                if (isThumbnail) m.thumbnailPath = writeName;
+                else {
+                    m.mediaPath = writeName;
+                    m.mediaMimeType = mimeType;
+                }
                 [SCIDeletedMessagesStorage saveMessage:m forOwnerPK:ownerPk];
                 break;
             }
@@ -1004,10 +1216,12 @@ static void sciDownloadMedia(NSString *urlString, NSString *messageId,
     });
 }
 
-static void sciStageEphemeralSnapshot(NSDictionary *snapshot, NSString *ownerPk) {
+static void sciStageRecoverySnapshot(NSDictionary *snapshot, NSString *ownerPk) {
     NSString *messageId = snapshot[@"sid"];
-    if (!messageId.length || !ownerPk.length || ![snapshot[@"view_mode"] isKindOfClass:[NSNumber class]]) return;
+    if (!messageId.length || !ownerPk.length) return;
     SCIDeletedMessageKind kind = (SCIDeletedMessageKind)[snapshot[@"kind"] integerValue];
+    BOOL disappearing = [snapshot[@"view_mode"] isKindOfClass:[NSNumber class]];
+    if (!disappearing && kind != SCIDeletedMessageKindGif && kind != SCIDeletedMessageKindSticker) return;
     NSString *mediaURL = snapshot[@"media_url"];
     NSString *audioURL = snapshot[@"audio_url"];
     if (kind == SCIDeletedMessageKindVideo && mediaURL.length && audioURL.length) {
@@ -1102,7 +1316,7 @@ void sciDMCaptureNoteInsert(id message, NSString *ownerPk, NSString *threadId, B
             if (!snapshot[@"thread_id"] && threadId.length) snapshot[@"thread_id"] = threadId;
             if (snapshot.count) {
                 [SCIDeletedMessagesStorage savePendingCandidateSnapshot:sciJSONSafeSnapshot(snapshot) forOwnerPK:ownerPk];
-                sciStageEphemeralSnapshot(snapshot, ownerPk);
+                sciStageRecoverySnapshot(snapshot, ownerPk);
             }
         }
     } @catch (__unused id e) {}
@@ -1221,18 +1435,27 @@ static BOOL sciFinalizeSnapshot(NSDictionary *snap, NSString *sid, NSString *thr
     m.previewText         = txt;
     m.mediaURL            = mu;
     m.thumbnailURL        = tu;
+    m.mediaMimeType       = snap[@"media_mime"];
     m.durationSeconds     = [snap[@"duration"] doubleValue];
     m.viewMode            = [snap[@"view_mode"] isKindOfClass:[NSNumber class]] ? [snap[@"view_mode"] integerValue] : -1;
     m.mediaURLStaleAt     = sciDateFromSnapshotValue(snap[@"media_url_stale_at"]);
-    m.mediaPath           = [SCIDeletedMessagesStorage promoteStagedRelativePath:snap[@"staged_media_path"]
-                                                                      messageId:sid ownerPK:owner thumbnail:NO];
-    m.thumbnailPath       = [SCIDeletedMessagesStorage promoteStagedRelativePath:snap[@"staged_thumbnail_path"]
-                                                                      messageId:sid ownerPK:owner thumbnail:YES];
     id wf = snap[@"waveform"];
     if ([wf isKindOfClass:[NSArray class]]) m.waveform = wf;
     m.replyToMessageId = snap[@"reply_to_id"];
 
     if (![SCIDeletedMessagesStorage saveMessage:m forOwnerPK:owner]) return NO;
+
+    // Save the log entry before promoting media so an in-flight staged download
+    // can attach itself even if it finishes while this unsend is being finalized.
+    NSDictionary *latestCandidate = [SCIDeletedMessagesStorage pendingCandidateSnapshotForMessageId:sid ownerPK:owner] ?: snap;
+    m.mediaMimeType = latestCandidate[@"media_mime"] ?: m.mediaMimeType;
+    m.mediaPath = [SCIDeletedMessagesStorage promoteStagedRelativePath:latestCandidate[@"staged_media_path"]
+                                                            messageId:sid ownerPK:owner thumbnail:NO];
+    m.thumbnailPath = [SCIDeletedMessagesStorage promoteStagedRelativePath:latestCandidate[@"staged_thumbnail_path"]
+                                                                messageId:sid ownerPK:owner thumbnail:YES];
+    if (m.mediaPath.length || m.thumbnailPath.length) {
+        [SCIDeletedMessagesStorage saveMessage:m forOwnerPK:owner];
+    }
     [SCIDeletedMessagesStorage removePendingCandidateForMessageId:sid ownerPK:owner];
     [SCIDeletedMessagesStorage removePendingRemovalForMessageId:sid ownerPK:owner];
 

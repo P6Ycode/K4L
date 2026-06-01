@@ -461,7 +461,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
         CGFloat side = floor((width - totalSpacing) / columns);
         return CGSizeMake(side, side);
     }
-    return CGSizeMake(width, 88.0);
+    return CGSizeMake(width, 72.0);
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView

@@ -80,7 +80,7 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 // Total size (bytes) of stored media for one account — used by Settings.
 + (unsigned long long)mediaSizeBytesForOwnerPK:(NSString *)ownerPK;
 
-#pragma mark - Pending reconciliation and staged ephemeral media
+#pragma mark - Pending reconciliation and media recovery cache
 
 + (BOOL)savePendingCandidateSnapshot:(NSDictionary *)snapshot forOwnerPK:(NSString *)ownerPK;
 + (nullable NSDictionary *)pendingCandidateSnapshotForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK;

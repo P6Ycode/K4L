@@ -609,8 +609,7 @@ static NSString *SCIPARelativeDate(NSDate *date) {
         [button setTitle:@"Following" forState:UIControlStateNormal];
         [button setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
         button.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-        button.layer.borderWidth = 1.0;
-        button.layer.borderColor = [SCIUtils SCIColor_InstagramSeparator].CGColor;
+        button.layer.borderWidth = 0.0;
     } else {
         [button setTitle:@"Follow" forState:UIControlStateNormal];
         [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];

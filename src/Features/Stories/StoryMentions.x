@@ -77,15 +77,13 @@ static NSString *SCIMentionUserPK(id userObj) {
 static void SCIMentionStyleFollowButton(UIButton *btn, BOOL following) {
     [btn setTitle:following ? @"Following" : @"Follow" forState:UIControlStateNormal];
     if (following) {
-        btn.backgroundColor = [SCIUtils SCIColor_InstagramTertiaryBackground];
+        btn.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
         [btn setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
-        btn.layer.borderWidth = 1.0;
-        btn.layer.borderColor = [[SCIUtils SCIColor_InstagramSeparator] colorWithAlphaComponent:0.8].CGColor;
     } else {
         btn.backgroundColor = [SCIUtils SCIColor_Primary];
         [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        btn.layer.borderWidth = 0.0;
     }
+    btn.layer.borderWidth = 0.0;
     btn.layer.cornerRadius = 8.0;
     btn.clipsToBounds = YES;
 }
@@ -196,12 +194,9 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 /// ============ Bottom sheet VC ============
 
 #define kSCIMentionAvatarSize 52.0
-#define kSCIMentionRowHeight  80.0
-#define kSCIMentionRowInset   16.0
-#define kSCIMentionRowCornerRadius 16.0
+#define kSCIMentionRowHeight  72.0
 
 @interface SCIMentionCell : UITableViewCell
-@property (nonatomic, strong) UIView *cardView;
 @property (nonatomic, strong) UIImageView *avatarView;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *subLabel;
@@ -214,17 +209,9 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        self.backgroundColor = [UIColor clearColor];
-        self.contentView.backgroundColor = [UIColor clearColor];
-        self.selectionStyle = UITableViewCellSelectionStyleNone;
-        
-        self.cardView = [[UIView alloc] init];
-        self.cardView.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-        self.cardView.layer.cornerRadius = kSCIMentionRowCornerRadius;
-        self.cardView.layer.borderWidth = 1.0;
-        self.cardView.layer.borderColor = [[SCIUtils SCIColor_InstagramSeparator] colorWithAlphaComponent:0.3].CGColor;
-        self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.contentView addSubview:self.cardView];
+        self.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+        self.selectedBackgroundView = [UIView new];
+        self.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
         
         self.avatarView = [[UIImageView alloc] init];
         self.avatarView.clipsToBounds = YES;
@@ -232,10 +219,10 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         self.avatarView.layer.cornerRadius = kSCIMentionAvatarSize / 2.0;
         self.avatarView.backgroundColor = [SCIUtils SCIColor_InstagramSeparator];
         self.avatarView.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.cardView addSubview:self.avatarView];
+        [self.contentView addSubview:self.avatarView];
         
         self.nameLabel = [[UILabel alloc] init];
-        self.nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightBold];
+        self.nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
         self.nameLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
         self.nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
@@ -246,10 +233,10 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         
         self.followBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         self.followBtn.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
-        self.followBtn.layer.cornerRadius = 8.0; // Concentric corner (16.0 card corner - 8.0 margin = 8.0)
+        self.followBtn.layer.cornerRadius = 8.0;
         self.followBtn.clipsToBounds = YES;
         self.followBtn.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.cardView addSubview:self.followBtn];
+        [self.contentView addSubview:self.followBtn];
         
         self.spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
         self.spinner.hidesWhenStopped = YES;
@@ -260,25 +247,20 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         textStack.axis = UILayoutConstraintAxisVertical;
         textStack.spacing = 2;
         textStack.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.cardView addSubview:textStack];
+        [self.contentView addSubview:textStack];
         
         [NSLayoutConstraint activateConstraints:@[
-            [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:5],
-            [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kSCIMentionRowInset],
-            [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kSCIMentionRowInset],
-            [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-5],
-            
-            [self.avatarView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:12],
-            [self.avatarView.centerYAnchor constraintEqualToAnchor:self.cardView.centerYAnchor],
+            [self.avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
+            [self.avatarView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [self.avatarView.widthAnchor constraintEqualToConstant:kSCIMentionAvatarSize],
             [self.avatarView.heightAnchor constraintEqualToConstant:kSCIMentionAvatarSize],
             
             [textStack.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:12],
-            [textStack.centerYAnchor constraintEqualToAnchor:self.cardView.centerYAnchor],
+            [textStack.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.followBtn.leadingAnchor constant:-10],
             
-            [self.followBtn.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-12],
-            [self.followBtn.centerYAnchor constraintEqualToAnchor:self.cardView.centerYAnchor],
+            [self.followBtn.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
+            [self.followBtn.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [self.followBtn.widthAnchor constraintGreaterThanOrEqualToConstant:88],
             [self.followBtn.heightAnchor constraintEqualToConstant:32],
             
@@ -287,17 +269,6 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         ]];
     }
     return self;
-}
-
-- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
-    [super setHighlighted:highlighted animated:animated];
-    [UIView animateWithDuration:0.25 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut animations:^{
-        if (highlighted) {
-            self.cardView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
-        } else {
-            self.cardView.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-        }
-    } completion:nil];
 }
 
 @end
@@ -329,7 +300,8 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     self.tableView.delegate = self;
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.backgroundColor = [UIColor clearColor];
-    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
+    self.tableView.separatorInset = UIEdgeInsetsMake(0.0, 80.0, 0.0, 0.0);
     self.tableView.rowHeight = kSCIMentionRowHeight;
     self.tableView.estimatedRowHeight = 0;
     self.tableView.estimatedSectionHeaderHeight = 0;

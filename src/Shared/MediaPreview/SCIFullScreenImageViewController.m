@@ -1,6 +1,8 @@
 #import "SCIFullScreenImageViewController.h"
 #import "SCIMediaItem.h"
 #import "SCIMediaCacheManager.h"
+#import "SCIImageFormat.h"
+#import <objc/message.h>
 
 static CGFloat const kMaxZoom = 5.0;
 static CGFloat const kMinZoom = 1.0;
@@ -70,7 +72,9 @@ static CGFloat const kZoomEpsilon = 0.02;
 }
 
 - (void)setupImageView {
-    _imageView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    Class animatedImageViewClass = NSClassFromString(@"FLAnimatedImageView");
+    Class imageViewClass = animatedImageViewClass ?: UIImageView.class;
+    _imageView = [[imageViewClass alloc] initWithFrame:CGRectZero];
     _imageView.contentMode = UIViewContentModeScaleAspectFit;
     _imageView.clipsToBounds = YES;
     [_scrollView addSubview:_imageView];
@@ -201,10 +205,33 @@ static CGFloat const kZoomEpsilon = 0.02;
 
 - (void)displayImage:(UIImage *)image {
     _imageView.image = image;
+    [self displayAnimatedImageIfAvailable];
     _scrollView.hidden = NO;
     _errorView.hidden = YES;
     [_scrollView setZoomScale:kMinZoom animated:NO];
     [self updateImageViewFrame];
+}
+
+- (void)displayAnimatedImageIfAvailable {
+    NSURL *localURL = [[SCIMediaCacheManager sharedManager] bestAvailableFileURLForItem:self.mediaItem];
+    SCIImageFormat format = SCIImageFormatForFileURL(localURL);
+    if (format != SCIImageFormatGIF && format != SCIImageFormatWebP) return;
+
+    Class factory = NSClassFromString(@"FLAnimatedImageFactory");
+    SEL decode = format == SCIImageFormatGIF
+        ? NSSelectorFromString(@"animatedImageWithGIFData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:")
+        : NSSelectorFromString(@"animatedImageWithWebPData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:");
+    SEL setAnimatedImage = NSSelectorFromString(@"setAnimatedImage:");
+    if (!factory || ![factory respondsToSelector:decode] || ![_imageView respondsToSelector:setAnimatedImage]) return;
+
+    NSData *data = [NSData dataWithContentsOfURL:localURL options:NSDataReadingMappedIfSafe error:nil];
+    if (!data.length) return;
+    id animatedImage = ((id (*)(id, SEL, NSData *, CGSize, id, BOOL))objc_msgSend)(
+        factory, decode, data, _imageView.image.size, nil, YES);
+    if (!animatedImage) return;
+    ((void (*)(id, SEL, id))objc_msgSend)(_imageView, setAnimatedImage, animatedImage);
+    SEL play = NSSelectorFromString(@"play");
+    if ([_imageView respondsToSelector:play]) ((void (*)(id, SEL))objc_msgSend)(_imageView, play);
 }
 
 - (void)showError:(NSString *)message {
@@ -322,6 +349,10 @@ static CGFloat const kZoomEpsilon = 0.02;
 #pragma mark - Cleanup
 
 - (void)cleanup {
+    SEL setAnimatedImage = NSSelectorFromString(@"setAnimatedImage:");
+    if ([_imageView respondsToSelector:setAnimatedImage]) {
+        ((void (*)(id, SEL, id))objc_msgSend)(_imageView, setAnimatedImage, nil);
+    }
     _imageView.image = nil;
 }
 

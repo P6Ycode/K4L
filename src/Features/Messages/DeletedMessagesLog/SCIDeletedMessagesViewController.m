@@ -58,11 +58,11 @@ static NSArray<NSString *> *SCIDMChipTitles(void) {
     return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Share", @"Link", @"Reaction"];
 }
 static NSArray<NSString *> *SCIDMChipSymbols(void) {
-    return @[@"text", @"photo", @"video_filled", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
+    return @[@"text", @"photo", @"video", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
 }
-// Filled variants used when a chip is selected (photo/video/voice/gif only).
+// Filled variants used when a chip is selected.
 static NSArray<NSString *> *SCIDMChipSelectedSymbols(void) {
-    return @[@"text", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker", @"share", @"link", @"reactions"];
+    return @[@"text", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"share", @"link", @"reactions"];
 }
 static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     switch (index) {

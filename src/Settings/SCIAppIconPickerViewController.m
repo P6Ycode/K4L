@@ -22,8 +22,7 @@ static NSString * const kSCIAppIconPickerCellIdentifier = @"SCIAppIconPickerCell
 
     self.contentView.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
     self.contentView.layer.cornerRadius = 8.0;
-    self.contentView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.contentView.layer.borderColor = [SCIUtils SCIColor_InstagramSeparator].CGColor;
+    self.contentView.layer.borderWidth = 0.0;
 
     _iconView = [[UIImageView alloc] initWithFrame:CGRectZero];
     _iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -76,8 +75,8 @@ static NSString * const kSCIAppIconPickerCellIdentifier = @"SCIAppIconPickerCell
 
 - (void)configureSelected:(BOOL)selected {
     self.checkmarkView.hidden = !selected;
-    self.contentView.layer.borderColor = selected ? [SCIUtils SCIColor_Primary].CGColor : [SCIUtils SCIColor_InstagramSeparator].CGColor;
-    self.contentView.layer.borderWidth = selected ? 2.0 : 1.0 / UIScreen.mainScreen.scale;
+    if (selected) self.contentView.layer.borderColor = [SCIUtils SCIColor_Primary].CGColor;
+    self.contentView.layer.borderWidth = selected ? 2.0 : 0.0;
     self.contentView.backgroundColor = selected
         ? [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.12]
         : [SCIUtils SCIColor_InstagramSecondaryBackground];
