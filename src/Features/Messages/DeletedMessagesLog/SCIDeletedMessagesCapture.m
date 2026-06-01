@@ -165,6 +165,31 @@ static NSString *sciTryURLSelectors(id obj, NSArray<NSString *> *names) {
     return nil;
 }
 
+static id sciTryObjectSelector(id obj, NSString *name) {
+    SEL sel = NSSelectorFromString(name);
+    if (!obj || ![obj respondsToSelector:sel]) return nil;
+    @try { return ((id(*)(id, SEL))objc_msgSend)(obj, sel); }
+    @catch (__unused id e) { return nil; }
+}
+
+static NSDate *sciDateFromSnapshotValue(id value) {
+    if ([value isKindOfClass:[NSDate class]]) return value;
+    if ([value isKindOfClass:[NSNumber class]]) return [NSDate dateWithTimeIntervalSince1970:[value doubleValue]];
+    return nil;
+}
+
+static NSDictionary *sciJSONSafeSnapshot(NSDictionary *snapshot) {
+    NSMutableDictionary *safe = [NSMutableDictionary dictionaryWithCapacity:snapshot.count];
+    for (NSString *key in snapshot) {
+        id value = snapshot[key];
+        if ([value isKindOfClass:[NSDate class]]) value = @([(NSDate *)value timeIntervalSince1970]);
+        if (value) safe[key] = value;
+    }
+    NSString *sid = safe[@"sid"];
+    if (sid.length) safe[@"message_id"] = sid;
+    return safe;
+}
+
 #pragma mark - URL scanner (recursive, scored)
 
 static void sciScanForURLsRecursive(id obj, int depth,
@@ -582,6 +607,27 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
             if (wf.count) snap[@"waveform"] = wf;
         }
 
+        // Visual media is an info wrapper. Its payload mirrors permanent media.
+        id visualInfo = sciAnyIvar(media, "_visualMedia");
+        id visualPayload = sciAnyIvar(visualInfo, "_media") ?: sciTryObjectSelector(visualInfo, @"media");
+        if (visualInfo) {
+            double viewMode = sciDoubleSelector(visualInfo, @"viewMode");
+            snap[@"view_mode"] = @((NSInteger)viewMode);
+            id stale = sciAnyIvar(visualInfo, "_mediaUrlGoesStaleDate") ?: sciTryObjectSelector(visualInfo, @"mediaUrlGoesStaleDate");
+            if ([stale isKindOfClass:[NSDate class]]) snap[@"media_url_stale_at"] = stale;
+        }
+
+        if (kind == SCIDeletedMessageKindPhoto) {
+            id permanent = sciAnyIvar(media, "_permanentMedia_permanentMedia");
+            id photo = sciAnyIvar(permanent, "_photo_photo")
+                    ?: sciAnyIvar(visualPayload, "_photo_photo");
+            NSURL *photoURL = photo ? [SCIUtils getPhotoUrl:photo] : nil;
+            if (photoURL.absoluteString.length) {
+                mediaURL = photoURL.absoluteString;
+                mediaScore = 100;
+            }
+        }
+
         // IGVideo sits under _permanentMedia_permanentMedia, not on media.
         if (kind == SCIDeletedMessageKindVideo) {
             id permanent = sciAnyIvar(media, "_permanentMedia_permanentMedia");
@@ -595,12 +641,11 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
             }
             // visualMedia fallback — view-once flows.
             if (!video) {
-                id visual = sciAnyIvar(media, "_visualMedia");
-                if (visual) {
-                    video = sciAnyIvar(visual, "_video_video")
-                         ?: sciAnyIvar(visual, "_video");
-                    if (!overlayPhoto) overlayPhoto = sciAnyIvar(visual, "_video_overlayPhoto")
-                                                  ?: sciAnyIvar(visual, "_overlayPhoto");
+                if (visualPayload) {
+                    video = sciAnyIvar(visualPayload, "_video_video")
+                         ?: sciAnyIvar(visualPayload, "_video");
+                    if (!overlayPhoto) overlayPhoto = sciAnyIvar(visualPayload, "_video_overlayPhoto")
+                                                  ?: sciAnyIvar(visualPayload, "_overlayPhoto");
                 }
             }
 
@@ -849,7 +894,8 @@ static void sciDownloadToTempFile(NSURL *url, void (^done)(NSURL *file, NSError 
 
 // DASH video reps are silent — download video + audio reps and mux to mp4.
 static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
-                                    NSString *messageId, NSString *ownerPk) {
+                                    NSString *messageId, NSString *ownerPk,
+                                    BOOL staged) {
     if (!videoURL.length || !messageId.length) return;
     if (!audioURL.length || ![SCIMediaFFmpeg isAvailable]) return;
     NSURL *vURL = [NSURL URLWithString:videoURL];
@@ -880,13 +926,23 @@ static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
             [[NSFileManager defaultManager] removeItemAtURL:vFile error:nil];
             [[NSFileManager defaultManager] removeItemAtURL:aFile error:nil];
             if (err || !outURL) return;
-            NSString *fname = [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId
-                                                                                    extension:@"mp4"
-                                                                                      ownerPK:ownerPk];
-            NSString *abs = [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
+            NSString *fname = staged
+                ? [SCIDeletedMessagesStorage reserveRelativeStagedMediaPathForMessageId:messageId extension:@"mp4" ownerPK:ownerPk thumbnail:NO]
+                : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId extension:@"mp4" ownerPK:ownerPk];
+            NSString *abs = staged
+                ? [SCIDeletedMessagesStorage absoluteStagedPathForRelativePath:fname ownerPK:ownerPk]
+                : [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
             if (!abs.length) return;
             [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
             if (![[NSFileManager defaultManager] moveItemAtURL:outURL toURL:[NSURL fileURLWithPath:abs] error:nil]) return;
+            if (staged) {
+                if (![SCIDeletedMessagesStorage patchPendingCandidateForMessageId:messageId
+                                                                            values:@{@"staged_media_path": fname}
+                                                                           ownerPK:ownerPk]) {
+                    [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
+                }
+                return;
+            }
             for (SCIDeletedMessage *m in [SCIDeletedMessagesStorage allMessagesForOwnerPK:ownerPk]) {
                 if (![m.messageId isEqualToString:messageId]) continue;
                 m.mediaPath = fname;
@@ -899,31 +955,43 @@ static void sciDownloadAndMuxVideo(NSString *videoURL, NSString *audioURL,
 
 static void sciDownloadMedia(NSString *urlString, NSString *messageId,
                              NSString *ownerPk, BOOL isThumbnail,
-                             SCIDeletedMessageKind kind) {
+                             SCIDeletedMessageKind kind, BOOL staged) {
     if (!urlString.length || !messageId.length) return;
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) return;
 
-    NSString *ext = url.pathExtension.length ? url.pathExtension : (isThumbnail ? @"jpg" : @"bin");
+    NSString *ext = url.pathExtension.length
+        ? url.pathExtension
+        : ((isThumbnail || kind == SCIDeletedMessageKindPhoto) ? @"jpg" : @"bin");
     // Voice notes are served with a video container extension (.mp4) even though
     // they are audio-only. Force an audio extension so the file is typed as audio
     // everywhere downstream (preview player, share, save).
     if (!isThumbnail && kind == SCIDeletedMessageKindVoice) {
         ext = @"m4a";
     }
-    NSString *fname = isThumbnail
-        ? [NSString stringWithFormat:@"thumb_%@.%@", messageId, ext]
-        : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId
-                                                                extension:ext
-                                                                  ownerPK:ownerPk];
-    NSString *abs = [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
+    NSString *fname = staged
+        ? [SCIDeletedMessagesStorage reserveRelativeStagedMediaPathForMessageId:messageId extension:ext ownerPK:ownerPk thumbnail:isThumbnail]
+        : (isThumbnail
+            ? [NSString stringWithFormat:@"thumb_%@.%@", messageId, ext]
+            : [SCIDeletedMessagesStorage reserveRelativeMediaPathForMessageId:messageId extension:ext ownerPK:ownerPk]);
+    NSString *abs = staged
+        ? [SCIDeletedMessagesStorage absoluteStagedPathForRelativePath:fname ownerPK:ownerPk]
+        : [SCIDeletedMessagesStorage absolutePathForRelativePath:fname ownerPK:ownerPk];
     if (!abs.length) return;
+    if ([[NSFileManager defaultManager] fileExistsAtPath:abs]) return;
 
     dispatch_async(sciDownloadQueue(), ^{
         NSURLSessionDataTask *task = [sciSharedSession() dataTaskWithURL:url
                                                        completionHandler:^(NSData *data, NSURLResponse *resp, NSError *err) {
             if (err || !data.length) return;
             if (![data writeToFile:abs atomically:YES]) return;
+            if (staged) {
+                NSString *key = isThumbnail ? @"staged_thumbnail_path" : @"staged_media_path";
+                if (![SCIDeletedMessagesStorage patchPendingCandidateForMessageId:messageId values:@{key: fname} ownerPK:ownerPk]) {
+                    [[NSFileManager defaultManager] removeItemAtPath:abs error:nil];
+                }
+                return;
+            }
             for (SCIDeletedMessage *m in [SCIDeletedMessagesStorage allMessagesForOwnerPK:ownerPk]) {
                 if (![m.messageId isEqualToString:messageId]) continue;
                 if (isThumbnail) m.thumbnailPath = fname;
@@ -936,7 +1004,30 @@ static void sciDownloadMedia(NSString *urlString, NSString *messageId,
     });
 }
 
+static void sciStageEphemeralSnapshot(NSDictionary *snapshot, NSString *ownerPk) {
+    NSString *messageId = snapshot[@"sid"];
+    if (!messageId.length || !ownerPk.length || ![snapshot[@"view_mode"] isKindOfClass:[NSNumber class]]) return;
+    SCIDeletedMessageKind kind = (SCIDeletedMessageKind)[snapshot[@"kind"] integerValue];
+    NSString *mediaURL = snapshot[@"media_url"];
+    NSString *audioURL = snapshot[@"audio_url"];
+    if (kind == SCIDeletedMessageKindVideo && mediaURL.length && audioURL.length) {
+        sciDownloadAndMuxVideo(mediaURL, audioURL, messageId, ownerPk, YES);
+    } else if (mediaURL.length) {
+        sciDownloadMedia(mediaURL, messageId, ownerPk, NO, kind, YES);
+    }
+    NSString *thumbnailURL = snapshot[@"thumb_url"];
+    if (thumbnailURL.length) sciDownloadMedia(thumbnailURL, messageId, ownerPk, YES, kind, YES);
+}
+
 #pragma mark - Per-thread fallback (covers foreground threads in IG's _cache)
+
+static id sciDirectCacheFromApplicator(id applicator) {
+    if (!applicator) return nil;
+    @try {
+        Ivar iv = class_getInstanceVariable([applicator class], "_cache");
+        return iv ? object_getIvar(applicator, iv) : nil;
+    } @catch (__unused id e) { return nil; }
+}
 
 // `applicator._cache.threadClientStateForThreadId:tid` returns an
 // IGDirectThreadClientState whose `_messagesByServerId` ivar is a dict
@@ -944,11 +1035,16 @@ static void sciDownloadMedia(NSString *urlString, NSString *messageId,
 static id sciFallbackLookupMessage(id applicator, NSString *sid, NSString *threadId) {
     if (!applicator || !sid.length || !threadId.length) return nil;
     @try {
-        Ivar iv = class_getInstanceVariable([applicator class], "_cache");
-        id cache = iv ? object_getIvar(applicator, iv) : nil;
+        id cache = sciDirectCacheFromApplicator(applicator);
+        if (!cache) return nil;
+        id state = nil;
         SEL sel = NSSelectorFromString(@"threadClientStateForThreadId:");
-        if (!cache || ![cache respondsToSelector:sel]) return nil;
-        id state = ((id(*)(id, SEL, id))objc_msgSend)(cache, sel, threadId);
+        if ([cache respondsToSelector:sel]) {
+            state = ((id(*)(id, SEL, id))objc_msgSend)(cache, sel, threadId);
+        } else {
+            id states = sciAnyIvar(cache, "_threadClientStateByThreadIds");
+            if ([states isKindOfClass:[NSDictionary class]]) state = states[threadId];
+        }
         if (!state) return nil;
         for (Class c = [state class]; c && c != [NSObject class]; c = class_getSuperclass(c)) {
             Ivar di = class_getInstanceVariable(c, "_messagesByServerId");
@@ -961,15 +1057,53 @@ static id sciFallbackLookupMessage(id applicator, NSString *sid, NSString *threa
     return nil;
 }
 
+static id sciFindMessageInFetchedThread(id value, NSString *sid, NSInteger depth, NSMutableSet *visited) {
+    if (!value || !sid.length || depth < 0) return nil;
+    NSValue *identity = [NSValue valueWithNonretainedObject:value];
+    if ([visited containsObject:identity]) return nil;
+    [visited addObject:identity];
+    if ([sciSidFromMessage(value) isEqualToString:sid]) return value;
+    if ([value isKindOfClass:[NSDictionary class]]) {
+        id direct = value[sid];
+        if (direct) return direct;
+        for (id child in [value allValues]) {
+            id found = sciFindMessageInFetchedThread(child, sid, depth - 1, visited);
+            if (found) return found;
+        }
+        return nil;
+    }
+    if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSSet class]] || [value isKindOfClass:[NSOrderedSet class]]) {
+        for (id child in value) {
+            id found = sciFindMessageInFetchedThread(child, sid, depth - 1, visited);
+            if (found) return found;
+        }
+        return nil;
+    }
+    for (NSString *name in @[@"_messagesByServerId", @"_messages", @"_publishedMessages", @"_messageList"]) {
+        id child = sciAnyIvar(value, name.UTF8String);
+        id found = sciFindMessageInFetchedThread(child, sid, depth - 1, visited);
+        if (found) return found;
+    }
+    return nil;
+}
+
 #pragma mark - Public hooks
 
-void sciDMCaptureNoteInsert(id message) {
+void sciDMCaptureNoteInsert(id message, NSString *ownerPk, NSString *threadId, BOOL persistCandidate) {
     if (!message) return;
     @try {
         NSString *sid = sciSidFromMessage(message);
         if (!sid.length) return;
         @synchronized (sciMessageRefsLock()) {
             [sciMessageRefs() setObject:message forKey:sid];
+        }
+        if (persistCandidate && ownerPk.length) {
+            NSMutableDictionary *snapshot = [sciBuildSnapshot(message, ownerPk) mutableCopy];
+            if (!snapshot[@"thread_id"] && threadId.length) snapshot[@"thread_id"] = threadId;
+            if (snapshot.count) {
+                [SCIDeletedMessagesStorage savePendingCandidateSnapshot:sciJSONSafeSnapshot(snapshot) forOwnerPK:ownerPk];
+                sciStageEphemeralSnapshot(snapshot, ownerPk);
+            }
         }
     } @catch (__unused id e) {}
 }
@@ -986,6 +1120,15 @@ static NSString *sciExtractKeySid(id key) {
             break;
         }
     } @catch (__unused id e) {}
+    return nil;
+}
+
+static NSString *sciExtractKeyMutationId(id key) {
+    if (!key) return nil;
+    for (NSString *name in @[@"_mutationId", @"_mutationID", @"_clientMutationId"]) {
+        NSString *value = sciStrIvar(key, name.UTF8String);
+        if (value.length) return value;
+    }
     return nil;
 }
 
@@ -1020,11 +1163,11 @@ NSArray<NSDictionary *> *sciDMCapturePreviewMetadataForKeys(NSArray *keys,
     NSString *owner = ownerPk.length ? [ownerPk copy] : @"";
     NSString *thread = threadId.length ? [threadId copy] : nil;
     NSDictionary<NSString *, id> *strongRefs = sciStrongRefsForKeys(keys, applicator, thread);
-    if (!strongRefs.count) return @[];
-
-    NSMutableArray<NSDictionary *> *previews = [NSMutableArray arrayWithCapacity:strongRefs.count];
-    for (NSString *sid in strongRefs) {
-        NSDictionary *snap = sciBuildSnapshot(strongRefs[sid], owner);
+    NSMutableArray<NSDictionary *> *previews = [NSMutableArray arrayWithCapacity:keys.count];
+    for (id key in keys) {
+        NSString *sid = sciExtractKeySid(key);
+        NSDictionary *snap = [SCIDeletedMessagesStorage pendingCandidateSnapshotForMessageId:sid ownerPK:owner]
+                          ?: sciBuildSnapshot(strongRefs[sid], owner);
         if (!snap) continue;
         NSString *senderPk = snap[@"sender_pk"];
         if (senderPk.length && [SCIDeletedMessagesStorage isSenderBlocked:senderPk ownerPK:owner]) continue;
@@ -1045,12 +1188,121 @@ NSArray<NSDictionary *> *sciDMCapturePreviewMetadataForKeys(NSArray *keys,
     return previews;
 }
 
+static BOOL sciFinalizeSnapshot(NSDictionary *snap, NSString *sid, NSString *thread, NSString *owner) {
+    if (!snap || !sid.length) return NO;
+    NSString *senderPk = snap[@"sender_pk"];
+    if (!senderPk.length) return NO;
+    if (senderPk.length && [SCIDeletedMessagesStorage isSenderBlocked:senderPk ownerPK:owner]) {
+        [SCIDeletedMessagesStorage removePendingCandidateForMessageId:sid ownerPK:owner];
+        [SCIDeletedMessagesStorage removePendingRemovalForMessageId:sid ownerPK:owner];
+        return YES;
+    }
+
+    SCIDeletedMessageKind kind = (SCIDeletedMessageKind)[snap[@"kind"] integerValue];
+    NSString *txt = snap[@"text"];
+    NSString *mu  = snap[@"media_url"];
+    NSString *tu  = snap[@"thumb_url"];
+    if ((kind == SCIDeletedMessageKindUnknown || kind == SCIDeletedMessageKindOther)
+        && !txt.length && !mu.length && !tu.length) return NO;
+
+    NSDate *now = [NSDate date];
+    SCIDeletedMessage *m = [SCIDeletedMessage new];
+    m.messageId           = sid;
+    m.threadId            = snap[@"thread_id"] ?: thread ?: @"";
+    m.senderPk            = senderPk ?: @"";
+    m.senderUsername      = snap[@"sender_username"];
+    m.senderFullName      = snap[@"sender_full_name"];
+    m.senderProfilePicURL = snap[@"sender_profile_pic_url"];
+    m.sentAt              = sciDateFromSnapshotValue(snap[@"sent_at"]);
+    m.capturedAt          = now;
+    m.deletedAt           = now;
+    m.kind                = kind;
+    m.text                = txt;
+    m.previewText         = txt;
+    m.mediaURL            = mu;
+    m.thumbnailURL        = tu;
+    m.durationSeconds     = [snap[@"duration"] doubleValue];
+    m.viewMode            = [snap[@"view_mode"] isKindOfClass:[NSNumber class]] ? [snap[@"view_mode"] integerValue] : -1;
+    m.mediaURLStaleAt     = sciDateFromSnapshotValue(snap[@"media_url_stale_at"]);
+    m.mediaPath           = [SCIDeletedMessagesStorage promoteStagedRelativePath:snap[@"staged_media_path"]
+                                                                      messageId:sid ownerPK:owner thumbnail:NO];
+    m.thumbnailPath       = [SCIDeletedMessagesStorage promoteStagedRelativePath:snap[@"staged_thumbnail_path"]
+                                                                      messageId:sid ownerPK:owner thumbnail:YES];
+    id wf = snap[@"waveform"];
+    if ([wf isKindOfClass:[NSArray class]]) m.waveform = wf;
+    m.replyToMessageId = snap[@"reply_to_id"];
+
+    if (![SCIDeletedMessagesStorage saveMessage:m forOwnerPK:owner]) return NO;
+    [SCIDeletedMessagesStorage removePendingCandidateForMessageId:sid ownerPK:owner];
+    [SCIDeletedMessagesStorage removePendingRemovalForMessageId:sid ownerPK:owner];
+
+    NSString *audioURL = snap[@"audio_url"];
+    BOOL isDeeplinkOnly = (m.kind == SCIDeletedMessageKindShare || m.kind == SCIDeletedMessageKindLink);
+    if (!m.mediaPath.length && m.kind == SCIDeletedMessageKindVideo && audioURL.length && m.mediaURL.length) {
+        sciDownloadAndMuxVideo(m.mediaURL, audioURL, sid, owner, NO);
+    } else if (!m.mediaPath.length && !isDeeplinkOnly && m.mediaURL.length) {
+        sciDownloadMedia(m.mediaURL, sid, owner, NO, m.kind, NO);
+    }
+    if (!m.thumbnailPath.length && m.thumbnailURL.length) sciDownloadMedia(m.thumbnailURL, sid, owner, YES, m.kind, NO);
+    return YES;
+}
+
+static NSMutableSet<NSString *> *sciPendingFetches(void) {
+    static NSMutableSet<NSString *> *set;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ set = [NSMutableSet set]; });
+    return set;
+}
+
+static void sciFetchThreadForPendingRemoval(id applicator, NSString *sid, NSString *thread, NSString *owner) {
+    id cache = sciDirectCacheFromApplicator(applicator);
+    if (!cache || !sid.length || !thread.length || !owner.length) return;
+    NSString *fetchKey = [NSString stringWithFormat:@"%@:%@:%@", owner, thread, sid];
+    @synchronized (sciPendingFetches()) {
+        if ([sciPendingFetches() containsObject:fetchKey]) return;
+        [sciPendingFetches() addObject:fetchKey];
+    }
+
+    void (^completion)(id) = ^(id fetchedThread) {
+        @synchronized (sciPendingFetches()) { [sciPendingFetches() removeObject:fetchKey]; }
+        id message = sciFindMessageInFetchedThread(fetchedThread, sid, 4, [NSMutableSet set])
+                  ?: sciFallbackLookupMessage(applicator, sid, thread);
+        if (!message) return;
+        NSDictionary *snap = sciBuildSnapshot(message, owner);
+        if (!snap) return;
+        dispatch_async(sciCaptureQueue(), ^{ sciFinalizeSnapshot(snap, sid, thread, owner); });
+    };
+
+    SEL publicFetch = NSSelectorFromString(@"fetchThreadWithThreadId:completion:");
+    SEL legacyFetch = NSSelectorFromString(@"_fetchThreadFromCacheWithThreadId:completion:");
+    @try {
+        if ([cache respondsToSelector:publicFetch]) {
+            ((void(*)(id, SEL, id, id))objc_msgSend)(cache, publicFetch, thread, completion);
+        } else if ([cache respondsToSelector:legacyFetch]) {
+            ((void(*)(id, SEL, id, id))objc_msgSend)(cache, legacyFetch, thread, completion);
+        } else {
+            @synchronized (sciPendingFetches()) { [sciPendingFetches() removeObject:fetchKey]; }
+        }
+    } @catch (__unused id e) {
+        @synchronized (sciPendingFetches()) { [sciPendingFetches() removeObject:fetchKey]; }
+    }
+}
+
 void sciDMCaptureNoteRemoveKeys(NSArray *keys, id applicator,
                                  NSString *ownerPk, NSString *threadId) {
     if (!sciCaptureEnabled() || !keys.count) return;
     NSString *owner  = ownerPk.length  ? [ownerPk copy]  : @"";
     NSString *thread = threadId.length ? [threadId copy] : nil;
 
+    for (id key in keys) {
+        NSString *sid = sciExtractKeySid(key);
+        if (sid.length) {
+            [SCIDeletedMessagesStorage savePendingRemovalForMessageId:sid
+                                                              threadId:thread
+                                                            mutationId:sciExtractKeyMutationId(key)
+                                                               ownerPK:owner];
+        }
+    }
     NSMutableDictionary<NSString *, id> *strongRefs = sciStrongRefsForKeys(keys, applicator, thread);
     @synchronized (sciMessageRefsLock()) {
         NSMapTable *t = sciMessageRefs();
@@ -1060,57 +1312,32 @@ void sciDMCaptureNoteRemoveKeys(NSArray *keys, id applicator,
         }
     }
 
-    if (!strongRefs.count) return;
-
     dispatch_async(sciCaptureQueue(), ^{
-        NSDate *now = [NSDate date];
-        for (NSString *sid in strongRefs) {
-            id message = strongRefs[sid];
-            NSDictionary *snap = sciBuildSnapshot(message, owner);
-            if (!snap) continue;
-            NSString *senderPk = snap[@"sender_pk"];
-            if (senderPk.length && [SCIDeletedMessagesStorage isSenderBlocked:senderPk ownerPK:owner]) continue;
+        for (id key in keys) {
+            NSString *sid = sciExtractKeySid(key);
+            NSDictionary *snap = [SCIDeletedMessagesStorage pendingCandidateSnapshotForMessageId:sid ownerPK:owner];
+            if (!snap && strongRefs[sid]) snap = sciBuildSnapshot(strongRefs[sid], owner);
+            if (snap) sciFinalizeSnapshot(snap, sid, thread, owner);
+        }
+    });
+}
 
-            SCIDeletedMessageKind kind = (SCIDeletedMessageKind)[snap[@"kind"] integerValue];
-            NSString *txt = snap[@"text"];
-            NSString *mu  = snap[@"media_url"];
-            NSString *tu  = snap[@"thumb_url"];
-            if ((kind == SCIDeletedMessageKindUnknown || kind == SCIDeletedMessageKindOther)
-                && !txt.length && !mu.length && !tu.length) continue;
-
-            SCIDeletedMessage *m = [SCIDeletedMessage new];
-            m.messageId           = sid;
-            m.threadId            = snap[@"thread_id"] ?: thread;
-            m.senderPk            = senderPk ?: @"";
-            m.senderUsername      = snap[@"sender_username"];
-            m.senderFullName      = snap[@"sender_full_name"];
-            m.senderProfilePicURL = snap[@"sender_profile_pic_url"];
-            m.sentAt              = snap[@"sent_at"];
-            m.capturedAt          = now;
-            m.deletedAt           = now;
-            m.kind                = kind;
-            m.text                = txt;
-            m.previewText         = txt;
-            m.mediaURL            = mu;
-            m.thumbnailURL        = tu;
-            m.durationSeconds     = [snap[@"duration"] doubleValue];
-            id wf = snap[@"waveform"];
-            if ([wf isKindOfClass:[NSArray class]]) m.waveform = wf;
-            m.replyToMessageId    = snap[@"reply_to_id"];
-
-            [SCIDeletedMessagesStorage saveMessage:m forOwnerPK:owner];
-
-            // Video → mux path. Share/Link mediaURL is a deeplink, skip body fetch (thumb only).
-            // AudioShare's mediaURL is a downloadable .mp4.
-            NSString *audioURL = snap[@"audio_url"];
-            BOOL isDeeplinkOnly = (m.kind == SCIDeletedMessageKindShare ||
-                                   m.kind == SCIDeletedMessageKindLink);
-            if (m.kind == SCIDeletedMessageKindVideo && audioURL.length && m.mediaURL.length) {
-                sciDownloadAndMuxVideo(m.mediaURL, audioURL, sid, owner);
-            } else if (!isDeeplinkOnly && m.mediaURL.length) {
-                sciDownloadMedia(m.mediaURL, sid, owner, NO, m.kind);
+void sciDMCaptureRetryPendingRemovals(id applicator, NSString *ownerPk) {
+    if (!sciCaptureEnabled() || !ownerPk.length) return;
+    NSString *owner = [ownerPk copy];
+    NSArray<NSDictionary *> *pending = [SCIDeletedMessagesStorage pendingRemovalsForOwnerPK:owner];
+    if (!pending.count) return;
+    dispatch_async(sciCaptureQueue(), ^{
+        for (NSDictionary *entry in pending) {
+            NSString *sid = entry[@"message_id"];
+            NSString *thread = entry[@"thread_id"];
+            NSDictionary *snap = [SCIDeletedMessagesStorage pendingCandidateSnapshotForMessageId:sid ownerPK:owner];
+            if (!snap) {
+                id message = sciFallbackLookupMessage(applicator, sid, thread);
+                if (message) snap = sciBuildSnapshot(message, owner);
             }
-            if (m.thumbnailURL.length) sciDownloadMedia(m.thumbnailURL, sid, owner, YES, m.kind);
+            if (snap) sciFinalizeSnapshot(snap, sid, thread, owner);
+            else sciFetchThreadForPendingRemoval(applicator, sid, thread, owner);
         }
     });
 }

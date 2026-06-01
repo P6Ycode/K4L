@@ -83,7 +83,7 @@ static NSArray *SCIMessagesSettingsSections(void) {
                                            icon:SCISettingsIcon(@"messages")
                                  viewController:[SCIDeletedMessagesViewController new]],
             [SCISetting switchCellWithTitle:@"Confirm Inbox Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"msgs_confirm_refresh"]
-        ], @"Keep Deleted Messages preserves remotely unsent messages in chat and marks them with an undo-circle indicator. Log Deleted Messages records the content and media before removal. Respect Seen Chat List skips chats in your manual-seen include/exclude list."),
+        ], @"Keep Deleted Messages preserves remotely unsent messages in chat and marks them with an undo-circle indicator. Log Deleted Messages records content before removal and saves view-once/view-twice media until manually cleared. Respect Seen Chat List skips log capture and unsent notifications for chats in your manual-seen include/exclude list without disabling preservation."),
         SCITopicSection(@"Visual Messages", @[
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_manual_visual_seen"],
             [SCISetting switchCellWithTitle:@"Advance After Manual Seen" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"msgs_advance_visual_on_seen"],

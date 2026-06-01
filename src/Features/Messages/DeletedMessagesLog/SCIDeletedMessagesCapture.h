@@ -1,4 +1,4 @@
-// In-memory capture pipeline for the deleted-messages log.
+// Persistent candidate + reconciliation pipeline for the deleted-messages log.
 //
 // KeepDeletedMessages.x already owns the single chokepoint hook on
 // `IGDirectCacheUpdatesApplicator._applyThreadUpdates:completion:userAccess:`
@@ -6,8 +6,8 @@
 // remove-keys neutering. Rather than fight install order, that hook calls
 // these two C functions directly:
 //
-//   • `sciDMCaptureNoteInsert(message)` on every insert/replace, so we have a
-//     full snapshot of the body BEFORE any unsend can happen.
+//   • `sciDMCaptureNoteInsert(...)` on every insert/replace, so we persist a
+//     normalized snapshot of the body BEFORE any unsend can happen.
 //   • `sciDMCaptureNoteRemoveSids(sids, ownerPk, threadId)` on every reason==0
 //     remove, so we know which captured snapshots became deleted records.
 //
@@ -22,17 +22,22 @@ NS_ASSUME_NONNULL_BEGIN
 extern "C" {
 #endif
 
-void sciDMCaptureNoteInsert(id _Nullable message);
+void sciDMCaptureNoteInsert(id _Nullable message,
+                            NSString * _Nullable ownerPk,
+                            NSString * _Nullable threadId,
+                            BOOL persistCandidate);
 
 // `keys` are the IGDirectMessageKey objects from the unsend delta. The
-// capture side extracts sids itself, falls back to a sync lookup against
-// `applicator.cache messageForKey:` for any sid that's no longer in the
-// in-memory weak cache (scrolled-out chats), and finally writes a
-// sender-only placeholder if the lookup fails.
+// capture side extracts sids itself, persists pending removals, and falls back
+// through candidate snapshots, weak refs, cached thread state, and guarded
+// thread fetches. Unresolved removals stay queued for later cache warmup.
 void sciDMCaptureNoteRemoveKeys(NSArray * _Nullable keys,
                                  id _Nullable applicator,
                                  NSString * _Nullable ownerPk,
                                  NSString * _Nullable threadId);
+
+void sciDMCaptureRetryPendingRemovals(id _Nullable applicator,
+                                      NSString * _Nullable ownerPk);
 
 NSArray<NSDictionary *> *sciDMCapturePreviewMetadataForKeys(NSArray * _Nullable keys,
                                                             id _Nullable applicator,

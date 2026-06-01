@@ -4,6 +4,7 @@
 #import "SCIGalleryFile.h"
 #import "SCIGallerySaveMetadata.h"
 #import "../UI/SCIMediaChrome.h"
+#import "../../AssetUtils.h"
 #import "../../Utils.h"
 #import <CoreServices/CoreServices.h>
 
@@ -172,15 +173,33 @@ typedef NS_ENUM(NSInteger, SCIGalleryImportMainSection) {
     return YES;
 }
 
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle != UITableViewCellEditingStyleDelete) {
-        return;
-    }
+- (void)removeQueuedFileAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section != SCIGalleryImportMainSectionQueue || indexPath.row >= (NSInteger)self.queuedFiles.count) return;
+
     SCIGalleryImportQueuedFile *item = self.queuedFiles[(NSUInteger)indexPath.row];
     [[NSFileManager defaultManager] removeItemAtURL:item.tempFileURL error:nil];
     [self.queuedFiles removeObjectAtIndex:(NSUInteger)indexPath.row];
-    [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    [self.tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
     [self updateImportEnabled];
+}
+
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (editingStyle != UITableViewCellEditingStyleDelete) return;
+    [self removeQueuedFileAtIndexPath:indexPath];
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (![self tableView:tableView canEditRowAtIndexPath:indexPath]) return nil;
+
+    __weak typeof(self) weakSelf = self;
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+        [weakSelf removeQueuedFileAtIndexPath:indexPath];
+        completionHandler(YES);
+    }];
+    deleteAction.image = [SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+    deleteAction.backgroundColor = [SCIUtils SCIColor_InstagramDestructive];
+    deleteAction.accessibilityLabel = @"Remove";
+    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {

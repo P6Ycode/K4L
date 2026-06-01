@@ -119,6 +119,18 @@
 @end
 
 static NSArray *SCIManageSettingsDataSections(void) {
+    SCISetting *resetAllSettings = [SCISetting buttonCellWithTitle:@"Reset All Settings"
+                                                         subtitle:@""
+                                                             icon:SCISettingsIcon(@"arrow_ccw")
+                                                           action:^(void) {
+        UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
+        UIViewController *presenter = scene.windows.firstObject.rootViewController;
+        while (presenter.presentedViewController) presenter = presenter.presentedViewController;
+        [[SCISettingsTransferManager sharedManager] resetAllSettingsFromController:presenter];
+    }];
+    resetAllSettings.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+    resetAllSettings.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
+
     return @[
         SCITopicSection(@"", @[
             SCISettingApplyIconTint([SCISetting navigationCellWithTitle:@"Export"
@@ -133,15 +145,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
                                   [SCIUtils SCIColor_InstagramPrimaryText])
         ], @"Choose to export or import settings, Gallery media, unsent messages logs, and Profile Analyzer data."),
         SCITopicSection(@"Reset", @[
-            SCISettingApplyIconTint([SCISetting buttonCellWithTitle:@"Reset All Settings"
-                                                            subtitle:@""
-                                                                icon:SCISettingsIcon(@"arrow_ccw")
-                                                              action:^(void) {
-                UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
-                UIViewController *presenter = scene.windows.firstObject.rootViewController;
-                while (presenter.presentedViewController) presenter = presenter.presentedViewController;
-                [[SCISettingsTransferManager sharedManager] resetAllSettingsFromController:presenter];
-            }], [SCIUtils SCIColor_InstagramPrimaryText])
+            resetAllSettings
         ], @"Restore every preference to its default value.")
     ];
 }

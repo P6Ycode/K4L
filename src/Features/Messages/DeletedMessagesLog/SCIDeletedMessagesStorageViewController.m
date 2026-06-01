@@ -16,6 +16,7 @@
 @property (nonatomic, assign) NSUInteger voiceCount;
 @property (nonatomic, assign) NSUInteger otherCount;
 @property (nonatomic, assign) unsigned long long mediaBytes;
+@property (nonatomic, assign) unsigned long long stagedMediaBytes;
 @property (nonatomic, assign) unsigned long long avatarBytes;
 @end
 
@@ -94,6 +95,7 @@ static NSString *SCIDMStorageOwnerPK(void) {
     self.voiceCount = voice;
     self.otherCount = other;
     self.mediaBytes = [SCIDeletedMessagesStorage mediaSizeBytesForOwnerPK:self.ownerPK];
+    self.stagedMediaBytes = [SCIDeletedMessagesStorage stagedMediaSizeBytesForOwnerPK:self.ownerPK];
     self.avatarBytes = [[SCIDeletedMessagesAvatarCache shared] diskSizeBytes];
 }
 
@@ -104,7 +106,7 @@ static NSString *SCIDMStorageOwnerPK(void) {
 - (void)rebuildSections {
     NSMutableArray *sections = [NSMutableArray array];
 
-    unsigned long long totalDisk = self.mediaBytes + self.avatarBytes;
+    unsigned long long totalDisk = self.mediaBytes + self.stagedMediaBytes + self.avatarBytes;
     NSString *overviewSubtitle = [NSString stringWithFormat:@"%lu message%@ • %lu sender%@ • %@",
                                   (unsigned long)self.messageCount, self.messageCount == 1 ? @"" : @"s",
                                   (unsigned long)self.senderCount, self.senderCount == 1 ? @"" : @"s",
@@ -125,8 +127,9 @@ static NSString *SCIDMStorageOwnerPK(void) {
 
     [sections addObject:SCITopicSection(@"Disk Usage", @[
         [SCISetting valueCellWithTitle:@"Captured Media" subtitle:[self formattedSize:self.mediaBytes] icon:SCISettingsIcon(@"media")],
+        [SCISetting valueCellWithTitle:@"Saved Disappearing Media" subtitle:[self formattedSize:self.stagedMediaBytes] icon:SCISettingsIcon(@"clock")],
         [SCISetting valueCellWithTitle:@"Profile Pictures" subtitle:[self formattedSize:self.avatarBytes] icon:SCISettingsIcon(@"user_circle")],
-    ], @"Captured media and profile pictures are stored on-device for this account. Profile pictures refresh at most once a day.")];
+    ], @"View-once and view-twice media is saved on-device before an unsend so it remains recoverable. It is excluded from deleted-message exports until the message is unsent.")];
 
     __weak typeof(self) weakSelf = self;
 
@@ -136,14 +139,20 @@ static NSString *SCIDMStorageOwnerPK(void) {
     clearMedia.tintColor = [SCIUtils SCIColor_InstagramDestructive];
     clearMedia.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
 
+    SCISetting *clearStaged = [SCISetting buttonCellWithTitle:@"Clear Saved Disappearing Media" subtitle:nil icon:SCISettingsIcon(@"clock") action:^{
+        [weakSelf confirmClearStagedMedia];
+    }];
+    clearStaged.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+    clearStaged.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
+
     SCISetting *clearLog = [SCISetting buttonCellWithTitle:@"Clear Entire Log" subtitle:nil icon:SCISettingsIcon(@"trash") action:^{
         [weakSelf confirmClearLog];
     }];
     clearLog.tintColor = [SCIUtils SCIColor_InstagramDestructive];
     clearLog.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
 
-    [sections addObject:SCITopicSection(@"Maintenance", @[clearMedia, clearLog],
-                                        @"Clearing captured media keeps the log text but frees disk space. Clearing the log removes everything for this account.")];
+    [sections addObject:SCITopicSection(@"Maintenance", @[clearMedia, clearStaged, clearLog],
+                                        @"Clearing saved disappearing media keeps lightweight message metadata for best-effort fallback after a future unsend. Clearing the log does not clear saved disappearing media.")];
 
     [self replaceSections:sections];
 }
@@ -180,6 +189,19 @@ static NSString *SCIDMStorageOwnerPK(void) {
         [SCIIGAlertAction actionWithTitle:@"Clear" style:SCIIGAlertActionStyleDestructive handler:^{
             [SCIDeletedMessagesStorage resetForOwnerPK:self.ownerPK];
             [[SCIDeletedMessagesAvatarCache shared] purge];
+            [self reloadStatsAndRebuild];
+        }],
+    ]];
+}
+
+- (void)confirmClearStagedMedia {
+    [SCIIGAlertPresenter presentAlertFromViewController:self
+                                                  title:@"Clear saved disappearing media?"
+                                                message:@"This removes saved view-once and view-twice media. Lightweight metadata remains so SCInsta can still attempt a best-effort download after a future unsend."
+                                                actions:@[
+        [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
+        [SCIIGAlertAction actionWithTitle:@"Clear Media" style:SCIIGAlertActionStyleDestructive handler:^{
+            [SCIDeletedMessagesStorage clearStagedMediaForOwnerPK:self.ownerPK];
             [self reloadStatsAndRebuild];
         }],
     ]];

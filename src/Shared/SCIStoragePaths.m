@@ -43,6 +43,10 @@ static NSString *SCIStorageFeatureDirectory(NSString *featureName) {
     return SCIStorageFeatureDirectory(@"DeletedMessages");
 }
 
++ (NSString *)deletedMessagesPendingDirectory {
+    return SCIStorageFeatureDirectory(@"DeletedMessagesPending");
+}
+
 + (NSString *)profileAnalyzerDirectory {
     return SCIStorageFeatureDirectory(@"ProfileAnalyzer");
 }

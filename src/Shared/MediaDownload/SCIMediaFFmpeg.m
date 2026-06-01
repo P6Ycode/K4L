@@ -1087,6 +1087,7 @@ static void SCIFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     shareAllItem.accessibilityLabel = @"Share all";
     UIBarButtonItem *clearItem = SCIMediaChromeTopBarButtonItem(@"trash", self, @selector(clearTapped));
     clearItem.accessibilityLabel = @"Clear";
+    clearItem.tintColor = [SCIUtils SCIColor_InstagramDestructive];
     SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ clearItem, shareAllItem ]);
 }
 

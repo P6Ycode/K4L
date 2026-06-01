@@ -5,6 +5,8 @@ NSNotificationName const SCIDeletedMessagesDidChangeNotification = @"SCIDeletedM
 
 static NSString *const kSCIDMMediaDir   = @"media";
 static NSString *const kSCIDMSenderFlagsFile = @"sender_flags.json";
+static NSString *const kSCIDMPendingCandidatesDir = @"candidates";
+static NSString *const kSCIDMPendingRemovalsDir = @"removals";
 
 @implementation SCIDeletedMessagesStorage
 
@@ -36,6 +38,30 @@ static NSString *sciMediaDirForOwner(NSString *pk) {
     return dir;
 }
 
+static NSString *sciPendingStorageDir(void) {
+    NSString *dir = [SCIStoragePaths deletedMessagesPendingDirectory];
+    [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+    return dir;
+}
+
+static NSString *sciPendingSubdirectory(NSString *name) {
+    NSString *dir = [sciPendingStorageDir() stringByAppendingPathComponent:name];
+    [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+    return dir;
+}
+
+static NSString *sciPendingJSONPath(NSString *directory, NSString *pk) {
+    return [[sciPendingSubdirectory(directory) stringByAppendingPathComponent:sciSafePK(pk)]
+            stringByAppendingPathExtension:@"json"];
+}
+
+static NSString *sciStagedMediaDirForOwner(NSString *pk) {
+    NSString *dir = [[sciPendingStorageDir() stringByAppendingPathComponent:kSCIDMMediaDir]
+                     stringByAppendingPathComponent:sciSafePK(pk)];
+    [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+    return dir;
+}
+
 static NSString *sciJSONPathForOwner(NSString *pk) {
     return [sciStorageDir() stringByAppendingPathComponent:
             [NSString stringWithFormat:@"%@.json", sciSafePK(pk)]];
@@ -57,6 +83,31 @@ static BOOL sciWriteArray(NSString *path, NSArray *arr) {
     NSData *data = [NSJSONSerialization dataWithJSONObject:(arr ?: @[]) options:0 error:&err];
     if (!data) return NO;
     return [data writeToFile:path atomically:YES];
+}
+
+static NSMutableDictionary *sciReadDictionary(NSString *path) {
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    if (!data.length) return [NSMutableDictionary dictionary];
+    id obj = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+    return [obj isKindOfClass:[NSMutableDictionary class]] ? obj : [NSMutableDictionary dictionary];
+}
+
+static BOOL sciWriteDictionary(NSString *path, NSDictionary *dict) {
+    NSData *data = [NSJSONSerialization dataWithJSONObject:(dict ?: @{}) options:0 error:nil];
+    return data ? [data writeToFile:path atomically:YES] : NO;
+}
+
+static unsigned long long sciDirectorySize(NSString *dir) {
+    NSDirectoryEnumerator *en = [[NSFileManager defaultManager] enumeratorAtPath:dir];
+    unsigned long long total = 0;
+    for (NSString *rel in en) {
+        NSDictionary *attrs = [en fileAttributes];
+        if ([attrs[NSFileType] isEqualToString:NSFileTypeRegular]) {
+            total += [attrs[NSFileSize] unsignedLongLongValue];
+        }
+        (void)rel;
+    }
+    return total;
 }
 
 static NSMutableDictionary *sciReadFlags(void) {
@@ -260,8 +311,18 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
         NSString *path = sciJSONPathForOwner(ownerPK);
         NSMutableArray<SCIDeletedMessage *> *cur = [sciDecode(sciReadArray(path)) mutableCopy];
         NSMutableSet<NSString *> *incomingIds = [NSMutableSet setWithCapacity:messages.count];
+        NSMutableDictionary<NSString *, SCIDeletedMessage *> *existingById = [NSMutableDictionary dictionary];
+        for (SCIDeletedMessage *m in cur) {
+            if (m.messageId.length) existingById[m.messageId] = m;
+        }
         for (SCIDeletedMessage *m in messages) {
-            if (m.messageId.length) [incomingIds addObject:m.messageId];
+            if (!m.messageId.length) continue;
+            SCIDeletedMessage *existing = existingById[m.messageId];
+            if (!m.mediaPath.length) m.mediaPath = existing.mediaPath;
+            if (!m.thumbnailPath.length) m.thumbnailPath = existing.thumbnailPath;
+            if (!m.stagedMediaPath.length) m.stagedMediaPath = existing.stagedMediaPath;
+            if (!m.stagedThumbnailPath.length) m.stagedThumbnailPath = existing.stagedThumbnailPath;
+            [incomingIds addObject:m.messageId];
         }
         // Drop any existing record for the incoming ids (replace semantics).
         NSMutableArray<SCIDeletedMessage *> *kept = [NSMutableArray arrayWithCapacity:cur.count];
@@ -419,17 +480,157 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
 }
 
 + (unsigned long long)mediaSizeBytesForOwnerPK:(NSString *)ownerPK {
-    NSString *dir = sciMediaDirForOwner(ownerPK);
-    NSDirectoryEnumerator *en = [[NSFileManager defaultManager] enumeratorAtPath:dir];
-    unsigned long long total = 0;
-    for (NSString *rel in en) {
-        NSDictionary *attrs = [en fileAttributes];
-        if ([attrs[NSFileType] isEqualToString:NSFileTypeRegular]) {
-            total += [attrs[NSFileSize] unsignedLongLongValue];
-        }
-        (void)rel;
+    return sciDirectorySize(sciMediaDirForOwner(ownerPK));
+}
+
+#pragma mark - Pending reconciliation and staged ephemeral media
+
++ (BOOL)savePendingCandidateSnapshot:(NSDictionary *)snapshot forOwnerPK:(NSString *)ownerPK {
+    NSString *messageId = [snapshot[@"message_id"] isKindOfClass:[NSString class]] ? snapshot[@"message_id"] : nil;
+    if (!messageId.length) return NO;
+    __block BOOL ok = NO;
+    dispatch_sync(sciDMQueue(), ^{
+        NSString *path = sciPendingJSONPath(kSCIDMPendingCandidatesDir, ownerPK);
+        NSMutableDictionary *all = sciReadDictionary(path);
+        NSMutableDictionary *merged = [all[messageId] isKindOfClass:[NSDictionary class]]
+            ? [all[messageId] mutableCopy] : [NSMutableDictionary dictionary];
+        [merged addEntriesFromDictionary:snapshot];
+        all[messageId] = merged;
+        ok = sciWriteDictionary(path, all);
+    });
+    return ok;
+}
+
++ (NSDictionary *)pendingCandidateSnapshotForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK {
+    if (!messageId.length) return nil;
+    __block NSDictionary *result = nil;
+    dispatch_sync(sciDMQueue(), ^{
+        id candidate = sciReadDictionary(sciPendingJSONPath(kSCIDMPendingCandidatesDir, ownerPK))[messageId];
+        if ([candidate isKindOfClass:[NSDictionary class]]) result = [candidate copy];
+    });
+    return result;
+}
+
++ (BOOL)patchPendingCandidateForMessageId:(NSString *)messageId values:(NSDictionary *)values ownerPK:(NSString *)ownerPK {
+    if (!messageId.length || !values.count) return NO;
+    __block BOOL ok = NO;
+    dispatch_sync(sciDMQueue(), ^{
+        NSString *path = sciPendingJSONPath(kSCIDMPendingCandidatesDir, ownerPK);
+        NSMutableDictionary *all = sciReadDictionary(path);
+        NSMutableDictionary *candidate = [all[messageId] isKindOfClass:[NSDictionary class]]
+            ? [all[messageId] mutableCopy] : nil;
+        if (!candidate) return;
+        BOOL stagesMedia = values[@"staged_media_path"] != nil || values[@"staged_thumbnail_path"] != nil;
+        if (stagesMedia && [candidate[@"staging_disabled"] boolValue]) return;
+        [candidate addEntriesFromDictionary:values];
+        all[messageId] = candidate;
+        ok = sciWriteDictionary(path, all);
+    });
+    return ok;
+}
+
++ (void)removePendingCandidateForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK {
+    if (!messageId.length) return;
+    dispatch_sync(sciDMQueue(), ^{
+        NSString *path = sciPendingJSONPath(kSCIDMPendingCandidatesDir, ownerPK);
+        NSMutableDictionary *all = sciReadDictionary(path);
+        [all removeObjectForKey:messageId];
+        sciWriteDictionary(path, all);
+    });
+}
+
++ (BOOL)savePendingRemovalForMessageId:(NSString *)messageId
+                              threadId:(NSString *)threadId
+                            mutationId:(NSString *)mutationId
+                               ownerPK:(NSString *)ownerPK {
+    if (!messageId.length) return NO;
+    __block BOOL ok = NO;
+    dispatch_sync(sciDMQueue(), ^{
+        NSString *path = sciPendingJSONPath(kSCIDMPendingRemovalsDir, ownerPK);
+        NSMutableDictionary *all = sciReadDictionary(path);
+        NSMutableDictionary *entry = [all[messageId] isKindOfClass:[NSDictionary class]]
+            ? [all[messageId] mutableCopy] : [NSMutableDictionary dictionary];
+        entry[@"message_id"] = messageId;
+        if (threadId.length) entry[@"thread_id"] = threadId;
+        if (mutationId.length) entry[@"mutation_id"] = mutationId;
+        if (!entry[@"created_at"]) entry[@"created_at"] = @([NSDate date].timeIntervalSince1970);
+        all[messageId] = entry;
+        ok = sciWriteDictionary(path, all);
+    });
+    return ok;
+}
+
++ (NSArray<NSDictionary *> *)pendingRemovalsForOwnerPK:(NSString *)ownerPK {
+    __block NSArray *result = nil;
+    dispatch_sync(sciDMQueue(), ^{
+        result = [sciReadDictionary(sciPendingJSONPath(kSCIDMPendingRemovalsDir, ownerPK)).allValues copy];
+    });
+    return result ?: @[];
+}
+
++ (void)removePendingRemovalForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK {
+    if (!messageId.length) return;
+    dispatch_sync(sciDMQueue(), ^{
+        NSString *path = sciPendingJSONPath(kSCIDMPendingRemovalsDir, ownerPK);
+        NSMutableDictionary *all = sciReadDictionary(path);
+        [all removeObjectForKey:messageId];
+        sciWriteDictionary(path, all);
+    });
+}
+
++ (NSString *)reserveRelativeStagedMediaPathForMessageId:(NSString *)messageId
+                                                extension:(NSString *)ext
+                                                   ownerPK:(NSString *)ownerPK
+                                                 thumbnail:(BOOL)thumbnail {
+    NSString *safeId = [messageId stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+    NSString *cleanExt = ext.length ? ([ext hasPrefix:@"."] ? [ext substringFromIndex:1] : ext) : @"bin";
+    (void)sciStagedMediaDirForOwner(ownerPK);
+    return [NSString stringWithFormat:@"%@%@.%@", thumbnail ? @"thumb_" : @"", safeId, cleanExt];
+}
+
++ (NSString *)absoluteStagedPathForRelativePath:(NSString *)relativePath ownerPK:(NSString *)ownerPK {
+    if (!relativePath.length) return nil;
+    return [sciStagedMediaDirForOwner(ownerPK) stringByAppendingPathComponent:relativePath.lastPathComponent];
+}
+
++ (NSString *)promoteStagedRelativePath:(NSString *)relativePath
+                               messageId:(NSString *)messageId
+                                 ownerPK:(NSString *)ownerPK
+                               thumbnail:(BOOL)thumbnail {
+    if (!relativePath.length || !messageId.length) return nil;
+    NSString *source = [self absoluteStagedPathForRelativePath:relativePath ownerPK:ownerPK];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:source]) return nil;
+    NSString *baseId = thumbnail ? [@"thumb_" stringByAppendingString:messageId] : messageId;
+    NSString *destinationRel = [self reserveRelativeMediaPathForMessageId:baseId extension:relativePath.pathExtension ownerPK:ownerPK];
+    NSString *destination = [self absolutePathForRelativePath:destinationRel ownerPK:ownerPK];
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (![fm fileExistsAtPath:destination]) {
+        if (![fm moveItemAtPath:source toPath:destination error:nil]) return nil;
+    } else {
+        [fm removeItemAtPath:source error:nil];
     }
-    return total;
+    return destinationRel;
+}
+
++ (unsigned long long)stagedMediaSizeBytesForOwnerPK:(NSString *)ownerPK {
+    return sciDirectorySize(sciStagedMediaDirForOwner(ownerPK));
+}
+
++ (void)clearStagedMediaForOwnerPK:(NSString *)ownerPK {
+    dispatch_sync(sciDMQueue(), ^{
+        [[NSFileManager defaultManager] removeItemAtPath:sciStagedMediaDirForOwner(ownerPK) error:nil];
+        NSString *path = sciPendingJSONPath(kSCIDMPendingCandidatesDir, ownerPK);
+        NSMutableDictionary *all = sciReadDictionary(path);
+        for (NSString *key in all.allKeys) {
+            NSMutableDictionary *candidate = [all[key] mutableCopy];
+            [candidate removeObjectForKey:@"staged_media_path"];
+            [candidate removeObjectForKey:@"staged_thumbnail_path"];
+            candidate[@"staging_disabled"] = @YES;
+            all[key] = candidate;
+        }
+        sciWriteDictionary(path, all);
+    });
+    sciPostChanged(ownerPK);
 }
 
 + (NSString *)storageRootPath {

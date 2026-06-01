@@ -205,6 +205,29 @@ static UIColor *SCIDynamicInstagramColor(CGFloat lightRed,
     }];
 }
 
+static UIColor *SCIInstagramColorFromClassSelector(NSString *className, SEL selector) {
+    Class colorClass = NSClassFromString(className);
+    if (!colorClass || ![colorClass respondsToSelector:selector]) return nil;
+
+    id color = ((id (*)(id, SEL))objc_msgSend)(colorClass, selector);
+    return [color isKindOfClass:[UIColor class]] ? color : nil;
+}
+
+static UIColor *SCIInstagramDestructiveColor(void) {
+    UIColor *color = SCIInstagramColorFromClassSelector(@"HMDSColor", @selector(dangerText));
+    if (color) return color;
+
+    color = SCIInstagramColorFromClassSelector(@"HMDSColor", @selector(danger));
+    if (color) return color;
+
+    color = SCIInstagramColorFromClassSelector(@"TWDSColor", @selector(negative));
+    if (color) return color;
+
+    return [UIColor colorWithDynamicProvider:^UIColor *(__unused UITraitCollection *traits) {
+        return [UIColor colorWithRed:1.0 green:0.396 blue:0.490 alpha:1.0];
+    }];
+}
+
 static NSArray *SCIImageVersionsFromPhoto(IGPhoto *photo) {
     if (!photo) return nil;
 
@@ -829,7 +852,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (UIColor *)SCIColor_InstagramDestructive {
-    return [UIColor colorWithRed:237.0 / 255.0 green:73.0 / 255.0 blue:86.0 / 255.0 alpha:1.0];
+    return SCIInstagramDestructiveColor();
 }
 
 + (UIColor *)SCIColor_InstagramPressedBackground {

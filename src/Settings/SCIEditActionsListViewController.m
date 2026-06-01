@@ -296,8 +296,8 @@ static char kSCIActionsListSwitchAssocKey;
     return indexPath.section == 0;
 }
 
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle != UITableViewCellEditingStyleDelete || indexPath.section != 0) return;
+- (void)removeSectionAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section != 0 || indexPath.row >= (NSInteger)self.configuration.sections.count) return;
 
     SCIActionMenuSection *section = self.configuration.sections[indexPath.row];
     for (NSString *identifier in section.actions) {
@@ -307,7 +307,26 @@ static char kSCIActionsListSwitchAssocKey;
     }
     [self.configuration.sections removeObjectAtIndex:indexPath.row];
     [self.configuration save];
-    [tableView reloadData];
+    [self.tableView reloadData];
+}
+
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (editingStyle != UITableViewCellEditingStyleDelete) return;
+    [self removeSectionAtIndexPath:indexPath];
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (![self tableView:tableView canEditRowAtIndexPath:indexPath]) return nil;
+
+    __weak typeof(self) weakSelf = self;
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+        [weakSelf removeSectionAtIndexPath:indexPath];
+        completionHandler(YES);
+    }];
+    deleteAction.image = [SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+    deleteAction.backgroundColor = [SCIUtils SCIColor_InstagramDestructive];
+    deleteAction.accessibilityLabel = @"Remove Section";
+    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
 }
 
 - (void)addSectionTapped {

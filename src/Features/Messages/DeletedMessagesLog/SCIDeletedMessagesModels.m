@@ -93,6 +93,7 @@ static double sciDouble(id v) {
 + (instancetype)messageFromJSONDict:(NSDictionary *)dict {
     if (![dict isKindOfClass:[NSDictionary class]]) return nil;
     SCIDeletedMessage *m = [SCIDeletedMessage new];
+    m.viewMode             = -1;
     m.messageId            = sciStr(dict[@"message_id"]);
     m.threadId             = sciStr(dict[@"thread_id"]);
     m.threadTitle          = sciStr(dict[@"thread_title"]);
@@ -111,6 +112,10 @@ static double sciDouble(id v) {
     m.thumbnailURL         = sciStr(dict[@"thumbnail_url"]);
     m.thumbnailPath        = sciStr(dict[@"thumbnail_path"]);
     m.mediaMimeType        = sciStr(dict[@"media_mime"]);
+    if ([dict[@"view_mode"] isKindOfClass:[NSNumber class]]) m.viewMode = [dict[@"view_mode"] integerValue];
+    m.stagedMediaPath      = sciStr(dict[@"staged_media_path"]);
+    m.stagedThumbnailPath  = sciStr(dict[@"staged_thumbnail_path"]);
+    m.mediaURLStaleAt      = sciDateFromJSON(dict[@"media_url_stale_at"]);
     m.durationSeconds      = sciDouble(dict[@"duration"]);
     id wf = dict[@"waveform"];
     if ([wf isKindOfClass:[NSArray class]]) m.waveform = wf;
@@ -143,6 +148,10 @@ static double sciDouble(id v) {
     if (self.thumbnailURL)         d[@"thumbnail_url"]         = self.thumbnailURL;
     if (self.thumbnailPath)        d[@"thumbnail_path"]        = self.thumbnailPath;
     if (self.mediaMimeType)        d[@"media_mime"]            = self.mediaMimeType;
+    if (self.viewMode >= 0)        d[@"view_mode"]             = @(self.viewMode);
+    if (self.stagedMediaPath)      d[@"staged_media_path"]     = self.stagedMediaPath;
+    if (self.stagedThumbnailPath)  d[@"staged_thumbnail_path"] = self.stagedThumbnailPath;
+    if (self.mediaURLStaleAt)      d[@"media_url_stale_at"]    = sciDateToJSON(self.mediaURLStaleAt);
     if (self.durationSeconds > 0)  d[@"duration"]              = @(self.durationSeconds);
     if (self.waveform.count)       d[@"waveform"]              = self.waveform;
     if (self.width > 0)            d[@"width"]                 = @(self.width);

@@ -302,12 +302,12 @@ static void sciCaptureMessage(id message) {
 	sciTrackContentClass(sid, NSStringFromClass([message class]));
 }
 
-static void sciCaptureMessagesFromUpdate(id update) {
+static void sciCaptureMessagesFromUpdate(id update, NSString *ownerPk, NSString *threadId, BOOL persistCandidates) {
 	NSArray *inserts = sciIvar(update, "_insertMessages");
 	if ([inserts isKindOfClass:NSArray.class]) {
 		for (id m in inserts) {
 			sciCaptureMessage(m);
-			sciDMCaptureNoteInsert(m);
+			sciDMCaptureNoteInsert(m, ownerPk, threadId, persistCandidates);
 		}
 	}
 
@@ -315,7 +315,7 @@ static void sciCaptureMessagesFromUpdate(id update) {
 	if ([replaces isKindOfClass:NSArray.class]) {
 		for (id m in replaces) {
 			sciCaptureMessage(m);
-			sciDMCaptureNoteInsert(m);
+			sciDMCaptureNoteInsert(m, ownerPk, threadId, persistCandidates);
 		}
 	}
 }
@@ -463,11 +463,11 @@ static void sciProcessReactionMutations(id update, NSString *ownerPk, NSString *
 	}
 }
 
-static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *threadId, id applicator, NSMutableSet<NSString *> *preserved, NSMutableSet<NSString *> *detected, NSMutableArray<NSDictionary *> *previews) {
+static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *threadId, id applicator, NSMutableSet<NSString *> *preserved, NSMutableSet<NSString *> *detected, NSMutableArray<NSDictionary *> *previews, BOOL loggingAllowed) {
 	if (!update || !ownerPk.length) return NO;
 
-	sciCaptureMessagesFromUpdate(update);
-	sciProcessReactionMutations(update, ownerPk, threadId, applicator);
+	sciCaptureMessagesFromUpdate(update, ownerPk, threadId, loggingAllowed && sciDeletedLogEnabled());
+	if (loggingAllowed) sciProcessReactionMutations(update, ownerPk, threadId, applicator);
 
 	NSArray *keys = sciIvar(update, "_removeMessages_messageKeys");
 	if (![keys isKindOfClass:NSArray.class] || !keys.count) return NO;
@@ -494,7 +494,7 @@ static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *thre
 	NSMutableSet *bucket = sciBucketForPk(ownerPk);
 	NSMutableArray *unsendKeys = NSMutableArray.array;
 	BOOL keepOn = sciKeepDeletedEnabled();
-	BOOL logOn = sciDeletedLogEnabled();
+	BOOL logOn = loggingAllowed && sciDeletedLogEnabled();
 	BOOL didPreserve = NO;
 
 	for (id key in keys) {
@@ -511,13 +511,13 @@ static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *thre
 			[preserved addObject:sid];
 			didPreserve = YES;
 		}
-		[detected addObject:sid];
+		if (loggingAllowed) [detected addObject:sid];
 		[unsendKeys addObject:key];
 	}
 
 	if (!unsendKeys.count) return NO;
 
-	if (previews) {
+	if (loggingAllowed && previews) {
 		NSArray *resolvedPreviews = sciDMCapturePreviewMetadataForKeys(unsendKeys, applicator, ownerPk, threadId);
 		if (resolvedPreviews.count) [previews addObjectsFromArray:resolvedPreviews];
 	}
@@ -570,7 +570,8 @@ static NSSet<NSString *> *sciProcessCacheUpdate(id cacheUpdate, NSString *ownerP
 	NSMutableSet *preserved = NSMutableSet.set;
 	NSString *threadId = sciThreadIdFromCacheUpdate(cacheUpdate);
 
-	if (!cacheUpdate || !threadId.length || sciThreadBlockedBySeenList(threadId)) return preserved;
+	if (!cacheUpdate || !threadId.length) return preserved;
+	BOOL loggingAllowed = !sciThreadBlockedBySeenList(threadId);
 
 	if (!sciDeleteForYouKeys) sciDeleteForYouKeys = NSMutableDictionary.dictionary;
 	sciPruneDeleteForYouKeys();
@@ -580,7 +581,7 @@ static NSSet<NSString *> *sciProcessCacheUpdate(id cacheUpdate, NSString *ownerP
 
 	for (id tu in threadUpdates) {
 		id msgUpdate = sciMessageUpdateFromThreadUpdate(tu);
-		if (msgUpdate) sciProcessMessageUpdate(msgUpdate, ownerPk, threadId, applicator, preserved, detected, previews);
+		if (msgUpdate) sciProcessMessageUpdate(msgUpdate, ownerPk, threadId, applicator, preserved, detected, previews, loggingAllowed);
 	}
 
 	return preserved;
@@ -762,8 +763,7 @@ static void sciRefreshVisibleCellIndicators(void) {
 	}
 }
 
-static void (*orig_applyUpdates)(id, SEL, id, id, id);
-static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id userAccess) {
+static void sciHandleApplyUpdates(id self, id updates, void (^invokeOriginal)(void)) {
 	sciDirectUserResolverSetActiveApplicator(self);
 
 	BOOL keepOn = sciKeepDeletedEnabled();
@@ -772,11 +772,12 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 	BOOL reactionOn = sciReactionLogEnabled() || SCINotificationIsEnabled(kSCINotificationUnsentReaction);
 
 	if (!keepOn && !logOn && !toastOn && !reactionOn) {
-		orig_applyUpdates(self, _cmd, updates, completion, userAccess);
+		invokeOriginal();
 		return;
 	}
 
 	NSString *ownerPk = sciOwningPkFromApplicator(self);
+	if (logOn && ownerPk.length) sciDMCaptureRetryPendingRemovals(self, ownerPk);
 	NSMutableSet *preserved = NSMutableSet.set;
 	NSMutableSet *detected = NSMutableSet.set;
 	NSMutableArray<NSDictionary *> *previews = NSMutableArray.array;
@@ -794,7 +795,8 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 
 	if (preserved.count) sciSavePreservedIds();
 
-	orig_applyUpdates(self, _cmd, updates, completion, userAccess);
+	invokeOriginal();
+	if (logOn && ownerPk.length) sciDMCaptureRetryPendingRemovals(self, ownerPk);
 
 	NSArray<NSDictionary *> *reactionPreviews = sciPendingReactionPreviews.count ? [sciPendingReactionPreviews copy] : nil;
 	sciPendingReactionPreviews = nil;
@@ -816,7 +818,7 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 
 	dispatch_async(dispatch_get_main_queue(), ^{
 		if (foreground) sciRefreshVisibleCellIndicators();
-		if (toastOn && (preserved.count || detected.count)) {
+		if (toastOn && detected.count) {
 			if (previews.count) {
 				for (NSDictionary *preview in previews) sciShowUnsentToast(preview, senderName, ownerName, sid);
 			} else {
@@ -826,6 +828,27 @@ static void new_applyUpdates(id self, SEL _cmd, id updates, id completion, id us
 		if (reactionPreviews.count) {
 			for (NSDictionary *preview in reactionPreviews) sciShowUnsentReactionToast(preview, ownerName);
 		}
+	});
+}
+
+static void (*orig_applyUpdatesUserAccess)(id, SEL, id, id, id);
+static void new_applyUpdatesUserAccess(id self, SEL _cmd, id updates, id completion, id userAccess) {
+	sciHandleApplyUpdates(self, updates, ^{
+		orig_applyUpdatesUserAccess(self, _cmd, updates, completion, userAccess);
+	});
+}
+
+static void (*orig_applyUpdatesCompletion)(id, SEL, id, id);
+static void new_applyUpdatesCompletion(id self, SEL _cmd, id updates, id completion) {
+	sciHandleApplyUpdates(self, updates, ^{
+		orig_applyUpdatesCompletion(self, _cmd, updates, completion);
+	});
+}
+
+static void (*orig_applyUpdatesOnly)(id, SEL, id);
+static void new_applyUpdatesOnly(id self, SEL _cmd, id updates) {
+	sciHandleApplyUpdates(self, updates, ^{
+		orig_applyUpdatesOnly(self, _cmd, updates);
 	});
 }
 
@@ -1071,13 +1094,18 @@ static id new_actionLogInit(id self, SEL _cmd, id message, id title, id attrs, i
 	return result;
 }
 
-static void sciHook(Class cls, SEL sel, IMP imp, IMP *orig) {
-	if (cls && class_getInstanceMethod(cls, sel)) MSHookMessageEx(cls, sel, imp, orig);
+static BOOL sciHook(Class cls, SEL sel, IMP imp, IMP *orig) {
+	if (!cls || !class_getInstanceMethod(cls, sel)) return NO;
+	MSHookMessageEx(cls, sel, imp, orig);
+	return YES;
 }
 
 %ctor {
 	Class cacheCls = NSClassFromString(@"IGDirectCacheUpdatesApplicator");
-	sciHook(cacheCls, NSSelectorFromString(@"_applyThreadUpdates:completion:userAccess:"), (IMP)new_applyUpdates, (IMP *)&orig_applyUpdates);
+	if (!sciHook(cacheCls, NSSelectorFromString(@"_applyThreadUpdates:completion:userAccess:"), (IMP)new_applyUpdatesUserAccess, (IMP *)&orig_applyUpdatesUserAccess)
+		&& !sciHook(cacheCls, NSSelectorFromString(@"_applyThreadUpdates:completion:"), (IMP)new_applyUpdatesCompletion, (IMP *)&orig_applyUpdatesCompletion)) {
+		sciHook(cacheCls, NSSelectorFromString(@"_applyThreadUpdates:"), (IMP)new_applyUpdatesOnly, (IMP *)&orig_applyUpdatesOnly);
+	}
 
 	Class removeCls = NSClassFromString(@"IGDirectMessageOutgoingUpdateRemoveMessagesMutationProcessor");
 	sciHook(removeCls, NSSelectorFromString(@"executeWithResultHandler:accessoryPackage:"), (IMP)new_removeMutationExecute, (IMP *)&orig_removeMutationExecute);

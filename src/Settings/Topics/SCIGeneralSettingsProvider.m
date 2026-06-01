@@ -76,6 +76,8 @@
         [SCIUtils cleanCache];
         SCINotify(kSCINotificationSettingsClearCache, @"Cache cleared", nil, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
     }];
+    clearCacheSetting.tintColor = [SCIUtils SCIColor_InstagramDestructive];
+    clearCacheSetting.iconTintColor = [SCIUtils SCIColor_InstagramDestructive];
     clearCacheSetting.accessoryTextProvider = ^NSString *{
         return [SCIUtils formattedCacheSize];
     };

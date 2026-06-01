@@ -79,6 +79,31 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 
 // Total size (bytes) of stored media for one account — used by Settings.
 + (unsigned long long)mediaSizeBytesForOwnerPK:(NSString *)ownerPK;
+
+#pragma mark - Pending reconciliation and staged ephemeral media
+
++ (BOOL)savePendingCandidateSnapshot:(NSDictionary *)snapshot forOwnerPK:(NSString *)ownerPK;
++ (nullable NSDictionary *)pendingCandidateSnapshotForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK;
++ (BOOL)patchPendingCandidateForMessageId:(NSString *)messageId values:(NSDictionary *)values ownerPK:(NSString *)ownerPK;
++ (void)removePendingCandidateForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK;
++ (BOOL)savePendingRemovalForMessageId:(NSString *)messageId
+                              threadId:(nullable NSString *)threadId
+                            mutationId:(nullable NSString *)mutationId
+                               ownerPK:(NSString *)ownerPK;
++ (NSArray<NSDictionary *> *)pendingRemovalsForOwnerPK:(NSString *)ownerPK;
++ (void)removePendingRemovalForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK;
++ (NSString *)reserveRelativeStagedMediaPathForMessageId:(NSString *)messageId
+                                                extension:(nullable NSString *)ext
+                                                   ownerPK:(NSString *)ownerPK
+                                                 thumbnail:(BOOL)thumbnail;
++ (nullable NSString *)absoluteStagedPathForRelativePath:(nullable NSString *)relativePath ownerPK:(NSString *)ownerPK;
++ (nullable NSString *)promoteStagedRelativePath:(nullable NSString *)relativePath
+                                       messageId:(NSString *)messageId
+                                         ownerPK:(NSString *)ownerPK
+                                       thumbnail:(BOOL)thumbnail;
++ (unsigned long long)stagedMediaSizeBytesForOwnerPK:(NSString *)ownerPK;
++ (void)clearStagedMediaForOwnerPK:(NSString *)ownerPK;
+
 + (NSString *)storageRootPath;
 + (BOOL)replaceStorageWithDirectoryAtPath:(NSString *)sourcePath error:(NSError **)error;
 

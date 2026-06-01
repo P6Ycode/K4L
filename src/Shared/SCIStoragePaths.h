@@ -7,6 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)scinstaDocumentsDirectory;
 + (NSString *)galleryDirectory;
 + (NSString *)deletedMessagesDirectory;
++ (NSString *)deletedMessagesPendingDirectory;
 + (NSString *)profileAnalyzerDirectory;
 
 @end

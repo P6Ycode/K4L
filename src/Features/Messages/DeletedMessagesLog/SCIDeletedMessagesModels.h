@@ -50,6 +50,10 @@ FOUNDATION_EXPORT NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageK
 @property (nonatomic, copy, nullable) NSString *thumbnailURL;
 @property (nonatomic, copy, nullable) NSString *thumbnailPath;
 @property (nonatomic, copy, nullable) NSString *mediaMimeType;
+@property (nonatomic, assign) NSInteger viewMode;             // -1 when not ephemeral / unknown
+@property (nonatomic, copy, nullable) NSString *stagedMediaPath;
+@property (nonatomic, copy, nullable) NSString *stagedThumbnailPath;
+@property (nonatomic, strong, nullable) NSDate *mediaURLStaleAt;
 
 @property (nonatomic, assign) double   durationSeconds;          // voice/video
 @property (nonatomic, strong, nullable) NSArray<NSNumber *> *waveform;

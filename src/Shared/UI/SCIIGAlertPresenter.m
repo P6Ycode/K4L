@@ -56,6 +56,7 @@ static UIAlertActionStyle SCIUIKitActionStyle(SCIIGAlertActionStyle style) {
         case SCIIGAlertActionStyleCancel:
             return UIAlertActionStyleCancel;
         case SCIIGAlertActionStyleDestructive:
+            /// TODO: investigate whether UIKit fallback alert destructive tint can be customized. UIAlertAction exposes no supported per-action color API.
             return UIAlertActionStyleDestructive;
         case SCIIGAlertActionStyleDefault:
         default:
@@ -342,27 +343,8 @@ static void SCIIGShiftButtonRegionToStartAtY(UIView *root, UIView *coordinateVie
     }
 }
 
-static UIColor *SCIIGColorFromClassSelector(NSString *className, SEL selector) {
-    Class colorClass = NSClassFromString(className);
-    if (!colorClass || ![colorClass respondsToSelector:selector]) return nil;
-
-    id color = ((id (*)(id, SEL))objc_msgSend)(colorClass, selector);
-    return [color isKindOfClass:[UIColor class]] ? color : nil;
-}
-
 static UIColor *SCIIGDangerActionColor(void) {
-    UIColor *color = SCIIGColorFromClassSelector(@"HMDSColor", @selector(dangerText));
-    if (color) return color;
-
-    color = SCIIGColorFromClassSelector(@"HMDSColor", @selector(danger));
-    if (color) return color;
-
-    color = SCIIGColorFromClassSelector(@"TWDSColor", @selector(negative));
-    if (color) return color;
-
-    return [UIColor colorWithDynamicProvider:^UIColor *(__unused UITraitCollection *traits) {
-        return [UIColor colorWithRed:1.0 green:0.396 blue:0.490 alpha:1.0];
-    }];
+    return [SCIUtils SCIColor_InstagramDestructive];
 }
 
 static NSNumber *SCIIGNativeStyleForButton(id alertView, UIView *button, NSUInteger index) {

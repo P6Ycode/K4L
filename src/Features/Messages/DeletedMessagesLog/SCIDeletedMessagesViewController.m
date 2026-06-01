@@ -438,6 +438,20 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     ]];
 }
 
+- (void)confirmDeleteGroup:(SCIDeletedMessageGroup *)group {
+    if (!group.senderPk.length) return;
+    NSString *sender = group.senderUsername.length ? [@"@" stringByAppendingString:group.senderUsername] : @"this sender";
+    [SCIIGAlertPresenter presentAlertFromViewController:self
+                                                  title:@"Delete sender log?"
+                                                message:[NSString stringWithFormat:@"This removes all logged messages from %@.", sender]
+                                                actions:@[
+        [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
+        [SCIIGAlertAction actionWithTitle:@"Delete" style:SCIIGAlertActionStyleDestructive handler:^{
+            [SCIDeletedMessagesStorage deleteMessagesForSenderPK:group.senderPk ownerPK:self.ownerPK];
+        }],
+    ]];
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return self.visibleGroups.count;
 }
@@ -471,8 +485,8 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     blockAction.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryText];
     blockAction.accessibilityLabel = group.isBlocked ? @"Unblock" : @"Block";
     UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [SCIDeletedMessagesStorage deleteMessagesForSenderPK:group.senderPk ownerPK:self.ownerPK];
-        completionHandler(YES);
+        [self confirmDeleteGroup:group];
+        completionHandler(NO);
     }];
     deleteAction.image = [SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     deleteAction.backgroundColor = [SCIUtils SCIColor_InstagramDestructive];
