@@ -8,6 +8,30 @@
 + (BOOL)getBoolPref:(NSString *)key;
 @end
 
+// iOS 26 Liquid Glass for the notification pill. UIGlassEffect is an iOS-26-SDK
+// class, so it's resolved at runtime (the build targets the 16.2 SDK). Falls
+// back to the material blur when unavailable or the toggle is off.
+static BOOL SCINotificationPillGlassActive(void) {
+    if (@available(iOS 26.0, *)) {
+        if (!NSClassFromString(@"UIGlassEffect")) return NO;
+        return [SCIUtils getBoolPref:@"notifs_pill_liquid_glass"];
+    }
+    return NO;
+}
+
+static UIVisualEffect *SCINotificationPillBackgroundEffect(void) {
+    if (SCINotificationPillGlassActive()) {
+        Class glassClass = NSClassFromString(@"UIGlassEffect");
+        // UIGlassEffect is instantiated with -init (it does NOT implement the
+        // +effect convenience constructor that UIBlurEffect offers).
+        if (glassClass && [glassClass instancesRespondToSelector:@selector(init)]) {
+            UIVisualEffect *glass = [[glassClass alloc] init];
+            if ([glass isKindOfClass:[UIVisualEffect class]]) return glass;
+        }
+    }
+    return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+}
+
 static CGFloat const kPillCorner     = 28.0;
 static CGFloat const kHorizontalPad  = 16.0;
 static CGFloat const kDynamicMinWidth = 200.0;
@@ -137,8 +161,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     self.layer.borderWidth = 0.65;
     self.layer.borderColor = [[UIColor colorWithWhite:1.0 alpha:0.18] CGColor];
 
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
-    _blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+    _blurView = [[UIVisualEffectView alloc] initWithEffect:SCINotificationPillBackgroundEffect()];
     _blurView.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:_blurView];
 
@@ -149,16 +172,22 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
         [_blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
     ]];
 
+    // Liquid Glass provides automatic content legibility (text/icons adapt to the
+    // background luminosity behind the glass) ONLY for content placed inside the
+    // effect view's contentView. On glass we therefore host the foreground there;
+    // on material (iOS <= 18) we keep the existing parenting on self unchanged.
+    UIView *contentHost = SCINotificationPillGlassActive() ? _blurView.contentView : self;
+
     _chromeOverlayView = [[UIView alloc] init];
     _chromeOverlayView.userInteractionEnabled = NO;
     _chromeOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:_chromeOverlayView];
+    [contentHost addSubview:_chromeOverlayView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_chromeOverlayView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [_chromeOverlayView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [_chromeOverlayView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [_chromeOverlayView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [_chromeOverlayView.topAnchor constraintEqualToAnchor:contentHost.topAnchor],
+        [_chromeOverlayView.bottomAnchor constraintEqualToAnchor:contentHost.bottomAnchor],
+        [_chromeOverlayView.leadingAnchor constraintEqualToAnchor:contentHost.leadingAnchor],
+        [_chromeOverlayView.trailingAnchor constraintEqualToAnchor:contentHost.trailingAnchor],
     ]];
 
     _chromeGradientLayer = [CAGradientLayer layer];
@@ -174,7 +203,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     _iconBadgeView.layer.borderWidth = 0.5;
     _iconBadgeView.layer.borderColor = [[UIColor colorWithWhite:1.0 alpha:0.24] CGColor];
     _iconBadgeView.clipsToBounds = YES;
-    [self addSubview:_iconBadgeView];
+    [contentHost addSubview:_iconBadgeView];
 
     _iconBadgeGradientLayer = [CAGradientLayer layer];
     _iconBadgeGradientLayer.startPoint = CGPointMake(0.0, 0.2);
@@ -191,8 +220,8 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     [_iconBadgeView addSubview:_iconView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_iconBadgeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:kHorizontalPad],
-        [_iconBadgeView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [_iconBadgeView.leadingAnchor constraintEqualToAnchor:contentHost.leadingAnchor constant:kHorizontalPad],
+        [_iconBadgeView.centerYAnchor constraintEqualToAnchor:contentHost.centerYAnchor],
         [_iconBadgeView.widthAnchor constraintEqualToConstant:kIconBadgeSize],
         [_iconBadgeView.heightAnchor constraintEqualToConstant:kIconBadgeSize],
         [_iconView.centerXAnchor constraintEqualToAnchor:_iconBadgeView.centerXAnchor],
@@ -209,11 +238,11 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     _closeButton.layer.borderWidth = 0.5;
     _closeButton.layer.borderColor = [[UIColor colorWithWhite:1.0 alpha:0.22] CGColor];
     [_closeButton addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self addSubview:_closeButton];
+    [contentHost addSubview:_closeButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_closeButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-13.0],
-        [_closeButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [_closeButton.trailingAnchor constraintEqualToAnchor:contentHost.trailingAnchor constant:-13.0],
+        [_closeButton.centerYAnchor constraintEqualToAnchor:contentHost.centerYAnchor],
         [_closeButton.widthAnchor constraintEqualToConstant:24.0],
         [_closeButton.heightAnchor constraintEqualToConstant:24.0],
     ]];
@@ -262,11 +291,11 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     _textStack.alignment = UIStackViewAlignmentFill;
     _textStack.distribution = UIStackViewDistributionFill;
     _textStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:_textStack];
+    [contentHost addSubview:_textStack];
 
-    _textCenterYConstraint = [_textStack.centerYAnchor constraintEqualToAnchor:self.centerYAnchor];
+    _textCenterYConstraint = [_textStack.centerYAnchor constraintEqualToAnchor:contentHost.centerYAnchor];
     _textTrailingWithButtonConstraint = [_textStack.trailingAnchor constraintEqualToAnchor:_closeButton.leadingAnchor constant:-10.0];
-    _textTrailingWithoutButtonConstraint = [_textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-kHorizontalPad];
+    _textTrailingWithoutButtonConstraint = [_textStack.trailingAnchor constraintLessThanOrEqualToAnchor:contentHost.trailingAnchor constant:-kHorizontalPad];
 
     [NSLayoutConstraint activateConstraints:@[
         [_textStack.leadingAnchor constraintEqualToAnchor:_iconBadgeView.trailingAnchor constant:10.0],
@@ -387,10 +416,12 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 }
 
 - (UIColor *)titleColorForCurrentStyle {
+    if (SCINotificationPillGlassActive()) return [UIColor labelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.98];
 }
 
 - (UIColor *)subtitleColorForCurrentStyle {
+    if (SCINotificationPillGlassActive()) return [UIColor secondaryLabelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.82];
 }
 
@@ -446,10 +477,12 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
 - (UIColor *)iconTintForTone:(SCIPillVisualTone)tone {
     (void)tone;
+    if (SCINotificationPillGlassActive()) return [UIColor labelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.95];
 }
 
 - (UIColor *)cancelButtonTintColor {
+    if (SCINotificationPillGlassActive()) return [UIColor labelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.83];
 }
 
@@ -467,6 +500,13 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
 - (void)applyCurrentVisualStyleAnimated:(BOOL)animated {
     void (^applyColors)(void) = ^{
+        BOOL glassActive = SCINotificationPillGlassActive();
+        // Keep the effect in sync with the toggle, and drop the hand-rolled
+        // border that fakes depth on flat material — Liquid Glass renders its
+        // own edge/specular, so the manual border fights it.
+        self.blurView.effect = SCINotificationPillBackgroundEffect();
+        self.layer.borderWidth = glassActive ? 0.0 : 0.65;
+
         self.layer.borderColor = [self pillBorderColorForCurrentStyle].CGColor;
         self.iconBadgeView.layer.borderColor = [self iconBadgeBorderColorForCurrentStyle].CGColor;
         self.closeButton.layer.borderColor = [self closeButtonBorderColorForCurrentStyle].CGColor;

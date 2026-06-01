@@ -64,6 +64,7 @@ SCI_NOTIF_CONST(kSCINotificationFlexUnavailable, "flex_unavailable");
 
 NSString * const kSCINotificationPillDurationKey = @"notifs_pill_duration";
 NSString * const kSCINotificationPillGlowEnabledKey = @"notifs_pill_glow";
+NSString * const kSCINotificationPillLiquidGlassEnabledKey = @"notifs_pill_liquid_glass";
 NSString * const kSCINotificationProgressSubtitleStyleKey = @"notifs_progress_subtitle_style";
 
 static CGFloat const kSCINotificationStackSpacing = 8.0;
@@ -212,6 +213,7 @@ static BOOL SCINotificationIdentifierIsRegistered(NSString *identifier) {
 NSDictionary<NSString *, id> *SCINotificationDefaultPreferences(void) {
     NSMutableDictionary *defaults = [@{
         kSCINotificationPillGlowEnabledKey: @YES,
+        kSCINotificationPillLiquidGlassEnabledKey: @NO,
         kSCINotificationPillDurationKey: @(kSCINotificationDefaultPillDuration),
         kSCINotificationProgressSubtitleStyleKey: @"both",
     } mutableCopy];

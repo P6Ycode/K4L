@@ -17,6 +17,10 @@ BOOL SCIPrefIsAvailable(NSString *key) {
         return SCIIsIOSVersionAtLeast(@"26.0");
     }
 
+    if ([key isEqualToString:@"notifs_pill_liquid_glass"]) {
+        return SCIIsIOSVersionAtLeast(@"26.0");
+    }
+
     if ([key isEqualToString:kSCIPrefInstantsDisableCameraControl]) {
         return SCIDeviceHasCameraControl();
     }

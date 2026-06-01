@@ -1,5 +1,6 @@
 #import "SCINotificationSettingsProvider.h"
 #import "../SCITopicSettingsSupport.h"
+#import "../SCIPreferenceAvailability.h"
 #import "../../Utils.h"
 #import "../../Shared/UI/SCINotificationCenter.h"
 
@@ -69,6 +70,11 @@
             [SCISetting switchCellWithTitle:@"Glow"
                                    subtitle:@"Show glow effect around notifications"
                                 defaultsKey:kSCINotificationPillGlowEnabledKey],
+            [SCISetting switchCellWithTitle:@"Liquid Glass"
+                                   subtitle:(SCIPrefIsAvailable(kSCINotificationPillLiquidGlassEnabledKey)
+                                             ? @"Render notifications with iOS 26 Liquid Glass"
+                                             : @"Requires iOS 26 or later")
+                                defaultsKey:kSCINotificationPillLiquidGlassEnabledKey],
             [SCISetting menuCellWithTitle:@"Download Progress"
                                  subtitle:@""
                                      menu:SCINotificationProgressSubtitleStyleMenu()],
