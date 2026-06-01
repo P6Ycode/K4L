@@ -88,11 +88,13 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.searchController.searchResultsUpdater = self;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
-    self.searchController.searchBar.placeholder = @"Search messages";
+    self.searchController.searchBar.placeholder = @"Search Messages";
     [self.searchController.searchBar setImage:[SCIAssetUtils instagramIconNamed:@"search" pointSize:18.0]
                             forSearchBarIcon:UISearchBarIconSearch
                                        state:UIControlStateNormal];
     self.navigationItem.searchController = self.searchController;
+    self.navigationItem.hidesSearchBarWhenScrolling = NO;
+    self.definesPresentationContext = YES;
 
     self.chipBar = [[SCIDeletedMessagesChipBar alloc] initWithFrame:CGRectZero];
     self.chipBar.translatesAutoresizingMaskIntoConstraints = NO;

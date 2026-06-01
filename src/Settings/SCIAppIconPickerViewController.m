@@ -7,8 +7,6 @@
 #import "../Utils.h"
 
 static NSString * const kSCIAppIconPickerCellIdentifier = @"SCIAppIconPickerCell";
-static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
-
 @interface SCIAppIconPickerCell : UICollectionViewCell
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -153,12 +151,6 @@ static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
                                     state:UIControlStateNormal];
     self.navigationItem.searchController = searchController;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
-    if (@available(iOS 26.0, *)) {
-        @try {
-            [self.navigationItem setValue:@(kSCIUINavigationItemSearchBarPlacementStacked) forKey:@"preferredSearchBarPlacement"];
-        } @catch (__unused NSException *exception) {
-        }
-    }
     self.definesPresentationContext = YES;
 }
 

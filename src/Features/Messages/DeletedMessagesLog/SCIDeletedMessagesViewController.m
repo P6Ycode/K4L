@@ -134,7 +134,7 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
 
     UIBarButtonItem *moreItem = SCIMediaChromeTopBarMenuButtonItem(@"more", [self moreMenu], @"More");
-    UIBarButtonItem *sortItem = SCIMediaChromeTopBarMenuButtonItem(@"sort", [self sortMenu], @"Sort and filter");
+    UIBarButtonItem *sortItem = SCIMediaChromeTopBarMenuButtonItem(@"sort", [self sortMenu], @"Sort and Filter");
     SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[moreItem, sortItem]);
     if (self.navigationController.viewControllers.firstObject == self) {
         SCIMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ SCIMediaChromeTopBarButtonItem(@"xmark", self, @selector(close)) ]);
@@ -143,11 +143,13 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.searchController.searchResultsUpdater = self;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
-    self.searchController.searchBar.placeholder = @"Search deleted messages";
+    self.searchController.searchBar.placeholder = @"Search Deleted Messages";
     [self.searchController.searchBar setImage:[SCIAssetUtils instagramIconNamed:@"search" pointSize:18.0]
                             forSearchBarIcon:UISearchBarIconSearch
                                        state:UIControlStateNormal];
     self.navigationItem.searchController = self.searchController;
+    self.navigationItem.hidesSearchBarWhenScrolling = NO;
+    self.definesPresentationContext = YES;
 
     self.chipBar = [[SCIDeletedMessagesChipBar alloc] initWithFrame:CGRectZero];
     self.chipBar.translatesAutoresizingMaskIntoConstraints = NO;

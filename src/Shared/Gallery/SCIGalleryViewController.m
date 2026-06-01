@@ -33,7 +33,7 @@ static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 
 static CGFloat const kGridSpacing = 2.0;
 static CGFloat const kGalleryMenuIconPointSize = 22.0;
-static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
+static NSInteger const kSCIUINavigationItemSearchBarPlacementIntegratedButton = 4;
 
 static UIImage *SCIGalleryMenuActionIcon(NSString *resourceName) {
     return [SCIAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
@@ -275,7 +275,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
     if (@available(iOS 26.0, *)) {
         @try {
-            [self.navigationItem setValue:@(kSCIUINavigationItemSearchBarPlacementStacked) forKey:@"preferredSearchBarPlacement"];
+            [self.navigationItem setValue:@(kSCIUINavigationItemSearchBarPlacementIntegratedButton) forKey:@"preferredSearchBarPlacement"];
         } @catch (__unused NSException *exception) {
         }
     }
@@ -329,7 +329,16 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 - (void)refreshBottomToolbarItems {
     SCIMediaChromeConfigureBottomToolbar(self.navigationController.toolbar);
 
-    UIBarButtonItem *searchItem = [self galleryBottomBarItemWithResource:@"search" accessibility:@"Search" action:@selector(activateSearch)];
+    UIBarButtonItem *searchItem = nil;
+    if (@available(iOS 26.0, *)) {
+        @try {
+            searchItem = [self.navigationItem valueForKey:@"searchBarPlacementBarButtonItem"];
+        } @catch (__unused NSException *exception) {
+        }
+    }
+    if (!searchItem) {
+        searchItem = [self galleryBottomBarItemWithResource:@"search" accessibility:@"Search" action:@selector(activateSearch)];
+    }
 
     NSArray<UIBarButtonItem *> *primary;
     if (self.selectionMode) {

@@ -8,7 +8,6 @@
 #import "../AssetUtils.h"
 
 static char rowStaticRef[] = "row";
-static NSInteger const kSCIUINavigationItemSearchBarPlacementStacked = 2;
 static CGFloat const kSCISettingsRemoteImageSize = 45.0;
 
 static NSCache<NSString *, UIImage *> *SCISettingsRemoteImageCache(void) {
@@ -355,12 +354,6 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     self.searchController.searchBar.placeholder = self.searchesAllSettings ? @"Search..." : [NSString stringWithFormat:@"Search %@", self.title ?: @"settings"];
     self.navigationItem.searchController = self.searchController;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
-    if (@available(iOS 26.0, *)) {
-        @try {
-            [self.navigationItem setValue:@(kSCIUINavigationItemSearchBarPlacementStacked) forKey:@"preferredSearchBarPlacement"];
-        } @catch (__unused NSException *exception) {
-        }
-    }
     self.definesPresentationContext = YES;
 }
 
