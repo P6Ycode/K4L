@@ -8,6 +8,7 @@
 #import "Topics/SCIGallerySettingsProvider.h"
 #import "Topics/SCIMessagesSettingsProvider.h"
 #import "Topics/SCIProfileSettingsProvider.h"
+#import "Topics/SCIProfileAnalyzerSettingsProvider.h"
 #import "Topics/SCIReelsSettingsProvider.h"
 #import "Topics/SCIStoriesSettingsProvider.h"
 #import "Topics/SCIToolsSettingsProvider.h"
@@ -32,7 +33,8 @@
         @{
             @"header": @"",
             @"rows": @[
-                [SCIGallerySettingsProvider rootSetting]
+                [SCIGallerySettingsProvider rootSetting],
+                [SCIProfileAnalyzerSettingsProvider rootSetting]
             ]
         },
         @{

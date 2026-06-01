@@ -538,6 +538,51 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
         !SCIStabilityGuardIsSafeStartupMode();
 }
 
+// MARK: Session / user
++ (id)activeUserSession {
+    @try {
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+                id session = nil;
+                @try {
+                    if ([window respondsToSelector:@selector(userSession)]) {
+                        session = [window valueForKey:@"userSession"];
+                    }
+                } @catch (__unused NSException *e) {}
+                if (session) return session;
+            }
+        }
+    } @catch (__unused NSException *e) {}
+    return nil;
+}
+
++ (NSString *)pkFromIGUser:(id)user {
+    if (!user) return nil;
+    Ivar pkIvar = NULL;
+    for (Class cls = [user class]; cls && !pkIvar; cls = class_getSuperclass(cls)) {
+        pkIvar = class_getInstanceVariable(cls, "_pk");
+    }
+    if (!pkIvar) return nil;
+    @try {
+        id pk = object_getIvar(user, pkIvar);
+        if ([pk isKindOfClass:[NSString class]] && [(NSString *)pk length]) return pk;
+        if (pk) return [pk description];
+    } @catch (__unused NSException *e) {}
+    return nil;
+}
+
++ (NSString *)currentUserPK {
+    id session = [self activeUserSession];
+    if (!session) return nil;
+    @try {
+        id user = [session valueForKey:@"user"];
+        return [self pkFromIGUser:user];
+    } @catch (__unused NSException *e) {
+        return nil;
+    }
+}
+
 + (void)cleanCache {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSMutableArray<NSError *> *deletionErrors = [NSMutableArray array];

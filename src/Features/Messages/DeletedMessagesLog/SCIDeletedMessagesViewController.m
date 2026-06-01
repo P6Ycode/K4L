@@ -190,7 +190,7 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     self.emptyStateView.hidden = YES;
     [self.view addSubview:self.emptyStateView];
 
-    self.emptyStateIcon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"comment" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate]];
+    self.emptyStateIcon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"messages_empty" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate]];
     self.emptyStateIcon.translatesAutoresizingMaskIntoConstraints = NO;
     self.emptyStateIcon.contentMode = UIViewContentModeScaleAspectFit;
     self.emptyStateIcon.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
@@ -292,7 +292,7 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     if (!isEmpty) return;
 
     if (!loggingEnabled && !hasAnyData) {
-        self.emptyStateIcon.image = [SCIAssetUtils instagramIconNamed:@"comment" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+        self.emptyStateIcon.image = [SCIAssetUtils instagramIconNamed:@"messages_empty" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
         self.emptyStateTitle.text = @"Logging is off";
         self.emptyStateSubtitle.text = @"Turn on Log Deleted Messages in Settings to start capturing unsent messages.";
     } else if (hasAnyData && hasFiltersActive) {

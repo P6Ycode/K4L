@@ -14,6 +14,7 @@
 @property (nonatomic, assign) BOOL includeSettings;
 @property (nonatomic, assign) BOOL includeGallery;
 @property (nonatomic, assign) BOOL includeDeletedMessages;
+@property (nonatomic, assign) BOOL includeProfileAnalyzer;
 - (instancetype)initWithImportMode:(BOOL)importMode;
 @end
 
@@ -25,6 +26,7 @@
         _includeSettings = YES;
         _includeGallery = YES;
         _includeDeletedMessages = YES;
+        _includeProfileAnalyzer = YES;
     }
     return self;
 }
@@ -72,7 +74,14 @@
     }];
     deletedMessagesRow.userInfo = @{@"checkmarked": @(self.includeDeletedMessages)};
 
-    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow, deletedMessagesRow], self.importMode ? @"A restart prompt appears after a successful import." : nil)];
+    SCISetting *profileAnalyzerRow = [SCISetting buttonCellWithTitle:@"Profile Analyzer" subtitle:@"" icon:SCISettingsIcon(@"profile_analyzer") action:^{
+        self.includeProfileAnalyzer = !self.includeProfileAnalyzer;
+        [self rebuildSections];
+        [self updateActionEnabled];
+    }];
+    profileAnalyzerRow.userInfo = @{@"checkmarked": @(self.includeProfileAnalyzer)};
+
+    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow, deletedMessagesRow, profileAnalyzerRow], self.importMode ? @"A restart prompt appears after a successful import." : nil)];
     [self replaceSections:sections];
 }
 
@@ -94,16 +103,16 @@
 }
 
 - (void)updateActionEnabled {
-    self.navigationItem.rightBarButtonItem.enabled = self.includeSettings || self.includeGallery || self.includeDeletedMessages;
+    self.navigationItem.rightBarButtonItem.enabled = self.includeSettings || self.includeGallery || self.includeDeletedMessages || self.includeProfileAnalyzer;
 }
 
 - (void)runTransfer {
-    if (!(self.includeSettings || self.includeGallery || self.includeDeletedMessages)) return;
+    if (!(self.includeSettings || self.includeGallery || self.includeDeletedMessages || self.includeProfileAnalyzer)) return;
     UIViewController *presenter = self.navigationController ?: self;
     if (self.importMode) {
-        [[SCISettingsTransferManager sharedManager] importFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery includeDeletedMessages:self.includeDeletedMessages];
+        [[SCISettingsTransferManager sharedManager] importFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery includeDeletedMessages:self.includeDeletedMessages includeProfileAnalyzer:self.includeProfileAnalyzer];
     } else {
-        [[SCISettingsTransferManager sharedManager] exportFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery includeDeletedMessages:self.includeDeletedMessages];
+        [[SCISettingsTransferManager sharedManager] exportFromController:presenter includeSettings:self.includeSettings includeGallery:self.includeGallery includeDeletedMessages:self.includeDeletedMessages includeProfileAnalyzer:self.includeProfileAnalyzer];
     }
 }
 
@@ -122,7 +131,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
                                                                     icon:SCISettingsIcon(@"arrow_down")
                                                           viewController:[[SCISettingsTransferSelectionViewController alloc] initWithImportMode:YES]],
                                   [SCIUtils SCIColor_InstagramPrimaryText])
-        ], @"Choose to export or import settings, Gallery media, unsent messages logs."),
+        ], @"Choose to export or import settings, Gallery media, unsent messages logs, and Profile Analyzer data."),
         SCITopicSection(@"Reset", @[
             SCISettingApplyIconTint([SCISetting buttonCellWithTitle:@"Reset All Settings"
                                                             subtitle:@""

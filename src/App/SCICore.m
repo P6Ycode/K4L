@@ -65,6 +65,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"msgs_deleted_log_respect_seen_list": @(NO),
         @"profile_photo_zoom": @(NO),
         @"profile_follow_indicator": @(NO),
+        @"profile_analyzer_track_visits": @(NO),
         @"feed_action_btn": @(NO),
         @"feed_action_btn_default_action": @"none",
         @"reels_action_btn": @(NO),

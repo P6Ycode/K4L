@@ -136,7 +136,7 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
     self.emptyStateView.hidden = YES;
     [self.view addSubview:self.emptyStateView];
 
-    self.emptyStateIcon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"comment_empty" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate]];
+    self.emptyStateIcon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"messages_empty" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate]];
     self.emptyStateIcon.translatesAutoresizingMaskIntoConstraints = NO;
     self.emptyStateIcon.contentMode = UIViewContentModeScaleAspectFit;
     self.emptyStateIcon.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];

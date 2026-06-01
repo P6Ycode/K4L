@@ -879,6 +879,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     self.isErrorState = YES;
     self.usesAutomaticProgressSubtitle = NO;
     self.onTapWhenCompleted = nil;
+    self.onTapWhenProgress = nil;
     self.onCancel = nil;
     [self applyErrorDismissButtonStyle];
 
@@ -1008,8 +1009,14 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
                 onCompletedTap();
             }
         }];
+        return;
     }
 
+    // Body tap while still running: invoke the progress-tap hook without
+    // dismissing (used to jump to the originating screen mid-operation).
+    if (!self.isCompleted && self.onTapWhenProgress) {
+        self.onTapWhenProgress();
+    }
 }
 
 - (void)closeTapped {

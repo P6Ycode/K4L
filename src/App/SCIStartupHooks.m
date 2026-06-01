@@ -55,6 +55,7 @@ FOUNDATION_EXPORT void SCIInstallHideReelsHeaderHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallReelsPlaybackHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDisableScrollingReelsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallFollowIndicatorHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallProfileAnalyzerVisitTrackerHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallDisableDMStorySeenHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDisableInstantsCreationHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallInstantsActionButtonHooksIfEnabled(void);
@@ -209,6 +210,7 @@ void SCIInstallProfileSurfaceHooksIfNeeded(void) {
     SCIInstallNoSuggestedUsersHooksIfEnabled();
     SCIInstallFollowIndicatorHooksIfEnabled();
     SCIInstallProfileHeaderControlsHooksIfNeeded();
+    SCIInstallProfileAnalyzerVisitTrackerHooksIfEnabled();
     SCIInstallSettingsShortcutsHooksIfNeeded();
 }
 

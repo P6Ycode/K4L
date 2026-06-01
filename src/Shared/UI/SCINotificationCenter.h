@@ -38,6 +38,8 @@ FOUNDATION_EXPORT NSString * const kSCINotificationInstantsCaptureBlocked;
 
 FOUNDATION_EXPORT NSString * const kSCINotificationProfileCopyInfo;
 
+FOUNDATION_EXPORT NSString * const kSCINotificationProfileAnalyzerComplete;
+
 FOUNDATION_EXPORT NSString * const kSCINotificationMediaPreviewSavePhotos;
 FOUNDATION_EXPORT NSString * const kSCINotificationMediaPreviewSaveGallery;
 FOUNDATION_EXPORT NSString * const kSCINotificationMediaPreviewShare;

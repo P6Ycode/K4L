@@ -53,6 +53,10 @@ typedef NS_ENUM(NSUInteger, SCINotificationTone) {
 /// Called when user taps the pill body after success state is shown.
 @property (nonatomic, copy) void(^onTapWhenCompleted)(void);
 
+/// Called when user taps the pill body while a progress operation is still
+/// running. Does not dismiss the pill (unlike the completed/toast taps).
+@property (nonatomic, copy) void(^onTapWhenProgress)(void);
+
 /// Called when a progress pill transitions to a visible terminal tone.
 @property (nonatomic, copy) void(^onTonePresented)(SCINotificationTone tone);
 

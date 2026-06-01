@@ -40,6 +40,15 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 + (NSString *)IGVersionString;
 + (BOOL)isNotch;
 
+// Session / user
+// Active IG user session (walks connected scenes for the first window with a
+// non-nil `userSession`).
++ (nullable id)activeUserSession;
+// PK string read from an IGUser object's `_pk` ivar (walks the superclass chain).
++ (nullable NSString *)pkFromIGUser:(nullable id)user;
+// Current logged-in user's PK via the active session, or nil when unavailable.
++ (nullable NSString *)currentUserPK;
+
 + (BOOL)existingLongPressGestureRecognizerForView:(UIView *)view;
 
 /// IGDSLauncherConfig hooks: when Liquid Glass is on, returns YES; otherwise returns `fallback` (stock).

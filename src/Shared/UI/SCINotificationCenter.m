@@ -37,6 +37,7 @@ SCI_NOTIF_CONST(kSCINotificationUnsentReaction, "unsent_reaction");
 SCI_NOTIF_CONST(kSCINotificationInstantsCaptureBlocked, "instants_capture_blocked");
 
 SCI_NOTIF_CONST(kSCINotificationProfileCopyInfo, "profile_copy_info");
+SCI_NOTIF_CONST(kSCINotificationProfileAnalyzerComplete, "profile_analyzer_complete");
 
 SCI_NOTIF_CONST(kSCINotificationMediaPreviewSavePhotos, "media_preview_save_photos");
 SCI_NOTIF_CONST(kSCINotificationMediaPreviewSaveGallery, "media_preview_save_gallery");
@@ -159,6 +160,7 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
         ]},
         @{@"title": @"Profile", @"items": @[
             SCINotificationItem(kSCINotificationProfileCopyInfo, @"Copy Profile Info", @"copy"),
+            SCINotificationItem(kSCINotificationProfileAnalyzerComplete, @"Profile Analyzer Complete", @"profile_analyzer"),
         ]},
         @{@"title": @"Media", @"items": @[
             SCINotificationItem(kSCINotificationMediaPreviewSavePhotos, @"Save to Photos", @"download"),
