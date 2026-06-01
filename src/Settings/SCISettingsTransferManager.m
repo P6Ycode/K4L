@@ -1,6 +1,7 @@
 #import "SCISettingsTransferManager.h"
 
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <compression.h>
 
 #import "TweakSettings.h"
 #import "SCIPreferenceAvailability.h"
@@ -417,6 +418,57 @@ static BOOL SCIIsSafeZipEntryName(NSString *name) {
     return YES;
 }
 
+// Inflates a raw DEFLATE blob (`src`, srcLen bytes) into `outputPath`, expecting
+// `expectedOut` bytes. Uses libcompression's zlib (raw) decoder. Returns NO on
+// failure or a length mismatch.
+static BOOL SCIInflateRawDeflateToFile(const uint8_t *src, size_t srcLen, size_t expectedOut, NSString *outputPath) {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    [fm createFileAtPath:outputPath contents:nil attributes:nil];
+    NSFileHandle *out = [NSFileHandle fileHandleForWritingAtPath:outputPath];
+    if (!out) return NO;
+
+    compression_stream stream;
+    if (compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) != COMPRESSION_STATUS_OK) {
+        [out closeFile];
+        return NO;
+    }
+    stream.src_ptr = src;
+    stream.src_size = srcLen;
+
+    const size_t dstCap = 256 * 1024;
+    uint8_t *dst = malloc(dstCap);
+    if (!dst) {
+        compression_stream_destroy(&stream);
+        [out closeFile];
+        return NO;
+    }
+
+    BOOL ok = YES;
+    size_t totalOut = 0;
+    while (YES) {
+        stream.dst_ptr = dst;
+        stream.dst_size = dstCap;
+        compression_status status = compression_stream_process(&stream, COMPRESSION_STREAM_FINALIZE);
+        size_t produced = dstCap - stream.dst_size;
+        if (produced > 0) {
+            @autoreleasepool {
+                [out writeData:[NSData dataWithBytesNoCopy:dst length:produced freeWhenDone:NO]];
+            }
+            totalOut += produced;
+        }
+        if (status == COMPRESSION_STATUS_END) break;
+        if (status != COMPRESSION_STATUS_OK) { ok = NO; break; }
+    }
+
+    free(dst);
+    compression_stream_destroy(&stream);
+    [out closeFile];
+    if (ok && expectedOut > 0 && totalOut != expectedOut) ok = NO;
+    return ok;
+}
+
+// Expands a zip created by our own exporter (stored, method 0) as well as zips
+// re-compressed by Files / iCloud / desktop tools (DEFLATE, method 8).
 static NSString *SCIExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NSError **error) {
     NSData *zipData = [NSData dataWithContentsOfURL:archiveURL options:NSDataReadingMappedIfSafe error:error];
     if (zipData.length < 22) return nil;
@@ -474,11 +526,11 @@ static NSString *SCIExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
             [fm createDirectoryAtPath:[expandedRoot stringByAppendingPathComponent:entryName] withIntermediateDirectories:YES attributes:nil error:nil];
             continue;
         }
-        if (method != 0 || compressedSize != uncompressedSize) {
+        if (method != 0 && method != 8) {
             if (error) {
                 *error = [NSError errorWithDomain:@"SCInstaSettingsTransfer"
                                              code:2002
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Compressed zip entries are not supported by this build."}];
+                                         userInfo:@{NSLocalizedDescriptionKey: @"This zip uses an unsupported compression method."}];
             }
             [archiveHandle closeFile];
             return nil;
@@ -497,6 +549,22 @@ static NSString *SCIExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
 
         NSString *destPath = [expandedRoot stringByAppendingPathComponent:entryName];
         [fm createDirectoryAtPath:[destPath stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
+
+        if (method == 8) {
+            // DEFLATE — inflate the compressed payload (mapped, no extra copy).
+            if (!SCIInflateRawDeflateToFile(bytes + dataOffset, compressedSize, uncompressedSize, destPath)) {
+                if (error) {
+                    *error = [NSError errorWithDomain:@"SCInstaSettingsTransfer"
+                                                 code:2007
+                                             userInfo:@{NSLocalizedDescriptionKey: @"Could not decompress the backup archive."}];
+                }
+                [archiveHandle closeFile];
+                return nil;
+            }
+            continue;
+        }
+
+        // Stored (method 0) — copy the raw bytes straight through.
         [fm createFileAtPath:destPath contents:nil attributes:nil];
         NSFileHandle *output = [NSFileHandle fileHandleForWritingAtPath:destPath];
         [archiveHandle seekToFileOffset:dataOffset];
@@ -517,12 +585,6 @@ static NSString *SCIExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
 
     [archiveHandle closeFile];
     return SCIIsValidSettingsTransferBundleRoot(expandedRoot) ? expandedRoot : SCIResolvedSettingsTransferBundleRoot([NSURL fileURLWithPath:expandedRoot isDirectory:YES]);
-}
-
-static UTType *SCISettingsTransferArchiveType(void) {
-    UTType *type = [UTType typeWithFilenameExtension:@"scinstaexport" conformingToType:UTTypeData];
-    if (type) return type;
-    return nil;
 }
 
 static BOOL SCIIsValidSettingsTransferBundleRoot(NSString *bundleRoot) {
@@ -781,14 +843,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     self.pendingImportDeletedMessages = includeDeletedMessages;
     self.pendingImportProfileAnalyzer = includeProfileAnalyzer;
     self.isImportMode = YES;
-    UIDocumentPickerViewController *picker = nil;
-    UTType *archiveType = SCISettingsTransferArchiveType();
-    NSMutableArray<UTType *> *contentTypes = [NSMutableArray array];
-    if (archiveType) [contentTypes addObject:archiveType];
-    [contentTypes addObject:UTTypeZIP];
-    [contentTypes addObject:UTTypeFolder];
-    [contentTypes addObject:UTTypeData];
-    picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:contentTypes asCopy:YES];
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeZIP] asCopy:YES];
     picker.delegate = self;
     self.activeDocumentPicker = picker;
     SCILog(@"Transfer", @"Presenting import document picker settings=%@ gallery=%@ deletedMessages=%@ profileAnalyzer=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no", includeDeletedMessages ? @"yes" : @"no", includeProfileAnalyzer ? @"yes" : @"no");

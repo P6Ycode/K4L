@@ -900,12 +900,16 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (void)openOriginalPostForFile:(SCIGalleryFile *)file {
+    NSString *noun = [[file openOriginalActionTitle] hasPrefix:@"Open "]
+        ? [[file openOriginalActionTitle] substringFromIndex:5]
+        : @"original post";
+    NSString *lowerNoun = noun.lowercaseString;
     if ([SCIGalleryOriginController openOriginalPostForGalleryFile:file]) {
         [self dismissGalleryForOriginOpenWithCompletion:^{
-            SCINotify(kSCINotificationGalleryOpenOriginal, @"Opened original post", nil, @"external_link", SCINotificationToneInfo);
+            SCINotify(kSCINotificationGalleryOpenOriginal, [NSString stringWithFormat:@"Opened %@", lowerNoun], nil, @"external_link", SCINotificationToneInfo);
         }];
     } else {
-        [self showGalleryOpenFailureMessage:@"Unable to open original post" actionIdentifier:kSCINotificationGalleryOpenOriginal];
+        [self showGalleryOpenFailureMessage:[NSString stringWithFormat:@"Unable to open %@", lowerNoun] actionIdentifier:kSCINotificationGalleryOpenOriginal];
     }
 }
 
@@ -1169,7 +1173,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     UIAction *openOriginalAction = nil;
     if (file.hasOpenableOriginalMedia) {
-        openOriginalAction = [UIAction actionWithTitle:@"Open Original Post"
+        openOriginalAction = [UIAction actionWithTitle:[file openOriginalActionTitle]
                                                  image:SCIGalleryMenuActionIcon(@"external_link")
                                             identifier:nil
                                                handler:^(__unused UIAction *a) {

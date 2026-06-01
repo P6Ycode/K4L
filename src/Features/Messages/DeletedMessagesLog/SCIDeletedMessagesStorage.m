@@ -1,8 +1,8 @@
 #import "SCIDeletedMessagesStorage.h"
+#import "../../../Shared/SCIStoragePaths.h"
 
 NSNotificationName const SCIDeletedMessagesDidChangeNotification = @"SCIDeletedMessagesDidChangeNotification";
 
-static NSString *const kSCIDMStorageDir = @"SCInsta/DeletedMessages";
 static NSString *const kSCIDMMediaDir   = @"media";
 static NSString *const kSCIDMSenderFlagsFile = @"sender_flags.json";
 
@@ -24,8 +24,7 @@ static NSString *sciSafePK(NSString *pk) {
 }
 
 static NSString *sciStorageDir(void) {
-    NSArray *roots = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
-    NSString *dir = [roots.firstObject stringByAppendingPathComponent:kSCIDMStorageDir];
+    NSString *dir = [SCIStoragePaths deletedMessagesDirectory];
     [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
     return dir;
 }

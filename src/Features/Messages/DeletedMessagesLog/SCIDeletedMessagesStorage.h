@@ -7,7 +7,7 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 
 // Per-account on-disk store for deleted-message records and their captured media.
 //
-// Layout under Application Support/SCInsta/DeletedMessages/:
+// Layout under Documents/SCInsta/DeletedMessages/:
 //   <ownerPk>.json      — array of message dicts (newest-first)
 //   media/<ownerPk>/    — captured media blobs, named "<message_id>.<ext>"
 @interface SCIDeletedMessagesStorage : NSObject

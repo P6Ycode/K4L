@@ -960,6 +960,29 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return components.URL ?: url;
 }
 
++ (NSString *)instagramShortcodeForMediaPK:(NSString *)mediaPK {
+    if (mediaPK.length == 0) return nil;
+
+    // Media pk may arrive as "<pk>" or "<pk>_<userpk>"; only the leading id matters.
+    NSString *identifier = [mediaPK componentsSeparatedByString:@"_"].firstObject ?: mediaPK;
+    if (identifier.length == 0) return nil;
+    if ([identifier rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+
+    unsigned long long value = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:identifier];
+    if (![scanner scanUnsignedLongLong:&value] || !scanner.isAtEnd || value == 0) return nil;
+
+    static NSString *alphabet = @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    NSMutableString *shortcode = [NSMutableString string];
+    while (value > 0) {
+        NSUInteger index = (NSUInteger)(value % 64);
+        unichar character = [alphabet characterAtIndex:index];
+        [shortcode insertString:[NSString stringWithCharacters:&character length:1] atIndex:0];
+        value /= 64;
+    }
+    return shortcode.length > 0 ? shortcode : nil;
+}
+
 + (BOOL)openPhotosApp {
     NSURL *url = [NSURL URLWithString:@"photos-redirect://"];
     if (url && [[UIApplication sharedApplication] canOpenURL:url]) {

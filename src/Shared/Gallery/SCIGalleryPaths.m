@@ -1,4 +1,5 @@
 #import "SCIGalleryPaths.h"
+#import "../SCIStoragePaths.h"
 #import "../../Utils.h"
 
 static NSString *_galleryDirectory;
@@ -10,8 +11,7 @@ static NSString *_galleryThumbnailsDirectory;
 + (NSString *)galleryDirectory {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-        _galleryDirectory = [docs stringByAppendingPathComponent:@"Gallery"];
+        _galleryDirectory = [SCIStoragePaths galleryDirectory];
         [self ensureDirectoryExists:_galleryDirectory];
     });
     return _galleryDirectory;

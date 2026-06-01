@@ -102,6 +102,12 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
 - (BOOL)hasOpenableProfile;
 - (BOOL)hasOpenableOriginalMedia;
 
+/// Full Instagram media identifier (`<mediaPK>_<userPK>`) used by the authenticated `instagram://media?id=` deep link. Returns nil unless a complete id can be assembled (a bare media pk on its own resolves to the home feed, not the post).
+- (nullable NSString *)fullInstagramMediaID;
+
+/// Source-appropriate title for the "open original" action (e.g. "Open Story", "Open Reel", "Open Post").
+- (NSString *)openOriginalActionTitle;
+
 + (NSString *)shortLabelForSource:(SCIGallerySource)source;
 
 + (void)generateThumbnailForFile:(SCIGalleryFile *)file

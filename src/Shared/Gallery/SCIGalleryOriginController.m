@@ -187,23 +187,53 @@ static NSString *SCIGalleryMediaURLStringFromMetadata(SCIGallerySaveMetadata *me
         SCILog(@"General", @"[SCInsta Gallery] Origin URL from stored metadata URL source=%d url=%@", metadata.source, metadata.sourceMediaURLString);
         return metadata.sourceMediaURLString;
     }
-    if (metadata.sourceMediaCode.length > 0) {
-        NSString *pathComponent = nil;
-        if (metadata.source == SCIGallerySourceReels) {
-            pathComponent = @"reel";
-        } else if (metadata.source == SCIGallerySourceFeed || metadata.source == SCIGallerySourceProfile || metadata.source == SCIGallerySourceOther) {
-            pathComponent = @"p";
+
+    // Stories don't have /p/ shortcodes — build the story permalink from username + media pk.
+    if (metadata.source == SCIGallerySourceStories) {
+        NSString *identifier = [metadata.sourceMediaPK componentsSeparatedByString:@"_"].firstObject ?: metadata.sourceMediaPK;
+        if (metadata.sourceUsername.length > 0 && identifier.length > 0) {
+            NSString *encodedUsername = [metadata.sourceUsername stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
+            NSString *encodedIdentifier = [identifier stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
+            if (encodedUsername.length > 0 && encodedIdentifier.length > 0) {
+                NSString *urlString = [NSString stringWithFormat:@"https://www.instagram.com/stories/%@/%@/", encodedUsername, encodedIdentifier];
+                SCILog(@"General", @"[SCInsta Gallery] Origin URL generated story link username=%@ id=%@ url=%@", metadata.sourceUsername, identifier, urlString);
+                return urlString;
+            }
         }
-        if (pathComponent.length == 0) {
-            SCILog(@"General", @"[SCInsta Gallery] Not generating origin URL for source=%d code=%@", metadata.source, metadata.sourceMediaCode);
-            return nil;
-        }
-        NSString *urlString = [NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, metadata.sourceMediaCode];
-        SCILog(@"General", @"[SCInsta Gallery] Origin URL generated from code source=%d code=%@ url=%@", metadata.source, metadata.sourceMediaCode, urlString);
-        return urlString;
+        SCILog(@"General", @"[SCInsta Gallery] Not generating story origin URL (missing username/pk) username=%@ mediaPK=%@", metadata.sourceUsername, metadata.sourceMediaPK);
+        return nil;
     }
-    SCILog(@"General", @"[SCInsta Gallery] No origin URL metadata available source=%d", metadata.source);
-    return nil;
+
+    NSString *pathComponent = nil;
+    if (metadata.source == SCIGallerySourceReels) {
+        pathComponent = @"reel";
+    } else if (metadata.source == SCIGallerySourceFeed || metadata.source == SCIGallerySourceProfile || metadata.source == SCIGallerySourceOther) {
+        pathComponent = @"p";
+    }
+    if (pathComponent.length == 0) {
+        SCILog(@"General", @"[SCInsta Gallery] Not generating origin URL for source=%d code=%@", metadata.source, metadata.sourceMediaCode);
+        return nil;
+    }
+
+    NSString *code = metadata.sourceMediaCode;
+    if (code.length == 0) {
+        // Derive the shortcode from the numeric media pk so the link lands on the
+        // canonical post page rather than the generic feed viewer.
+        code = [SCIUtils instagramShortcodeForMediaPK:metadata.sourceMediaPK];
+    }
+    if (code.length == 0) {
+        SCILog(@"General", @"[SCInsta Gallery] No origin URL metadata available source=%d", metadata.source);
+        return nil;
+    }
+    NSString *urlString = [NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, code];
+    SCILog(@"General", @"[SCInsta Gallery] Origin URL generated source=%d code=%@ url=%@", metadata.source, code, urlString);
+    return urlString;
+}
+
+/// True when `url` is an Instagram post/reel web link (`/p/`, `/reel/`). Used to reject post links that leak into story metadata.
+static BOOL SCIGalleryURLIsPostOrReel(NSURL *url) {
+    NSString *path = url.path.lowercaseString ?: @"";
+    return [path containsString:@"/p/"] || [path containsString:@"/reel/"] || [path containsString:@"/reels/"];
 }
 
 @implementation SCIGalleryOriginController
@@ -277,6 +307,15 @@ static NSString *SCIGalleryMediaURLStringFromMetadata(SCIGallerySaveMetadata *me
     }
 
     NSURL *mediaURL = SCIGalleryRecursiveURLForSelectors(media, @[@"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl"], 0);
+
+    // A story's media object often exposes a generic post/reel permalink that routes
+    // to the feed viewer, not the story tray. Reject it so we build a proper
+    // /stories/<user>/<pk>/ link below instead.
+    if (mediaURL && metadata.source == SCIGallerySourceStories && SCIGalleryURLIsPostOrReel(mediaURL)) {
+        SCILog(@"General", @"[SCInsta Gallery] Rejecting post/reel permalink for story source=%d url=%@", metadata.source, mediaURL.absoluteString);
+        mediaURL = nil;
+    }
+
     if (mediaURL) {
         SCILog(@"General", @"[SCInsta Gallery] Populated origin URL from media object source=%d url=%@", metadata.source, mediaURL.absoluteString);
     }

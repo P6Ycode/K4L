@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Two-tier profile-picture cache for the Profile Analyzer lists.
 //
 // • In-memory NSCache keyed by user PK for instant cell reuse.
-// • On-disk store under Application Support/SCInsta/ProfileAnalyzer/avatars/,
+// • On-disk store under Documents/SCInsta/ProfileAnalyzer/avatars/,
 //   keyed by PK, refreshed at most once per TTL window (default 24h) so we never
 //   hammer the CDN on every scroll. A stale-but-present blob is served
 //   immediately while a refresh runs in the background.

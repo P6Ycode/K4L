@@ -145,15 +145,15 @@ static NSDate * _Nullable SCIFormParsedGallerySortDate(NSString *raw) {
         case SCIGalleryImportFormRowFileStem:
             return @"Used only in the saved filename when the imported name is useless (UUID, generic export). Not Instagram’s shortcode — use Shortcode below for posts.";
         case SCIGalleryImportFormRowSource:
-            return @"Feed, Story, Reels, etc. Choosing Reels makes shortcode open as /reel/…; Feed uses /p/… when building a link from shortcode.";
+            return @"Feed, Story, Reels, etc. Story builds /stories/<user>/<media id>/. Reels opens shortcode as /reel/…; Feed uses /p/… when building a link.";
         case SCIGalleryImportFormRowUsername:
-            return @"Account handle without @. Used for Open profile and, if Profile URL is empty, to fill an instagram:// profile link.";
+            return @"Account handle without @. Used for Open profile and, if Profile URL is empty, to fill an instagram:// profile link. Required to open a Story.";
         case SCIGalleryImportFormRowUserPK:
             return @"Numeric Instagram user id when you have it (some tweaks export this).";
         case SCIGalleryImportFormRowProfileURL:
             return @"https or instagram:// profile link. Open profile uses this or Username.";
         case SCIGalleryImportFormRowMediaPK:
-            return @"Numeric media id. Used as fallback to open the post when permalink is missing.";
+            return @"Numeric media id. For posts/reels it's converted to a shortcode when no permalink/shortcode is set; for Stories it forms /stories/<user>/<media id>/.";
         case SCIGalleryImportFormRowMediaCode:
             return @"The code in the URL (e.g. ABCde123). With Permalink empty, Open original can build https://instagram.com/p/ or /reel/ from Source + shortcode.";
         case SCIGalleryImportFormRowMediaURL:

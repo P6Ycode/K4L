@@ -73,6 +73,20 @@ static NSString *SCIGallerySourceSlug(SCIGallerySource source) {
     }
 }
 
+/// Path component for a canonical web post/reel link (`/p/` or `/reel/`). Stories are intentionally excluded — they use `/stories/<user>/<pk>/` instead, built separately. Returns nil for sources that have no shareable post link.
+static NSString *SCIGalleryPostPathComponentForSource(SCIGallerySource source) {
+    switch (source) {
+        case SCIGallerySourceReels:
+            return @"reel";
+        case SCIGallerySourceFeed:
+        case SCIGallerySourceProfile:
+        case SCIGallerySourceOther:
+            return @"p";
+        default:
+            return nil;
+    }
+}
+
 static long long SCIEpochMillisecondsForDate(NSDate *date) {
     NSTimeInterval interval = [date timeIntervalSince1970];
     if (interval <= 0.0) {
@@ -728,7 +742,75 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     return nil;
 }
 
+- (NSString *)fullInstagramMediaID {
+    NSString *rawMediaPK = self.sourceMediaPK ?: @"";
+
+    // Already a composite "<mediaPK>_<userPK>" (e.g. captured from media.id)? Use as-is.
+    NSArray<NSString *> *parts = [rawMediaPK componentsSeparatedByString:@"_"];
+    if (parts.count == 2) {
+        NSString *m = parts[0];
+        NSString *u = parts[1];
+        BOOL mDigits = m.length > 0 && [m rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location == NSNotFound;
+        BOOL uDigits = u.length > 0 && [u rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location == NSNotFound;
+        if (mDigits && uDigits) return rawMediaPK;
+    }
+
+    NSString *mediaPK = parts.firstObject ?: rawMediaPK;
+    if (mediaPK.length == 0) return nil;
+    if ([mediaPK rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+
+    NSString *userPK = [self.sourceUserPK componentsSeparatedByString:@"_"].lastObject ?: self.sourceUserPK;
+    if (userPK.length == 0) return nil;
+    if ([userPK rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+
+    return [NSString stringWithFormat:@"%@_%@", mediaPK, userPK];
+}
+
 - (NSURL *)preferredOriginalMediaURL {
+    // Stories are not posts: build https://www.instagram.com/stories/<username>/<pk>/ — never /p/, /reel/ or instagram://media (which all resolve to the feed viewer).
+    if (self.source == SCIGallerySourceStories) {
+        if (self.sourceMediaURLString.length > 0) {
+            NSURL *stored = [NSURL URLWithString:self.sourceMediaURLString];
+            NSString *scheme = stored.scheme.lowercaseString ?: @"";
+            NSString *path = stored.path.lowercaseString ?: @"";
+            BOOL validScheme = stored && ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"] || [scheme isEqualToString:@"instagram"]);
+            // Reject stale post/reel links wrongly stored on story entries by older builds.
+            BOOL stalePostURL = [path containsString:@"/p/"] || [path containsString:@"/reel/"] || [path containsString:@"/reels/"];
+            if (validScheme && !stalePostURL) {
+                SCILog(@"General", @"[SCInsta Gallery] Open original using stored story URL url=%@", stored.absoluteString);
+                return stored;
+            }
+            SCILog(@"General", @"[SCInsta Gallery] Ignoring stored story URL (stale/invalid) url=%@", self.sourceMediaURLString);
+        }
+
+        NSString *identifier = [self.sourceMediaPK componentsSeparatedByString:@"_"].firstObject ?: self.sourceMediaPK;
+        if (self.sourceUsername.length > 0 && identifier.length > 0) {
+            NSString *encodedUsername = [self.sourceUsername stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
+            NSString *encodedIdentifier = [identifier stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
+            if (encodedUsername.length > 0 && encodedIdentifier.length > 0) {
+                NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/stories/%@/%@/", encodedUsername, encodedIdentifier]];
+                SCILog(@"General", @"[SCInsta Gallery] Open original built story URL username=%@ id=%@ url=%@", self.sourceUsername, identifier, url.absoluteString);
+                return url;
+            }
+        }
+        SCILog(@"General", @"[SCInsta Gallery] Open original story missing username/pk username=%@ mediaPK=%@", self.sourceUsername, self.sourceMediaPK);
+        return nil;
+    }
+
+    // Posts/reels: prefer the authenticated instagram://media?id=<mediaPK>_<userPK> deep link.
+    // It opens the exact post in-app AND honors the follow relationship, so private posts
+    // open correctly (web /p/ links hit the public resolver and fail for private accounts).
+    NSString *fullMediaID = [self fullInstagramMediaID];
+    if (fullMediaID.length > 0) {
+        NSString *encodedID = [fullMediaID stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+        if (encodedID.length > 0) {
+            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://media?id=%@", encodedID]];
+            SCILog(@"General", @"[SCInsta Gallery] Open original using media deep link source=%d id=%@ url=%@", self.source, fullMediaID, url.absoluteString);
+            return url;
+        }
+    }
+
+    // Stored permalink (typically a /p/ or /reel/ web link captured at save time).
     if (self.sourceMediaURLString.length > 0) {
         NSURL *url = [NSURL URLWithString:self.sourceMediaURLString];
         NSString *scheme = url.scheme.lowercaseString ?: @"";
@@ -740,13 +822,9 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         }
         SCILog(@"General", @"[SCInsta Gallery] Ignoring invalid stored original URL source=%d raw=%@", self.source, self.sourceMediaURLString);
     }
+
+    NSString *pathComponent = SCIGalleryPostPathComponentForSource((SCIGallerySource)self.source);
     if (self.sourceMediaCode.length > 0) {
-        NSString *pathComponent = nil;
-        if (self.source == SCIGallerySourceReels) {
-            pathComponent = @"reel";
-        } else if (self.source == SCIGallerySourceFeed || self.source == SCIGallerySourceProfile || self.source == SCIGallerySourceOther) {
-            pathComponent = @"p";
-        }
         if (pathComponent.length == 0) {
             SCILog(@"General", @"[SCInsta Gallery] Open original has code but no safe path source=%d code=%@", self.source, self.sourceMediaCode);
             return nil;
@@ -755,14 +833,19 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         SCILog(@"General", @"[SCInsta Gallery] Open original generated from code source=%d code=%@ url=%@", self.source, self.sourceMediaCode, url.absoluteString);
         return url;
     }
-    if (self.sourceMediaPK.length > 0) {
-        NSString *encodedPK = [self.sourceMediaPK stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
-        if (encodedPK.length > 0) {
-            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://media?id=%@", encodedPK]];
-            SCILog(@"General", @"[SCInsta Gallery] Open original falling back to media id source=%d mediaPK=%@ url=%@", self.source, self.sourceMediaPK, url.absoluteString);
+
+    // No full media id, permalink or shortcode: derive the shortcode from the numeric media pk
+    // so we still land on the canonical /p/ or /reel/ page instead of the home feed.
+    if (self.sourceMediaPK.length > 0 && pathComponent.length > 0) {
+        NSString *code = [SCIUtils instagramShortcodeForMediaPK:self.sourceMediaPK];
+        if (code.length > 0) {
+            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, code]];
+            SCILog(@"General", @"[SCInsta Gallery] Open original generated from media pk source=%d mediaPK=%@ code=%@ url=%@", self.source, self.sourceMediaPK, code, url.absoluteString);
             return url;
         }
+        SCILog(@"General", @"[SCInsta Gallery] Open original could not derive shortcode from media pk source=%d mediaPK=%@", self.source, self.sourceMediaPK);
     }
+
     SCILog(@"General", @"[SCInsta Gallery] Open original unavailable source=%d relativePath=%@", self.source, self.relativePath);
     return nil;
 }
@@ -773,6 +856,20 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
 
 - (BOOL)hasOpenableOriginalMedia {
     return [self preferredOriginalMediaURL] != nil;
+}
+
+- (NSString *)openOriginalActionTitle {
+    switch ((SCIGallerySource)self.source) {
+        case SCIGallerySourceStories:
+            return @"Open Story";
+        case SCIGallerySourceReels:
+            return @"Open Reel";
+        case SCIGallerySourceFeed:
+        case SCIGallerySourceProfile:
+            return @"Open Post";
+        default:
+            return @"Open Original Post";
+    }
 }
 
 + (NSString *)labelForSource:(SCIGallerySource)source {

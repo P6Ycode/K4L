@@ -8,7 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 extern NSNotificationName const SCIProfileAnalyzerDataDidChangeNotification;
 
 // Per-account on-disk store under
-//   Application Support/SCInsta/ProfileAnalyzer/
+//   Documents/SCInsta/ProfileAnalyzer/
 // Layout (one set of files per account PK):
 //   <pk>.current.json   — latest snapshot
 //   <pk>.previous.json  — snapshot before the latest (for delta computation)

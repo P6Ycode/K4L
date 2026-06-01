@@ -1,8 +1,7 @@
 #import "SCIProfileAnalyzerStorage.h"
+#import "../../../Shared/SCIStoragePaths.h"
 
 NSNotificationName const SCIProfileAnalyzerDataDidChangeNotification = @"SCIProfileAnalyzerDataDidChangeNotification";
-
-static NSString *const kSCIPAStorageDir = @"SCInsta/ProfileAnalyzer";
 
 @implementation SCIProfileAnalyzerStorage
 
@@ -49,8 +48,7 @@ static NSString *sciSafePK(NSString *userPK) {
 }
 
 static NSString *sciStorageDir(void) {
-    NSArray *roots = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
-    NSString *dir = [roots.firstObject stringByAppendingPathComponent:kSCIPAStorageDir];
+    NSString *dir = [SCIStoragePaths profileAnalyzerDirectory];
     [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
     return dir;
 }
