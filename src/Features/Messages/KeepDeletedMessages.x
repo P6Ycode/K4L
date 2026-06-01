@@ -960,10 +960,9 @@ static CGRect sciMessageContentRectInHost(id cell, UIView *content, UIView *host
 static void sciPositionIndicatorBadge(UIView *badge, id cell, UIView *content, UIView *host, BOOL sentByCurrentUser) {
 	if (!badge || !content || !host) return;
 	CGRect contentRect = sciMessageContentRectInHost(cell, content, host);
-	CGFloat badgeSize = 20.0;
-	CGFloat gap = 5.0;
-	CGFloat x = sentByCurrentUser ? CGRectGetMinX(contentRect) - badgeSize - gap : CGRectGetMaxX(contentRect) + gap;
-	CGFloat y = CGRectGetMidY(contentRect) - (badgeSize / 2.0);
+	CGFloat frameSize = 44.0;
+	CGFloat x = sentByCurrentUser ? CGRectGetMinX(contentRect) - frameSize : CGRectGetMaxX(contentRect);
+	CGFloat y = CGRectGetMidY(contentRect) - (frameSize / 2.0);
 
 	if (!isfinite(x) || !isfinite(y)) {
 		badge.hidden = YES;
@@ -971,7 +970,7 @@ static void sciPositionIndicatorBadge(UIView *badge, id cell, UIView *content, U
 	}
 
 	badge.hidden = NO;
-	badge.frame = CGRectMake(x, y, badgeSize, badgeSize);
+	badge.frame = CGRectMake(x, y, frameSize, frameSize);
 }
 
 static void sciUpdateCellIndicator(id cell) {
@@ -1003,7 +1002,7 @@ static void sciUpdateCellIndicator(id cell) {
 	if ([cell isKindOfClass:UICollectionViewCell.class]) host = ((UICollectionViewCell *)cell).contentView;
 	if (!host) host = view;
 
-	if (old && [oldDirection isKindOfClass:NSNumber.class] && oldDirection.boolValue == sentByCurrentUser && [oldStyle isEqualToString:@"undo_filled_secondary_circle"] && old.superview == host) {
+	if (old && [oldDirection isKindOfClass:NSNumber.class] && oldDirection.boolValue == sentByCurrentUser && [oldStyle isEqualToString:@"undo_filled_secondary_circle_44"] && old.superview == host) {
 		sciPositionIndicatorBadge(old, cell, content, host, sentByCurrentUser);
 		return;
 	}
@@ -1011,13 +1010,18 @@ static void sciUpdateCellIndicator(id cell) {
 
 	UIView *badge = UIView.new;
 	badge.tag = SCI_PRESERVED_TAG;
-	badge.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-	badge.layer.cornerRadius = 10.0;
-	badge.layer.masksToBounds = YES;
+	badge.backgroundColor = UIColor.clearColor;
 	badge.accessibilityLabel = @"Unsent";
 	badge.userInteractionEnabled = NO;
 	objc_setAssociatedObject(badge, &kSCIPreservedIndicatorOwnMessageKey, @(sentByCurrentUser), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	objc_setAssociatedObject(badge, &kSCIPreservedIndicatorStyleKey, @"undo_filled_secondary_circle", OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(badge, &kSCIPreservedIndicatorStyleKey, @"undo_filled_secondary_circle_44", OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+	UIView *background = UIView.new;
+	background.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
+	background.layer.cornerRadius = 16.0;
+	background.layer.masksToBounds = YES;
+	background.translatesAutoresizingMaskIntoConstraints = NO;
+	[badge addSubview:background];
 
 	UIImageView *icon = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"undo_filled"
 	                                                                               pointSize:16.0
@@ -1025,16 +1029,20 @@ static void sciUpdateCellIndicator(id cell) {
 	icon.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
 	icon.contentMode = UIViewContentModeScaleAspectFit;
 	icon.translatesAutoresizingMaskIntoConstraints = NO;
-	[badge addSubview:icon];
+	[background addSubview:icon];
 
 	[host addSubview:badge];
 	sciPositionIndicatorBadge(badge, cell, content, host, sentByCurrentUser);
 
 	[NSLayoutConstraint activateConstraints:@[
-		[icon.centerXAnchor constraintEqualToAnchor:badge.centerXAnchor],
-		[icon.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
-		[icon.widthAnchor constraintEqualToConstant:12.0],
-		[icon.heightAnchor constraintEqualToConstant:12.0],
+		[background.centerXAnchor constraintEqualToAnchor:badge.centerXAnchor],
+		[background.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor],
+		[background.widthAnchor constraintEqualToConstant:32.0],
+		[background.heightAnchor constraintEqualToConstant:32.0],
+		[icon.centerXAnchor constraintEqualToAnchor:background.centerXAnchor],
+		[icon.centerYAnchor constraintEqualToAnchor:background.centerYAnchor],
+		[icon.widthAnchor constraintEqualToConstant:16.0],
+		[icon.heightAnchor constraintEqualToConstant:16.0],
 	]];
 }
 
