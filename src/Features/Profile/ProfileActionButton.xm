@@ -31,6 +31,7 @@ static CGFloat const kSCIProfileActionButtonHeight = 44.0;
 static CGFloat const kSCIProfileActionIconPointSize = 24.0;
 static CGFloat const kSCIProfileActionMenuIconPointSize = 22.0;
 static CGFloat const kSCIProfileLegacyActionButtonRightGap = 24.0;
+static const void *kSCIProfileHeaderActionButtonAssocKey = &kSCIProfileHeaderActionButtonAssocKey;
 
 static UIImage *SCIProfileMenuIcon(NSString *resourceName) {
     return [SCIAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
@@ -289,6 +290,7 @@ static SCIProfileHeaderActionButton *SCIProfileBuildHeaderActionButton(id source
     button.contentEdgeInsets = UIEdgeInsetsZero;
     button.imageEdgeInsets = UIEdgeInsetsZero;
     button.tintColor = [UIColor labelColor];
+    SCIApplyButtonStyle(button, SCIActionButtonSourceProfile);
     button.sourceObject = sourceObject;
     return button;
 }
@@ -298,7 +300,17 @@ static NSArray *SCIProfilePatchedRightButtons(id self, NSArray *leftButtons, NSA
     if (SCIProfileButtonsContainSCInstaButton(rightButtons)) return rightButtons;
     if (SCIProfileResolvedUserFromObject(self, 0) == nil) return rightButtons;
 
-    SCIProfileHeaderActionButton *button = SCIProfileBuildHeaderActionButton(self);
+    SCIProfileHeaderActionButton *button = objc_getAssociatedObject(self, kSCIProfileHeaderActionButtonAssocKey);
+    if (![button isKindOfClass:[SCIProfileHeaderActionButton class]]) {
+        button = SCIProfileBuildHeaderActionButton(self);
+        objc_setAssociatedObject(self,
+                                 kSCIProfileHeaderActionButtonAssocKey,
+                                 button,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else if (button.sourceObject != self) {
+        button.sourceObject = self;
+    }
+    SCIConfigureProfileActionButton(button);
 
     id sample = rightButtons.firstObject ?: leftButtons.firstObject;
     id wrapper = SCIProfileNavigationButtonWrapperForView(button, sample);
