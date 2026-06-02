@@ -425,7 +425,94 @@ static NSNumber *SCIProfileNumberValue(id value) {
     if (!value) return nil;
     if ([value isKindOfClass:[NSNumber class]]) return value;
     if ([value respondsToSelector:@selector(integerValue)]) return @([value integerValue]);
+    for (NSString *key in @[@"value", @"number", @"count"]) {
+        id nested = SCIKVCObject(value, key);
+        if (nested && nested != value) {
+            NSNumber *number = SCIProfileNumberValue(nested);
+            if (number) return number;
+        }
+    }
     return nil;
+}
+
+static NSNumber *SCIProfileNumericSelectorValue(id target, SEL selector) {
+    if (!target || !selector || ![target respondsToSelector:selector]) return nil;
+    NSMethodSignature *signature = [target methodSignatureForSelector:selector];
+    if (!signature || signature.numberOfArguments != 2) return nil;
+
+    const char *type = signature.methodReturnType;
+    while (type && (*type == 'r' || *type == 'n' || *type == 'N' || *type == 'o' || *type == 'O' || *type == 'R' || *type == 'V')) {
+        type++;
+    }
+    if (!type) return nil;
+
+    switch (type[0]) {
+        case '@':
+            return SCIProfileNumberValue(((id (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'q':
+            return @(((long long (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'Q':
+            return @(((unsigned long long (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'i':
+            return @(((int (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'I':
+            return @(((unsigned int (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'l':
+            return @(((long (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'L':
+            return @(((unsigned long (*)(id, SEL))objc_msgSend)(target, selector));
+        case 's':
+            return @(((short (*)(id, SEL))objc_msgSend)(target, selector));
+        case 'S':
+            return @(((unsigned short (*)(id, SEL))objc_msgSend)(target, selector));
+        default:
+            return nil;
+    }
+}
+
+static BOOL SCIProfileNameMatchesCountKind(NSString *name, BOOL followers) {
+    NSString *lower = name.lowercaseString;
+    if (![lower containsString:@"count"]) return NO;
+    if (followers) {
+        return ([lower containsString:@"follower"] ||
+                [lower containsString:@"followedby"] ||
+                [lower containsString:@"followed_by"]) &&
+               ![lower containsString:@"following"];
+    }
+    return [lower containsString:@"following"] ||
+           [lower containsString:@"followings"] ||
+           [lower containsString:@"edgefollow"];
+}
+
+static NSNumber *SCIProfileIvarNumberValue(id object, Ivar ivar) {
+    if (!object || !ivar) return nil;
+    const char *type = ivar_getTypeEncoding(ivar);
+    if (!type) return nil;
+    while (*type == 'r' || *type == 'n' || *type == 'N' || *type == 'o' || *type == 'O' || *type == 'R' || *type == 'V') {
+        type++;
+    }
+    if (type[0] == '@') {
+        @try {
+            return SCIProfileNumberValue(object_getIvar(object, ivar));
+        } @catch (__unused NSException *exception) {
+            return nil;
+        }
+    }
+
+    ptrdiff_t offset = ivar_getOffset(ivar);
+    const uint8_t *bytes = (const uint8_t *)(__bridge const void *)object;
+    const void *slot = bytes + offset;
+    switch (type[0]) {
+        case 'q': return @(*(const long long *)slot);
+        case 'Q': return @(*(const unsigned long long *)slot);
+        case 'i': return @(*(const int *)slot);
+        case 'I': return @(*(const unsigned int *)slot);
+        case 'l': return @(*(const long *)slot);
+        case 'L': return @(*(const unsigned long *)slot);
+        case 's': return @(*(const short *)slot);
+        case 'S': return @(*(const unsigned short *)slot);
+        default: return nil;
+    }
 }
 
 static NSString *SCIProfileInfoString(NSNumber *value) {
@@ -461,23 +548,8 @@ static UIAction *SCIProfileDisabledInfoAction(NSString *title, NSString *resourc
     return action;
 }
 
-static NSNumber *SCIProfileFollowerCount(id user) {
-    if (!user) return nil;
-    NSNumber *val = [SCIUtils numericValueForObj:user selectorName:@"followerCount"];
-    if (val) return val;
-    val = SCIProfileNumberValue(SCIKVCObject(user, @"followerCount"));
-    if (val) return val;
-    return SCIProfileNumberValue(SCIKVCObject(user, @"follower_count"));
-}
-
-static NSNumber *SCIProfileFollowingCount(id user) {
-    if (!user) return nil;
-    NSNumber *val = [SCIUtils numericValueForObj:user selectorName:@"followingCount"];
-    if (val) return val;
-    val = SCIProfileNumberValue(SCIKVCObject(user, @"followingCount"));
-    if (val) return val;
-    return SCIProfileNumberValue(SCIKVCObject(user, @"following_count"));
-}
+static NSNumber *SCIProfileFollowerCount(id user);
+static NSNumber *SCIProfileFollowingCount(id user);
 
 static NSArray<UIMenuElement *> *SCIProfileInfoMenuElements(id user) {
     if (!user) return @[];
@@ -500,6 +572,117 @@ static NSArray<UIMenuElement *> *SCIProfileInfoMenuElements(id user) {
 
     return infoItems;
 }
+
+static NSArray *SCIProfileCountCandidates(id user) {
+    if (!user) return @[];
+
+    NSMutableArray *candidates = [NSMutableArray arrayWithObject:user];
+    NSMutableSet<NSValue *> *seen = [NSMutableSet setWithObject:[NSValue valueWithNonretainedObject:user]];
+    NSArray<NSString *> *keys = @[
+        @"userGQL", @"profileUser", @"user", @"wrappedUser", @"baseUser",
+        @"profile", @"profileModel", @"profileContext", @"profileHeader",
+        @"header", @"model", @"viewModel", @"userInfo", @"data", @"fieldCache",
+        @"additionalData", @"additionalUserData", @"profileData", @"graphqlUser"
+    ];
+
+    for (NSUInteger depth = 0; depth < 2; depth++) {
+        NSArray *snapshot = [candidates copy];
+        for (id candidate in snapshot) {
+            for (NSString *key in keys) {
+                id nested = SCIKVCObject(candidate, key) ?: SCIObjectForSelector(candidate, key);
+                if (!nested ||
+                    [nested isKindOfClass:[NSString class]] ||
+                    [nested isKindOfClass:[NSNumber class]] ||
+                    [nested isKindOfClass:[NSURL class]]) {
+                    continue;
+                }
+                NSValue *seenKey = [NSValue valueWithNonretainedObject:nested];
+                if ([seen containsObject:seenKey]) continue;
+                [seen addObject:seenKey];
+                [candidates addObject:nested];
+            }
+        }
+    }
+
+    return candidates;
+}
+
+static NSNumber *SCIProfileCountForUser(id user, NSArray<NSString *> *keys) {
+    for (id candidate in SCIProfileCountCandidates(user)) {
+        for (NSString *key in keys) {
+            NSNumber *value = [SCIUtils numericValueForObj:candidate selectorName:key];
+            if (value) return value;
+            value = SCIProfileNumberValue(SCIObjectForSelector(candidate, key));
+            if (value) return value;
+            value = SCIProfileNumberValue(SCIKVCObject(candidate, key));
+            if (value) return value;
+        }
+    }
+    return nil;
+}
+
+static NSNumber *SCIProfileRuntimeCountForUser(id user, BOOL followers) {
+    for (id candidate in SCIProfileCountCandidates(user)) {
+        for (Class cls = [candidate class]; cls && cls != [NSObject class]; cls = class_getSuperclass(cls)) {
+            unsigned int methodCount = 0;
+            Method *methods = class_copyMethodList(cls, &methodCount);
+            for (unsigned int index = 0; index < methodCount; index++) {
+                SEL selector = method_getName(methods[index]);
+                NSString *name = NSStringFromSelector(selector);
+                if (!SCIProfileNameMatchesCountKind(name, followers)) continue;
+                NSNumber *value = SCIProfileNumericSelectorValue(candidate, selector);
+                if (value) {
+                    free(methods);
+                    return value;
+                }
+            }
+            free(methods);
+
+            unsigned int ivarCount = 0;
+            Ivar *ivars = class_copyIvarList(cls, &ivarCount);
+            for (unsigned int index = 0; index < ivarCount; index++) {
+                NSString *name = [NSString stringWithUTF8String:ivar_getName(ivars[index]) ?: ""];
+                if (!SCIProfileNameMatchesCountKind(name, followers)) continue;
+                NSNumber *value = SCIProfileIvarNumberValue(candidate, ivars[index]);
+                if (value) {
+                    free(ivars);
+                    return value;
+                }
+            }
+            free(ivars);
+        }
+    }
+    return nil;
+}
+
+static NSNumber *SCIProfileFollowerCount(id user) {
+    NSNumber *value = SCIProfileCountForUser(user, @[
+        @"followerCount",
+        @"followersCount",
+        @"follower_count",
+        @"followers_count",
+        @"edgeFollowedBy",
+        @"edge_followed_by",
+        @"followedByCount",
+        @"followed_by_count"
+    ]);
+    return value ?: SCIProfileRuntimeCountForUser(user, YES);
+}
+
+static NSNumber *SCIProfileFollowingCount(id user) {
+    NSNumber *value = SCIProfileCountForUser(user, @[
+        @"followingCount",
+        @"followingsCount",
+        @"following_count",
+        @"followings_count",
+        @"edgeFollow",
+        @"edge_follow",
+        @"followCount"
+    ]);
+    return value ?: SCIProfileRuntimeCountForUser(user, NO);
+}
+
+
 
 static NSString *SCIProfileInfoSignature(id user) {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
@@ -2602,13 +2785,25 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 	}
 
     if (context.source == SCIActionButtonSourceProfile) {
-        NSArray<UIMenuElement *> *profileInfoItems = SCIProfileInfoMenuElements(media);
-        if (profileInfoItems.count > 0) {
+        if (@available(iOS 15.0, *)) {
+            UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+                id freshMedia = SCIResolveMediaForContext(context);
+                completion(SCIProfileInfoMenuElements(freshMedia));
+            }];
             [menuElements addObject:[UIMenu menuWithTitle:@""
                                                     image:nil
                                                identifier:nil
                                                   options:UIMenuOptionsDisplayInline
-                                                 children:profileInfoItems]];
+                                                 children:@[deferred]]];
+        } else {
+            NSArray<UIMenuElement *> *profileInfoItems = SCIProfileInfoMenuElements(media);
+            if (profileInfoItems.count > 0) {
+                [menuElements addObject:[UIMenu menuWithTitle:@""
+                                                        image:nil
+                                                   identifier:nil
+                                                      options:UIMenuOptionsDisplayInline
+                                                     children:profileInfoItems]];
+            }
         }
     }
 
