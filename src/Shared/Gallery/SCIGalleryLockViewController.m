@@ -70,10 +70,6 @@ static NSInteger const kPasscodeLength = 4;
     self.view.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
     [self setupUI];
     [self updateUIForMode];
-
-    if (self.mode == SCIGalleryLockModeUnlock) {
-        [self triggerBiometricsIfAvailable];
-    }
 }
 
 #pragma mark - Setup
@@ -355,15 +351,10 @@ static NSInteger const kPasscodeLength = 4;
 }
 
 - (void)cancelTapped {
+    [[SCIGalleryManager sharedManager] cancelBiometricAuthentication];
     [self dismissViewControllerAnimated:YES completion:^{
         if (self.completion) self.completion(NO);
     }];
-}
-
-- (void)triggerBiometricsIfAvailable {
-    if (self.mode != SCIGalleryLockModeUnlock) return;
-    if (![[SCIGalleryManager sharedManager] isBiometricsAvailable]) return;
-    [self triggerBiometrics];
 }
 
 - (void)triggerBiometrics {
@@ -385,6 +376,7 @@ static NSInteger const kPasscodeLength = 4;
     switch (self.mode) {
         case SCIGalleryLockModeUnlock: {
             if ([mgr verifyPasscode:entered]) {
+                [mgr cancelBiometricAuthentication];
                 [self.presentingViewController dismissViewControllerAnimated:YES completion:^{
                     if (self.completion) self.completion(YES);
                 }];

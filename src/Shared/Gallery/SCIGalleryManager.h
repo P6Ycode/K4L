@@ -56,6 +56,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryBiometryType) {
 /// Authenticates with biometrics. Calls `completion` on the main queue with success + optional error.
 - (void)authenticateWithBiometricsWithCompletion:(void (^)(BOOL success, NSError *_Nullable error))completion;
 
+/// Cancels the active biometric prompt, if any.
+- (void)cancelBiometricAuthentication;
+
 @end
 
 NS_ASSUME_NONNULL_END

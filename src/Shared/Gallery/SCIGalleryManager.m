@@ -10,6 +10,10 @@ static uint32_t const kPBKDF2Rounds = 210000;
 static size_t const kPBKDF2SaltLength = 16;
 static size_t const kPBKDF2KeyLength = 32;
 
+@interface SCIGalleryManager ()
+@property (nonatomic, strong, nullable) LAContext *activeBiometricContext;
+@end
+
 @implementation SCIGalleryManager
 
 + (instancetype)sharedManager {
@@ -248,6 +252,8 @@ static size_t const kPBKDF2KeyLength = 32;
 }
 
 - (void)authenticateWithBiometricsWithCompletion:(void (^)(BOOL, NSError *))completion {
+    [self cancelBiometricAuthentication];
+
     LAContext *ctx = [[LAContext alloc] init];
     NSError *err;
     if (![ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&err]) {
@@ -257,15 +263,25 @@ static size_t const kPBKDF2KeyLength = 32;
         return;
     }
 
+    self.activeBiometricContext = ctx;
     __weak typeof(self) weakSelf = self;
     [ctx evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics
         localizedReason:@"Unlock Gallery"
                   reply:^(BOOL success, NSError *evalErr) {
-        if (success) weakSelf.isUnlocked = YES;
-        if (completion) {
-            dispatch_async(dispatch_get_main_queue(), ^{ completion(success, evalErr); });
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            typeof(self) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.activeBiometricContext != ctx) return;
+
+            strongSelf.activeBiometricContext = nil;
+            if (success) strongSelf.isUnlocked = YES;
+            if (completion) completion(success, evalErr);
+        });
     }];
+}
+
+- (void)cancelBiometricAuthentication {
+    [self.activeBiometricContext invalidate];
+    self.activeBiometricContext = nil;
 }
 
 @end
