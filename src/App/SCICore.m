@@ -153,6 +153,8 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"general_hide_ads_reels": @(YES),
         @"general_hide_ads_explore": @(YES),
         @"feed_comments_swipe_close_direction": @"both",
+        @"feed_comments_copy_text": @(NO),
+        @"feed_comments_gif_actions": @(NO),
         @"feed_hide_comment_shopping": @(NO),
         @"general_hide_reels_shopping_cta": @(NO),
         @"general_hide_meta_ai_msgs": @(NO),

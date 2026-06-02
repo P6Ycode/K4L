@@ -107,7 +107,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
             [self actionWithTitle:@"Delete DM Media" iconName:@"messages" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceDMs] successTitle:@"DM media deleted"],
             [self actionWithTitle:@"Delete Profile Pictures" iconName:@"user_circle" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceProfile] successTitle:@"Profile pictures deleted"],
             [self actionWithTitle:@"Delete Instants" iconName:@"instants" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceInstants] successTitle:@"Instants deleted"],
-            [self actionWithTitle:@"Delete Audio Page Media" iconName:@"audio_page" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceAudioPage] successTitle:@"Audio page media deleted"]
+            [self actionWithTitle:@"Delete Audio Page Media" iconName:@"audio_page" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceAudioPage] successTitle:@"Audio page media deleted"],
+            [self actionWithTitle:@"Delete Comment Media" iconName:@"comment" predicate:[NSPredicate predicateWithFormat:@"source == %d", SCIGallerySourceComments] successTitle:@"Comment media deleted"]
         ],
         @[]
     ];

@@ -68,6 +68,7 @@ static NSString *SCIGallerySourceSlug(SCIGallerySource source) {
         case SCIGallerySourceThumbnail: return @"thumbnail";
         case SCIGallerySourceInstants: return @"instants";
         case SCIGallerySourceAudioPage: return @"audio-page";
+        case SCIGallerySourceComments: return @"comments";
         case SCIGallerySourceOther:
         default:                    return @"other";
     }
@@ -231,6 +232,10 @@ static BOOL SCISourceFromBasenameSlug(NSString *low, SCIGallerySource *out) {
     }
     if ([low isEqualToString:@"audio"] || [low isEqualToString:@"audio-page"] || [low isEqualToString:@"audiopage"]) {
         *out = SCIGallerySourceAudioPage;
+        return YES;
+    }
+    if ([low isEqualToString:@"comment"] || [low isEqualToString:@"comments"]) {
+        *out = SCIGallerySourceComments;
         return YES;
     }
     if ([low isEqualToString:@"other"]) {
@@ -882,6 +887,7 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         case SCIGallerySourceThumbnail: return @"Thumb";
         case SCIGallerySourceInstants:  return @"Instants";
         case SCIGallerySourceAudioPage: return @"Audio Page";
+        case SCIGallerySourceComments:  return @"Comments";
         case SCIGallerySourceOther:
         default:                      return @"Other";
     }
@@ -897,6 +903,7 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         case SCIGallerySourceThumbnail: return @"Thumb";
         case SCIGallerySourceInstants:  return @"Instant";
         case SCIGallerySourceAudioPage: return @"Audio Page";
+        case SCIGallerySourceComments:  return @"Comment";
         case SCIGallerySourceOther:
         default:                      return @"Other";
     }
@@ -912,6 +919,7 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         case SCIGallerySourceThumbnail: return @"photo_gallery";
         case SCIGallerySourceInstants: return @"instants";
         case SCIGallerySourceAudioPage: return @"audio_page";
+        case SCIGallerySourceComments: return @"comment";
         case SCIGallerySourceOther:
         default:                    return @"media";
     }

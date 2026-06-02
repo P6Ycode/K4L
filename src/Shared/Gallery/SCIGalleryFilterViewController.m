@@ -241,10 +241,10 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     NSArray *sources = @[
         @(SCIGallerySourceFeed), @(SCIGallerySourceStories), @(SCIGallerySourceReels),
         @(SCIGallerySourceProfile), @(SCIGallerySourceDMs), @(SCIGallerySourceThumbnail),
-        @(SCIGallerySourceInstants), @(SCIGallerySourceAudioPage),
+        @(SCIGallerySourceInstants), @(SCIGallerySourceAudioPage), @(SCIGallerySourceComments),
     ];
 
-    NSInteger columns = 2;
+    NSInteger columns = 3;
     UIStackView *currentRow = nil;
     for (NSInteger i = 0; i < sources.count; i++) {
         if (i % columns == 0) {

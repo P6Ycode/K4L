@@ -243,7 +243,8 @@ static NSDate * _Nullable SCIFormParsedGallerySortDate(NSString *raw) {
     NSArray<NSNumber *> *sources = @[
         @(SCIGallerySourceFeed), @(SCIGallerySourceStories), @(SCIGallerySourceReels),
         @(SCIGallerySourceProfile), @(SCIGallerySourceDMs), @(SCIGallerySourceThumbnail),
-        @(SCIGallerySourceInstants), @(SCIGallerySourceAudioPage), @(SCIGallerySourceOther)
+        @(SCIGallerySourceInstants), @(SCIGallerySourceAudioPage), @(SCIGallerySourceComments),
+        @(SCIGallerySourceOther)
     ];
     for (NSNumber *num in sources) {
         SCIGallerySource src = (SCIGallerySource)num.intValue;

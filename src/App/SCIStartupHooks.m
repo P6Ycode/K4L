@@ -46,6 +46,7 @@ FOUNDATION_EXPORT void SCIInstallHideMetricsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallDisableFeedAutoplayHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallPostCommentConfirmHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallSwipeCloseCommentsHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallCommentActionsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideStoryTrayHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideThreadsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideRepostButtonHooksIfEnabled(void);
@@ -130,6 +131,7 @@ void SCIInstallFeedSurfaceHooksIfNeeded(void) {
     SCIInstallDisableFeedAutoplayHooksIfEnabled();
     SCIInstallPostCommentConfirmHooksIfEnabled();
     SCIInstallSwipeCloseCommentsHooksIfEnabled();
+    SCIInstallCommentActionsHooksIfEnabled();
     SCIInstallHideStoryTrayHooksIfEnabled();
     SCIInstallHideThreadsHooksIfEnabled();
     SCIInstallHideRepostButtonHooksIfEnabled();

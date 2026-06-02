@@ -58,6 +58,8 @@ SCI_NOTIF_CONST(kSCINotificationSettingsImport, "settings_import");
 SCI_NOTIF_CONST(kSCINotificationSettingsClearCache, "settings_clear_cache");
 SCI_NOTIF_CONST(kSCINotificationCopyDescription, "copy_description");
 SCI_NOTIF_CONST(kSCINotificationShareLongPressCopyLink, "share_long_press_copy_link");
+SCI_NOTIF_CONST(kSCINotificationCopyComment, "copy_comment");
+SCI_NOTIF_CONST(kSCINotificationCopyGIFLink, "copy_gif_link");
 SCI_NOTIF_CONST(kSCINotificationMediaEncodingLogs, "media_encoding_logs");
 SCI_NOTIF_CONST(kSCINotificationFlexUnavailable, "flex_unavailable");
 #undef SCI_NOTIF_CONST
@@ -162,6 +164,10 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
         @{@"title": @"Profile", @"items": @[
             SCINotificationItem(kSCINotificationProfileCopyInfo, @"Copy Profile Info", @"copy"),
             SCINotificationItem(kSCINotificationProfileAnalyzerComplete, @"Profile Analyzer Complete", @"profile_analyzer"),
+        ]},
+        @{@"title": @"Comments", @"items": @[
+            SCINotificationItem(kSCINotificationCopyComment, @"Copy Comment Text", @"copy"),
+            SCINotificationItem(kSCINotificationCopyGIFLink, @"Copy GIF Link", @"link"),
         ]},
         @{@"title": @"Media", @"items": @[
             SCINotificationItem(kSCINotificationMediaPreviewSavePhotos, @"Save to Photos", @"download"),

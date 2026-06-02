@@ -59,6 +59,8 @@ FOUNDATION_EXPORT NSString * const kSCINotificationSettingsImport;
 FOUNDATION_EXPORT NSString * const kSCINotificationSettingsClearCache;
 FOUNDATION_EXPORT NSString * const kSCINotificationCopyDescription;
 FOUNDATION_EXPORT NSString * const kSCINotificationShareLongPressCopyLink;
+FOUNDATION_EXPORT NSString * const kSCINotificationCopyComment;
+FOUNDATION_EXPORT NSString * const kSCINotificationCopyGIFLink;
 FOUNDATION_EXPORT NSString * const kSCINotificationMediaEncodingLogs;
 FOUNDATION_EXPORT NSString * const kSCINotificationFlexUnavailable;
 FOUNDATION_EXPORT NSString * const kSCINotificationPillDurationKey;

@@ -150,7 +150,7 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"comment": @{@"candidates": @[@"ig_icon_comment_pano_outline_24", @"ig_icon_comment_outline_24"]},
             @"compass": @{@"candidates": @[@"ig_icon_compass_outline_24"]},
             @"copy": @{@"candidates": @[@"ig_icon_copy_prism_outline_24", @"ig_icon_copy_outline_24"]},
-            @"copy_filled": @{@"candidates": @[@"ig_icon_copy_filled_24"]},
+            @"copy_filled": @{@"candidates": @[@"ig_icon_copy_prism_filled_24", @"ig_icon_copy_filled_24"]},
             @"download": @{@"candidates": @[@"ig_icon_download_outline_24"]},
             @"download_reels": @{@"candidates": @[@"ig_icon_download_outline_44"]},
             @"edit": @{@"candidates": @[@"ig_icon_edit_outline_24"]},

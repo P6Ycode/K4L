@@ -25,7 +25,8 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
     SCIGallerySourceDMs     = 5,
     SCIGallerySourceThumbnail = 6,
     SCIGallerySourceInstants = 7,
-    SCIGallerySourceAudioPage = 8
+    SCIGallerySourceAudioPage = 8,
+    SCIGallerySourceComments = 9
 };
 
 @interface SCIGalleryFile : NSManagedObject
