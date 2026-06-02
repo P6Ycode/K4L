@@ -38,10 +38,10 @@ static NSArray<NSString *> *SCIDMDetailChipTitles(void) {
     return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Share", @"Link", @"Reaction"];
 }
 static NSArray<NSString *> *SCIDMDetailChipSymbols(void) {
-    return @[@"text", @"photo", @"video", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
+    return @[@"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
 }
 static NSArray<NSString *> *SCIDMDetailChipSelectedSymbols(void) {
-    return @[@"text", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"share", @"link", @"reactions"];
+    return @[@"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"share", @"link", @"reactions"];
 }
 static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
     switch (index) {

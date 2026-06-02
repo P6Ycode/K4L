@@ -1,4 +1,14 @@
 #import "../../Utils.h"
+#import <objc/message.h>
+
+static NSString *SCISelectorForLaunchTabPreference(NSString *preference) {
+    if ([preference isEqualToString:@"feed"]) return @"_timelineButtonPressed";
+    if ([preference isEqualToString:@"reels"]) return @"_discoverVideoButtonPressed";
+    if ([preference isEqualToString:@"inbox"]) return @"_directInboxButtonPressed";
+    if ([preference isEqualToString:@"explore"]) return @"_exploreButtonPressed";
+    if ([preference isEqualToString:@"profile"]) return @"_profileButtonPressed";
+    return nil;
+}
 
 BOOL isSurfaceShown(IGMainAppSurfaceIntent *surface) {
     BOOL isShown = YES;
@@ -62,6 +72,20 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 %end
 
 %hook IGTabBarController
+- (void)viewWillAppear:(BOOL)animated {
+    %orig;
+
+    static BOOL appliedLaunchTab = NO;
+    if (appliedLaunchTab) return;
+    appliedLaunchTab = YES;
+
+    NSString *selectorName = SCISelectorForLaunchTabPreference([SCIUtils getStringPref:@"interface_launch_tab"]);
+    SEL selector = selectorName.length > 0 ? NSSelectorFromString(selectorName) : nil;
+    if (selector && [self respondsToSelector:selector]) {
+        ((void(*)(id, SEL))objc_msgSend)(self, selector);
+    }
+}
+
 - (void)_layoutTabBar {
     // Prevents the wrong icon from being shown as selected because of mismatched surface array indexes
     NSArray *_tabBarSurfaces = [SCIUtils getIvarForObj:self name:"_tabBarSurfaces"];
@@ -130,6 +154,7 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 
 extern "C" void SCIInstallNavigationHooksIfNeeded(void) {
     BOOL shouldInstall = ![[SCIUtils getStringPref:@"interface_nav_order"] isEqualToString:@"default"] ||
+                         ![[SCIUtils getStringPref:@"interface_launch_tab"] isEqualToString:@"default"] ||
                          ![[SCIUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"default"] ||
                          [SCIUtils getBoolPref:@"interface_hide_feed_tab"] ||
                          [SCIUtils getBoolPref:@"interface_hide_reels_tab"] ||

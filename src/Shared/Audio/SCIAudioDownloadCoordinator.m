@@ -9,6 +9,7 @@
 #import "../../Utils.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
 #import "../MediaDownload/SCIDashParser.h"
+#import "../MediaDownload/SCIDownloadDuplicateTracker.h"
 #import "../MediaDownload/SCIMediaFFmpeg.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../MediaPreview/SCIMediaItem.h"
@@ -682,6 +683,28 @@ static void SCIAudioPresentSaveToFiles(NSURL *fileURL, UIViewController *present
        playbackSource:(SCIFullScreenPlaybackSource)playbackSource
         pausePlayback:(SCIMediaPreviewPlaybackBlock)pausePlayback
        resumePlayback:(SCIMediaPreviewPlaybackBlock)resumePlayback {
+    [self performAction:action
+                   item:item
+              presenter:presenter
+             sourceView:sourceView
+               metadata:metadata
+ notificationIdentifier:notificationIdentifier
+         playbackSource:playbackSource
+          pausePlayback:pausePlayback
+         resumePlayback:resumePlayback
+ skipDuplicatePreflight:NO];
+}
+
++ (void)performAction:(SCIAudioAction)action
+                 item:(SCIAudioItem *)item
+            presenter:(UIViewController *)presenter
+           sourceView:(UIView *)sourceView
+             metadata:(SCIGallerySaveMetadata *)metadata
+ notificationIdentifier:(NSString *)notificationIdentifier
+       playbackSource:(SCIFullScreenPlaybackSource)playbackSource
+        pausePlayback:(SCIMediaPreviewPlaybackBlock)pausePlayback
+       resumePlayback:(SCIMediaPreviewPlaybackBlock)resumePlayback
+ skipDuplicatePreflight:(BOOL)skipDuplicatePreflight {
     if (!item.url) {
         SCINotify(SCIAudioNotificationIdentifier(notificationIdentifier, action), @"Could not find audio URL", nil, @"error_filled", SCINotificationToneError);
         return;
@@ -713,9 +736,44 @@ static void SCIAudioPresentSaveToFiles(NSURL *fileURL, UIViewController *present
     BOOL saveToFilesAction = (action == SCIAudioActionSaveToFiles);
     BOOL convert = (action == SCIAudioActionConvertAndShare || action == SCIAudioActionConvertAndSaveToGallery);
     DownloadAction downloadAction = saveToFilesAction ? downloadOnly : ((action == SCIAudioActionSaveToGallery || action == SCIAudioActionConvertAndSaveToGallery) ? saveToGallery : share);
+    SCIGallerySaveMetadata *resolvedMetadata = SCIAudioMetadataFromItem(item, metadata);
+    BOOL saveToGalleryAction = downloadAction == saveToGallery;
+    if (saveToGalleryAction && !skipDuplicatePreflight) {
+        BOOL presented = [SCIDownloadDuplicateTracker presentPreflightIfNeededForDestination:SCIDownloadDuplicateDestinationGallery
+                                                                                   metadata:resolvedMetadata
+                                                                                  mediaType:SCIGalleryMediaTypeAudio
+                                                                                  presenter:presenter
+                                                                               continuation:^(SCIDownloadDuplicateDecision decision) {
+            void (^download)(void) = ^{
+                [self performAction:action
+                              item:item
+                         presenter:presenter
+                        sourceView:sourceView
+                          metadata:resolvedMetadata
+            notificationIdentifier:notificationIdentifier
+                    playbackSource:playbackSource
+                     pausePlayback:pausePlayback
+                    resumePlayback:resumePlayback
+            skipDuplicatePreflight:YES];
+            };
+            if (decision == SCIDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                [SCIDownloadDuplicateTracker deleteExistingForDestination:SCIDownloadDuplicateDestinationGallery
+                                                                 metadata:resolvedMetadata
+                                                                mediaType:SCIGalleryMediaTypeAudio
+                                                               completion:^(BOOL success, NSError *error) {
+                    if (success) download();
+                    else SCINotify(identifier, @"Could not delete existing download", error.localizedDescription, @"error_filled", SCINotificationToneError);
+                }];
+            } else {
+                download();
+            }
+        }];
+        if (presented) return;
+    }
     SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:downloadAction showProgress:SCINotificationIsEnabled(identifier)];
     delegate.notificationIdentifier = identifier;
-    delegate.pendingGallerySaveMetadata = SCIAudioMetadataFromItem(item, metadata);
+    delegate.pendingGallerySaveMetadata = resolvedMetadata;
+    delegate.duplicatePreflightApproved = saveToGalleryAction;
     if (saveToFilesAction) {
         __weak UIViewController *weakPresenter = presenter;
         __weak UIView *weakSourceView = sourceView;

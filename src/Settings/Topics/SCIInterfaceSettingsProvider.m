@@ -28,6 +28,7 @@
                                     navSections:[SCINotificationSettingsProvider sections]]
         ], nil),
         SCITopicSection(@"Tabs", @[
+            [SCISetting menuCellWithTitle:@"Launch Tab" icon:SCISettingsIcon(@"home") menu:SCILaunchTabMenu()],
             [SCISetting menuCellWithTitle:@"Tab Icon Order" icon:SCISettingsIcon(@"sort") menu:SCINavigationIconOrderingMenu()],
             [SCISetting menuCellWithTitle:@"Swipe Between Tabs" icon:SCISettingsIcon(@"left_right") menu:SCISwipeBetweenTabsMenu()],
         ], @"Control the order of the tabs:\n"

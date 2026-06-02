@@ -8,6 +8,7 @@
 #import "../Shared/Gallery/SCIGalleryFile.h"
 #import "../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../Shared/Gallery/SCIGalleryViewController.h"
+#import "../Shared/MediaDownload/SCIDownloadDuplicateTracker.h"
 
 @interface SCIBulkDownloadCoordinator ()
 
@@ -245,6 +246,50 @@ static NSURL *SCIBulkPreparedFileURLForItem(SCIBulkDownloadItem *item, NSURL *fi
 
     [self updateProgress];
     SCIBulkDownloadItem *item = self.items[self.currentIndex];
+    BOOL supportsDuplicatePreflight = self.operation == SCIBulkDownloadOperationSaveToPhotos ||
+                                      self.operation == SCIBulkDownloadOperationSaveToGallery;
+    SCIDownloadDuplicateDestination destination = self.operation == SCIBulkDownloadOperationSaveToPhotos
+        ? SCIDownloadDuplicateDestinationPhotos
+        : SCIDownloadDuplicateDestinationGallery;
+    SCIGalleryMediaType mediaType = item.video
+        ? SCIGalleryMediaTypeVideo
+        : ([SCIDownloadDelegate isAudioFileAtURL:item.fileURL] ? SCIGalleryMediaTypeAudio : SCIGalleryMediaTypeImage);
+    if (supportsDuplicatePreflight) {
+        __weak typeof(self) weakSelf = self;
+        BOOL presented = [SCIDownloadDuplicateTracker presentPreflightIfNeededForDestination:destination
+                                                                                   metadata:item.galleryMetadata
+                                                                                  mediaType:mediaType
+                                                                                  presenter:self.presenter
+                                                                               continuation:^(SCIDownloadDuplicateDecision decision) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            void (^resolve)(void) = ^{
+                [strongSelf resolveItem:item];
+            };
+            if (decision == SCIDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                [SCIDownloadDuplicateTracker deleteExistingForDestination:destination
+                                                                 metadata:item.galleryMetadata
+                                                                mediaType:mediaType
+                                                               completion:^(BOOL success, NSError *error) {
+                    if (success) {
+                        resolve();
+                    } else {
+                        strongSelf.failureCount += 1;
+                        strongSelf.currentIndex += 1;
+                        [strongSelf processNextItem];
+                        (void)error;
+                    }
+                }];
+            } else {
+                resolve();
+            }
+        }];
+        if (presented) return;
+    }
+    [self resolveItem:item];
+}
+
+- (void)resolveItem:(SCIBulkDownloadItem *)item {
     [self resolveLocalFileForItem:item completion:^(NSURL *fileURL, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             self.currentDownloadDelegate = nil;
@@ -307,7 +352,7 @@ static NSURL *SCIBulkPreparedFileURLForItem(SCIBulkDownloadItem *item, NSURL *fi
 - (void)handleResolvedLocalFile:(NSURL *)fileURL forItem:(SCIBulkDownloadItem *)item {
     NSURL *preparedURL = SCIBulkPreparedFileURLForItem(item, fileURL);
     if (self.operation == SCIBulkDownloadOperationSaveToPhotos) {
-        [SCIDownloadDelegate saveFileURLToPhotos:preparedURL completion:^(BOOL success, NSError *error) {
+        [SCIDownloadDelegate saveFileURLToPhotos:preparedURL metadata:item.galleryMetadata completion:^(BOOL success, NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (success) self.successCount += 1;
                 else self.failureCount += 1;

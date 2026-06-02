@@ -340,7 +340,7 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
         [children addObject:toggleAction];
     }
 
-    UIImage *logImage = [SCIAssetUtils instagramIconNamed:@"message" pointSize:22.0];
+    UIImage *logImage = [SCIAssetUtils instagramIconNamed:@"channels" pointSize:22.0];
     NSString *partnerPK = nil;
     NSString *partnerName = nil;
     SCIDirectResolveChatPartner(context, &partnerPK, &partnerName);

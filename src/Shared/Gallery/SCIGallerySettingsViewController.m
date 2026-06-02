@@ -44,7 +44,7 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
             [SCISetting switchCellWithTitle:@"Show Favorites at Top" icon:SCISettingsIcon(@"heart") defaultsKey:kFavoritesAtTopKey]
         ], @"Pin favorites above other files inside the current sort and folder context."),
         SCITopicSection(@"Lock", @[
-            [SCISetting switchCellWithTitle:@"Enable Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""],
+            [SCISetting switchCellWithTitle:@"Gallery Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""],
             [SCISetting buttonCellWithTitle:@"Change Passcode" subtitle:nil icon:SCISettingsIcon(@"key") action:^{}]
         ], @"Lock the Gallery with a passcode or biometrics."),
         SCITopicSection(@"Shortcuts", @[
@@ -142,7 +142,7 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
     NSMutableArray *lockRows = [NSMutableArray array];
 
     __weak typeof(self) weakSelf = self;
-    SCISetting *lockSwitch = [SCISetting switchCellWithTitle:@"Enable Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""];
+    SCISetting *lockSwitch = [SCISetting switchCellWithTitle:@"Gallery Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""];
     lockSwitch.switchValueProvider = ^BOOL{
         return [SCIGalleryManager sharedManager].isLockEnabled;
     };

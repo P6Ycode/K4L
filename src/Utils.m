@@ -1164,7 +1164,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 + (void)showRestartConfirmation {
     [SCIIGAlertPresenter presentAlertFromViewController:topMostController()
-                                                  title:@"Restart required"
+                                                  title:@"Restart Required"
                                                 message:@"You must restart the app to apply this change"
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Later" style:SCIIGAlertActionStyleCancel handler:nil],

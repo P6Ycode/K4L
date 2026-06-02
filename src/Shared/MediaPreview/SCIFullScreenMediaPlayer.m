@@ -20,6 +20,7 @@
 #import "../../AssetUtils.h"
 #import "../../Downloader/Download.h"
 #import "../../Downloader/BulkDownload.h"
+#import "../MediaDownload/SCIDownloadDuplicateTracker.h"
 #import "../MediaDownload/SCIMediaQualityManager.h"
 
 static CGFloat const kDismissAxisLockSlop = 20.0;
@@ -1036,11 +1037,41 @@ fromViewController:(UIViewController *)presenter {
 }
 
 - (void)saveLocalFileURLToPhotos:(NSURL *)fileURL temporaryFile:(BOOL)temporaryFile {
+    [self saveLocalFileURLToPhotos:fileURL temporaryFile:temporaryFile skipDuplicatePreflight:NO];
+}
+
+- (void)saveLocalFileURLToPhotos:(NSURL *)fileURL temporaryFile:(BOOL)temporaryFile skipDuplicatePreflight:(BOOL)skipDuplicatePreflight {
     if (!fileURL) return;
 
     SCIMediaItem *item = [self currentItem];
     SCIGalleryMediaType mediaType = (item.mediaType == SCIMediaItemTypeVideo) ? SCIGalleryMediaTypeVideo : SCIGalleryMediaTypeImage;
     SCIGallerySaveMetadata *meta = [self metadataForCurrentItem];
+    if (!skipDuplicatePreflight) {
+        __weak typeof(self) weakSelf = self;
+        BOOL presented = [SCIDownloadDuplicateTracker presentPreflightIfNeededForDestination:SCIDownloadDuplicateDestinationPhotos
+                                                                                   metadata:meta
+                                                                                  mediaType:mediaType
+                                                                                  presenter:self
+                                                                               continuation:^(SCIDownloadDuplicateDecision decision) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            void (^save)(void) = ^{
+                [strongSelf saveLocalFileURLToPhotos:fileURL temporaryFile:temporaryFile skipDuplicatePreflight:YES];
+            };
+            if (decision == SCIDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                [SCIDownloadDuplicateTracker deleteExistingForDestination:SCIDownloadDuplicateDestinationPhotos
+                                                                 metadata:meta
+                                                                mediaType:mediaType
+                                                               completion:^(BOOL success, NSError *error) {
+                    if (success) save();
+                    else [strongSelf showSaveResult:NO error:error];
+                }];
+            } else {
+                save();
+            }
+        }];
+        if (presented) return;
+    }
     NSString *fileName = SCIFileNameForMedia(fileURL, mediaType, meta);
     NSURL *saveURL = fileURL;
     BOOL copiedForName = NO;
@@ -1054,7 +1085,7 @@ fromViewController:(UIViewController *)presenter {
         }
     }
 
-    [SCIDownloadDelegate saveFileURLToPhotos:saveURL completion:^(BOOL success, NSError *error) {
+    [SCIDownloadDelegate saveFileURLToPhotos:saveURL metadata:meta completion:^(BOOL success, NSError *error) {
         if (temporaryFile) {
             [[NSFileManager defaultManager] removeItemAtURL:fileURL error:nil];
         }
@@ -1382,8 +1413,38 @@ fromViewController:(UIViewController *)presenter {
 }
 
 - (void)gallerySaveLocalFile:(NSURL *)localURL mediaType:(SCIGalleryMediaType)galleryType {
+    [self gallerySaveLocalFile:localURL mediaType:galleryType skipDuplicatePreflight:NO];
+}
+
+- (void)gallerySaveLocalFile:(NSURL *)localURL mediaType:(SCIGalleryMediaType)galleryType skipDuplicatePreflight:(BOOL)skipDuplicatePreflight {
     NSError *error;
     SCIGallerySaveMetadata *meta = [self metadataForCurrentItem];
+    if (!skipDuplicatePreflight) {
+        __weak typeof(self) weakSelf = self;
+        BOOL presented = [SCIDownloadDuplicateTracker presentPreflightIfNeededForDestination:SCIDownloadDuplicateDestinationGallery
+                                                                                   metadata:meta
+                                                                                  mediaType:galleryType
+                                                                                  presenter:self
+                                                                               continuation:^(SCIDownloadDuplicateDecision decision) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            void (^save)(void) = ^{
+                [strongSelf gallerySaveLocalFile:localURL mediaType:galleryType skipDuplicatePreflight:YES];
+            };
+            if (decision == SCIDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                [SCIDownloadDuplicateTracker deleteExistingForDestination:SCIDownloadDuplicateDestinationGallery
+                                                                 metadata:meta
+                                                                mediaType:galleryType
+                                                               completion:^(BOOL success, NSError *deleteError) {
+                    if (success) save();
+                    else SCINotify(kSCINotificationMediaPreviewSaveGallery, @"Could not delete existing download", deleteError.localizedDescription, @"error_filled", SCINotificationToneError);
+                }];
+            } else {
+                save();
+            }
+        }];
+        if (presented) return;
+    }
     SCIGalleryFile *file = [SCIGalleryFile saveFileToGallery:localURL
                                                 source:SCIGallerySourceOther
                                              mediaType:galleryType

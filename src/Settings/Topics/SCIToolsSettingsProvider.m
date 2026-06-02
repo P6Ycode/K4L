@@ -134,7 +134,7 @@ static void SCISettingsLockReloadPresenter(UIViewController *presenter) {
 }
 
 static NSDictionary *SCISettingsLockSection(void) {
-    SCISetting *lockSwitch = [SCISetting switchCellWithTitle:@"Enable Settings Passcode Lock"
+    SCISetting *lockSwitch = [SCISetting switchCellWithTitle:@"Settings Passcode Lock"
                                                         icon:SCISettingsIcon(@"lock")
                                                  defaultsKey:@""];
     lockSwitch.switchValueProvider = ^BOOL{

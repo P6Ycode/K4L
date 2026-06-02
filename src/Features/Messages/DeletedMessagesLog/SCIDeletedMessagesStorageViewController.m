@@ -117,7 +117,7 @@ static NSString *SCIDMStorageOwnerPK(void) {
     ], nil)];
 
     NSMutableArray *breakdown = [NSMutableArray array];
-    [breakdown addObject:[SCISetting valueCellWithTitle:@"Text" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.textCount] icon:SCISettingsIcon(@"text")]];
+    [breakdown addObject:[SCISetting valueCellWithTitle:@"Text" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.textCount] icon:SCISettingsIcon(@"message")]];
     [breakdown addObject:[SCISetting valueCellWithTitle:@"Photos & Videos" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.mediaCount] icon:SCISettingsIcon(@"photo")]];
     [breakdown addObject:[SCISetting valueCellWithTitle:@"Voice & Audio" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.voiceCount] icon:SCISettingsIcon(@"microphone")]];
     if (self.otherCount > 0) {

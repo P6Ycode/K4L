@@ -31,6 +31,7 @@ typedef NS_ENUM(NSUInteger, DownloadAction) {
 @property (nonatomic, strong, nullable) SCIGallerySaveMetadata *pendingGallerySaveMetadata;
 @property (nonatomic, copy, nullable) SCIDownloadCompletionBlock completionBlock;
 @property (nonatomic, copy, nullable) dispatch_block_t customCancelHandler;
+@property (nonatomic, assign) BOOL duplicatePreflightApproved;
 
 - (instancetype)initWithAction:(DownloadAction)action showProgress:(BOOL)showProgress;
 
@@ -49,6 +50,9 @@ typedef NS_ENUM(NSUInteger, DownloadAction) {
 + (BOOL)isVideoFileAtURL:(NSURL *)fileURL;
 + (BOOL)isAudioFileAtURL:(NSURL *)fileURL;
 + (void)saveFileURLToPhotos:(NSURL *)fileURL completion:(void(^)(BOOL success, NSError * _Nullable error))completion;
++ (void)saveFileURLToPhotos:(NSURL *)fileURL
+                   metadata:(nullable SCIGallerySaveMetadata *)metadata
+                 completion:(void(^)(BOOL success, NSError * _Nullable error))completion;
 + (nullable SCIGalleryFile *)saveFileURLToGallery:(NSURL *)fileURL
                                          metadata:(nullable SCIGallerySaveMetadata *)metadata
                                             error:(NSError **)error;

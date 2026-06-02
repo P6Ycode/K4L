@@ -6,7 +6,9 @@
 #import "../../AssetUtils.h"
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
+#import "../Gallery/SCIGalleryFile.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
+#import "SCIDownloadDuplicateTracker.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../MediaPreview/SCIMediaItem.h"
 #import "../UI/SCISwitch.h"
@@ -1592,13 +1594,47 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
                                           DownloadAction action,
                                           BOOL copyToClipboard,
                                           NSString *notificationIdentifier,
-                                          BOOL showProgress) {
+                                          BOOL showProgress,
+                                          UIViewController *presenter,
+                                          BOOL duplicatePreflightApproved) {
+    BOOL supportsDuplicatePreflight = action == saveToPhotos || action == saveToGallery;
+    SCIGalleryMediaType mediaType = option.kind == SCIMediaOptionKindAudioDash
+        ? SCIGalleryMediaTypeAudio
+        : (option.kind == SCIMediaOptionKindPhotoProgressive ? SCIGalleryMediaTypeImage : SCIGalleryMediaTypeVideo);
+    SCIDownloadDuplicateDestination destination = action == saveToPhotos
+        ? SCIDownloadDuplicateDestinationPhotos
+        : SCIDownloadDuplicateDestinationGallery;
+    if (supportsDuplicatePreflight && !duplicatePreflightApproved) {
+        BOOL presented = [SCIDownloadDuplicateTracker presentPreflightIfNeededForDestination:destination
+                                                                                   metadata:galleryMetadata
+                                                                                  mediaType:mediaType
+                                                                                  presenter:presenter
+                                                                               continuation:^(SCIDownloadDuplicateDecision decision) {
+            void (^download)(void) = ^{
+                SCIMediaPerformOptionDownload(option, mediaObject, galleryMetadata, action, copyToClipboard, notificationIdentifier, showProgress, presenter, YES);
+            };
+            if (decision == SCIDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                [SCIDownloadDuplicateTracker deleteExistingForDestination:destination
+                                                                 metadata:galleryMetadata
+                                                                mediaType:mediaType
+                                                               completion:^(BOOL success, NSError *error) {
+                    if (success) download();
+                    else SCINotify(notificationIdentifier, @"Could not delete existing download", error.localizedDescription, @"error_filled", SCINotificationToneError);
+                }];
+            } else {
+                download();
+            }
+        }];
+        if (presented) return;
+    }
+
     if (SCIMediaShouldSkipDuplicateStart(option, action)) {
         return;
     }
 
     DownloadAction resolvedAction = copyToClipboard ? downloadOnly : action;
     SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:resolvedAction showProgress:showProgress];
+    delegate.duplicatePreflightApproved = supportsDuplicatePreflight;
     delegate.notificationIdentifier = notificationIdentifier;
     delegate.pendingGallerySaveMetadata = galleryMetadata;
     if (copyToClipboard) {
@@ -1794,12 +1830,12 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
 
     SCIMediaOption *resolvedOption = SCIMediaResolveDefaultOption(analysis);
     if (resolvedOption) {
-        SCIMediaPerformOptionDownload(resolvedOption, mediaObject, galleryMetadata, action, NO, identifier, showProgress);
+        SCIMediaPerformOptionDownload(resolvedOption, mediaObject, galleryMetadata, action, NO, identifier, showProgress, resolvedPresenter, NO);
         return YES;
     }
 
     SCIMediaPresentOptionsSheet(resolvedPresenter, sourceView, analysis, action, ^(SCIMediaOption *option) {
-        SCIMediaPerformOptionDownload(option, mediaObject, galleryMetadata, action, NO, identifier, showProgress);
+        SCIMediaPerformOptionDownload(option, mediaObject, galleryMetadata, action, NO, identifier, showProgress, resolvedPresenter, NO);
     });
     return YES;
 }
@@ -1823,12 +1859,12 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
 
     SCIMediaOption *resolvedOption = SCIMediaResolveDefaultOption(analysis);
     if (resolvedOption) {
-        SCIMediaPerformOptionDownload(resolvedOption, mediaObject, nil, downloadOnly, YES, identifier, showProgress);
+        SCIMediaPerformOptionDownload(resolvedOption, mediaObject, nil, downloadOnly, YES, identifier, showProgress, resolvedPresenter, NO);
         return YES;
     }
 
     SCIMediaPresentOptionsSheet(resolvedPresenter, sourceView, analysis, downloadOnly, ^(SCIMediaOption *option) {
-        SCIMediaPerformOptionDownload(option, mediaObject, nil, downloadOnly, YES, identifier, showProgress);
+        SCIMediaPerformOptionDownload(option, mediaObject, nil, downloadOnly, YES, identifier, showProgress, resolvedPresenter, NO);
     });
     return YES;
 }

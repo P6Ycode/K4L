@@ -18,6 +18,7 @@ SCISetting *SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSource 
 UIMenu *SCIReelsTapControlMenu(void);
 UIMenu *SCIMainFeedModeMenu(void);
 UIMenu *SCINavigationIconOrderingMenu(void);
+UIMenu *SCILaunchTabMenu(void);
 UIMenu *SCISwipeBetweenTabsMenu(void);
 UIMenu *SCILiquidGlassTabBarStateMenu(void);
 UIMenu *SCISwipeCloseCommentsDirectionMenu(void);

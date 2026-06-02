@@ -3,6 +3,7 @@
 #import "../Shared/Gallery/SCIGalleryFile.h"
 #import "../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../Shared/Gallery/SCIGalleryViewController.h"
+#import "../Shared/MediaDownload/SCIDownloadDuplicateTracker.h"
 #import <Photos/Photos.h>
 
 @implementation SCIDownloadDelegate
@@ -71,16 +72,31 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
 }
 
 + (void)saveFileURLToPhotos:(NSURL *)fileURL completion:(void(^)(BOOL success, NSError *error))completion {
+    [self saveFileURLToPhotos:fileURL metadata:nil completion:completion];
+}
+
++ (void)saveFileURLToPhotos:(NSURL *)fileURL
+                   metadata:(SCIGallerySaveMetadata *)metadata
+                 completion:(void(^)(BOOL success, NSError *error))completion {
     BOOL isVideo = [self isVideoFileAtURL:fileURL];
+    SCIGalleryMediaType mediaType = [self isAudioFileAtURL:fileURL] ? SCIGalleryMediaTypeAudio : (isVideo ? SCIGalleryMediaTypeVideo : SCIGalleryMediaTypeImage);
+    __block NSString *assetLocalIdentifier = nil;
 
     [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+        PHAssetChangeRequest *request = nil;
         if (isVideo) {
-            [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:fileURL];
+            request = [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:fileURL];
         } else {
-            [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:fileURL];
+            request = [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:fileURL];
         }
+        assetLocalIdentifier = request.placeholderForCreatedAsset.localIdentifier;
     } completionHandler:^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            if (success) {
+                [SCIDownloadDuplicateTracker recordPhotosSaveWithMetadata:metadata
+                                                                mediaType:mediaType
+                                                     assetLocalIdentifier:assetLocalIdentifier];
+            }
             if (completion) {
                 completion(success, error);
             }
@@ -143,6 +159,46 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
 }
 
 - (void)downloadFileWithURL:(NSURL *)url fileExtension:(NSString *)fileExtension hudLabel:(NSString *)hudLabel {
+    SCIDownloadDuplicateDestination destination = self.action == saveToPhotos
+        ? SCIDownloadDuplicateDestinationPhotos
+        : SCIDownloadDuplicateDestinationGallery;
+    BOOL supportsDuplicatePreflight = self.action == saveToPhotos || self.action == saveToGallery;
+    SCIGalleryMediaType mediaType = [[self class] isAudioFileAtURL:[NSURL fileURLWithPath:[@"file." stringByAppendingString:fileExtension ?: @"jpg"]]]
+        ? SCIGalleryMediaTypeAudio
+        : ([[self class] isVideoFileAtURL:[NSURL fileURLWithPath:[@"file." stringByAppendingString:fileExtension ?: @"jpg"]]]
+            ? SCIGalleryMediaTypeVideo
+            : SCIGalleryMediaTypeImage);
+    if (supportsDuplicatePreflight && !self.duplicatePreflightApproved) {
+        __weak typeof(self) weakSelf = self;
+        BOOL presented = [SCIDownloadDuplicateTracker presentPreflightIfNeededForDestination:destination
+                                                                                   metadata:self.pendingGallerySaveMetadata
+                                                                                  mediaType:mediaType
+                                                                                  presenter:topMostController()
+                                                                               continuation:^(SCIDownloadDuplicateDecision decision) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            void (^startDownload)(void) = ^{
+                strongSelf.duplicatePreflightApproved = YES;
+                [strongSelf downloadFileWithURL:url fileExtension:fileExtension hudLabel:hudLabel];
+            };
+            if (decision == SCIDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                [SCIDownloadDuplicateTracker deleteExistingForDestination:destination
+                                                                 metadata:strongSelf.pendingGallerySaveMetadata
+                                                                mediaType:mediaType
+                                                               completion:^(BOOL success, NSError *error) {
+                    if (success) {
+                        startDownload();
+                    } else {
+                        SCINotify(strongSelf.notificationIdentifier, @"Could not delete existing download", error.localizedDescription, @"error_filled", SCINotificationToneError);
+                    }
+                }];
+            } else {
+                startDownload();
+            }
+        }];
+        if (presented) return;
+    }
+
     SCIRetainActiveDownloadDelegate(self);
     self.customCancelHandler = nil;
 
@@ -392,7 +448,7 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
         if (self.action == saveToPhotos) {
             [self.progressView updateProgressTitle:@"Saving to Photos" subtitle:nil];
             [self.progressView setProgress:0.98f animated:YES];
-            [[self class] saveFileURLToPhotos:newURL completion:^(BOOL success, NSError *error) {
+            [[self class] saveFileURLToPhotos:newURL metadata:galleryMeta completion:^(BOOL success, NSError *error) {
                 if (success) {
                     [self showCompletionPillWithTitle:@"Saved successfully!" subtitle:@"Tap to open Photos" completionImmediately:NO completion:^{
                         SCIInvokeDownloadCompletion(self, newURL, nil);

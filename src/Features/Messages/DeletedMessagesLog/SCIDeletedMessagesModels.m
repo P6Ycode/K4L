@@ -58,7 +58,7 @@ NSString *SCIDeletedMessageKindSymbol(SCIDeletedMessageKind kind) {
 
 NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageKind kind, BOOL filled) {
     switch (kind) {
-        case SCIDeletedMessageKindText:    return @"text";
+        case SCIDeletedMessageKindText:    return @"message";
         case SCIDeletedMessageKindPhoto:   return filled ? @"photo_filled" : @"photo";
         case SCIDeletedMessageKindVideo:   return filled ? @"video_filled" : @"video";
         case SCIDeletedMessageKindVoice:   return filled ? @"voice_filled" : @"voice";
@@ -68,9 +68,9 @@ NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageKind kind, BOOL fil
         case SCIDeletedMessageKindLink:    return @"link";
         case SCIDeletedMessageKindAudioShare: return @"audio";
         case SCIDeletedMessageKindReaction: return @"reactions";
-        case SCIDeletedMessageKindOther:   return @"messages";
+        case SCIDeletedMessageKindOther:   return @"message";
         case SCIDeletedMessageKindUnknown:
-        default:                           return @"messages";
+        default:                           return @"message";
     }
 }
 

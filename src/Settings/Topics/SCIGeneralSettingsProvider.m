@@ -140,11 +140,12 @@
         ], @"Control ads, AI and suggestions visibility by surface."),
         SCITopicSection(@"Media Saving", @[
             [SCISetting switchCellWithTitle:@"Enhanced Media Resolution" icon:SCISettingsIcon(@"hd") defaultsKey:@"general_enhanced_media_resolution"],
+            [SCISetting switchCellWithTitle:@"Detect Duplicate Downloads" icon:SCISettingsIcon(@"media") defaultsKey:@"general_detect_duplicate_downloads"],
             [SCISetting menuCellWithTitle:@"Default Photo Quality" icon:SCISettingsIcon(@"photo") menu:SCIMediaPhotoQualityMenu()],
             videoQualitySetting,
             encodingSettings,
             encodingLogs
-        ], qualityFooter),
+        ], [NSString stringWithFormat:@"%@\n\nDuplicate detection runs before downloading. Gallery checks are exact. Photos checks cover media SCInsta saved while tracking is enabled.", qualityFooter]),
         SCITopicSection(@"Audio", @[
             [SCISetting switchCellWithTitle:@"Audio Downloads" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"general_audio_download_enabled"],
             [SCISetting switchCellWithTitle:@"Audio Page Button" icon:SCISettingsIcon(@"audio_page") defaultsKey:@"general_audio_page_download" requiresRestart:YES],

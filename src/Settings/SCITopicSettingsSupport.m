@@ -200,6 +200,23 @@ UIMenu *SCINavigationIconOrderingMenu(void) {
     ]];
 }
 
+UIMenu *SCILaunchTabMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SCIMenuCommand(@"Instagram Default", nil, nil, @"interface_launch_tab", @"default", YES),
+        [UIMenu menuWithTitle:@""
+                        image:nil
+                   identifier:nil
+                      options:UIMenuOptionsDisplayInline
+                     children:@[
+            SCIMenuCommand(@"Feed", @"home", nil, @"interface_launch_tab", @"feed", YES),
+            SCIMenuCommand(@"Explore", @"search", nil, @"interface_launch_tab", @"explore", YES),
+            SCIMenuCommand(@"Reels", @"reels", nil, @"interface_launch_tab", @"reels", YES),
+            SCIMenuCommand(@"Messages", @"messages", nil, @"interface_launch_tab", @"inbox", YES),
+            SCIMenuCommand(@"Profile", @"user_circle", nil, @"interface_launch_tab", @"profile", YES)
+        ]]
+    ]];
+}
+
 UIMenu *SCISwipeBetweenTabsMenu(void) {
     return [UIMenu menuWithChildren:@[
         SCIMenuCommand(@"Default", nil, nil, @"interface_swipe_tabs", @"default", YES),
