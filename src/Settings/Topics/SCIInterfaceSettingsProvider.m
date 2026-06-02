@@ -76,7 +76,6 @@
                                                          subtitle:liquidGlassAvailable ? @"" : @"Requires iOS 26 or later"
                                                       defaultsKey:kSCIPrefInterfaceLiquidGlass
                                                   requiresRestart:YES];
-        liquidGlass.icon = SCISettingsIcon(@"warning_filled");
         liquidGlass.switchValueProvider = ^BOOL{
             return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass];
         };
@@ -85,20 +84,29 @@
             [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:kSCIPrefInterfaceLiquidGlass];
             [SCIUtils showRestartConfirmation];
         };
-        SCISetting *tabBarState = [SCISetting menuCellWithTitle:@"Tab Bar State"
-                                                          icon:SCISettingsIcon(@"sort")
+        SCISetting *progressiveBlur = [SCISetting switchCellWithTitle:@"Progressive Blur"
+                                                             subtitle:liquidGlassAvailable ? @"" : @"Requires iOS 26 or later"
+                                                          defaultsKey:kSCIPrefInterfaceProgressiveBlur
+                                                      requiresRestart:YES];
+        SCISetting *tabBarBehavior = [SCISetting menuCellWithTitle:@"Tab Bar Behavior"
+                                                          icon:nil
                                                           menu:SCILiquidGlassTabBarStateMenu()];
-        tabBarState.defaultsKey = kSCIPrefInterfaceLiquidGlassTabBarMode;
-        tabBarState.enabledProvider = ^BOOL{
+        tabBarBehavior.defaultsKey = kSCIPrefInterfaceLiquidGlassTabBarMode;
+        tabBarBehavior.enabledProvider = ^BOOL{
             return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass];
         };
         if (!liquidGlassAvailable) {
             liquidGlass.userInfo = @{@"enabled": @NO};
+            progressiveBlur.userInfo = @{@"enabled": @NO};
         }
-        [sections addObject:SCITopicSection(@"Liquid Glass", @[
-            SCISettingApplyIconTint(liquidGlass, [UIColor systemOrangeColor]),
-            tabBarState
-        ], @"Force-enable Instagram's native Liquid Glass UI. Tab Bar State controls how the floating tab bar behaves while scrolling.")];
+
+        [sections addObject:SCITopicSection(@"Liquid Glass & Blur", @[
+            liquidGlass,
+            progressiveBlur,
+            tabBarBehavior,
+        ], @"1. Force-enable Instagram's native Liquid Glass UI.\n"
+           @"2. Restore the native progressive navigation bar blur on scroll.\n"
+           @"3. Configure how the tab bar behaves while scrolling.")];
     }
 
     return SCITopicNavigationSetting(@"Interface", @"interface", 24.0, sections);

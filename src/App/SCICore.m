@@ -14,6 +14,7 @@ static NSDictionary *SCIBootstrapDefaults(void) {
         @"tools_flex_instagram": @(NO),
         @"interface_liquid_glass": @(NO),
         @"interface_liquid_glass_tabbar_mode": @"default",
+        @"interface_progressive_blur": @(YES),
         @"interface_nav_order": @"default",
         @"interface_swipe_tabs": @"default",
         @"interface_hide_feed_tab": @(NO),

@@ -4,6 +4,7 @@
 #import "../Utils.h"
 
 FOUNDATION_EXPORT void SCIInstallLiquidGlassHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallProgressiveBlurHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallFeedActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallReelsActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallStoriesActionButtonHooksIfEnabled(void);
@@ -100,6 +101,9 @@ void SCIInstallLaunchCriticalHooks(void) {
         return;
     }
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+        if ([SCIUtils getBoolPref:@"interface_progressive_blur"]) {
+            SCIInstallProgressiveBlurHooksIfEnabled();
+        }
         if ([SCIUtils sci_isLiquidGlassEffectivelyEnabled]) {
             SCIInstallLiquidGlassHooksIfEnabled();
         }

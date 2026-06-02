@@ -13,7 +13,8 @@ BOOL SCIPrefIsAvailable(NSString *key) {
     if (key.length == 0) return YES;
 
     if ([key isEqualToString:kSCIPrefInterfaceLiquidGlass] ||
-        [key isEqualToString:kSCIPrefInterfaceLiquidGlassTabBarMode]) {
+        [key isEqualToString:kSCIPrefInterfaceLiquidGlassTabBarMode] ||
+        [key isEqualToString:kSCIPrefInterfaceProgressiveBlur]) {
         return SCIIsIOSVersionAtLeast(@"26.0");
     }
 

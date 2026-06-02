@@ -16,6 +16,13 @@ static BOOL SCIIsLiquidGlassEnabled(void) {
     return [SCIUtils sci_isLiquidGlassEffectivelyEnabled];
 }
 
+// MARK: - UIScrollEdgeEffect declaration
+@interface UIScrollEdgeEffect : NSObject
++ (void)hide;
+- (BOOL)ig_isHidden;
+- (void)ig_setIsHidden:(BOOL)hidden;
+@end
+
 // MARK: - Native button experiment
 
 static SCI_BOOL_MSG orig_swizzleToggle_isEnabled;
@@ -198,6 +205,35 @@ extern "C" void SCIInstallLiquidGlassHooksIfEnabled(void) {
         SCIHookInstanceMethodIfPresent(cls, @selector(layoutSubviews), (IMP)hook_directInboxHeader_layoutSubviews, (IMP *)&orig_directInboxHeader_layoutSubviews);
         SCIHookInstanceMethodIfPresent(cls, @selector(didMoveToWindow), (IMP)hook_directInboxHeader_didMoveToWindow, (IMP *)&orig_directInboxHeader_didMoveToWindow);
         SCIHookInstanceMethodIfPresent(cls, @selector(setSeparatorAlpha:), (IMP)hook_directInboxHeader_setSeparatorAlpha, (IMP *)&orig_directInboxHeader_setSeparatorAlpha);
+    });
+}
+
+// MARK: - Progressive Blur Hooks
+%group SCIProgressiveBlurHooks
+%hook UIScrollEdgeEffect
++ (void)hide {
+    // No-op to prevent globally hiding scroll-edge effects
+}
+
+- (BOOL)ig_isHidden {
+    return NO; // Always show the progressive blur
+}
+
+- (void)ig_setIsHidden:(BOOL)hidden {
+    %orig(NO); // Intercept and prevent individual hiders
+}
+%end
+%end
+
+extern "C" void SCIInstallProgressiveBlurHooksIfEnabled(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        if (objc_getClass("UIScrollEdgeEffect")) {
+            %init(SCIProgressiveBlurHooks);
+            SCILog(@"LiquidGlass", @"SCIProgressiveBlurHooks successfully installed!");
+        } else {
+            SCILog(@"LiquidGlass", @"UIScrollEdgeEffect class not found at runtime, skipping hooks.");
+        }
     });
 }
 

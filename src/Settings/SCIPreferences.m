@@ -3,6 +3,7 @@
 
 NSString * const kSCIPrefInterfaceLiquidGlass = @"interface_liquid_glass";
 NSString * const kSCIPrefInterfaceLiquidGlassTabBarMode = @"interface_liquid_glass_tabbar_mode";
+NSString * const kSCIPrefInterfaceProgressiveBlur = @"interface_progressive_blur";
 NSString * const kSCIPrefInstantsDisableCameraControl = @"instants_disable_camera_control";
 
 NSString *SCIPrefActionButtonConfigKey(NSString *topicKey) {
