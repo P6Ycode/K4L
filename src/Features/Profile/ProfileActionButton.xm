@@ -30,8 +30,9 @@ static CGFloat const kSCIProfileActionButtonWidth = 24.0;
 static CGFloat const kSCIProfileActionButtonHeight = 44.0;
 static CGFloat const kSCIProfileActionIconPointSize = 24.0;
 static CGFloat const kSCIProfileActionMenuIconPointSize = 22.0;
-static CGFloat const kSCIProfileLegacyActionButtonRightGap = 24.0;
+static CGFloat const kSCIProfileNativeButtonCenterSpacingFallback = 48.0;
 static const void *kSCIProfileHeaderActionButtonAssocKey = &kSCIProfileHeaderActionButtonAssocKey;
+static NSInteger const kSCIProfileActionButtonMaxInstallAttempts = 6;
 
 static UIImage *SCIProfileMenuIcon(NSString *resourceName) {
     return [SCIAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
@@ -108,6 +109,7 @@ static NSString *SCIProfileUsername(id user) {
 static NSString *SCIProfileUserPK(id user) {
     NSString *pk = SCIProfileStringValue(SCIProfileSafeValue(user, @"pk"));
     if (pk.length == 0) pk = SCIProfileStringValue(SCIProfileSafeValue(user, @"id"));
+    if (pk.length == 0) pk = [SCIUtils pkFromIGUser:user];
     return pk;
 }
 
@@ -250,7 +252,15 @@ static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button
 
 static id SCIProfileNavigationButtonWrapperForView(UIView *view, id sampleWrapper) {
     Class wrapperClass = NSClassFromString(@"IGProfileNavigationHeaderViewButtonSwift.IGProfileNavigationHeaderViewButton");
-    if (!wrapperClass || !view) return nil;
+    if (!wrapperClass) {
+        wrapperClass = NSClassFromString(@"_TtC40IGProfileNavigationHeaderViewButtonSwift35IGProfileNavigationHeaderViewButton");
+    }
+    if (!wrapperClass || !view) {
+        SCILog(@"ProfileBtn", @"Wrapper unavailable class=%@ view=%@",
+               wrapperClass ? @"found" : @"missing",
+               view ? @"found" : @"missing");
+        return nil;
+    }
 
     NSInteger type = 0;
     id typeValue = SCIProfileSafeValue(sampleWrapper, @"type");
@@ -260,7 +270,10 @@ static id SCIProfileNavigationButtonWrapperForView(UIView *view, id sampleWrappe
 
     id wrapper = [wrapperClass alloc];
     SEL initSelector = @selector(initWithType:view:);
-    if (![wrapper respondsToSelector:initSelector]) return nil;
+    if (![wrapper respondsToSelector:initSelector]) {
+        SCILog(@"ProfileBtn", @"Wrapper missing initWithType:view: class=%@", NSStringFromClass(wrapperClass));
+        return nil;
+    }
     return ((id (*)(id, SEL, NSInteger, id))objc_msgSend)(wrapper, initSelector, type, view);
 }
 
@@ -298,7 +311,9 @@ static SCIProfileHeaderActionButton *SCIProfileBuildHeaderActionButton(id source
 static NSArray *SCIProfilePatchedRightButtons(id self, NSArray *leftButtons, NSArray *rightButtons) {
     if (![SCIUtils getBoolPref:@"profile_action_btn"]) return rightButtons;
     if (SCIProfileButtonsContainSCInstaButton(rightButtons)) return rightButtons;
-    if (SCIProfileResolvedUserFromObject(self, 0) == nil) return rightButtons;
+    if (SCIProfileResolvedUserFromObject(self, 0) == nil) {
+        return rightButtons;
+    }
 
     SCIProfileHeaderActionButton *button = objc_getAssociatedObject(self, kSCIProfileHeaderActionButtonAssocKey);
     if (![button isKindOfClass:[SCIProfileHeaderActionButton class]]) {
@@ -314,16 +329,75 @@ static NSArray *SCIProfilePatchedRightButtons(id self, NSArray *leftButtons, NSA
 
     id sample = rightButtons.firstObject ?: leftButtons.firstObject;
     id wrapper = SCIProfileNavigationButtonWrapperForView(button, sample);
-    if (!wrapper) return rightButtons;
+    if (!wrapper) {
+        SCILog(@"ProfileBtn", @"Legacy wrapper creation failed sample=%@", sample ? @"found" : @"missing");
+        return rightButtons;
+    }
 
     NSMutableArray *patched = rightButtons ? [rightButtons mutableCopy] : [NSMutableArray array];
     [patched insertObject:wrapper atIndex:0];
     return patched;
 }
 
+static NSArray *SCIProfilePatchedLeftButtons(id self, NSArray *leftButtons, NSArray *rightButtons) {
+    if (![SCIUtils getBoolPref:@"profile_action_btn"]) return leftButtons;
+    if (SCIProfileButtonsContainSCInstaButton(leftButtons)) return leftButtons;
+    if (SCIProfileResolvedUserFromObject(self, 0) == nil) return leftButtons;
+
+    SCIProfileHeaderActionButton *button = objc_getAssociatedObject(self, kSCIProfileHeaderActionButtonAssocKey);
+    if (![button isKindOfClass:[SCIProfileHeaderActionButton class]]) {
+        button = SCIProfileBuildHeaderActionButton(self);
+        objc_setAssociatedObject(self,
+                                 kSCIProfileHeaderActionButtonAssocKey,
+                                 button,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else if (button.sourceObject != self) {
+        button.sourceObject = self;
+    }
+    SCIConfigureProfileActionButton(button);
+
+    id sample = rightButtons.firstObject ?: leftButtons.firstObject;
+    id wrapper = SCIProfileNavigationButtonWrapperForView(button, sample);
+    if (!wrapper) {
+        SCILog(@"ProfileBtn", @"Legacy wrapper creation failed sample=%@", sample ? @"found" : @"missing");
+        return leftButtons;
+    }
+
+    NSMutableArray *patched = leftButtons ? [leftButtons mutableCopy] : [NSMutableArray array];
+    [patched addObject:wrapper];
+    return patched;
+}
+
+static BOOL SCIProfileIsModernHeaderView(id view) {
+    NSString *className = NSStringFromClass([view class]);
+    return [className isEqualToString:@"IGProfileNavigationSwift.IGProfileNavigationHeaderView"] ||
+           [className isEqualToString:@"_TtC24IGProfileNavigationSwift29IGProfileNavigationHeaderView"];
+}
+
+static BOOL SCIProfileUsesModernSiblingLayout(void) {
+    NSString *version = [SCIUtils IGVersionString];
+    return version.length > 0 &&
+           [version compare:@"432.0.0" options:NSNumericSearch] != NSOrderedAscending;
+}
+
+static void SCIRemoveModernProfileActionButton(id headerView) {
+    SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
+    if ([button isKindOfClass:[SCIProfileHeaderActionButton class]]) {
+        [button removeFromSuperview];
+    }
+}
+
 static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, id leftButtons, id rightButtons, BOOL titleIsCentered) {
-    if (titleIsCentered) {
+    if (SCIProfileUsesModernSiblingLayout() && SCIProfileIsModernHeaderView(self)) {
         orig_profileHeaderConfigure(self, _cmd, titleView, leftButtons, rightButtons, titleIsCentered);
+        return;
+    }
+
+    if (titleIsCentered) {
+        NSArray *leftArray = [leftButtons isKindOfClass:[NSArray class]] ? (NSArray *)leftButtons : @[];
+        NSArray *rightArray = [rightButtons isKindOfClass:[NSArray class]] ? (NSArray *)rightButtons : @[];
+        NSArray *patchedLeft = SCIProfilePatchedLeftButtons(self, leftArray, rightArray);
+        orig_profileHeaderConfigure(self, _cmd, titleView, patchedLeft, rightButtons, titleIsCentered);
         return;
     }
 
@@ -351,12 +425,67 @@ static BOOL SCIProfileViewTreeContainsActionButton(UIView *view) {
     return NO;
 }
 
+static BOOL SCIProfileIsNavigationBarButtonView(UIView *view) {
+    NSString *className = NSStringFromClass(view.class);
+    return [className isEqualToString:@"IGNavigationBarButtonView"] ||
+           [className isEqualToString:@"IGProfileUtils.IGNavigationBarButtonView"] ||
+           [className hasSuffix:@"IGNavigationBarButtonView"];
+}
+
+static BOOL SCIProfileIsNativeRightNavigationButtonView(UIView *view) {
+    if (SCIProfileIsNavigationBarButtonView(view)) return YES;
+    return [NSStringFromClass(view.class) hasSuffix:@"IGBadgedNavigationButton"];
+}
+
+static void SCIProfileCollectNativeRightButtonCenters(UIView *view,
+                                                       UIView *headerView,
+                                                       NSMutableArray<NSNumber *> *centers) {
+    if (!view || !headerView || !centers) return;
+    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return;
+    if (view.hidden || view.alpha <= 0.01) return;
+
+    if (view != headerView && SCIProfileIsNativeRightNavigationButtonView(view)) {
+        CGRect frame = [view convertRect:view.bounds toView:headerView];
+        CGFloat centerX = CGRectGetMidX(frame);
+        if (!CGRectIsEmpty(frame) &&
+            CGRectIntersectsRect(headerView.bounds, frame) &&
+            centerX >= CGRectGetMidX(headerView.bounds)) {
+            BOOL duplicate = NO;
+            for (NSNumber *existing in centers) {
+                if (ABS(existing.doubleValue - centerX) < 1.0) {
+                    duplicate = YES;
+                    break;
+                }
+            }
+            if (!duplicate) [centers addObject:@(centerX)];
+        }
+    }
+
+    for (UIView *subview in view.subviews) {
+        SCIProfileCollectNativeRightButtonCenters(subview, headerView, centers);
+    }
+}
+
+static CGFloat SCIProfileNativeButtonCenterSpacing(UIView *headerView) {
+    NSMutableArray<NSNumber *> *centers = [NSMutableArray array];
+    SCIProfileCollectNativeRightButtonCenters(headerView, headerView, centers);
+    [centers sortUsingComparator:^NSComparisonResult(NSNumber *left, NSNumber *right) {
+        return [left compare:right];
+    }];
+
+    CGFloat spacing = CGFLOAT_MAX;
+    for (NSUInteger index = 1; index < centers.count; index++) {
+        CGFloat delta = centers[index].doubleValue - centers[index - 1].doubleValue;
+        if (delta > 1.0) spacing = MIN(spacing, delta);
+    }
+    return spacing == CGFLOAT_MAX ? kSCIProfileNativeButtonCenterSpacingFallback : spacing;
+}
+
 static UIView *SCIProfileLegacyMoreButtonInContainer(UIView *container) {
     UIView *best = nil;
     CGFloat bestMinX = -CGFLOAT_MAX;
     for (UIView *subview in container.subviews) {
-        NSString *className = NSStringFromClass(subview.class);
-        if (![className isEqualToString:@"IGNavigationBarButtonView"]) continue;
+        if (!SCIProfileIsNavigationBarButtonView(subview)) continue;
         CGFloat minX = CGRectGetMinX(subview.frame);
         if (!best || minX > bestMinX) {
             best = subview;
@@ -374,27 +503,25 @@ static UIView *SCIProfileLegacyButtonContainer(UIView *headerView) {
     return nil;
 }
 
-static CGFloat SCIProfileLegacyRightClusterMinX(UIView *container) {
+static CGFloat SCIProfileLegacyRightClusterMinCenterX(UIView *container) {
     CGFloat midX = CGRectGetMidX(container.bounds);
-    CGFloat minX = CGFLOAT_MAX;
+    CGFloat minCenterX = CGFLOAT_MAX;
     for (UIView *subview in container.subviews) {
         if ([subview.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) continue;
 
-        NSString *className = NSStringFromClass(subview.class);
-        BOOL isNavigationButton = [className isEqualToString:@"IGNavigationBarButtonView"] ||
-                                  [className isEqualToString:@"IGBadgedNavigationButton"];
-        if (!isNavigationButton) continue;
+        if (!SCIProfileIsNativeRightNavigationButtonView(subview)) continue;
         if (CGRectGetMidX(subview.frame) < midX) continue;
-        minX = MIN(minX, CGRectGetMinX(subview.frame));
+        minCenterX = MIN(minCenterX, CGRectGetMidX(subview.frame));
     }
-    return minX == CGFLOAT_MAX ? 0.0 : minX;
+    return minCenterX == CGFLOAT_MAX ? 0.0 : minCenterX;
 }
 
 static CGRect SCIProfileLegacyActionButtonFrame(UIView *container, UIView *moreButton) {
     CGFloat y = CGRectGetMinY(moreButton.frame);
-    CGFloat rightClusterMinX = SCIProfileLegacyRightClusterMinX(container);
-    CGFloat x = rightClusterMinX - kSCIProfileActionButtonWidth - kSCIProfileLegacyActionButtonRightGap;
-    if (x < 0.0) x = CGRectGetMinX(moreButton.frame) - kSCIProfileActionButtonWidth - kSCIProfileLegacyActionButtonRightGap;
+    CGFloat rightClusterMinCenterX = SCIProfileLegacyRightClusterMinCenterX(container);
+    CGFloat spacing = SCIProfileNativeButtonCenterSpacing(container);
+    CGFloat x = rightClusterMinCenterX - spacing - (kSCIProfileActionButtonWidth / 2.0);
+    if (x < 0.0) x = CGRectGetMidX(moreButton.frame) - spacing - (kSCIProfileActionButtonWidth / 2.0);
     if (x < 0.0) x = 0.0;
     return CGRectMake(floor(x),
                       floor(y),
@@ -437,30 +564,204 @@ static void SCIProfileInstallLegacyActionButtonIfNeeded(UIView *headerView) {
     SCIConfigureProfileActionButton(button);
 }
 
+static void SCIProfileFindModernRightClusterAnchor(UIView *view,
+                                                   UIView *headerView,
+                                                   CGFloat *minCenterX,
+                                                   CGFloat *midY) {
+    if (!view || !headerView || !minCenterX || !midY) return;
+    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return;
+    if (view.hidden || view.alpha <= 0.01) return;
+
+    if (view != headerView && SCIProfileIsNativeRightNavigationButtonView(view)) {
+        CGRect frame = [view convertRect:view.bounds toView:headerView];
+        if (!CGRectIsEmpty(frame) &&
+            CGRectIntersectsRect(headerView.bounds, frame) &&
+            CGRectGetMidX(frame) >= CGRectGetMidX(headerView.bounds) &&
+            CGRectGetMidX(frame) < *minCenterX) {
+            *minCenterX = CGRectGetMidX(frame);
+            *midY = CGRectGetMidY(frame);
+        }
+    }
+
+    for (UIView *subview in view.subviews) {
+        SCIProfileFindModernRightClusterAnchor(subview, headerView, minCenterX, midY);
+    }
+}
+
+static void SCIProfileFindModernLeftClusterAnchor(UIView *view,
+                                                  UIView *headerView,
+                                                  CGFloat *maxCenterX,
+                                                  CGFloat *midY) {
+    if (!view || !headerView || !maxCenterX || !midY) return;
+    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return;
+    if (view.hidden || view.alpha <= 0.01) return;
+
+    if (view != headerView && SCIProfileIsNativeRightNavigationButtonView(view)) {
+        CGRect frame = [view convertRect:view.bounds toView:headerView];
+        if (!CGRectIsEmpty(frame) &&
+            CGRectIntersectsRect(headerView.bounds, frame) &&
+            CGRectGetMidX(frame) <= CGRectGetMidX(headerView.bounds) &&
+            CGRectGetMidX(frame) > *maxCenterX) {
+            *maxCenterX = CGRectGetMidX(frame);
+            *midY = CGRectGetMidY(frame);
+        }
+    }
+
+    for (UIView *subview in view.subviews) {
+        SCIProfileFindModernLeftClusterAnchor(subview, headerView, maxCenterX, midY);
+    }
+}
+
+static BOOL SCIProfileModernActionFrameMatches(SCIProfileHeaderActionButton *button,
+                                               UIView *headerView,
+                                               CGRect frame) {
+    if (![button isKindOfClass:[SCIProfileHeaderActionButton class]] || button.superview != headerView) return NO;
+    return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
+           ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
+           ABS(CGRectGetWidth(button.frame) - CGRectGetWidth(frame)) < 0.5 &&
+           ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
+}
+
+static void SCIProfileInstallModernActionButtonIfNeeded(UIView *headerView) {
+    if (![SCIUtils getBoolPref:@"profile_action_btn"]) {
+        SCIRemoveModernProfileActionButton(headerView);
+        return;
+    }
+    id profileUser = SCIProfileResolvedUserFromObject(headerView, 0);
+    if (!profileUser) return;
+
+    NSString *profilePK = SCIProfileUserPK(profileUser);
+    NSString *currentUserPK = [SCIUtils currentUserPK];
+    BOOL isOwnProfile = profilePK.length > 0 &&
+                        currentUserPK.length > 0 &&
+                        [profilePK isEqualToString:currentUserPK];
+    CGFloat spacing = SCIProfileNativeButtonCenterSpacing(headerView);
+    CGFloat midY = CGRectGetMidY(headerView.bounds);
+    CGRect expectedFrame = CGRectZero;
+    if (isOwnProfile) {
+        CGFloat minCenterX = CGFLOAT_MAX;
+        SCIProfileFindModernRightClusterAnchor(headerView, headerView, &minCenterX, &midY);
+
+        if (minCenterX == CGFLOAT_MAX) {
+            CGFloat dummyMaxCenterX = -CGFLOAT_MAX;
+            SCIProfileFindModernLeftClusterAnchor(headerView, headerView, &dummyMaxCenterX, &midY);
+            expectedFrame = CGRectMake(floor(CGRectGetWidth(headerView.bounds) - 16.0 - kSCIProfileActionButtonWidth),
+                                       floor(midY - (kSCIProfileActionButtonHeight / 2.0)),
+                                       kSCIProfileActionButtonWidth,
+                                       kSCIProfileActionButtonHeight);
+        } else {
+            CGFloat maxCenterX = -CGFLOAT_MAX;
+            SCIProfileFindModernLeftClusterAnchor(headerView, headerView, &maxCenterX, &midY);
+            if (maxCenterX == -CGFLOAT_MAX) return;
+            expectedFrame = CGRectMake(floor(maxCenterX + spacing - (kSCIProfileActionButtonWidth / 2.0)),
+                                       floor(midY - (kSCIProfileActionButtonHeight / 2.0)),
+                                       kSCIProfileActionButtonWidth,
+                                       kSCIProfileActionButtonHeight);
+        }
+    } else {
+        CGFloat minCenterX = CGFLOAT_MAX;
+        SCIProfileFindModernRightClusterAnchor(headerView, headerView, &minCenterX, &midY);
+        if (minCenterX == CGFLOAT_MAX) {
+            CGFloat dummyMaxCenterX = -CGFLOAT_MAX;
+            SCIProfileFindModernLeftClusterAnchor(headerView, headerView, &dummyMaxCenterX, &midY);
+            expectedFrame = CGRectMake(floor(CGRectGetWidth(headerView.bounds) - 16.0 - kSCIProfileActionButtonWidth),
+                                       floor(midY - (kSCIProfileActionButtonHeight / 2.0)),
+                                       kSCIProfileActionButtonWidth,
+                                       kSCIProfileActionButtonHeight);
+        } else {
+            expectedFrame = CGRectMake(floor(MAX(0.0, minCenterX - spacing - (kSCIProfileActionButtonWidth / 2.0))),
+                                       floor(midY - (kSCIProfileActionButtonHeight / 2.0)),
+                                       kSCIProfileActionButtonWidth,
+                                       kSCIProfileActionButtonHeight);
+        }
+    }
+    SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
+    if (![button isKindOfClass:[SCIProfileHeaderActionButton class]]) {
+        button = SCIProfileBuildHeaderActionButton(headerView);
+        objc_setAssociatedObject(headerView,
+                                 kSCIProfileHeaderActionButtonAssocKey,
+                                 button,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else if (button.sourceObject != headerView) {
+        button.sourceObject = headerView;
+    }
+
+    BOOL addedToHeader = NO;
+    if (button.superview != headerView) {
+        [button removeFromSuperview];
+        [headerView addSubview:button];
+        addedToHeader = YES;
+    }
+    if (!SCIProfileModernActionFrameMatches(button, headerView, expectedFrame)) {
+        button.frame = expectedFrame;
+    }
+    if (addedToHeader) {
+        [headerView bringSubviewToFront:button];
+    }
+    if (!button.sciDidConfigure) {
+        SCIConfigureProfileActionButton(button);
+    }
+}
+
 static void hooked_profileHeaderLayoutSubviews(id self, SEL _cmd) {
     if (orig_profileHeaderLayoutSubviews) orig_profileHeaderLayoutSubviews(self, _cmd);
     if ([self isKindOfClass:[UIView class]]) {
-        SCIProfileInstallLegacyActionButtonIfNeeded((UIView *)self);
+        if (SCIProfileUsesModernSiblingLayout() && SCIProfileIsModernHeaderView(self)) {
+            SCIProfileInstallModernActionButtonIfNeeded((UIView *)self);
+        } else {
+            SCIProfileInstallLegacyActionButtonIfNeeded((UIView *)self);
+        }
     }
 }
 
 extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
     if (![SCIUtils getBoolPref:@"profile_action_btn"]) return;
 
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        Class headerClass = objc_getClass("IGProfileNavigationSwift.IGProfileNavigationHeaderView");
-        if (!headerClass) headerClass = objc_getClass("IGProfileNavigationHeaderView");
-        if (!headerClass) return;
+    static BOOL hooksInstalled = NO;
+    static BOOL retryScheduled = NO;
+    static NSInteger installAttempts = 0;
 
+    @synchronized([SCIProfileHeaderActionButton class]) {
+        if (hooksInstalled) return;
+
+        installAttempts += 1;
+        Class headerClass = objc_getClass("IGProfileNavigationSwift.IGProfileNavigationHeaderView");
+        if (!headerClass) headerClass = objc_getClass("_TtC24IGProfileNavigationSwift29IGProfileNavigationHeaderView");
+        if (!headerClass) headerClass = objc_getClass("IGProfileNavigationHeaderView");
+        if (!headerClass) {
+            SCILog(@"ProfileBtn", @"Install target unavailable attempt=%ld", (long)installAttempts);
+            if (!retryScheduled && installAttempts < kSCIProfileActionButtonMaxInstallAttempts) {
+                retryScheduled = YES;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.75 * NSEC_PER_SEC)),
+                               dispatch_get_main_queue(), ^{
+                    @synchronized([SCIProfileHeaderActionButton class]) {
+                        retryScheduled = NO;
+                    }
+                    SCIInstallProfileActionButtonHooksIfEnabled();
+                });
+            }
+            return;
+        }
+
+        BOOL configureHooked = NO;
+        BOOL layoutHooked = NO;
         SEL configureSelector = @selector(configureWithTitleView:leftButtons:rightButtons:titleIsCentered:);
         if ([headerClass instancesRespondToSelector:configureSelector]) {
             MSHookMessageEx(headerClass, configureSelector, (IMP)hooked_configureProfileHeaderView, (IMP *)&orig_profileHeaderConfigure);
+            configureHooked = YES;
         }
 
         SEL layoutSelector = @selector(layoutSubviews);
         if ([headerClass instancesRespondToSelector:layoutSelector]) {
             MSHookMessageEx(headerClass, layoutSelector, (IMP)hooked_profileHeaderLayoutSubviews, (IMP *)&orig_profileHeaderLayoutSubviews);
+            layoutHooked = YES;
         }
-    });
+
+        hooksInstalled = configureHooked || layoutHooked;
+        SCILog(@"ProfileBtn", @"Install class=%@ configure=%@ layout=%@ installed=%@",
+               NSStringFromClass(headerClass),
+               configureHooked ? @"YES" : @"NO",
+               layoutHooked ? @"YES" : @"NO",
+               hooksInstalled ? @"YES" : @"NO");
+    }
 }

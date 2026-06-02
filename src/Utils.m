@@ -70,6 +70,9 @@ static NSNumber *SCINumericValueForSelector(id target, NSString *selectorName) {
             if ([value respondsToSelector:@selector(doubleValue)]) {
                 return @([value doubleValue]);
             }
+            if ([value respondsToSelector:@selector(integerValue)]) {
+                return @(((NSInteger (*)(id, SEL))objc_msgSend)(value, @selector(integerValue)));
+            }
             return nil;
         }
         case 'd':

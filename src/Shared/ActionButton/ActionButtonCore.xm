@@ -461,6 +461,24 @@ static UIAction *SCIProfileDisabledInfoAction(NSString *title, NSString *resourc
     return action;
 }
 
+static NSNumber *SCIProfileFollowerCount(id user) {
+    if (!user) return nil;
+    NSNumber *val = [SCIUtils numericValueForObj:user selectorName:@"followerCount"];
+    if (val) return val;
+    val = SCIProfileNumberValue(SCIKVCObject(user, @"followerCount"));
+    if (val) return val;
+    return SCIProfileNumberValue(SCIKVCObject(user, @"follower_count"));
+}
+
+static NSNumber *SCIProfileFollowingCount(id user) {
+    if (!user) return nil;
+    NSNumber *val = [SCIUtils numericValueForObj:user selectorName:@"followingCount"];
+    if (val) return val;
+    val = SCIProfileNumberValue(SCIKVCObject(user, @"followingCount"));
+    if (val) return val;
+    return SCIProfileNumberValue(SCIKVCObject(user, @"following_count"));
+}
+
 static NSArray<UIMenuElement *> *SCIProfileInfoMenuElements(id user) {
     if (!user) return @[];
 
@@ -470,12 +488,12 @@ static NSArray<UIMenuElement *> *SCIProfileInfoMenuElements(id user) {
         [infoItems addObject:SCIProfileDisabledInfoAction(privacyText, [privacyText containsString:@"Private"] ? @"lock" : @"unlock")];
     }
 
-    NSString *followers = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followerCount")));
+    NSString *followers = SCIProfileInfoString(SCIProfileFollowerCount(user));
     if (followers.length > 0) {
         [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Followers: %@", followers], @"users")];
     }
 
-    NSString *following = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followingCount")));
+    NSString *following = SCIProfileInfoString(SCIProfileFollowingCount(user));
     if (following.length > 0) {
         [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Following: %@", following], @"users")];
     }
@@ -487,9 +505,9 @@ static NSString *SCIProfileInfoSignature(id user) {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     NSString *privacy = SCIProfilePrivacyText(user);
     if (privacy.length > 0) [parts addObject:privacy];
-    NSString *followers = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followerCount")));
+    NSString *followers = SCIProfileInfoString(SCIProfileFollowerCount(user));
     if (followers.length > 0) [parts addObject:[NSString stringWithFormat:@"followers:%@", followers]];
-    NSString *following = SCIProfileInfoString(SCIProfileNumberValue(SCIKVCObject(user, @"followingCount")));
+    NSString *following = SCIProfileInfoString(SCIProfileFollowingCount(user));
     if (following.length > 0) [parts addObject:[NSString stringWithFormat:@"following:%@", following]];
     return [parts componentsJoinedByString:@"|"];
 }
