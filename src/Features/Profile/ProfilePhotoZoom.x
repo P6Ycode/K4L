@@ -26,32 +26,32 @@ static id SCIUserFromViewHierarchy(UIView *view) {
     if (!view) return nil;
 
     id user = SCIObjectForSelector(view, @"user");
-    if (user) return user;
+    if (user && [user respondsToSelector:@selector(username)]) return user;
 
     user = SCIObjectForSelector(view, @"userGQL");
-    if (user) return user;
+    if (user && [user respondsToSelector:@selector(username)]) return user;
 
     id profilePicImageView = SCIObjectForSelector(view, @"profilePicImageView");
     if (!profilePicImageView) {
         profilePicImageView = [SCIUtils getIvarForObj:view name:"_profilePicImageView"];
     }
     user = SCIObjectForSelector(profilePicImageView, @"user");
-    if (user) return user;
+    if (user && [user respondsToSelector:@selector(username)]) return user;
 
     UIViewController *ancestorController = [SCIUtils viewControllerForAncestralView:view];
     user = SCIObjectForSelector(ancestorController, @"user");
-    if (user) return user;
+    if (user && [user respondsToSelector:@selector(username)]) return user;
 
     user = SCIObjectForSelector(ancestorController, @"userGQL");
-    if (user) return user;
+    if (user && [user respondsToSelector:@selector(username)]) return user;
 
     UIResponder *responder = view;
     while ((responder = [responder nextResponder])) {
         user = SCIObjectForSelector(responder, @"user");
-        if (user && [user isKindOfClass:NSClassFromString(@"IGUser")]) return user;
+        if (user && [user respondsToSelector:@selector(username)]) return user;
 
         user = SCIObjectForSelector(responder, @"userGQL");
-        if (user && [user isKindOfClass:NSClassFromString(@"IGUser")]) return user;
+        if (user && [user respondsToSelector:@selector(username)]) return user;
     }
 
     return nil;

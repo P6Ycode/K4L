@@ -250,12 +250,12 @@ static CGFloat const kZoomEpsilon = 0.02;
 /// Centers the zoomed image inside the scroll view using frame origin (stable with `UIScrollView` zoom).
 - (void)sci_recenterZoomedImage {
     CGSize boundsSize = _scrollView.bounds.size;
-    CGRect frame = _imageView.frame;
+    CGSize contentSize = _scrollView.contentSize;
 
-    CGFloat horizontal = frame.size.width < boundsSize.width ? (boundsSize.width - frame.size.width) * 0.5 : 0.0;
-    CGFloat vertical = frame.size.height < boundsSize.height ? (boundsSize.height - frame.size.height) * 0.5 : 0.0;
+    CGFloat offsetX = (boundsSize.width > contentSize.width) ? (boundsSize.width - contentSize.width) * 0.5 : 0.0;
+    CGFloat offsetY = (boundsSize.height > contentSize.height) ? (boundsSize.height - contentSize.height) * 0.5 : 0.0;
 
-    _imageView.frame = CGRectMake(horizontal, vertical, frame.size.width, frame.size.height);
+    _imageView.center = CGPointMake(contentSize.width * 0.5 + offsetX, contentSize.height * 0.5 + offsetY);
 }
 
 - (void)updateImageViewFrame {
