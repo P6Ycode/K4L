@@ -15,6 +15,7 @@ static NSString * const kSCIFeedActionButtonEnabledKey = @"feed_action_btn";
             SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSourceFeed, @"Feed", SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceFeed), SCIActionButtonDefaultSectionsForSource(SCIActionButtonSourceFeed))
         ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Layout", @[
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Main Feed" icon:SCISettingsIcon(@"feed") menu:SCIMainFeedModeMenu()], SCISettingsIcon(@"feed")),
             [SCISetting switchCellWithTitle:@"Hide Stories Tray" icon:SCISettingsIcon(@"story") defaultsKey:@"feed_hide_stories_tray"],
             [SCISetting switchCellWithTitle:@"Hide Entire Feed" icon:SCISettingsIcon(@"feed") defaultsKey:@"feed_hide_entire_feed"],
             [SCISetting switchCellWithTitle:@"Hide Suggested Posts" icon:SCISettingsIcon(@"carousel") defaultsKey:@"feed_hide_suggested_posts"],
@@ -22,7 +23,7 @@ static NSString * const kSCIFeedActionButtonEnabledKey = @"feed_action_btn";
             [SCISetting switchCellWithTitle:@"Hide Suggested Reels" icon:SCISettingsIcon(@"reels_gallery") defaultsKey:@"feed_hide_suggested_reels"],
             [SCISetting switchCellWithTitle:@"Hide Suggested Threads" icon:SCISettingsIcon(@"threads") defaultsKey:@"feed_hide_suggested_threads"],
             [SCISetting switchCellWithTitle:@"Hide Repost Button" icon:SCISettingsIcon(@"repost") defaultsKey:@"feed_hide_repost_btn" requiresRestart:YES]
-        ], nil),
+        ], @"Main Feed can force Instagram's chronological Following feed instead of the algorithmic For You feed."),
         SCITopicSection(@"Metrics", @[
             [SCISetting switchCellWithTitle:@"Hide Like Count" icon:SCISettingsIcon(@"heart") defaultsKey:@"feed_hide_like_count"],
             [SCISetting switchCellWithTitle:@"Hide Comment Count" icon:SCISettingsIcon(@"comment") defaultsKey:@"feed_hide_comment_count"],

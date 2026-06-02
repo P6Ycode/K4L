@@ -20,6 +20,10 @@
                                  subtitle:@"Original developer"
                                  imageUrl:@"https://i.imgur.com/c9CbytZ.png"
                                       url:@"https://socuul.dev"],
+            [SCISetting linkCellWithTitle:@"Edoardo (@n3d1117)"
+                                 subtitle:@"Following feed mode (from InstaSane)"
+                                 imageUrl:@"https://avatars.githubusercontent.com/n3d1117"
+                                      url:@"https://github.com/n3d1117/InstaSane"],
             [SCISetting linkCellWithTitle:@"..."
                                  subtitle:@"... developer"
                                  imageUrl:@"https://avatars.githubusercontent.com/u/117626247?v=4"

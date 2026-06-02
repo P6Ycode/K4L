@@ -6,6 +6,7 @@
 FOUNDATION_EXPORT void SCIInstallLiquidGlassHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallProgressiveBlurHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallFeedActionButtonHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallFollowingFeedHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallReelsActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallStoriesActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallMessagesActionButtonHooksIfEnabled(void);
@@ -109,6 +110,7 @@ void SCIInstallLaunchCriticalHooks(void) {
         }
     }
     SCIInstallTweakLaunchCriticalHooks();
+    SCIInstallFollowingFeedHooksIfEnabled();
     SCIInstallAdBlockingEarlyHooksIfEnabled();
     SCIInstallStoryAdBlockingHooksIfEnabled();
     SCIInstallNavigationHooksIfNeeded();

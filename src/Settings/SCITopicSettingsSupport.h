@@ -16,6 +16,7 @@ SCISetting *SCITopicNavigationSetting(NSString *title, NSString *iconName, CGFlo
 SCISetting *SCIActionButtonDefaultActionNavigationSetting(SCIActionButtonSource source);
 SCISetting *SCIActionButtonConfigurationNavigationSetting(SCIActionButtonSource source, NSString *topicTitle, NSArray<NSString *> *supportedActions, NSArray<SCIActionMenuSection *> *defaultSections);
 UIMenu *SCIReelsTapControlMenu(void);
+UIMenu *SCIMainFeedModeMenu(void);
 UIMenu *SCINavigationIconOrderingMenu(void);
 UIMenu *SCISwipeBetweenTabsMenu(void);
 UIMenu *SCILiquidGlassTabBarStateMenu(void);

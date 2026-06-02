@@ -178,6 +178,13 @@ UIMenu *SCIReelsTapControlMenu(void) {
     ]];
 }
 
+UIMenu *SCIMainFeedModeMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SCIMenuCommand(@"For You", @"heart", nil, @"main_feed_mode", @"default", YES),
+        SCIMenuCommand(@"Following", @"users", nil, @"main_feed_mode", @"following", YES)
+    ]];
+}
+
 UIMenu *SCINavigationIconOrderingMenu(void) {
     return [UIMenu menuWithChildren:@[
         SCIMenuCommand(@"Default", nil, nil, @"interface_nav_order", @"default", YES),
