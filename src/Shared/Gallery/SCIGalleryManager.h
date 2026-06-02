@@ -30,6 +30,12 @@ typedef NS_ENUM(NSInteger, SCIGalleryBiometryType) {
 /// Convenience — sets `isUnlocked = NO`.
 - (void)lockGallery;
 
+/// Subclass customization points for independent passcode-protected surfaces.
+- (NSString *)lockEnabledDefaultsKey;
+- (NSString *)keychainService;
+- (NSString *)protectedContentName;
+- (void)lockContent;
+
 // MARK: - Passcode
 
 /// Stores a new passcode. Passcode length must be between 4 and 6 characters.

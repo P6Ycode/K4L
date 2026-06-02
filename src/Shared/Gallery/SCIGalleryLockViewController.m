@@ -21,6 +21,7 @@ static NSInteger const kPasscodeLength = 4;
 
 /// For change mode: once we've verified the old passcode, we switch to "set new" sub-state.
 @property (nonatomic, assign) BOOL hasVerifiedOldPasscode;
+@property (nonatomic, strong) SCIGalleryManager *lockManager;
 
 @end
 
@@ -30,25 +31,40 @@ static NSInteger const kPasscodeLength = 4;
 
 + (void)presentUnlockFromViewController:(UIViewController *)presenter
                              completion:(void (^)(BOOL))completion {
-    SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
+    [self presentUnlockForManager:[SCIGalleryManager sharedManager]
+               fromViewController:presenter
+                       completion:completion];
+}
+
++ (void)presentUnlockForManager:(SCIGalleryManager *)mgr
+             fromViewController:(UIViewController *)presenter
+                     completion:(void (^)(BOOL))completion {
     if ([mgr isBiometricsAvailable]) {
         [mgr authenticateWithBiometricsWithCompletion:^(BOOL success, NSError *err) {
             if (success) {
                 if (completion) completion(YES);
             } else {
-                [self presentMode:SCIGalleryLockModeUnlock fromViewController:presenter completion:completion];
+                [self presentMode:SCIGalleryLockModeUnlock forManager:mgr fromViewController:presenter completion:completion];
             }
         }];
     } else {
-        [self presentMode:SCIGalleryLockModeUnlock fromViewController:presenter completion:completion];
+        [self presentMode:SCIGalleryLockModeUnlock forManager:mgr fromViewController:presenter completion:completion];
     }
 }
 
 + (void)presentMode:(SCIGalleryLockMode)mode
    fromViewController:(UIViewController *)presenter
            completion:(void (^)(BOOL))completion {
+    [self presentMode:mode forManager:[SCIGalleryManager sharedManager] fromViewController:presenter completion:completion];
+}
+
++ (void)presentMode:(SCIGalleryLockMode)mode
+         forManager:(SCIGalleryManager *)manager
+ fromViewController:(UIViewController *)presenter
+         completion:(void (^)(BOOL))completion {
     SCIGalleryLockViewController *vc = [[SCIGalleryLockViewController alloc] init];
     vc.mode = mode;
+    vc.lockManager = manager;
     vc.completion = completion;
     vc.modalPresentationStyle = UIModalPresentationFullScreen;
     vc.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
@@ -246,23 +262,24 @@ static NSInteger const kPasscodeLength = 4;
 #pragma mark - Mode / UI updates
 
 - (void)updateUIForMode {
+    NSString *protectedName = self.lockManager.protectedContentName;
     switch (self.mode) {
         case SCIGalleryLockModeUnlock:
             self.titleLabel.text = @"Enter Passcode";
-            self.subtitleLabel.text = @"Enter your passcode to unlock the Gallery";
+            self.subtitleLabel.text = [NSString stringWithFormat:@"Enter your passcode to unlock %@", protectedName];
             break;
 
         case SCIGalleryLockModeSetPasscode:
             self.titleLabel.text = self.firstPasscode ? @"Confirm Passcode" : @"New Passcode";
             self.subtitleLabel.text = self.firstPasscode
                 ? @"Re-enter your new passcode"
-                : @"Create a passcode to protect your Gallery";
+                : [NSString stringWithFormat:@"Create a passcode to protect %@", protectedName];
             break;
 
         case SCIGalleryLockModeChangePasscode:
             if (!self.hasVerifiedOldPasscode) {
                 self.titleLabel.text = @"Enter Current Passcode";
-                self.subtitleLabel.text = @"Enter your current Gallery passcode";
+                self.subtitleLabel.text = [NSString stringWithFormat:@"Enter your current %@ passcode", protectedName];
             } else {
                 self.titleLabel.text = self.firstPasscode ? @"Confirm Passcode" : @"New Passcode";
                 self.subtitleLabel.text = self.firstPasscode
@@ -273,7 +290,7 @@ static NSInteger const kPasscodeLength = 4;
     }
 
     // Biometrics button only shown during unlock, when available.
-    SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
+    SCIGalleryManager *mgr = self.lockManager;
     BOOL showBiometrics = (self.mode == SCIGalleryLockModeUnlock) && [mgr isBiometricsAvailable];
     self.biometricButton.hidden = !showBiometrics;
     if (showBiometrics) {
@@ -351,7 +368,7 @@ static NSInteger const kPasscodeLength = 4;
 }
 
 - (void)cancelTapped {
-    [[SCIGalleryManager sharedManager] cancelBiometricAuthentication];
+    [self.lockManager cancelBiometricAuthentication];
     [self dismissViewControllerAnimated:YES completion:^{
         if (self.completion) self.completion(NO);
     }];
@@ -359,7 +376,7 @@ static NSInteger const kPasscodeLength = 4;
 
 - (void)triggerBiometrics {
     __weak typeof(self) weakSelf = self;
-    [[SCIGalleryManager sharedManager] authenticateWithBiometricsWithCompletion:^(BOOL success, NSError *err) {
+    [self.lockManager authenticateWithBiometricsWithCompletion:^(BOOL success, NSError *err) {
         if (!success) return;
         [weakSelf.presentingViewController dismissViewControllerAnimated:YES completion:^{
             if (weakSelf.completion) weakSelf.completion(YES);
@@ -370,7 +387,7 @@ static NSInteger const kPasscodeLength = 4;
 #pragma mark - Passcode handling
 
 - (void)handlePasscodeComplete {
-    SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
+    SCIGalleryManager *mgr = self.lockManager;
     NSString *entered = [self.enteredPasscode copy];
 
     switch (self.mode) {

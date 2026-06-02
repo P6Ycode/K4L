@@ -3,8 +3,6 @@
 #import <Security/Security.h>
 #import <CommonCrypto/CommonKeyDerivation.h>
 
-static NSString * const kLockEnabledKey = @"gallery_lock";
-static NSString * const kKeychainService = @"com.socuul.scinsta.gallery.passcode";
 static NSString * const kPBKDF2RecordPrefix = @"pbkdf2-sha256";
 static uint32_t const kPBKDF2Rounds = 210000;
 static size_t const kPBKDF2SaltLength = 16;
@@ -35,12 +33,12 @@ static size_t const kPBKDF2KeyLength = 32;
 #pragma mark - Lock state
 
 - (BOOL)isLockEnabled {
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:kLockEnabledKey]) return NO;
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:[self lockEnabledDefaultsKey]]) return NO;
     return [self hasPasscode];
 }
 
 - (void)setIsLockEnabled:(BOOL)enabled {
-    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:kLockEnabledKey];
+    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:[self lockEnabledDefaultsKey]];
     if (!enabled) {
         _isUnlocked = YES;
     }
@@ -51,6 +49,22 @@ static size_t const kPBKDF2KeyLength = 32;
 }
 
 - (void)lockGallery {
+    [self lockContent];
+}
+
+- (NSString *)lockEnabledDefaultsKey {
+    return @"gallery_lock";
+}
+
+- (NSString *)keychainService {
+    return @"com.socuul.scinsta.gallery.passcode";
+}
+
+- (NSString *)protectedContentName {
+    return @"Gallery";
+}
+
+- (void)lockContent {
     _isUnlocked = NO;
 }
 
@@ -151,7 +165,7 @@ static size_t const kPBKDF2KeyLength = 32;
 }
 
 - (NSString *)getStoredPasscodeHash {
-    return [self storedHashForService:kKeychainService];
+    return [self storedHashForService:[self keychainService]];
 }
 
 - (BOOL)storePasscodeHash:(NSString *)hash {
@@ -159,7 +173,7 @@ static size_t const kPBKDF2KeyLength = 32;
     NSData *data = [hash dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *attrs = @{
         (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-        (__bridge id)kSecAttrService: kKeychainService,
+        (__bridge id)kSecAttrService: [self keychainService],
         (__bridge id)kSecValueData: data,
         (__bridge id)kSecAttrAccessible: (__bridge id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
     };
@@ -170,7 +184,7 @@ static size_t const kPBKDF2KeyLength = 32;
 - (void)deleteStoredPasscodeHash {
     NSDictionary *query = @{
         (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-        (__bridge id)kSecAttrService: kKeychainService,
+        (__bridge id)kSecAttrService: [self keychainService],
     };
     SecItemDelete((__bridge CFDictionaryRef)query);
 }
@@ -266,7 +280,7 @@ static size_t const kPBKDF2KeyLength = 32;
     self.activeBiometricContext = ctx;
     __weak typeof(self) weakSelf = self;
     [ctx evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics
-        localizedReason:@"Unlock Gallery"
+        localizedReason:[NSString stringWithFormat:@"Unlock %@", [self protectedContentName]]
                   reply:^(BOOL success, NSError *evalErr) {
         dispatch_async(dispatch_get_main_queue(), ^{
             typeof(self) strongSelf = weakSelf;

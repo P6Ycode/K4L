@@ -11,6 +11,7 @@
 #import "../Shared/Gallery/SCIGalleryCoreDataStack.h"
 #import "../Shared/Gallery/SCIGalleryManager.h"
 #import "../Shared/Gallery/SCIGalleryPaths.h"
+#import "../Shared/Settings/SCISettingsLockManager.h"
 #import "../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesStorage.h"
 #import "../Features/Profile/ProfileAnalyzer/SCIProfileAnalyzerStorage.h"
 
@@ -987,6 +988,7 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
             for (NSString *key in SCIExportedPreferenceKeys()) {
                 [defaults removeObjectForKey:key];
             }
+            [[SCISettingsLockManager sharedManager] removePasscode];
             SCINotify(kSCINotificationSettingsImport,
                       @"Settings reset",
                       @"All SCInsta preferences were restored to defaults.",

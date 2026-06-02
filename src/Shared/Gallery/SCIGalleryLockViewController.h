@@ -2,6 +2,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class SCIGalleryManager;
+
 typedef NS_ENUM(NSInteger, SCIGalleryLockMode) {
     SCIGalleryLockModeUnlock = 0,          // Verify the existing passcode.
     SCIGalleryLockModeSetPasscode,         // Enter + confirm a new passcode.
@@ -24,6 +26,16 @@ typedef NS_ENUM(NSInteger, SCIGalleryLockMode) {
 + (void)presentMode:(SCIGalleryLockMode)mode
    fromViewController:(UIViewController *)presenter
            completion:(void (^)(BOOL success))completion;
+
+/// Reuses the keypad for another independent passcode manager, such as Settings.
++ (void)presentUnlockForManager:(SCIGalleryManager *)manager
+             fromViewController:(UIViewController *)presenter
+                     completion:(void (^)(BOOL success))completion;
+
++ (void)presentMode:(SCIGalleryLockMode)mode
+         forManager:(SCIGalleryManager *)manager
+ fromViewController:(UIViewController *)presenter
+         completion:(void (^)(BOOL success))completion;
 
 @end
 

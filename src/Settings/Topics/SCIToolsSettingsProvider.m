@@ -8,6 +8,9 @@
 #import "../../App/SCIStabilityGuard.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
+#import "../../Shared/Gallery/SCIGalleryLockViewController.h"
+#import "../../Shared/Settings/SCISettingsLockManager.h"
+#import "../../Shared/UI/SCIIGAlertPresenter.h"
 
 @interface SCISettingsTransferSelectionViewController : SCISettingsViewController
 @property (nonatomic, assign) BOOL importMode;
@@ -118,6 +121,69 @@
 
 @end
 
+static UIViewController *SCISettingsLockPresenter(void) {
+    UIViewController *presenter = UIApplication.sharedApplication.keyWindow.rootViewController;
+    while (presenter.presentedViewController) presenter = presenter.presentedViewController;
+    return presenter;
+}
+
+static void SCISettingsLockReloadPresenter(UIViewController *presenter) {
+    if ([presenter isKindOfClass:SCISettingsViewController.class]) {
+        [((SCISettingsViewController *)presenter).tableView reloadData];
+    }
+}
+
+static NSDictionary *SCISettingsLockSection(void) {
+    SCISetting *lockSwitch = [SCISetting switchCellWithTitle:@"Enable Settings Passcode Lock"
+                                                        icon:SCISettingsIcon(@"lock")
+                                                 defaultsKey:@""];
+    lockSwitch.switchValueProvider = ^BOOL{
+        return [SCISettingsLockManager sharedManager].isLockEnabled;
+    };
+    lockSwitch.switchChangeHandler = ^(BOOL enabled) {
+        SCISettingsLockManager *currentManager = [SCISettingsLockManager sharedManager];
+        UIViewController *presenter = SCISettingsLockPresenter();
+        if (enabled && !currentManager.isLockEnabled) {
+            [SCIGalleryLockViewController presentMode:SCIGalleryLockModeSetPasscode
+                                           forManager:currentManager
+                                   fromViewController:presenter
+                                           completion:^(__unused BOOL success) {
+                SCISettingsLockReloadPresenter(presenter);
+            }];
+            return;
+        }
+        if (!enabled && currentManager.isLockEnabled) {
+            [SCIIGAlertPresenter presentAlertFromViewController:presenter
+                                                         title:@"Disable Settings Passcode"
+                                                       message:@"SCInsta Settings will no longer require authentication to open."
+                                                       actions:@[
+                [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:^{
+                    SCISettingsLockReloadPresenter(presenter);
+                }],
+                [SCIIGAlertAction actionWithTitle:@"Disable" style:SCIIGAlertActionStyleDestructive handler:^{
+                    [currentManager removePasscode];
+                    SCISettingsLockReloadPresenter(presenter);
+                }],
+            ]];
+        }
+    };
+
+    SCISetting *changePasscode = [SCISetting buttonCellWithTitle:@"Change Settings Passcode"
+                                                        subtitle:nil
+                                                            icon:SCISettingsIcon(@"key")
+                                                          action:^{
+        [SCIGalleryLockViewController presentMode:SCIGalleryLockModeChangePasscode
+                                       forManager:[SCISettingsLockManager sharedManager]
+                               fromViewController:SCISettingsLockPresenter()
+                                       completion:^(__unused BOOL success) {}];
+    }];
+    changePasscode.enabledProvider = ^BOOL{
+        return [SCISettingsLockManager sharedManager].isLockEnabled;
+    };
+
+    return SCITopicSection(@"Settings Lock", @[lockSwitch, changePasscode], @"Require the independent Settings passcode or biometrics when opening SCInsta Settings, including topic sheets.");
+}
+
 static NSArray *SCIManageSettingsDataSections(void) {
     SCISetting *resetAllSettings = [SCISetting buttonCellWithTitle:@"Reset All Settings"
                                                          subtitle:@""
@@ -180,6 +246,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
                 [SCIUtils showRestartConfirmation];
             }]
         ], @"Quick Settings Access opens settings when long pressing the Home tab."),
+        SCISettingsLockSection(),
         SCITopicSection(@"Instagram", @[
             [SCISetting switchCellWithTitle:@"Hide TestFlight Popup" defaultsKey:@"tools_hide_testflight_popup" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Disable Safe Mode" defaultsKey:@"tools_disable_safe_mode"],

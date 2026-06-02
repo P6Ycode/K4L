@@ -816,18 +816,15 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
 
     if ([SCIGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]]) {
         [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Gallery" style:SCIIGAlertActionStyleDefault handler:^{
-            SCIGalleryPickerViewController *galleryPicker = [[SCIGalleryPickerViewController alloc]
-                initWithTitle:@"Choose Photo"
-            allowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]
-      allowsMultipleSelection:NO
-                   completion:^(NSArray<SCIGalleryFile *> *selectedFiles) {
+            [SCIGalleryPickerViewController presentFromViewController:SCIInstantsTopPresenter()
+                                                                title:@"Choose Photo"
+                                                    allowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]
+                                              allowsMultipleSelection:NO
+                                                           completion:^(NSArray<SCIGalleryFile *> *selectedFiles) {
                 SCIGalleryFile *file = selectedFiles.firstObject;
                 UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
                 if (image) SCIInstantsPresentImageForPositioning(image);
             }];
-            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:galleryPicker];
-            nav.modalPresentationStyle = UIModalPresentationFullScreen;
-            [SCIInstantsTopPresenter() presentViewController:nav animated:YES completion:nil];
         }]];
     }
 
@@ -839,11 +836,7 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
     }]];
 
     [actions addObject:[SCIIGAlertAction actionWithTitle:@"Instants Settings" style:SCIIGAlertActionStyleDefault handler:^{
-        UIViewController *settings = [SCIInstantsSettingsProvider makeSettingsViewController];
-        if (!settings) return;
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:settings];
-        nav.modalPresentationStyle = UIModalPresentationFullScreen;
-        [SCIInstantsTopPresenter() presentViewController:nav animated:YES completion:nil];
+        [SCIUtils showSettingsForTopicTitle:@"Instants"];
     }]];
 
     [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]];

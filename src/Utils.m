@@ -5,6 +5,8 @@
 #import <objc/message.h>
 #import "Shared/MediaPreview/SCIMediaCacheManager.h"
 #import "Shared/Gallery/SCIGalleryPaths.h"
+#import "Shared/Gallery/SCIGalleryLockViewController.h"
+#import "Shared/Settings/SCISettingsLockManager.h"
 #import "Shared/UI/SCIIGAlertPresenter.h"
 #import "Settings/SCIPreferenceAvailability.h"
 #import "Settings/SCIPreferences.h"
@@ -474,6 +476,33 @@ static NSArray<NSURLQueryItem *> *SCISanitizedInstagramQueryItems(NSArray<NSURLQ
     return kept.count > 0 ? kept : nil;
 }
 
+@interface SCISettingsNavigationController : UINavigationController
+@end
+
+@implementation SCISettingsNavigationController
+
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    if (self.isBeingDismissed || self.presentingViewController == nil) {
+        [[SCISettingsLockManager sharedManager] lockSettings];
+    }
+}
+
+@end
+
+static void SCIPresentSettingsAfterUnlock(UIViewController *presenter, dispatch_block_t presentation) {
+    SCISettingsLockManager *manager = [SCISettingsLockManager sharedManager];
+    if (manager.isLockEnabled && !manager.isUnlocked) {
+        [SCIGalleryLockViewController presentUnlockForManager:manager
+                                           fromViewController:presenter
+                                                   completion:^(BOOL success) {
+            if (success && presentation) presentation();
+        }];
+        return;
+    }
+    if (presentation) presentation();
+}
+
 @implementation SCIUtils
 
 // Master kill switch overlay: when "Disable All Settings" is on, runtime
@@ -755,11 +784,12 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 + (void)showSettingsVC:(UIWindow *)window {
     UIViewController *rootController = [window rootViewController];
-    SCISettingsViewController *settingsViewController = [SCISettingsViewController new];
-    UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:settingsViewController];
-    navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
-    
-    [rootController presentViewController:navigationController animated:YES completion:nil];
+    SCIPresentSettingsAfterUnlock(rootController, ^{
+        SCISettingsViewController *settingsViewController = [SCISettingsViewController new];
+        UINavigationController *navigationController = [[SCISettingsNavigationController alloc] initWithRootViewController:settingsViewController];
+        navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
+        [rootController presentViewController:navigationController animated:YES completion:nil];
+    });
 }
 
 + (void)showSettingsForTopicTitle:(NSString *)title {
@@ -792,25 +822,27 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     }
 
 
-    UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:settingsViewController];
-    navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
     UIViewController *presenter = topMostController();
-    UIUserInterfaceStyle interfaceStyle = presenter.view.window.traitCollection.userInterfaceStyle;
-    if (interfaceStyle == UIUserInterfaceStyleUnspecified) {
-        interfaceStyle = presenter.traitCollection.userInterfaceStyle;
-    }
-    if (interfaceStyle != UIUserInterfaceStyleUnspecified) {
-        navigationController.overrideUserInterfaceStyle = interfaceStyle;
-        settingsViewController.overrideUserInterfaceStyle = interfaceStyle;
-    }
-    UISheetPresentationController *sheet = navigationController.sheetPresentationController;
-    sheet.detents = @[
-        [UISheetPresentationControllerDetent mediumDetent],
-        [UISheetPresentationControllerDetent largeDetent]
-    ];
-    sheet.selectedDetentIdentifier = UISheetPresentationControllerDetentIdentifierLarge;
+    SCIPresentSettingsAfterUnlock(presenter, ^{
+        UINavigationController *navigationController = [[SCISettingsNavigationController alloc] initWithRootViewController:settingsViewController];
+        navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
+        UIUserInterfaceStyle interfaceStyle = presenter.view.window.traitCollection.userInterfaceStyle;
+        if (interfaceStyle == UIUserInterfaceStyleUnspecified) {
+            interfaceStyle = presenter.traitCollection.userInterfaceStyle;
+        }
+        if (interfaceStyle != UIUserInterfaceStyleUnspecified) {
+            navigationController.overrideUserInterfaceStyle = interfaceStyle;
+            settingsViewController.overrideUserInterfaceStyle = interfaceStyle;
+        }
+        UISheetPresentationController *sheet = navigationController.sheetPresentationController;
+        sheet.detents = @[
+            [UISheetPresentationControllerDetent mediumDetent],
+            [UISheetPresentationControllerDetent largeDetent]
+        ];
+        sheet.selectedDetentIdentifier = UISheetPresentationControllerDetentIdentifierLarge;
 
-    [presenter presentViewController:navigationController animated:YES completion:nil];
+        [presenter presentViewController:navigationController animated:YES completion:nil];
+    });
 }
 
 // MARK: Colours

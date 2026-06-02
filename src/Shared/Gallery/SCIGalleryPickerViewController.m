@@ -8,6 +8,8 @@
 #import "SCIGalleryListCollectionCell.h"
 #import "SCIGalleryFolderChipBar.h"
 #import "SCIGalleryGridDensity.h"
+#import "SCIGalleryManager.h"
+#import "SCIGalleryLockViewController.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -25,6 +27,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
 @interface SCIGalleryPickerViewController () <UICollectionViewDataSource,
                                              UICollectionViewDelegate,
                                              UICollectionViewDelegateFlowLayout,
+                                             UIAdaptivePresentationControllerDelegate,
                                              UISearchResultsUpdating>
 @property (nonatomic, copy, nullable) NSString *folderPath;
 @property (nonatomic, copy) NSString *pickerTitle;
@@ -65,13 +68,28 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
           allowsMultipleSelection:(BOOL)allowsMultipleSelection
                        completion:(SCIGalleryPickerCompletion)completion {
     if (!presenter || !completion) return;
-    SCIGalleryPickerViewController *picker = [[self alloc] initWithTitle:title
-                                                       allowedMediaTypes:allowedMediaTypes
-                                                 allowsMultipleSelection:allowsMultipleSelection
-                                                              completion:completion];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
-    nav.modalPresentationStyle = UIModalPresentationFullScreen;
-    [presenter presentViewController:nav animated:YES completion:nil];
+
+    SCIGalleryManager *mgr = [SCIGalleryManager sharedManager];
+
+    void (^presentPicker)(void) = ^{
+        SCIGalleryPickerViewController *picker = [[self alloc] initWithTitle:title
+                                                           allowedMediaTypes:allowedMediaTypes
+                                                     allowsMultipleSelection:allowsMultipleSelection
+                                                                  completion:completion];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [presenter presentViewController:nav animated:YES completion:nil];
+    };
+
+    if (mgr.isLockEnabled && !mgr.isUnlocked) {
+        [SCIGalleryLockViewController presentUnlockFromViewController:presenter
+                                                           completion:^(BOOL success) {
+            if (!success) return;
+            presentPicker();
+        }];
+    } else {
+        presentPicker();
+    }
 }
 
 - (instancetype)initWithTitle:(NSString *)title
@@ -173,12 +191,33 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
     self.definesPresentationContext = YES;
 
+    if (self.navigationController.viewControllers.firstObject == self) {
+        self.navigationController.presentationController.delegate = self;
+    }
+
     [self reloadData];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self reloadData];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    if (self.navigationController.viewControllers.firstObject != self) return;
+    if (self.isMovingFromParentViewController) return;
+    if (self.isBeingDismissed || self.navigationController.isBeingDismissed) {
+        if ([SCIGalleryManager sharedManager].isLockEnabled) {
+            [[SCIGalleryManager sharedManager] lockGallery];
+        }
+    }
+}
+
+- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController {
+    if ([SCIGalleryManager sharedManager].isLockEnabled) {
+        [[SCIGalleryManager sharedManager] lockGallery];
+    }
 }
 
 - (NSArray<NSNumber *> *)allowedMediaTypeValues {
