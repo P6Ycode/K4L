@@ -10,6 +10,7 @@
 #import "SCIGalleryGridDensity.h"
 #import "SCIGalleryManager.h"
 #import "SCIGalleryLockViewController.h"
+#import "SCIGalleryHiddenSources.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -50,9 +51,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
 
 + (BOOL)hasSelectableFilesForAllowedMediaTypes:(NSSet<NSNumber *> *)allowedMediaTypes {
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SCIGalleryFile"];
-    if (allowedMediaTypes.count > 0) {
-        request.predicate = [NSPredicate predicateWithFormat:@"mediaType IN %@", allowedMediaTypes.allObjects];
-    }
+    NSMutableArray *predicates = [NSMutableArray array];
+    if (allowedMediaTypes.count > 0) [predicates addObject:[NSPredicate predicateWithFormat:@"mediaType IN %@", allowedMediaTypes.allObjects]];
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    if (visibleSources) [predicates addObject:visibleSources];
+    request.predicate = predicates.count > 0 ? [NSCompoundPredicate andPredicateWithSubpredicates:predicates] : nil;
     request.fetchLimit = 50;
     request.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
     NSArray<SCIGalleryFile *> *files = [[SCIGalleryCoreDataStack shared].viewContext executeFetchRequest:request error:nil] ?: @[];
@@ -128,6 +131,10 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(hiddenSourcesChanged:)
+                                                 name:SCIGalleryHiddenSourcesDidChangeNotification
+                                               object:nil];
     // Match the real gallery: use the Instagram palette (dynamic colors that
     // adapt to light/dark) rather than a plain system background or a forced
     // appearance style.
@@ -198,6 +205,15 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
     [self reloadData];
 }
 
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)hiddenSourcesChanged:(NSNotification *)notification {
+    (void)notification;
+    [self reloadData];
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self reloadData];
@@ -230,6 +246,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
     if (allowed.count > 0) {
         [predicates addObject:[NSPredicate predicateWithFormat:@"mediaType IN %@", allowed]];
     }
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    if (visibleSources) [predicates addObject:visibleSources];
 
     if (folderPath.length > 0) {
         if (includeDescendants) {
@@ -284,7 +302,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryPickerViewMode) {
 
     NSString *base = self.folderPath ?: @"";
     NSString *prefix = base.length == 0 ? @"/" : [base stringByAppendingString:@"/"];
-    request.predicate = [NSPredicate predicateWithFormat:@"folderPath BEGINSWITH %@", prefix];
+    NSPredicate *folderPredicate = [NSPredicate predicateWithFormat:@"folderPath BEGINSWITH %@", prefix];
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    request.predicate = visibleSources
+        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[folderPredicate, visibleSources]]
+        : folderPredicate;
 
     NSArray<NSDictionary *> *rows = [context executeFetchRequest:request error:nil] ?: @[];
     NSMutableSet<NSString *> *folders = [NSMutableSet set];

@@ -5,6 +5,8 @@
 #import "../SCITopicSettingsSupport.h"
 #import "../../Shared/MediaDownload/SCIMediaFFmpeg.h"
 #import "../../Shared/MediaDownload/SCIMediaQualityManager.h"
+#import "../../Shared/MediaDownload/SCIDownloadHistoryViewController.h"
+#import "../../Shared/MediaDownload/SCIDownloadQueueManager.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 
@@ -141,6 +143,12 @@
         SCITopicSection(@"Media Saving", @[
             [SCISetting switchCellWithTitle:@"Enhanced Media Resolution" icon:SCISettingsIcon(@"hd") defaultsKey:@"general_enhanced_media_resolution"],
             [SCISetting switchCellWithTitle:@"Detect Duplicate Downloads" icon:SCISettingsIcon(@"media") defaultsKey:@"general_detect_duplicate_downloads"],
+            [SCISetting stepperCellWithTitle:@"Parallel Downloads" subtitle:@"%@ concurrent %@" defaultsKey:kSCIDownloadMaxConcurrentKey min:1 max:4 step:1 label:@"downloads" singularLabel:@"download"],
+            [SCISetting stepperCellWithTitle:@"History Limit" subtitle:@"%@ saved %@" defaultsKey:kSCIDownloadHistoryLimitKey min:50 max:1000 step:50 label:@"entries" singularLabel:@"entry"],
+            [SCISetting navigationCellWithTitle:@"Downloads"
+                                       subtitle:@"Queue, history, retry, and cancellation"
+                                           icon:SCISettingsIcon(@"download")
+                                 viewController:[SCIDownloadHistoryViewController new]],
             [SCISetting menuCellWithTitle:@"Default Photo Quality" icon:SCISettingsIcon(@"photo") menu:SCIMediaPhotoQualityMenu()],
             videoQualitySetting,
             encodingSettings,

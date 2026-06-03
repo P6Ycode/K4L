@@ -19,6 +19,7 @@ static CGFloat const kZoomEpsilon = 0.02;
 @property (nonatomic, strong) UITapGestureRecognizer *doubleTapGesture;
 @property (nonatomic, assign) BOOL isLoadingImage;
 @property (nonatomic, assign) BOOL lastReportedZoomState;
+@property (nonatomic, strong) id liveTextBridge;
 
 @end
 
@@ -206,10 +207,27 @@ static CGFloat const kZoomEpsilon = 0.02;
 - (void)displayImage:(UIImage *)image {
     _imageView.image = image;
     [self displayAnimatedImageIfAvailable];
+    [self configureLiveTextForImage:image];
     _scrollView.hidden = NO;
     _errorView.hidden = YES;
     [_scrollView setZoomScale:kMinZoom animated:NO];
     [self updateImageViewFrame];
+}
+
+- (void)configureLiveTextForImage:(UIImage *)image {
+    [self.liveTextBridge cleanup];
+    self.liveTextBridge = nil;
+    NSURL *localURL = [[SCIMediaCacheManager sharedManager] bestAvailableFileURLForItem:self.mediaItem];
+    SCIImageFormat format = SCIImageFormatForFileURL(localURL);
+    if (format == SCIImageFormatGIF || format == SCIImageFormatWebP) return;
+
+    Class bridgeClass = NSClassFromString(@"SCILiveTextBridge");
+    if (!bridgeClass || ![bridgeClass respondsToSelector:@selector(supported)] ||
+        !((BOOL (*)(id, SEL))objc_msgSend)(bridgeClass, @selector(supported))) return;
+    id bridge = ((id (*)(id, SEL, UIImageView *))objc_msgSend)([bridgeClass alloc], NSSelectorFromString(@"initWithImageView:"), _imageView);
+    if (!bridge) return;
+    self.liveTextBridge = bridge;
+    ((void (*)(id, SEL, UIImage *))objc_msgSend)(bridge, NSSelectorFromString(@"analyzeImage:"), image);
 }
 
 - (void)displayAnimatedImageIfAvailable {
@@ -349,6 +367,8 @@ static CGFloat const kZoomEpsilon = 0.02;
 #pragma mark - Cleanup
 
 - (void)cleanup {
+    [self.liveTextBridge cleanup];
+    self.liveTextBridge = nil;
     SEL setAnimatedImage = NSSelectorFromString(@"setAnimatedImage:");
     if ([_imageView respondsToSelector:setAnimatedImage]) {
         ((void (*)(id, SEL, id))objc_msgSend)(_imageView, setAnimatedImage, nil);

@@ -97,8 +97,7 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 + (BOOL)openInstagramMediaURL:(NSURL *)url;
 + (BOOL)openPhotosApp;
 + (nullable NSURL *)sanitizedInstagramShareURL:(NSURL *)url;
-
-/// Converts a numeric Instagram media pk (e.g. \c 3123456789012345678 or \c 3123…_userpk) to its base64 shortcode, the code used in \c instagram.com/p/<code>/ links. Returns nil when the input isn't a usable numeric pk.
++ (nullable NSString *)appendImgIndex:(NSInteger)imgIndex toURLString:(nullable NSString *)urlString;
 + (nullable NSString *)instagramShortcodeForMediaPK:(NSString *)mediaPK;
 
 // Media

@@ -519,18 +519,29 @@ static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecogni
 	if (SCIFeedIsCarouselMedia(media)) {
 		NSArray *children = SCIFeedCarouselChildren(media);
 		NSMutableArray<SCIMediaItem *> *items = [NSMutableArray array];
+		NSInteger index = 0;
 		for (id child in children) {
 			NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)child];
 			NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)child];
-			if (!videoURL && !photoURL) continue;
+			if (!videoURL && !photoURL) {
+				index++;
+				continue;
+			}
 
 			SCIMediaItem *item = [SCIMediaItem itemWithFileURL:(videoURL ?: photoURL)];
 			item.mediaType = videoURL ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
 			item.gallerySaveSource = SCIGallerySourceFeed;
 			item.galleryMetadata = SCIFeedMetadataForMediaWithUsernameFallback(child, username);
+			if (child != media) {
+				[SCIGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
+				if (children.count > 1) {
+					item.galleryMetadata.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
+				}
+			}
 			item.sourceMediaObject = child;
 			if (username.length > 0) item.title = username;
 			[items addObject:item];
+			index++;
 		}
 
 		if (items.count > 0) {

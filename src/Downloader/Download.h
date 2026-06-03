@@ -12,6 +12,7 @@
 @class SCIGalleryFile;
 
 typedef void (^SCIDownloadCompletionBlock)(NSURL * _Nullable fileURL, NSError * _Nullable error);
+typedef void (^SCIDownloadCustomStartBlock)(void);
 
 @interface SCIDownloadDelegate : NSObject <SCIDownloadDelegateProtocol>
 
@@ -32,10 +33,23 @@ typedef NS_ENUM(NSUInteger, DownloadAction) {
 @property (nonatomic, copy, nullable) SCIDownloadCompletionBlock completionBlock;
 @property (nonatomic, copy, nullable) dispatch_block_t customCancelHandler;
 @property (nonatomic, assign) BOOL duplicatePreflightApproved;
+@property (nonatomic, copy, nullable) NSString *queueActionID;
+@property (nonatomic, copy, nullable) NSString *queueJobID;
+@property (nonatomic, copy, nullable) NSString *queueParentJobID;
+@property (nonatomic, assign) BOOL queuedDownloadStarted;
+@property (nonatomic, assign) BOOL retainedForOperation;
+@property (nonatomic, assign) BOOL queueHistoryHidden;
+/// The caller owns queue settlement. Used by grouped carousel children so the slot includes destination saving.
+@property (nonatomic, assign) BOOL queueSettleExternally;
 
 - (instancetype)initWithAction:(DownloadAction)action showProgress:(BOOL)showProgress;
 
 - (void)downloadFileWithURL:(NSURL *)url fileExtension:(NSString *)fileExtension hudLabel:(NSString *)hudLabel;
+- (void)startDownloadFileWithURL:(NSURL *)url fileExtension:(NSString *)fileExtension hudLabel:(nullable NSString *)hudLabel;
+- (void)enqueueCustomOperationWithTitle:(NSString *)title
+                                 detail:(nullable NSString *)detail
+                             descriptor:(nullable NSDictionary *)descriptor
+                                  start:(SCIDownloadCustomStartBlock)start;
 - (void)beginCustomProgressWithTitle:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 - (void)updateCustomProgress:(float)progress title:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 - (void)updateCustomProgress:(float)progress
@@ -49,6 +63,7 @@ typedef NS_ENUM(NSUInteger, DownloadAction) {
 
 + (BOOL)isVideoFileAtURL:(NSURL *)fileURL;
 + (BOOL)isAudioFileAtURL:(NSURL *)fileURL;
++ (nullable SCIGallerySaveMetadata *)metadataFromDescriptor:(NSDictionary *)descriptor;
 + (void)saveFileURLToPhotos:(NSURL *)fileURL completion:(void(^)(BOOL success, NSError * _Nullable error))completion;
 + (void)saveFileURLToPhotos:(NSURL *)fileURL
                    metadata:(nullable SCIGallerySaveMetadata *)metadata

@@ -1672,7 +1672,16 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
         return;
     }
 
-    [delegate beginCustomProgressWithTitle:@"Preparing media options" subtitle:nil];
+    NSDictionary *queueDescriptor = @{@"kind": @"dash",
+                                      @"primaryURL": option.primaryURL.absoluteString ?: @"",
+                                      @"secondaryURL": option.secondaryURL.absoluteString ?: @"",
+                                      @"extension": SCIMediaExtensionForOption(option) ?: @"mp4",
+                                      @"mediaKind": option.kind == SCIMediaOptionKindAudioDash ? @"Audio" : @"Video",
+                                      @"action": @(resolvedAction)};
+    [delegate enqueueCustomOperationWithTitle:@"Media download"
+                                       detail:@"Preparing media options"
+                                   descriptor:queueDescriptor
+                                        start:^{
 
     __block SCIMediaSingleDownloadJob *videoJob = nil;
     __block SCIMediaSingleDownloadJob *audioJob = nil;
@@ -1803,6 +1812,7 @@ static void SCIMediaPerformOptionDownload(SCIMediaOption *option,
             return;
         }
         downloadAudioThenFinish(videoFileURL);
+    }];
     }];
 }
 

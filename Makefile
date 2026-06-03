@@ -11,8 +11,8 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = SCInsta
 
-$(TWEAK_NAME)_FILES = $(shell find src -type f \( -iname \*.x -o -iname \*.xm -o -iname \*.m \)) modules/SCISideloadFix/fishhook/fishhook.c
-$(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation CoreGraphics Photos CoreServices SystemConfiguration SafariServices Security QuartzCore AVFoundation AVKit CoreData LocalAuthentication ImageIO UniformTypeIdentifiers Accelerate
+$(TWEAK_NAME)_FILES = $(shell find src -type f \( -iname \*.x -o -iname \*.xm -o -iname \*.m -o -iname \*.swift \)) modules/SCISideloadFix/fishhook/fishhook.c
+$(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation CoreGraphics Photos CoreServices SystemConfiguration SafariServices Security QuartzCore AVFoundation AVKit CoreData LocalAuthentication ImageIO UniformTypeIdentifiers Accelerate VisionKit
 $(TWEAK_NAME)_PRIVATE_FRAMEWORKS = Preferences
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-unsupported-availability-guard -Wno-unused-value -Wno-deprecated-declarations -Wno-nullability-completeness -Wno-unused-function -Wno-incompatible-pointer-types
 $(TWEAK_NAME)_LOGOSFLAGS = --c warnings=none
@@ -25,7 +25,7 @@ $(TWEAK_NAME)_CFLAGS += -O2 -DNDEBUG
 $(TWEAK_NAME)_LDFLAGS += -Wl,-S
 endif
 
-CCFLAGS += -std=c++11
+$(TWEAK_NAME)_CXXFLAGS += -std=c++11
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

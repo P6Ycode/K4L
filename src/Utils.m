@@ -1018,6 +1018,25 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return components.URL ?: url;
 }
 
++ (NSString *)appendImgIndex:(NSInteger)imgIndex toURLString:(NSString *)urlString {
+    if (urlString.length == 0 || imgIndex <= 0) return urlString;
+    NSURL *url = [NSURL URLWithString:urlString];
+    if (!url) return urlString;
+    
+    NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    if (!components) return urlString;
+    
+    NSMutableArray<NSURLQueryItem *> *queryItems = [components.queryItems mutableCopy] ?: [NSMutableArray array];
+    for (NSURLQueryItem *item in [queryItems copy]) {
+        if ([item.name isEqualToString:@"img_index"]) {
+            [queryItems removeObject:item];
+        }
+    }
+    [queryItems addObject:[NSURLQueryItem queryItemWithName:@"img_index" value:[NSString stringWithFormat:@"%ld", (long)imgIndex]]];
+    components.queryItems = queryItems;
+    return components.URL.absoluteString ?: urlString;
+}
+
 + (NSString *)instagramShortcodeForMediaPK:(NSString *)mediaPK {
     if (mediaPK.length == 0) return nil;
 

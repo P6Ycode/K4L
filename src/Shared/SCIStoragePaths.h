@@ -9,6 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)deletedMessagesDirectory;
 + (NSString *)deletedMessagesPendingDirectory;
 + (NSString *)profileAnalyzerDirectory;
++ (NSString *)downloadsDirectory;
 
 @end
 

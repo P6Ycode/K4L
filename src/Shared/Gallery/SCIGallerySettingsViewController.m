@@ -10,6 +10,43 @@
 #import "../../AssetUtils.h"
 #import "../../Settings/SCITopicSettingsSupport.h"
 #import "SCIGalleryGridDensity.h"
+#import "SCIGalleryHiddenSources.h"
+
+@interface SCIGalleryHiddenSourcesViewController : SCISettingsViewController
+@end
+
+@implementation SCIGalleryHiddenSourcesViewController
+
+- (instancetype)init {
+    return [super initWithTitle:@"Hidden Sources" sections:@[] reduceMargin:NO];
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    [self rebuildSections];
+}
+
+- (void)rebuildSections {
+    NSMutableArray<SCISetting *> *rows = [NSMutableArray array];
+    NSArray<NSNumber *> *sources = @[
+        @(SCIGallerySourceFeed), @(SCIGallerySourceStories), @(SCIGallerySourceReels),
+        @(SCIGallerySourceProfile), @(SCIGallerySourceDMs), @(SCIGallerySourceThumbnail),
+        @(SCIGallerySourceInstants), @(SCIGallerySourceAudioPage), @(SCIGallerySourceComments),
+        @(SCIGallerySourceOther),
+    ];
+    for (NSNumber *sourceValue in sources) {
+        SCIGallerySource source = (SCIGallerySource)sourceValue.integerValue;
+        SCISetting *row = [SCISetting switchCellWithTitle:[SCIGalleryFile labelForSource:source]
+                                                     icon:SCISettingsIcon([SCIGalleryFile symbolNameForSource:source])
+                                              defaultsKey:@""];
+        row.switchValueProvider = ^BOOL{ return SCIGallerySourceIsHidden(source); };
+        row.switchChangeHandler = ^(BOOL hidden) { SCIGallerySetSourceHidden(source, hidden); };
+        [rows addObject:row];
+    }
+    [self replaceSections:@[SCITopicSection(@"Sources", rows, @"Hidden sources stay stored in Gallery and remain available to maintenance, export, and duplicate detection.")]];
+}
+
+@end
 
 static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 static NSString * const kGalleryLongPressTabKey = @"gallery_quick_access_tab";
@@ -41,7 +78,8 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
             [SCISetting valueCellWithTitle:@"Audio" subtitle:@"Saved audio count" icon:SCISettingsIcon(@"audio")]
         ], nil),
         SCITopicSection(@"Browsing", @[
-            [SCISetting switchCellWithTitle:@"Show Favorites at Top" icon:SCISettingsIcon(@"heart") defaultsKey:kFavoritesAtTopKey]
+            [SCISetting switchCellWithTitle:@"Show Favorites at Top" icon:SCISettingsIcon(@"heart") defaultsKey:kFavoritesAtTopKey],
+            [SCISetting navigationCellWithTitle:@"Hidden Sources" subtitle:@"" icon:SCISettingsIcon(@"eye_off") viewController:[SCIGalleryHiddenSourcesViewController new]]
         ], @"Pin favorites above other files inside the current sort and folder context."),
         SCITopicSection(@"Lock", @[
             [SCISetting switchCellWithTitle:@"Gallery Passcode Lock" icon:SCISettingsIcon(@"lock") defaultsKey:@""],
@@ -114,6 +152,12 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
         [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
     };
     [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow], @"Pin favorites above other files inside the current sort and folder context.")];
+    [sections addObject:SCITopicSection(@"Visibility", @[
+        [SCISetting navigationCellWithTitle:@"Hidden Sources"
+                                   subtitle:@""
+                                       icon:SCISettingsIcon(@"eye_off")
+                             viewController:[SCIGalleryHiddenSourcesViewController new]]
+    ], @"Hide selected sources from Gallery browsing and upload picker sheets without deleting files.")];
 
     // Grid section: pinch-to-zoom toggle. Defaults ON; the backing pref stores
     // the *disabled* state, so the switch inverts.

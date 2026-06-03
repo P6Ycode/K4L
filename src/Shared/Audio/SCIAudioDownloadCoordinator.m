@@ -610,12 +610,7 @@ static void SCIAudioPresentSaveToFiles(NSURL *fileURL, UIViewController *present
         return;
     }
 
-    UIDocumentPickerViewController *picker = nil;
-    if (@available(iOS 14.0, *)) {
-        picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[fileURL] asCopy:YES];
-    } else {
-        picker = [[UIDocumentPickerViewController alloc] initWithURL:fileURL inMode:UIDocumentPickerModeExportToService];
-    }
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[fileURL] asCopy:YES];
     picker.modalPresentationStyle = UIModalPresentationFormSheet;
     if (sourceView) {
         picker.popoverPresentationController.sourceView = sourceView;
@@ -803,7 +798,15 @@ static void SCIAudioPresentSaveToFiles(NSURL *fileURL, UIViewController *present
         return;
     }
 
-    [delegate beginCustomProgressWithTitle:@"Downloading audio" subtitle:nil];
+    NSDictionary *queueDescriptor = @{@"kind": @"audio-conversion",
+                                      @"url": item.url.absoluteString ?: @"",
+                                      @"extension": @"m4a",
+                                      @"mediaKind": @"Audio",
+                                      @"action": @(downloadAction)};
+    [delegate enqueueCustomOperationWithTitle:@"Audio download"
+                                       detail:@"Downloading audio"
+                                   descriptor:queueDescriptor
+                                        start:^{
     __block NSURLSessionDownloadTask *task = nil;
     __block NSURLSession *session = nil;
     __weak SCIDownloadDelegate *weakDelegate = delegate;
@@ -844,6 +847,7 @@ static void SCIAudioPresentSaveToFiles(NSURL *fileURL, UIViewController *present
         });
     }];
     [task resume];
+    }];
 }
 
 @end

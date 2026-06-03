@@ -13,6 +13,7 @@
 #import "SCIGallerySettingsViewController.h"
 #import "SCIGalleryDeleteViewController.h"
 #import "SCIGalleryOriginController.h"
+#import "SCIGalleryHiddenSources.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../UI/SCIMediaChrome.h"
 #import "../UI/SCIIGAlertPresenter.h"
@@ -52,8 +53,10 @@ static UIBarButtonItem *SCIGalleryTextBarButtonItem(NSString *title, id target, 
 static NSInteger SCIGalleryItemCountForFolderPath(NSManagedObjectContext *context, NSString *folderPath) {
     if (folderPath.length == 0) return 0;
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SCIGalleryFile"];
-    request.predicate = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
-                         folderPath, [folderPath stringByAppendingString:@"/"]];
+    NSPredicate *folder = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
+                           folderPath, [folderPath stringByAppendingString:@"/"]];
+    NSPredicate *visible = SCIGalleryVisibleSourcesPredicate();
+    request.predicate = visible ? [NSCompoundPredicate andPredicateWithSubpredicates:@[folder, visible]] : folder;
     return [context countForFetchRequest:request error:nil];
 }
 
@@ -174,6 +177,10 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleGridControlsPreferenceChanged:)
                                                  name:kSCIGalleryGridControlsChangedNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleGalleryPreferencesChanged:)
+                                                 name:SCIGalleryHiddenSourcesDidChangeNotification
                                                object:nil];
 
     [self setupCenteredTitle];
@@ -614,6 +621,12 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
                                                                    favoritesOnly:self.filterFavoritesOnly
                                                                        usernames:self.filterUsernames
                                                                       folderPath:self.currentFolderPath];
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    if (visibleSources) {
+        basePredicate = basePredicate
+            ? [NSCompoundPredicate andPredicateWithSubpredicates:@[basePredicate, visibleSources]]
+            : visibleSources;
+    }
     NSString *query = [self.searchQuery stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (query.length == 0) {
         request.predicate = basePredicate;
@@ -662,7 +675,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
     NSString *base = self.currentFolderPath ?: @"";
     NSString *prefix = base.length == 0 ? @"/" : [base stringByAppendingString:@"/"];
-    req.predicate = [NSPredicate predicateWithFormat:@"folderPath BEGINSWITH %@", prefix];
+    NSPredicate *folderPredicate = [NSPredicate predicateWithFormat:@"folderPath BEGINSWITH %@", prefix];
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    req.predicate = visibleSources
+        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[folderPredicate, visibleSources]]
+        : folderPredicate;
 
     NSArray<NSDictionary *> *results = [ctx executeFetchRequest:req error:nil];
     NSMutableSet<NSString *> *immediate = [NSMutableSet set];
@@ -1568,6 +1585,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                                            usernames:[NSSet set]
                                                                           folderPath:self.currentFolderPath];
     if (contextPredicate) [predicates addObject:contextPredicate];
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    if (visibleSources) [predicates addObject:visibleSources];
     NSString *query = [self.searchQuery stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (query.length > 0) {
         [predicates addObject:[NSPredicate predicateWithFormat:@"(sourceUsername CONTAINS[cd] %@) OR (customName CONTAINS[cd] %@) OR (relativePath CONTAINS[cd] %@)",

@@ -802,17 +802,28 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         return nil;
     }
 
-    // Posts/reels: prefer the authenticated instagram://media?id=<mediaPK>_<userPK> deep link.
-    // It opens the exact post in-app AND honors the follow relationship, so private posts
-    // open correctly (web /p/ links hit the public resolver and fail for private accounts).
-    NSString *fullMediaID = [self fullInstagramMediaID];
-    if (fullMediaID.length > 0) {
-        NSString *encodedID = [fullMediaID stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
-        if (encodedID.length > 0) {
-            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://media?id=%@", encodedID]];
-            SCILog(@"General", @"[SCInsta Gallery] Open original using media deep link source=%d id=%@ url=%@", self.source, fullMediaID, url.absoluteString);
+    // Posts/reels: prefer canonical permalinks. The generic instagram://media?id=
+    // route can open carousel children as detached media and reels in the feed viewer,
+    // which leaves Instagram without the original post/reel presentation context.
+    NSString *pathComponent = SCIGalleryPostPathComponentForSource((SCIGallerySource)self.source);
+    if (self.sourceMediaCode.length > 0) {
+        if (pathComponent.length == 0) {
+            SCILog(@"General", @"[SCInsta Gallery] Open original has code but no safe path source=%d code=%@", self.source, self.sourceMediaCode);
+            return nil;
+        }
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, self.sourceMediaCode]];
+        SCILog(@"General", @"[SCInsta Gallery] Open original generated from code source=%d code=%@ url=%@", self.source, self.sourceMediaCode, url.absoluteString);
+        return url;
+    }
+
+    if (self.sourceMediaPK.length > 0 && pathComponent.length > 0) {
+        NSString *code = [SCIUtils instagramShortcodeForMediaPK:self.sourceMediaPK];
+        if (code.length > 0) {
+            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, code]];
+            SCILog(@"General", @"[SCInsta Gallery] Open original generated from media pk source=%d mediaPK=%@ code=%@ url=%@", self.source, self.sourceMediaPK, code, url.absoluteString);
             return url;
         }
+        SCILog(@"General", @"[SCInsta Gallery] Open original could not derive shortcode from media pk source=%d mediaPK=%@", self.source, self.sourceMediaPK);
     }
 
     // Stored permalink (typically a /p/ or /reel/ web link captured at save time).
@@ -828,27 +839,16 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
         SCILog(@"General", @"[SCInsta Gallery] Ignoring invalid stored original URL source=%d raw=%@", self.source, self.sourceMediaURLString);
     }
 
-    NSString *pathComponent = SCIGalleryPostPathComponentForSource((SCIGallerySource)self.source);
-    if (self.sourceMediaCode.length > 0) {
-        if (pathComponent.length == 0) {
-            SCILog(@"General", @"[SCInsta Gallery] Open original has code but no safe path source=%d code=%@", self.source, self.sourceMediaCode);
-            return nil;
-        }
-        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, self.sourceMediaCode]];
-        SCILog(@"General", @"[SCInsta Gallery] Open original generated from code source=%d code=%@ url=%@", self.source, self.sourceMediaCode, url.absoluteString);
-        return url;
-    }
-
-    // No full media id, permalink or shortcode: derive the shortcode from the numeric media pk
-    // so we still land on the canonical /p/ or /reel/ page instead of the home feed.
-    if (self.sourceMediaPK.length > 0 && pathComponent.length > 0) {
-        NSString *code = [SCIUtils instagramShortcodeForMediaPK:self.sourceMediaPK];
-        if (code.length > 0) {
-            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", pathComponent, code]];
-            SCILog(@"General", @"[SCInsta Gallery] Open original generated from media pk source=%d mediaPK=%@ code=%@ url=%@", self.source, self.sourceMediaPK, code, url.absoluteString);
+    // Last resort for entries that only have a full media id. This is authenticated,
+    // but it is not context-preserving for reels/carousels.
+    NSString *fullMediaID = [self fullInstagramMediaID];
+    if (fullMediaID.length > 0) {
+        NSString *encodedID = [fullMediaID stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+        if (encodedID.length > 0) {
+            NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://media?id=%@", encodedID]];
+            SCILog(@"General", @"[SCInsta Gallery] Open original using fallback media deep link source=%d id=%@ url=%@", self.source, fullMediaID, url.absoluteString);
             return url;
         }
-        SCILog(@"General", @"[SCInsta Gallery] Open original could not derive shortcode from media pk source=%d mediaPK=%@", self.source, self.sourceMediaPK);
     }
 
     SCILog(@"General", @"[SCInsta Gallery] Open original unavailable source=%d relativePath=%@", self.source, self.relativePath);

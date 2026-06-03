@@ -1,6 +1,7 @@
 #import "SCIGalleryFilterViewController.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "SCIGalleryHiddenSources.h"
 
 static CGFloat const kSCIGalleryFilterChipLabelPointSize = 16.0;
 static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
@@ -245,9 +246,11 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     ];
 
     NSInteger columns = 3;
+    NSInteger visibleIndex = 0;
     UIStackView *currentRow = nil;
     for (NSInteger i = 0; i < sources.count; i++) {
-        if (i % columns == 0) {
+        if (SCIGallerySourceIsHidden([sources[i] integerValue])) continue;
+        if (visibleIndex % columns == 0) {
             currentRow = [[UIStackView alloc] init];
             currentRow.axis = UILayoutConstraintAxisHorizontal;
             currentRow.spacing = 8;
@@ -266,10 +269,11 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
         [chip.heightAnchor constraintEqualToConstant:44].active = YES;
         [currentRow addArrangedSubview:chip];
         [self.sourceChips addObject:chip];
+        visibleIndex += 1;
     }
 
     // Pad last row so chips have equal width
-    while (currentRow.arrangedSubviews.count % columns != 0) {
+    while (currentRow && currentRow.arrangedSubviews.count % columns != 0) {
         UIView *spacer = [[UIView alloc] init];
         [currentRow addArrangedSubview:spacer];
     }

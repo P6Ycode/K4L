@@ -1386,18 +1386,29 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
 static NSArray<SCIMediaItem *> *SCIPlayerItemsFromEntries(NSArray<SCIResolvedMediaEntry *> *entries, SCIActionButtonSource source, NSString *username, id media) {
 	NSMutableArray<SCIMediaItem *> *items = [NSMutableArray array];
 
+	NSInteger index = 0;
 	for (SCIResolvedMediaEntry *entry in entries) {
 		NSURL *url = entry.videoURL ?: entry.photoURL;
-		if (!url) continue;
+		if (!url) {
+			index++;
+			continue;
+		}
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
 
 		SCIMediaItem *item = [SCIMediaItem itemWithFileURL:url];
 		item.mediaType = entry.videoURL ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
 		item.gallerySaveSource = SCIGallerySourceForActionSource(source);
 		item.galleryMetadata = SCIGalleryMetadata(source, username, metadataObject);
+		if (metadataObject != media) {
+			[SCIGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
+			if (entries.count > 1) {
+				item.galleryMetadata.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
+			}
+		}
         item.sourceMediaObject = metadataObject;
 		if (username.length > 0) item.title = username;
 		[items addObject:item];
+		index++;
 	}
 
 	return items;
@@ -1620,18 +1631,29 @@ static NSArray<SCIBulkDownloadItem *> *SCIBulkDownloadItemsFromEntries(NSArray<S
                                                                        NSString *username,
                                                                        id media) {
     NSMutableArray<SCIBulkDownloadItem *> *items = [NSMutableArray array];
+    NSInteger index = 0;
     for (SCIResolvedMediaEntry *entry in entries) {
         NSURL *url = entry.videoURL ?: entry.photoURL;
-        if (!url) continue;
+        if (!url) {
+            index++;
+            continue;
+        }
         BOOL isVideo = (entry.videoURL != nil);
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
         SCIGallerySaveMetadata *meta = SCIGalleryMetadata(source, username, metadataObject);
+        if (metadataObject != media) {
+            [SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+            if (entries.count > 1) {
+                meta.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:meta.sourceMediaURLString];
+            }
+        }
         NSString *linkString = SCIBestDownloadURLForMediaObject(metadataObject).absoluteString ?: url.absoluteString;
         [items addObject:[SCIBulkDownloadItem itemWithURL:url
                                             fileExtension:SCIExtensionForURL(url, isVideo)
                                                   isVideo:isVideo
                                                  metadata:meta
                                                linkString:linkString]];
+        index++;
     }
     return items;
 }
@@ -2471,6 +2493,12 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 	}
 
 	SCIGallerySaveMetadata *meta = SCIGalleryMetadata(context.source, username, metadataObject);
+	if (metadataObject != media) {
+		[SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+		if (entries.count > 1) {
+			meta.sourceMediaURLString = [SCIUtils appendImgIndex:resolvedIndex toURLString:meta.sourceMediaURLString];
+		}
+	}
 
 	if (isDefaultTap && !SCIActionIdentifierOpensPreview(identifier)) {
 		SCIPausePlaybackForPreviewContext(context);

@@ -14,6 +14,8 @@ FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAllShare;
 FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAllGallery;
 FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAllClipboard;
 FOUNDATION_EXPORT NSString * const kSCINotificationDownloadAllLinks;
+FOUNDATION_EXPORT NSString * const kSCINotificationDownloadQueueFinished;
+FOUNDATION_EXPORT NSString * const kSCINotificationQueuedDownloadFailed;
 FOUNDATION_EXPORT NSString * const kSCINotificationExpand;
 FOUNDATION_EXPORT NSString * const kSCINotificationViewThumbnail;
 FOUNDATION_EXPORT NSString * const kSCINotificationCopyCaption;
@@ -104,6 +106,8 @@ SCINotificationPillView * _Nullable SCINotifyProgress(NSString *identifier,
                     tone:(SCINotificationTone)tone;
 - (nullable SCINotificationPillView *)beginProgressForIdentifier:(NSString *)identifier
                                                        title:(nullable NSString *)title
+                                                    onCancel:(nullable void (^)(void))onCancel;
+- (SCINotificationPillView *)beginUnmanagedProgressWithTitle:(nullable NSString *)title
                                                     onCancel:(nullable void (^)(void))onCancel;
 @end
 

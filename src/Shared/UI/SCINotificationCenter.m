@@ -14,6 +14,8 @@ SCI_NOTIF_CONST(kSCINotificationDownloadAllShare, "download_all_share");
 SCI_NOTIF_CONST(kSCINotificationDownloadAllGallery, "download_all_gallery");
 SCI_NOTIF_CONST(kSCINotificationDownloadAllClipboard, "download_all_clipboard");
 SCI_NOTIF_CONST(kSCINotificationDownloadAllLinks, "download_all_links");
+SCI_NOTIF_CONST(kSCINotificationDownloadQueueFinished, "download_queue_finished");
+SCI_NOTIF_CONST(kSCINotificationQueuedDownloadFailed, "queued_download_failed");
 SCI_NOTIF_CONST(kSCINotificationExpand, "expand");
 SCI_NOTIF_CONST(kSCINotificationViewThumbnail, "view_thumbnail");
 SCI_NOTIF_CONST(kSCINotificationCopyCaption, "copy_caption");
@@ -518,16 +520,24 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
                                               title:(NSString *)title
                                            onCancel:(void (^)(void))onCancel {
     if (!SCINotificationIsEnabled(identifier)) return nil;
+    return [self beginUnmanagedProgressWithTitle:title onCancel:onCancel];
+}
+
+- (SCINotificationPillView *)beginUnmanagedProgressWithTitle:(NSString *)title
+                                                    onCancel:(void (^)(void))onCancel {
     __block SCINotificationPillView *pill = nil;
     dispatch_block_t create = ^{
         pill = [SCINotificationPillView progressPill];
         [pill updateProgressTitle:title ?: @"Downloading..." subtitle:nil];
         pill.onCancel = onCancel;
-        NSString *progressIdentifier = [identifier copy];
         pill.onTonePresented = ^(SCINotificationTone tone) {
-            SCINotificationTriggerHaptic(progressIdentifier, tone);
+            if ([SCIUtils getBoolPref:@"general_disable_haptics"]) return;
+            UINotificationFeedbackGenerator *haptic = [[UINotificationFeedbackGenerator alloc] init];
+            if (tone == SCINotificationToneError) [haptic notificationOccurred:UINotificationFeedbackTypeError];
+            else if (tone == SCINotificationToneSuccess) [haptic notificationOccurred:UINotificationFeedbackTypeSuccess];
+            else [haptic notificationOccurred:UINotificationFeedbackTypeWarning];
         };
-        [self insertPill:pill identifier:identifier progress:YES];
+        [self insertPill:pill identifier:@"download_queue_aggregate" progress:YES];
     };
     if (NSThread.isMainThread) create();
     else dispatch_async(dispatch_get_main_queue(), create);

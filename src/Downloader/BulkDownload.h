@@ -38,6 +38,8 @@ typedef NS_ENUM(NSUInteger, SCIBulkDownloadOperation) {
         actionIdentifier:(NSString *)actionIdentifier
                presenter:(nullable UIViewController *)presenter
               anchorView:(nullable UIView *)anchorView;
++ (BOOL)canRetryDescriptor:(NSDictionary *)descriptor childIndexes:(nullable NSIndexSet *)childIndexes;
++ (void)retrySummaryJobID:(NSString *)jobID childIndexes:(nullable NSIndexSet *)childIndexes;
 
 @end
 

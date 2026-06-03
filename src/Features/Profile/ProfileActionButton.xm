@@ -301,7 +301,7 @@ static void (*orig_profileHeaderLayoutSubviews)(id, SEL);
 static SCIProfileHeaderActionButton *SCIProfileBuildHeaderActionButton(id sourceObject) {
     SCIProfileHeaderActionButton *button = [[SCIProfileHeaderActionButton alloc] initWithSymbol:@""
                                                                                       pointSize:kSCIProfileActionIconPointSize
-                                                                                       diameter:kSCIProfileActionButtonHeight];
+                                                                                       diameter:kSCIProfileActionButtonWidth];
     button.accessibilityIdentifier = @"scinsta-profile-action-button";
     button.translatesAutoresizingMaskIntoConstraints = YES;
     button.frame = CGRectMake(0.0, 0.0, kSCIProfileActionButtonWidth, kSCIProfileActionButtonHeight);
@@ -607,14 +607,54 @@ static void hooked_profileHeaderLayoutSubviews(id self, SEL _cmd) {
     }
 }
 
+static void (*orig_generateBarButtonItems)(id, SEL, id, long long);
+
+static NSArray *hooked_generateBarButtonItems(id self, SEL _cmd, id items, long long placement) {
+    NSArray *orig = ((NSArray *(*)(id, SEL, id, long long))orig_generateBarButtonItems)(self, _cmd, items, placement);
+    if (![SCIUtils getBoolPref:@"profile_action_btn"]) return orig;
+
+    // placement: 0 = left, 1 = right
+    if (placement == 1) {
+        BOOL contains = NO;
+        for (UIBarButtonItem *item in orig) {
+            if ([item.customView.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) {
+                contains = YES;
+                break;
+            }
+        }
+        if (!contains) {
+            id sourceObject = self; 
+            // In generateBarButtonItems, self is IGProfileNavigationItemsController.
+            SCIProfileHeaderActionButton *button = SCIProfileBuildHeaderActionButton(sourceObject);
+            UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:button];
+            
+            NSMutableArray *patched = orig ? [orig mutableCopy] : [NSMutableArray array];
+            [patched insertObject:item atIndex:0];
+            return patched;
+        }
+    }
+    return orig;
+}
+
+static BOOL hooksInstalled = NO;
+static BOOL retryScheduled = NO;
+static NSInteger installAttempts = 0;
+
 extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
     if (![SCIUtils getBoolPref:@"profile_action_btn"]) return;
 
-    static BOOL hooksInstalled = NO;
-    static BOOL retryScheduled = NO;
-    static NSInteger installAttempts = 0;
-
-    @synchronized([SCIProfileHeaderActionButton class]) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Class controllerClass = NSClassFromString(@"IGProfileNavigation.IGProfileNavigationItemsController");
+        if (!controllerClass) controllerClass = NSClassFromString(@"_TtC19IGProfileNavigation34IGProfileNavigationItemsController");
+        
+        if (controllerClass) {
+            SEL generateSelector = @selector(generateBarButtonItems:placement:);
+            if ([controllerClass instancesRespondToSelector:generateSelector]) {
+                MSHookMessageEx(controllerClass, generateSelector, (IMP)hooked_generateBarButtonItems, (IMP *)&orig_generateBarButtonItems);
+                SCILog(@"ProfileBtn", @"Installed generateBarButtonItems hook on %@", NSStringFromClass(controllerClass));
+            }
+        }
         if (hooksInstalled) return;
 
         installAttempts += 1;
@@ -656,5 +696,5 @@ extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
                configureHooked ? @"YES" : @"NO",
                layoutHooked ? @"YES" : @"NO",
                hooksInstalled ? @"YES" : @"NO");
-    }
+    });
 }

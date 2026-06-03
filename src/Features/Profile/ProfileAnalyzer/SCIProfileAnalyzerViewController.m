@@ -172,6 +172,7 @@ typedef NS_ENUM(NSInteger, SCIPACategory) {
     _statsRow.translatesAutoresizingMaskIntoConstraints = NO;
     _statsRow.axis = UILayoutConstraintAxisHorizontal;
     _statsRow.distribution = UIStackViewDistributionFillEqually;
+    _statsRow.alignment = UIStackViewAlignmentCenter;
     [self addSubview:_statsRow];
 
     _scanDateLabel = [UILabel new];
@@ -218,31 +219,27 @@ typedef NS_ENUM(NSInteger, SCIPACategory) {
 }
 
 - (UIView *)statColumnValue:(NSString *)value caption:(NSString *)caption {
-    UIView *w = [UIView new];
+    UIStackView *col = [[UIStackView alloc] init];
+    col.axis = UILayoutConstraintAxisVertical;
+    col.alignment = UIStackViewAlignmentCenter;
+    col.distribution = UIStackViewDistributionFill;
+    col.spacing = 1.0;
+
     UILabel *v = [UILabel new];
-    v.translatesAutoresizingMaskIntoConstraints = NO;
     v.font = [UIFont systemFontOfSize:18.0 weight:UIFontWeightBold];
     v.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
     v.textAlignment = NSTextAlignmentCenter;
     v.text = value;
-    [w addSubview:v];
+    [col addArrangedSubview:v];
+
     UILabel *c = [UILabel new];
-    c.translatesAutoresizingMaskIntoConstraints = NO;
     c.font = [UIFont systemFontOfSize:12.0];
     c.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
     c.textAlignment = NSTextAlignmentCenter;
     c.text = caption;
-    [w addSubview:c];
-    [NSLayoutConstraint activateConstraints:@[
-        [v.topAnchor constraintEqualToAnchor:w.topAnchor],
-        [v.leadingAnchor constraintEqualToAnchor:w.leadingAnchor],
-        [v.trailingAnchor constraintEqualToAnchor:w.trailingAnchor],
-        [c.topAnchor constraintEqualToAnchor:v.bottomAnchor constant:1.0],
-        [c.leadingAnchor constraintEqualToAnchor:w.leadingAnchor],
-        [c.trailingAnchor constraintEqualToAnchor:w.trailingAnchor],
-        [c.bottomAnchor constraintEqualToAnchor:w.bottomAnchor],
-    ]];
-    return w;
+    [col addArrangedSubview:c];
+
+    return col;
 }
 
 - (void)setStatsPosts:(NSString *)posts followers:(NSString *)followers following:(NSString *)following {

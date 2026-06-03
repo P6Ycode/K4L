@@ -4,6 +4,7 @@
 #import "../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../Shared/Gallery/SCIGalleryViewController.h"
 #import "../Shared/MediaDownload/SCIDownloadDuplicateTracker.h"
+#import "../Shared/MediaDownload/SCIDownloadQueueManager.h"
 #import <Photos/Photos.h>
 
 @implementation SCIDownloadDelegate
@@ -18,18 +19,21 @@ static NSCountedSet *SCIActiveDownloadDelegates(void) {
 }
 
 static void SCIRetainActiveDownloadDelegate(SCIDownloadDelegate *delegate) {
+    if (!delegate || delegate.retainedForOperation) return;
     @synchronized (SCIActiveDownloadDelegates()) {
         [SCIActiveDownloadDelegates() addObject:delegate];
     }
+    delegate.retainedForOperation = YES;
 }
 
 static void SCIReleaseActiveDownloadDelegate(SCIDownloadDelegate *delegate) {
-    if (!delegate) {
+    if (!delegate || !delegate.retainedForOperation) {
         return;
     }
     @synchronized (SCIActiveDownloadDelegates()) {
         [SCIActiveDownloadDelegates() removeObject:delegate];
     }
+    delegate.retainedForOperation = NO;
 }
 
 static void SCIInvokeDownloadCompletion(SCIDownloadDelegate *delegate, NSURL *fileURL, NSError *error) {
@@ -59,6 +63,79 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
     }
 }
 
+static NSDictionary *SCIDownloadMetadataDescriptor(SCIGallerySaveMetadata *metadata) {
+    if (!metadata) return @{};
+    NSMutableDictionary *descriptor = [NSMutableDictionary dictionary];
+    descriptor[@"source"] = @(metadata.source);
+    if (metadata.sourceUsername) descriptor[@"sourceUsername"] = metadata.sourceUsername;
+    if (metadata.sourceUserPK) descriptor[@"sourceUserPK"] = metadata.sourceUserPK;
+    if (metadata.sourceMediaPK) descriptor[@"sourceMediaPK"] = metadata.sourceMediaPK;
+    if (metadata.sourceMediaCode) descriptor[@"sourceMediaCode"] = metadata.sourceMediaCode;
+    if (metadata.sourceMediaURLString) descriptor[@"sourceMediaURLString"] = metadata.sourceMediaURLString;
+    return descriptor;
+}
+
+static SCIGallerySaveMetadata *SCIDownloadMetadataFromDescriptor(NSDictionary *descriptor) {
+    if (![descriptor isKindOfClass:NSDictionary.class] || descriptor.count == 0) return nil;
+    SCIGallerySaveMetadata *metadata = [SCIGallerySaveMetadata new];
+    metadata.source = [descriptor[@"source"] shortValue];
+    metadata.sourceUsername = descriptor[@"sourceUsername"];
+    metadata.sourceUserPK = descriptor[@"sourceUserPK"];
+    metadata.sourceMediaPK = descriptor[@"sourceMediaPK"];
+    metadata.sourceMediaCode = descriptor[@"sourceMediaCode"];
+    metadata.sourceMediaURLString = descriptor[@"sourceMediaURLString"];
+    return metadata;
+}
+
+static NSString *SCIDownloadDestinationLabel(DownloadAction action) {
+    switch (action) {
+        case saveToPhotos: return @"Photos";
+        case saveToGallery: return @"Gallery";
+        case share: return @"Share";
+        case downloadOnly: return @"Download";
+    }
+}
+
+static NSString *SCIDownloadCompletionAction(DownloadAction action) {
+    switch (action) {
+        case saveToPhotos: return @"openPhotos";
+        case saveToGallery: return @"openGallery";
+        default: return nil;
+    }
+}
+
+static NSString *SCIDownloadMediaKindForExtension(NSString *fileExtension) {
+    NSString *extension = fileExtension.lowercaseString;
+    if ([SCIDownloadDelegate isAudioFileAtURL:[NSURL fileURLWithPath:[@"file." stringByAppendingString:extension ?: @""]]]) return @"Audio";
+    if ([SCIDownloadDelegate isVideoFileAtURL:[NSURL fileURLWithPath:[@"file." stringByAppendingString:extension ?: @""]]]) return @"Video";
+    return @"Image";
+}
+
+static NSString *SCIDownloadDisplayTitle(SCIGallerySaveMetadata *metadata, NSString *fallback) {
+    if (metadata.sourceUsername.length > 0) {
+        return [metadata.sourceUsername hasPrefix:@"@"] ? metadata.sourceUsername : [@"@" stringByAppendingString:metadata.sourceUsername];
+    }
+    return fallback.length > 0 ? fallback : @"Media download";
+}
+
+static void SCIDownloadPresentAfterPillDismiss(dispatch_block_t presentation) {
+    if (!presentation) return;
+    dispatch_async(dispatch_get_main_queue(), presentation);
+}
+
+static NSMutableDictionary *SCIDownloadUserDescriptor(SCIDownloadDelegate *delegate, NSString *fileExtension) {
+    SCIGallerySaveMetadata *metadata = delegate.pendingGallerySaveMetadata;
+    NSMutableDictionary *descriptor = [NSMutableDictionary dictionary];
+    descriptor[@"metadata"] = SCIDownloadMetadataDescriptor(metadata);
+    descriptor[@"mediaKind"] = SCIDownloadMediaKindForExtension(fileExtension);
+    descriptor[@"destinationLabel"] = SCIDownloadDestinationLabel(delegate.action);
+    descriptor[@"sourceLabel"] = [SCIGalleryFile shortLabelForSource:(SCIGallerySource)metadata.source] ?: @"Other";
+    if (metadata.sourceUsername.length > 0) descriptor[@"username"] = metadata.sourceUsername;
+    NSString *completionAction = SCIDownloadCompletionAction(delegate.action);
+    if (completionAction.length > 0) descriptor[@"completionAction"] = completionAction;
+    return descriptor;
+}
+
 + (BOOL)isVideoFileAtURL:(NSURL *)fileURL {
     NSString *ext = fileURL.pathExtension.lowercaseString;
     NSSet<NSString *> *videoExtensions = [NSSet setWithArray:@[@"mp4", @"mov", @"m4v", @"avi", @"webm", @"mkv", @"3gp"]];
@@ -69,6 +146,10 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
     NSString *ext = fileURL.pathExtension.lowercaseString;
     NSSet<NSString *> *audioExtensions = [NSSet setWithArray:@[@"m4a", @"aac", @"mp3", @"wav", @"caf", @"aiff", @"flac", @"opus", @"ogg"]];
     return [audioExtensions containsObject:ext];
+}
+
++ (SCIGallerySaveMetadata *)metadataFromDescriptor:(NSDictionary *)descriptor {
+    return SCIDownloadMetadataFromDescriptor(descriptor);
 }
 
 + (void)saveFileURLToPhotos:(NSURL *)fileURL completion:(void(^)(BOOL success, NSError *error))completion {
@@ -121,7 +202,6 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
                     completionImmediately:(BOOL)completionImmediately
                               completion:(void(^)(void))completion {
     if (!self.progressView) {
-        SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneSuccess);
         if (completion) {
             completion();
         }
@@ -199,20 +279,67 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
         if (presented) return;
     }
 
+    __weak typeof(self) weakSelf = self;
+    NSString *title = SCIDownloadDisplayTitle(self.pendingGallerySaveMetadata, hudLabel);
+    NSMutableDictionary *descriptor = SCIDownloadUserDescriptor(self, fileExtension);
+    [descriptor addEntriesFromDictionary:@{@"kind": @"url", @"url": url.absoluteString ?: @"", @"extension": fileExtension ?: @"",
+                                           @"action": @(self.action), @"showProgress": @(self.showProgress),
+                                           @"notificationIdentifier": self.notificationIdentifier ?: @""}];
+    NSDictionary *itemDescriptor = @{
+        @"state": @"queued",
+        @"title": title ?: @"Media download",
+        @"detail": [NSString stringWithFormat:@"%@ · Waiting", descriptor[@"mediaKind"] ?: @"Media"],
+        @"mediaKind": descriptor[@"mediaKind"] ?: @"Media",
+        @"sourceLabel": descriptor[@"sourceLabel"] ?: @"Other",
+        @"timestamp": @(NSDate.date.timeIntervalSince1970),
+        @"metadata": descriptor[@"metadata"] ?: @{},
+        @"url": url.absoluteString ?: @"",
+        @"extension": fileExtension ?: @""
+    };
     SCIRetainActiveDownloadDelegate(self);
+    self.queueActionID = [[SCIDownloadQueueManager shared] createActionWithTitle:title
+                                                                          detail:[NSString stringWithFormat:@"%@ · Waiting", descriptor[@"mediaKind"] ?: @"Media"]
+                                                                      descriptor:descriptor
+                                                                           items:@[itemDescriptor]
+                                                                           retry:nil];
+    self.queueJobID = [[SCIDownloadQueueManager shared] enqueueTaskForActionID:self.queueActionID
+                                                                     itemIndex:0
+                                                                         title:@"Waiting"
+                                                                         start:^(NSString *jobID) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.queueJobID = jobID;
+        [strongSelf startDownloadFileWithURL:url fileExtension:fileExtension hudLabel:hudLabel];
+    }];
+    [[SCIDownloadQueueManager shared] setCancelBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (strongSelf.queuedDownloadStarted) {
+            [strongSelf.downloadManager cancelDownload];
+        } else {
+            strongSelf.pendingGallerySaveMetadata = nil;
+            SCIInvokeDownloadCompletion(strongSelf, nil, [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]);
+            SCIReleaseActiveDownloadDelegate(strongSelf);
+        }
+    } forTaskID:self.queueJobID];
+}
+
+- (void)startDownloadFileWithURL:(NSURL *)url fileExtension:(NSString *)fileExtension hudLabel:(NSString *)hudLabel {
+    self.queuedDownloadStarted = YES;
     self.customCancelHandler = nil;
 
-    if (self.showProgress) {
+    if (self.showProgress && [[SCIDownloadQueueManager shared] shouldShowStandaloneProgressForActionID:self.queueActionID]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __weak typeof(self) weakSelf = self;
             NSURL *retryURL = [url copy];
             NSString *retryExtension = [fileExtension copy];
             NSString *retryHudLabel = [hudLabel copy];
             self.progressView = SCINotifyProgress(self.notificationIdentifier, @"Downloading...", ^{
-                [weakSelf.downloadManager cancelDownload];
+                [[SCIDownloadQueueManager shared] cancelTaskID:weakSelf.queueJobID];
             });
             self.progressView.onRetry = ^{
-                [weakSelf downloadFileWithURL:retryURL fileExtension:retryExtension hudLabel:retryHudLabel];
+                if (weakSelf.queueActionID.length) [[SCIDownloadQueueManager shared] retryJobID:weakSelf.queueActionID];
+                else [weakSelf downloadFileWithURL:retryURL fileExtension:retryExtension hudLabel:retryHudLabel];
             };
         });
     }
@@ -221,12 +348,61 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
 
     // Start download using manager
     [self.downloadManager downloadFileWithURL:url fileExtension:fileExtension];
+    __weak typeof(self) weakSelf = self;
+    [[SCIDownloadQueueManager shared] setCancelBlock:^{
+        [weakSelf.downloadManager cancelDownload];
+    } forTaskID:self.queueJobID];
+}
+
+- (void)enqueueCustomOperationWithTitle:(NSString *)title
+                                 detail:(NSString *)detail
+                             descriptor:(NSDictionary *)descriptor
+                                  start:(SCIDownloadCustomStartBlock)start {
+    if (!start) return;
+    SCIRetainActiveDownloadDelegate(self);
+    __weak typeof(self) weakSelf = self;
+    NSMutableDictionary *resolvedDescriptor = SCIDownloadUserDescriptor(self, descriptor[@"extension"]);
+    [resolvedDescriptor addEntriesFromDictionary:descriptor ?: @{}];
+    NSDictionary *itemDescriptor = @{
+        @"state": @"queued",
+        @"title": title ?: @"Media download",
+        @"detail": detail ?: @"Waiting",
+        @"mediaKind": resolvedDescriptor[@"mediaKind"] ?: @"Media",
+        @"sourceLabel": resolvedDescriptor[@"sourceLabel"] ?: @"Other",
+        @"timestamp": @(NSDate.date.timeIntervalSince1970),
+        @"metadata": resolvedDescriptor[@"metadata"] ?: @{}
+    };
+    self.queueActionID = [[SCIDownloadQueueManager shared] createActionWithTitle:SCIDownloadDisplayTitle(self.pendingGallerySaveMetadata, title)
+                                                                          detail:detail ?: @"Waiting"
+                                                                      descriptor:resolvedDescriptor
+                                                                           items:@[itemDescriptor]
+                                                                           retry:nil];
+    self.queueJobID = [[SCIDownloadQueueManager shared] enqueueTaskForActionID:self.queueActionID
+                                                                     itemIndex:0
+                                                                         title:detail ?: @"Waiting"
+                                                                         start:^(NSString *jobID) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.queueJobID = jobID;
+        [strongSelf beginCustomProgressWithTitle:title subtitle:detail];
+        [[SCIDownloadQueueManager shared] setCancelBlock:^{
+            [weakSelf cancelCustomOperation];
+        } forTaskID:jobID];
+        start();
+    }];
+    [[SCIDownloadQueueManager shared] setCancelBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.pendingGallerySaveMetadata = nil;
+        SCIInvokeDownloadCompletion(strongSelf, nil, [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]);
+        SCIReleaseActiveDownloadDelegate(strongSelf);
+    } forTaskID:self.queueJobID];
 }
 
 - (void)beginCustomProgressWithTitle:(NSString *)title subtitle:(NSString *)subtitle {
     SCIRetainActiveDownloadDelegate(self);
 
-    if (!self.showProgress) {
+    if (!self.showProgress || ![[SCIDownloadQueueManager shared] shouldShowStandaloneProgressForActionID:self.queueActionID]) {
         return;
     }
 
@@ -256,7 +432,10 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
                      subtitle:(NSString *)subtitle
                  bytesWritten:(int64_t)bytesWritten
            totalBytesExpected:(int64_t)totalBytesExpected {
-    if (!self.showProgress) {
+    if (self.queueJobID.length) {
+        [[SCIDownloadQueueManager shared] updateTaskID:self.queueJobID progress:progress detail:title ?: subtitle];
+    }
+    if (!self.showProgress || ![[SCIDownloadQueueManager shared] shouldShowStandaloneProgressForActionID:self.queueActionID]) {
         return;
     }
 
@@ -273,13 +452,13 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
 }
 
 - (void)showCustomErrorWithTitle:(NSString *)title subtitle:(NSString *)subtitle {
+    NSError *error = SCIDownloadErrorWithDescription(subtitle.length > 0 ? subtitle : title, 50);
+    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] failTaskID:self.queueJobID error:error];
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.showProgress && self.progressView) {
             [self.progressView showErrorWithTitle:title subtitle:subtitle icon:nil];
-        } else {
-            SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneError);
         }
-        SCIInvokeDownloadCompletion(self, nil, SCIDownloadErrorWithDescription(subtitle.length > 0 ? subtitle : title, 50));
+        SCIInvokeDownloadCompletion(self, nil, error);
         SCIReleaseActiveDownloadDelegate(self);
     });
 }
@@ -300,6 +479,7 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
     });
     SCIInvokeDownloadCompletion(self, nil, [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]);
     SCIReleaseActiveDownloadDelegate(self);
+    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] cancelTaskID:self.queueJobID];
 }
 
 // Delegate methods
@@ -311,12 +491,14 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
 }
 
 - (void)downloadDidCancel {
+    self.queuedDownloadStarted = NO;
     self.pendingGallerySaveMetadata = nil;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.progressView dismiss];
     });
     SCIInvokeDownloadCompletion(self, nil, [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]);
     SCIReleaseActiveDownloadDelegate(self);
+    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] cancelTaskID:self.queueJobID];
 
     SCILog(@"General", @"[SCInsta] Download: Download cancelled");
 }
@@ -327,6 +509,7 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.progressView setProgress:progress animated:YES];
     });
+    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] updateTaskID:self.queueJobID progress:progress detail:@"Downloading"];
 }
 
 - (void)downloadDidProgress:(float)progress
@@ -340,10 +523,12 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
                     totalBytesExpected:totalBytesExpected
                               animated:YES];
     });
+    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] updateTaskID:self.queueJobID progress:progress detail:@"Downloading"];
 }
 
 - (void)downloadDidFinishWithError:(NSError *)error {
     self.pendingGallerySaveMetadata = nil;
+    if (!self.queueSettleExternally && error.code != NSURLErrorCancelled && self.queueJobID.length) [[SCIDownloadQueueManager shared] failTaskID:self.queueJobID error:error];
     dispatch_async(dispatch_get_main_queue(), ^{
         if (error && error.code != NSURLErrorCancelled) {
             SCILog(@"General", @"[SCInsta] Download: Download failed with error: \"%@\"", error);
@@ -360,7 +545,6 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
                 SCIInvokeDownloadCompletion(self, nil, error);
                 return;
             }
-            SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneError);
         }
 
         if (error) {
@@ -397,11 +581,11 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (self.showProgress && self.progressView) {
                     [self.progressView showError:@"Failed to prepare file"];
-                } else {
-                    SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneError);
                 }
                 SCIInvokeDownloadCompletion(self, nil, SCIDownloadErrorWithDescription(@"Failed to prepare file", 1));
             });
+            NSError *error = SCIDownloadErrorWithDescription(@"Failed to prepare file", 1);
+            if (!self.queueSettleExternally && self.queueJobID.length) [[SCIDownloadQueueManager shared] failTaskID:self.queueJobID error:error];
             SCIReleaseActiveDownloadDelegate(self);
             return;
         }
@@ -412,11 +596,11 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (self.showProgress && self.progressView) {
                     [self.progressView showError:@"Failed to finalize file"];
-                } else {
-                    SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneError);
                 }
                 SCIInvokeDownloadCompletion(self, nil, SCIDownloadErrorWithDescription(@"Failed to finalize file", 2));
             });
+            NSError *error = SCIDownloadErrorWithDescription(@"Failed to finalize file", 2);
+            if (!self.queueSettleExternally && self.queueJobID.length) [[SCIDownloadQueueManager shared] failTaskID:self.queueJobID error:error];
             SCIReleaseActiveDownloadDelegate(self);
             return;
         }
@@ -429,6 +613,7 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
         SCILog(@"General", @"[SCInsta] Download: Completed with action %d", (int)self.action);
 
         if (self.action == downloadOnly) {
+            if (!self.queueSettleExternally && self.queueJobID.length) [[SCIDownloadQueueManager shared] finishTaskID:self.queueJobID detail:@"Downloaded" filePath:newURL.path];
             SCIInvokeDownloadCompletion(self, newURL, nil);
             SCIReleaseActiveDownloadDelegate(self);
             return;
@@ -437,33 +622,29 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
         if (self.action == share) {
             [self.progressView updateProgressTitle:@"Preparing share" subtitle:nil];
             [self.progressView setProgress:0.98f animated:YES];
-            [self showCompletionPillWithTitle:@"Opened share sheet" subtitle:nil completionImmediately:YES completion:^{
-                [SCIUtils showShareVC:newURL];
-                SCIInvokeDownloadCompletion(self, newURL, nil);
-                SCIReleaseActiveDownloadDelegate(self);
-            }];
+            if (self.queueJobID.length) [[SCIDownloadQueueManager shared] finishTaskID:self.queueJobID detail:@"Opened share sheet" filePath:newURL.path];
+            [SCIUtils showShareVC:newURL];
+            SCIInvokeDownloadCompletion(self, newURL, nil);
+            SCIReleaseActiveDownloadDelegate(self);
             return;
         }
 
         if (self.action == saveToPhotos) {
-            [self.progressView updateProgressTitle:@"Saving to Photos" subtitle:nil];
-            [self.progressView setProgress:0.98f animated:YES];
+            if (self.progressView) {
+                [self.progressView updateProgressTitle:@"Saving to Photos" subtitle:nil];
+                [self.progressView setProgress:0.98f animated:YES];
+            }
             [[self class] saveFileURLToPhotos:newURL metadata:galleryMeta completion:^(BOOL success, NSError *error) {
                 if (success) {
-                    [self showCompletionPillWithTitle:@"Saved successfully!" subtitle:@"Tap to open Photos" completionImmediately:NO completion:^{
+                    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] finishTaskID:self.queueJobID detail:@"Saved to Photos" filePath:newURL.path];
+                    [self showCompletionPillWithTitle:@"Saved successfully!" subtitle:@"Tap to open Downloads" completionImmediately:NO completion:^{
                         SCIInvokeDownloadCompletion(self, newURL, nil);
                         SCIReleaseActiveDownloadDelegate(self);
                     }];
-                    if (self.progressView) {
-                        self.progressView.onTapWhenCompleted = ^{
-                            [SCIUtils openPhotosApp];
-                        };
-                    }
                 } else {
+                    if (self.queueJobID.length) [[SCIDownloadQueueManager shared] failTaskID:self.queueJobID error:error ?: SCIDownloadErrorWithDescription(@"Failed to save", 3)];
                     if (self.progressView) {
                         [self.progressView showError:@"Failed to save"];
-                    } else {
-                        SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneError);
                     }
                     SCIInvokeDownloadCompletion(self, nil, error ?: SCIDownloadErrorWithDescription(@"Failed to save", 3));
                     SCIReleaseActiveDownloadDelegate(self);
@@ -473,25 +654,22 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
         }
 
         if (self.action == saveToGallery) {
-            [self.progressView updateProgressTitle:@"Saving to Gallery" subtitle:nil];
-            [self.progressView setProgress:0.98f animated:YES];
+            if (self.progressView) {
+                [self.progressView updateProgressTitle:@"Saving to Gallery" subtitle:nil];
+                [self.progressView setProgress:0.98f animated:YES];
+            }
             NSError *error;
             SCIGalleryFile *file = [[self class] saveFileURLToGallery:newURL metadata:galleryMeta error:&error];
             if (file) {
-                [self showCompletionPillWithTitle:@"Saved successfully!" subtitle:@"Tap to open Gallery" completionImmediately:NO completion:^{
+                if (self.queueJobID.length) [[SCIDownloadQueueManager shared] finishTaskID:self.queueJobID detail:@"Saved to Gallery" filePath:file.filePath];
+                [self showCompletionPillWithTitle:@"Saved successfully!" subtitle:@"Tap to open Downloads" completionImmediately:NO completion:^{
                     SCIInvokeDownloadCompletion(self, newURL, nil);
                     SCIReleaseActiveDownloadDelegate(self);
                 }];
-                if (self.progressView) {
-                    self.progressView.onTapWhenCompleted = ^{
-                        [SCIGalleryViewController presentGallery];
-                    };
-                }
             } else {
+                if (self.queueJobID.length) [[SCIDownloadQueueManager shared] failTaskID:self.queueJobID error:error ?: SCIDownloadErrorWithDescription(@"Failed to save to Gallery", 4)];
                 if (self.progressView) {
                     [self.progressView showError:@"Failed to save to Gallery"];
-                } else {
-                    SCINotificationTriggerHaptic(self.notificationIdentifier, SCINotificationToneError);
                 }
                 SCIInvokeDownloadCompletion(self, nil, error ?: SCIDownloadErrorWithDescription(@"Failed to save to Gallery", 4));
                 SCIReleaseActiveDownloadDelegate(self);
@@ -499,10 +677,9 @@ static NSString *SCIDownloadDefaultNotificationIdentifier(DownloadAction action)
             return;
         }
 
-        [self showCompletionPillWithTitle:@"Opened media" subtitle:nil completionImmediately:YES completion:^{
-            [SCIFullScreenMediaPlayer showFileURL:newURL];
-            SCIInvokeDownloadCompletion(self, newURL, nil);
-        }];
+        if (self.queueJobID.length) [[SCIDownloadQueueManager shared] finishTaskID:self.queueJobID detail:@"Opened media" filePath:newURL.path];
+        [SCIFullScreenMediaPlayer showFileURL:newURL];
+        SCIInvokeDownloadCompletion(self, newURL, nil);
         SCIReleaseActiveDownloadDelegate(self);
     });
 }

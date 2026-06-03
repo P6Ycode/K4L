@@ -51,4 +51,8 @@ static NSString *SCIStorageFeatureDirectory(NSString *featureName) {
     return SCIStorageFeatureDirectory(@"ProfileAnalyzer");
 }
 
++ (NSString *)downloadsDirectory {
+    return SCIStorageFeatureDirectory(@"Downloads");
+}
+
 @end
