@@ -72,7 +72,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
                                        SCIGallerySortViewControllerDelegate,
                                        SCIGalleryFilterViewControllerDelegate,
                                        UIAdaptivePresentationControllerDelegate,
-                                       UISearchResultsUpdating>
+                                       UISearchResultsUpdating,
+                                       UISearchControllerDelegate,
+                                       UISearchBarDelegate>
 
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) NSFetchedResultsController *fetchedResultsController;
@@ -103,6 +105,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 @property (nonatomic, strong) NSMutableSet<NSString *> *selectedFileIDs;
 @property (nonatomic, strong) UISearchController *searchController;
 @property (nonatomic, copy) NSString *searchQuery;
+@property (nonatomic, assign) BOOL preservingSearchQuery;
 
 @end
 
@@ -273,6 +276,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     controller.obscuresBackgroundDuringPresentation = NO;
     controller.hidesNavigationBarDuringPresentation = NO;
     controller.searchResultsUpdater = self;
+    controller.delegate = self;
+    controller.searchBar.delegate = self;
     [controller.searchBar setImage:[SCIAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
                          forSearchBarIcon:UISearchBarIconSearch 
                                     state:UIControlStateNormal];
@@ -994,6 +999,10 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (void)enterSelectionMode {
+    if (self.searchController.isActive && self.searchController.searchBar.text.length > 0) {
+        self.preservingSearchQuery = YES;
+        self.searchController.active = NO;
+    }
     self.selectionMode = YES;
     [self.selectedFileIDs removeAllObjects];
     [self setupCenteredTitle];
@@ -1007,6 +1016,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 - (void)exitSelectionMode {
     self.selectionMode = NO;
     [self.selectedFileIDs removeAllObjects];
+    
+    if (self.searchQuery.length > 0) {
+        self.searchQuery = nil;
+        self.searchController.searchBar.text = nil;
+        [self refetch];
+    }
+
     [self setupCenteredTitle];
     [self refreshNavigationItems];
     [self refreshBottomToolbarItems];
@@ -1060,12 +1076,33 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
+    if (self.preservingSearchQuery) {
+        return;
+    }
     NSString *nextQuery = searchController.searchBar.text ?: @"";
     if ((self.searchQuery ?: @"").length == nextQuery.length && [(self.searchQuery ?: @"") isEqualToString:nextQuery]) {
         return;
     }
     self.searchQuery = nextQuery;
     [self refetch];
+}
+
+- (void)willDismissSearchController:(UISearchController *)searchController {
+    if (self.selectionMode) {
+        self.preservingSearchQuery = YES;
+    }
+}
+
+- (void)didDismissSearchController:(UISearchController *)searchController {
+    self.preservingSearchQuery = NO;
+}
+
+- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
+    if (self.selectionMode) {
+        [self.searchController setActive:NO];
+    } else {
+        [searchBar resignFirstResponder];
+    }
 }
 
 - (void)shareSelectedFiles {
