@@ -8,9 +8,9 @@
 static const void *kSCIHomeTabSettingsLongPressAssocKey = &kSCIHomeTabSettingsLongPressAssocKey;
 static const void *kSCIGalleryTabLongPressAssocKey = &kSCIGalleryTabLongPressAssocKey;
 static const void *kSCIProfileMoreSettingsLongPressAssocKey = &kSCIProfileMoreSettingsLongPressAssocKey;
-static const NSTimeInterval kSCIHomeTabLongPressDuration = 0.3;
+static const NSTimeInterval kSCIHomeTabLongPressDuration = 0.5;
 static const NSTimeInterval kSCIGalleryTabLongPressDuration = 0.65;
-static const NSTimeInterval kSCIProfileMoreSettingsLongPressDuration = 0.85;
+static const NSTimeInterval kSCIProfileMoreSettingsLongPressDuration = 0.5;
 static NSString * const kSCIGalleryQuickAccessDisabledValue = @"none";
 
 @interface IGBadgedNavigationButton (SCISettingsShortcuts)
@@ -139,10 +139,10 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:action];
     longPress.minimumPressDuration = minimumDuration;
-    BOOL opensGallery = marker == kSCIGalleryTabLongPressAssocKey;
-    longPress.cancelsTouchesInView = opensGallery;
-    longPress.delaysTouchesBegan = opensGallery;
-    longPress.delaysTouchesEnded = opensGallery;
+    BOOL shouldCancel = (marker == kSCIGalleryTabLongPressAssocKey || marker == kSCIHomeTabSettingsLongPressAssocKey);
+    longPress.cancelsTouchesInView = shouldCancel;
+    longPress.delaysTouchesBegan = shouldCancel;
+    longPress.delaysTouchesEnded = shouldCancel;
 
     for (UIGestureRecognizer *existing in self.gestureRecognizers) {
         [existing requireGestureRecognizerToFail:longPress];
