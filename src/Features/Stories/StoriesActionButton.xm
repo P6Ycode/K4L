@@ -3,6 +3,7 @@
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
 #import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
+#import "../../Shared/Stories/SCIStoryButtonPlacement.h"
 #import "../../Shared/Stories/SCIStoryContext.h"
 
 static NSInteger const kSCIStoriesActionButtonTag = 921343;
@@ -126,66 +127,6 @@ static SCIActionButtonContext *SCIStoriesActionContext(UIView *overlayView) {
 	return context;
 }
 
-static UIView *SCIFindRightmostNativeButtonInView(UIView *view, UIView *overlayView) {
-	if (!view || view.hidden || view.alpha < 0.01) return nil;
-
-	UIView *rightmost = nil;
-	CGFloat maxCenterX = 0.0;
-
-	BOOL isCandidate = [view isKindOfClass:[UIButton class]] || [view isKindOfClass:[UIControl class]];
-	if (!isCandidate) {
-		NSString *className = NSStringFromClass(view.class);
-		if ([className containsString:@"Button"] || [className containsString:@"Share"] || [className containsString:@"Like"]) {
-			isCandidate = YES;
-		}
-	}
-
-	if (isCandidate && CGRectGetWidth(view.frame) > 0.0) {
-		CGRect rect = [view convertRect:view.bounds toView:overlayView];
-		CGFloat centerX = CGRectGetMidX(rect);
-		if (centerX > CGRectGetWidth(overlayView.frame) * 0.5) {
-			rightmost = view;
-			maxCenterX = centerX;
-		}
-	}
-
-	for (UIView *subview in view.subviews) {
-		UIView *candidate = SCIFindRightmostNativeButtonInView(subview, overlayView);
-		if (candidate) {
-			CGRect rect = [candidate convertRect:candidate.bounds toView:overlayView];
-			CGFloat centerX = CGRectGetMidX(rect);
-			if (centerX > maxCenterX) {
-				maxCenterX = centerX;
-				rightmost = candidate;
-			}
-		}
-	}
-
-	return rightmost;
-}
-
-static CGFloat SCIGetStoriesCustomButtonX(UIView *overlayView, CGFloat size) {
-	UIView *footerContainer = nil;
-	@try {
-		footerContainer = [SCIUtils getIvarForObj:overlayView name:"_footerContainerView"];
-		if (![footerContainer isKindOfClass:[UIView class]]) {
-			id selectorFooter = SCIObjectForSelector(overlayView, @"footerContainerView");
-			footerContainer = [selectorFooter isKindOfClass:[UIView class]] ? (UIView *)selectorFooter : nil;
-		}
-	} @catch (__unused id e) {}
-
-	if (footerContainer) {
-		UIView *nativeBtn = SCIFindRightmostNativeButtonInView(footerContainer, overlayView);
-		if (nativeBtn) {
-			CGRect rect = [nativeBtn convertRect:nativeBtn.bounds toView:overlayView];
-			CGFloat centerX = CGRectGetMidX(rect);
-			return centerX - size / 2.0;
-		}
-	}
-
-	return CGRectGetWidth(overlayView.frame) - size - 6.0;
-}
-
 static BOOL SCIStoriesActionFrameMatches(UIButton *button, CGRect frame) {
 	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
 	return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
@@ -209,43 +150,12 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		return;
 	}
 
-	UIView *mediaView = [SCIUtils getIvarForObj:overlayView name:"_mediaView"];
-	UIView *footerContainer = [SCIUtils getIvarForObj:overlayView name:"_footerContainerView"];
-	if (![mediaView isKindOfClass:[UIView class]]) mediaView = nil;
-	if (![footerContainer isKindOfClass:[UIView class]]) footerContainer = nil;
-	if (!mediaView && !footerContainer) {
+	CGFloat size = 44.0;
+	CGRect expectedFrame = SCIStoryFloatingButtonFrame(overlayView, size);
+	if (CGRectIsEmpty(expectedFrame)) {
 		[button removeFromSuperview];
 		return;
 	}
-
-	CGFloat size = 44.0;
-	CGFloat y = 0.0;
-	if (mediaView) {
-		CGRect mediaFrame = mediaView.frame;
-		y = CGRectGetMaxY(mediaFrame) - size - 7.0;
-		if (footerContainer && CGRectGetMinY(footerContainer.frame) < CGRectGetMaxY(mediaFrame)) {
-			y -= 50.0;
-		}
-	} else {
-		y = CGRectGetMinY(footerContainer.frame) - size - 12.0;
-	}
-
-	NSNumber *showCommentsPreview = [SCIUtils numericValueForObj:overlayView selectorName:@"showCommentsPreview"];
-	if (!showCommentsPreview) showCommentsPreview = [SCIUtils numericValueForObj:overlayView selectorName:@"isShowingCommentsPreview"];
-	if (!showCommentsPreview) {
-		id kvcShowComments = SCIKVCObject(overlayView, @"showCommentsPreview");
-		if ([kvcShowComments respondsToSelector:@selector(boolValue)]) showCommentsPreview = @([kvcShowComments boolValue]);
-	}
-	if (showCommentsPreview.boolValue) {
-		UIView *hypeFaceswarmView = [SCIUtils getIvarForObj:overlayView name:"_hypeFaceswarmView"];
-		if ([hypeFaceswarmView isKindOfClass:[UIView class]] && (y + size) > CGRectGetMinY(hypeFaceswarmView.frame)) {
-			y = CGRectGetMinY(hypeFaceswarmView.frame) - size - 2.0;
-		} else {
-			y -= 35.0;
-		}
-	}
-
-	CGRect expectedFrame = CGRectMake(SCIGetStoriesCustomButtonX(overlayView, size), y, size, size);
 	if (SCIStoriesActionFrameMatches(button, expectedFrame)) return;
 
 	button = SCIActionButtonWithTag(overlayView, kSCIStoriesActionButtonTag);

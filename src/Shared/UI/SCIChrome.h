@@ -35,6 +35,8 @@ BOOL SCIChromeCanvasOwnsSecureField(UITextField *field);
                       diameter:(CGFloat)diameter NS_DESIGNATED_INITIALIZER;
 
 @property (nonatomic, assign, readonly) CGFloat diameter;
+@property (nonatomic, assign) CGSize customSize;
+@property (nonatomic, assign) UIOffset iconOffset;
 @property (nonatomic, copy) NSString *symbolName;
 @property (nonatomic, assign) CGFloat symbolPointSize;
 @property (nonatomic, copy) UIColor *iconTint;

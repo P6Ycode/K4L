@@ -153,7 +153,14 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 
 @end
 
-@interface SCIChromeButton ()
+@interface SCIChromeButton () {
+	NSLayoutConstraint *_widthConstraint;
+	NSLayoutConstraint *_heightConstraint;
+	NSLayoutConstraint *_centerXConstraint;
+	NSLayoutConstraint *_centerYConstraint;
+	CGSize _customSize;
+	UIOffset _iconOffset;
+}
 @property (nonatomic, strong) SCIChromeCanvas *chromeCanvas;
 @property (nonatomic, strong) UIView *bubbleView;
 @property (nonatomic, strong, readwrite) UIImageView *iconView;
@@ -207,14 +214,54 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 
 	sciPinEdges(_bubbleView, host);
 
+	_widthConstraint = [self.widthAnchor constraintEqualToConstant:_diameter];
+	_heightConstraint = [self.heightAnchor constraintEqualToConstant:_diameter];
+	_centerXConstraint = [_iconView.centerXAnchor constraintEqualToAnchor:host.centerXAnchor constant:_iconOffset.horizontal];
+	_centerYConstraint = [_iconView.centerYAnchor constraintEqualToAnchor:host.centerYAnchor constant:_iconOffset.vertical];
+
 	[NSLayoutConstraint activateConstraints:@[
-		[_iconView.centerXAnchor constraintEqualToAnchor:host.centerXAnchor],
-		[_iconView.centerYAnchor constraintEqualToAnchor:host.centerYAnchor]
+		_widthConstraint,
+		_heightConstraint,
+		_centerXConstraint,
+		_centerYConstraint
 	]];
 }
 
 - (CGSize)intrinsicContentSize {
+	if (_customSize.width > 0.0 && _customSize.height > 0.0) {
+		return _customSize;
+	}
 	return CGSizeMake(_diameter, _diameter);
+}
+
+- (CGSize)customSize {
+	return _customSize;
+}
+
+- (void)setCustomSize:(CGSize)customSize {
+	_customSize = customSize;
+	if (_widthConstraint) {
+		_widthConstraint.constant = customSize.width;
+	}
+	if (_heightConstraint) {
+		_heightConstraint.constant = customSize.height;
+	}
+	[self invalidateIntrinsicContentSize];
+}
+
+- (UIOffset)iconOffset {
+	return _iconOffset;
+}
+
+- (void)setIconOffset:(UIOffset)iconOffset {
+	_iconOffset = iconOffset;
+	if (_centerXConstraint) {
+		_centerXConstraint.constant = iconOffset.horizontal;
+	}
+	if (_centerYConstraint) {
+		_centerYConstraint.constant = iconOffset.vertical;
+	}
+	[self setNeedsLayout];
 }
 
 - (void)setSymbolName:(NSString *)symbolName {
@@ -321,7 +368,8 @@ static UIView *sciFindCanvasDeep(UIView *root, NSInteger depth) {
 @end
 
 UIBarButtonItem *SCIChromeBarButtonItem(NSString *symbol, CGFloat pointSize, id target, SEL action, SCIChromeButton **outButton) {
-	SCIChromeButton *button = [[SCIChromeButton alloc] initWithSymbol:symbol pointSize:pointSize diameter:28.0];
+	SCIChromeButton *button = [[SCIChromeButton alloc] initWithSymbol:symbol pointSize:pointSize diameter:44.0];
+	button.iconOffset = UIOffsetMake(-2.0, 0.0);
 	button.bubbleColor = UIColor.clearColor;
 
 	if (target && action) {

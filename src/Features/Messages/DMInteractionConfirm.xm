@@ -19,10 +19,14 @@ void SCIMarkDirectThreadSeenAfterReaction(id source);
 - (void)messageCellDidDoubleTap:(id)cell {
     if (![SCIUtils getBoolPref:@"msgs_confirm_double_tap"]) {
         %orig;
+        SCIMarkDirectThreadSeenAfterReaction(self);
         return;
     }
 
-    [SCIUtils showConfirmation:^{ %orig; }
+    [SCIUtils showConfirmation:^{
+        %orig;
+        SCIMarkDirectThreadSeenAfterReaction(self);
+    }
                          title:@"Confirm Message Double Tap"
                        message:@"Are you sure you want to double tap this message?"];
 }
