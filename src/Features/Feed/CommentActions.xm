@@ -3,7 +3,7 @@
 #import <substrate.h>
 
 #import "../../AssetUtils.h"
-#import "../../Downloader/Download.h"
+#import "../../Shared/Downloads/SCIDownloadHelpers.h"
 #import "../../Shared/Gallery/SCIGalleryFile.h"
 #import "../../Shared/Gallery/SCIGalleryOriginController.h"
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
@@ -73,11 +73,15 @@ static SCIGallerySaveMetadata *SCICommentGIFMetadata(id comment, NSString *gifID
     return metadata;
 }
 
-static void SCICommentDownloadGIF(NSURL *url, SCIGallerySaveMetadata *metadata, DownloadAction action) {
+static void SCICommentDownloadGIF(NSURL *url, SCIGallerySaveMetadata *metadata, SCIDownloadDestination destination) {
     if (!url) return;
-    SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:action showProgress:YES];
-    delegate.pendingGallerySaveMetadata = metadata;
-    [delegate downloadFileWithURL:url fileExtension:@"gif" hudLabel:nil];
+    [SCIDownloadHelpers downloadURL:url
+                                extension:@"gif"
+                            destination:destination
+                                 metadata:metadata
+                         notificationID:kSCINotificationDownloadGallery
+                                presenter:nil
+                             sourceSurface:SCIDownloadSourceSurfaceComments];
 }
 
 static UIAction *SCICommentAction(NSString *title, NSString *iconName, void (^handler)(void)) {
@@ -123,13 +127,13 @@ static id SCICommentContextMenu(id self, SEL _cmd, id collectionView, id indexPa
             NSString *pageURLString = gifID.length > 0 ? [NSString stringWithFormat:@"https://giphy.com/gifs/%@", gifID] : gifURLString;
             NSArray<UIMenuElement *> *gifActions = @[
                 SCICommentAction(@"Save GIF to Photos", @"download", ^{
-                    SCICommentDownloadGIF(gifURL, metadata, saveToPhotos);
+                    SCICommentDownloadGIF(gifURL, metadata, SCIDownloadDestinationPhotos);
                 }),
                 SCICommentAction(@"Share GIF", @"share", ^{
-                    SCICommentDownloadGIF(gifURL, metadata, share);
+                    SCICommentDownloadGIF(gifURL, metadata, SCIDownloadDestinationShare);
                 }),
                 SCICommentAction(@"Save GIF to Gallery", @"media", ^{
-                    SCICommentDownloadGIF(gifURL, metadata, saveToGallery);
+                    SCICommentDownloadGIF(gifURL, metadata, SCIDownloadDestinationGallery);
                 }),
                 SCICommentAction(@"Copy GIF Link", @"link", ^{
                     UIPasteboard.generalPasteboard.string = pageURLString;

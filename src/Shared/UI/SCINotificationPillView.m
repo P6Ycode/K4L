@@ -1042,6 +1042,14 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
         return;
     }
 
+    if (self.isErrorState && self.onTapWhenCompleted) {
+        void (^onCompletedTap)(void) = [self.onTapWhenCompleted copy];
+        [self dismissWithCompletion:^{
+            if (onCompletedTap) onCompletedTap();
+        }];
+        return;
+    }
+
     if (self.isCompleted) {
         void (^onCompletedTap)(void) = [self.onTapWhenCompleted copy];
         [self dismissWithCompletion:^{

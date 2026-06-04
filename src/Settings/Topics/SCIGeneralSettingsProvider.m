@@ -5,8 +5,8 @@
 #import "../SCITopicSettingsSupport.h"
 #import "../../Shared/MediaDownload/SCIMediaFFmpeg.h"
 #import "../../Shared/MediaDownload/SCIMediaQualityManager.h"
-#import "../../Shared/MediaDownload/SCIDownloadHistoryViewController.h"
-#import "../../Shared/MediaDownload/SCIDownloadQueueManager.h"
+#import "../../Shared/Downloads/SCIDownloadsHistoryViewController.h"
+#import "../../Shared/Downloads/SCIDownloadTypes.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 
@@ -148,7 +148,7 @@
             [SCISetting navigationCellWithTitle:@"Downloads"
                                        subtitle:@"Queue, history, retry, and cancellation"
                                            icon:SCISettingsIcon(@"download")
-                                 viewController:[SCIDownloadHistoryViewController new]],
+                                 viewController:[SCIDownloadsHistoryViewController new]],
             [SCISetting menuCellWithTitle:@"Default Photo Quality" icon:SCISettingsIcon(@"photo") menu:SCIMediaPhotoQualityMenu()],
             videoQualitySetting,
             encodingSettings,

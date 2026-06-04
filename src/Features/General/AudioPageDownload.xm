@@ -3,7 +3,6 @@
 #import <substrate.h>
 
 #import "../../Utils.h"
-#import "../../Downloader/Download.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../../Shared/Audio/SCIAudioDownloadCoordinator.h"

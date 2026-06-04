@@ -5,8 +5,7 @@
 #import "ActionButtonCore.h"
 #import "SCIActionButtonConfiguration.h"
 #import "SCIActionDescriptor.h"
-#import "../../Downloader/Download.h"
-#import "../../Downloader/BulkDownload.h"
+#import "../Downloads/SCIDownloadHelpers.h"
 #import "../../InstagramHeaders.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
@@ -874,7 +873,7 @@ static UIImage *SCIIconForActionIdentifier(NSString *identifier, SCIActionButton
 	}
 
 	NSString *iconName = SCIActionDescriptorIconName(identifier);
-	
+
 	if (source == SCIActionButtonSourceReels) {
 		NSString *reelsIconName = [NSString stringWithFormat:@"%@_reels", iconName];
 		UIImage *reelsImage = [SCIAssetUtils resolvedImageNamed:reelsIconName
@@ -887,7 +886,7 @@ static UIImage *SCIIconForActionIdentifier(NSString *identifier, SCIActionButton
 			return reelsImage;
 		}
 	}
-	
+
 	return [SCIAssetUtils instagramIconNamed:iconName pointSize:size];
 }
 
@@ -1470,7 +1469,7 @@ static UIImage *SCIButtonDefaultImage(NSString *identifier, SCIActionButtonSourc
 	CGFloat size = 24.0;
 	if (source == SCIActionButtonSourceReels) {
 		size = 44.0;
-	} else if ([identifier isEqualToString:kSCIActionDownloadShare] || 
+	} else if ([identifier isEqualToString:kSCIActionDownloadShare] ||
 			   [identifier isEqualToString:kSCIActionViewThumbnail] ||
                [identifier isEqualToString:kSCIActionDownloadGallery]) {
 		size = 23.0;
@@ -1503,7 +1502,7 @@ static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButt
 
     CGFloat maxWidth = CGRectGetWidth(button.bounds) > 0.0 ? CGRectGetWidth(button.bounds) : 44.0;
     CGFloat maxHeight = CGRectGetHeight(button.bounds) > 0.0 ? CGRectGetHeight(button.bounds) : 44.0;
-    
+
     return CGSizeMake(MAX(1.0, MIN(maxWidth, width)), MAX(1.0, MIN(maxHeight, height)));
 }
 
@@ -1626,11 +1625,11 @@ static UIView *SCIActionContextAnchorView(SCIActionButtonContext *context) {
     return SCIActionContextPresenter(context).view;
 }
 
-static NSArray<SCIBulkDownloadItem *> *SCIBulkDownloadItemsFromEntries(NSArray<SCIResolvedMediaEntry *> *entries,
-                                                                       SCIActionButtonSource source,
-                                                                       NSString *username,
-                                                                       id media) {
-    NSMutableArray<SCIBulkDownloadItem *> *items = [NSMutableArray array];
+static NSArray<SCIDownloadItemRequest *> *SCIBulkDownloadItemsFromEntries(NSArray<SCIResolvedMediaEntry *> *entries,
+                                                                          SCIActionButtonSource source,
+                                                                          NSString *username,
+                                                                          id media) {
+    NSMutableArray<SCIDownloadItemRequest *> *items = [NSMutableArray array];
     NSInteger index = 0;
     for (SCIResolvedMediaEntry *entry in entries) {
         NSURL *url = entry.videoURL ?: entry.photoURL;
@@ -1647,12 +1646,17 @@ static NSArray<SCIBulkDownloadItem *> *SCIBulkDownloadItemsFromEntries(NSArray<S
                 meta.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:meta.sourceMediaURLString];
             }
         }
-        NSString *linkString = SCIBestDownloadURLForMediaObject(metadataObject).absoluteString ?: url.absoluteString;
-        [items addObject:[SCIBulkDownloadItem itemWithURL:url
-                                            fileExtension:SCIExtensionForURL(url, isVideo)
-                                                  isVideo:isVideo
-                                                 metadata:meta
-                                               linkString:linkString]];
+        NSString *extension = SCIExtensionForURL(url, isVideo);
+        SCIDownloadMediaKind kind = isVideo ? SCIDownloadMediaKindVideo : SCIDownloadMediaKindImage;
+        SCIDownloadItemRequest *item = url.isFileURL
+            ? [SCIDownloadItemRequest itemWithLocalPath:url.path mediaKind:kind]
+            : [SCIDownloadItemRequest itemWithRemoteURL:url mediaKind:kind];
+        item.preferredFileExtension = extension;
+        item.metadata = meta;
+        item.index = index;
+        item.linkString = SCIBestDownloadURLForMediaObject(metadataObject).absoluteString ?: url.absoluteString;
+        item.expectedFilenameStem = [[SCIDownloadHelpers preferredFilenameForURL:url mediaKind:kind metadata:meta] stringByDeletingPathExtension];
+        [items addObject:item];
         index++;
     }
     return items;
@@ -2060,40 +2064,53 @@ static BOOL SCIExecuteBulkChildAction(NSString *identifier,
         return YES;
     }
 
-    NSArray<SCIBulkDownloadItem *> *bulkItems = SCIBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media);
+    NSArray<SCIDownloadItemRequest *> *bulkItems = SCIBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media);
     UIViewController *presenter = SCIActionContextPresenter(context);
     UIView *anchorView = SCIActionContextAnchorView(context);
+    SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
 
     if ([identifier isEqualToString:kSCIActionDownloadAllLibrary]) {
-        [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationSaveToPhotos
-                                               items:bulkItems
-                                    actionIdentifier:identifier
-                                           presenter:presenter
-                                          anchorView:anchorView];
+        [SCIDownloadHelpers performBulkItems:bulkItems
+                                       destination:SCIDownloadDestinationPhotos
+                                  actionIdentifier:identifier
+                                         presenter:presenter
+                                        anchorView:anchorView
+                                     sourceSurface:surface
+                                finalizeBatchShare:NO
+                            finalizeBatchClipboard:NO];
         return YES;
     }
     if ([identifier isEqualToString:kSCIActionDownloadAllShare]) {
-        [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationShare
-                                               items:bulkItems
-                                    actionIdentifier:identifier
-                                           presenter:presenter
-                                          anchorView:anchorView];
+        [SCIDownloadHelpers performBulkItems:bulkItems
+                                       destination:SCIDownloadDestinationCacheOnly
+                                  actionIdentifier:identifier
+                                         presenter:presenter
+                                        anchorView:anchorView
+                                     sourceSurface:surface
+                                finalizeBatchShare:YES
+                            finalizeBatchClipboard:NO];
         return YES;
     }
     if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) {
-        [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationSaveToGallery
-                                               items:bulkItems
-                                    actionIdentifier:identifier
-                                           presenter:presenter
-                                          anchorView:anchorView];
+        [SCIDownloadHelpers performBulkItems:bulkItems
+                                       destination:SCIDownloadDestinationGallery
+                                  actionIdentifier:identifier
+                                         presenter:presenter
+                                        anchorView:anchorView
+                                     sourceSurface:surface
+                                finalizeBatchShare:NO
+                            finalizeBatchClipboard:NO];
         return YES;
     }
     if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) {
-        [SCIBulkDownloadCoordinator performOperation:SCIBulkDownloadOperationCopyMedia
-                                               items:bulkItems
-                                    actionIdentifier:identifier
-                                           presenter:presenter
-                                          anchorView:anchorView];
+        [SCIDownloadHelpers performBulkItems:bulkItems
+                                       destination:SCIDownloadDestinationCacheOnly
+                                  actionIdentifier:identifier
+                                         presenter:presenter
+                                        anchorView:anchorView
+                                     sourceSurface:surface
+                                finalizeBatchShare:NO
+                            finalizeBatchClipboard:YES];
         return YES;
     }
     if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) {
@@ -2203,14 +2220,15 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 			return YES;
 		}
 
-		DownloadAction action = saveToPhotos;
-		if ([identifier isEqualToString:kSCIActionDownloadShare]) action = share;
-		else if ([identifier isEqualToString:kSCIActionDownloadGallery]) action = saveToGallery;
+		SCIDownloadDestination destination = SCIDownloadDestinationPhotos;
+		if ([identifier isEqualToString:kSCIActionDownloadShare]) destination = SCIDownloadDestinationShare;
+		else if ([identifier isEqualToString:kSCIActionDownloadGallery]) destination = SCIDownloadDestinationGallery;
 
         id mediaForDownload = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
         UIViewController *presenter = SCIActionContextPresenter(context);
         UIView *anchorView = SCIActionContextAnchorView(context);
-        if ([SCIMediaQualityManager handleDownloadAction:action
+        SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+        if ([SCIMediaQualityManager handleDownloadDestination:destination
                                              identifier:identifier
                                               presenter:presenter
                                              sourceView:anchorView
@@ -2218,14 +2236,18 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
                                                 photoURL:currentEntry.photoURL
                                                 videoURL:currentEntry.videoURL
                                          galleryMetadata:meta
-                                           showProgress:shouldNotify]) {
+                                           showProgress:shouldNotify
+                                          sourceSurface:surface]) {
             return YES;
         }
 
-        SCIDownloadDelegate *delegate = [[SCIDownloadDelegate alloc] initWithAction:action showProgress:shouldNotify];
-        delegate.notificationIdentifier = identifier;
-        delegate.pendingGallerySaveMetadata = meta;
-        [delegate downloadFileWithURL:currentURL fileExtension:SCIExtensionForURL(currentURL, isVideo) hudLabel:nil];
+        [SCIDownloadHelpers downloadURL:currentURL
+                                    extension:SCIExtensionForURL(currentURL, isVideo)
+                                destination:destination
+                                     metadata:meta
+                             notificationID:identifier
+                                    presenter:presenter
+                                 sourceSurface:surface];
 		return YES;
 	}
 
@@ -2247,13 +2269,16 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 
     if ([identifier isEqualToString:kSCIActionCopyMedia]) {
         id mediaForCopy = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+        SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
         if ([SCIMediaQualityManager handleCopyActionWithIdentifier:identifier
                                                          presenter:SCIActionContextPresenter(context)
                                                         sourceView:SCIActionContextAnchorView(context)
                                                          mediaObject:mediaForCopy
                                                            photoURL:currentEntry.photoURL
                                                            videoURL:currentEntry.videoURL
-                                                      showProgress:shouldNotify]) {
+                                                    galleryMetadata:meta
+                                                      showProgress:shouldNotify
+                                                     sourceSurface:surface]) {
             return YES;
         }
 
@@ -2764,7 +2789,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
             if (bulkElement) {
                 NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
                 [groupElements removeAllObjects];
-                
+
                 UIMenu *nonBulkInlineGroup = [UIMenu menuWithTitle:@""
                                                             image:nil
                                                        identifier:nil
@@ -2778,7 +2803,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
             if (bulkElement) {
                 NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
                 [groupElements removeAllObjects];
-                
+
                 UIMenu *nonBulkInlineGroup = [UIMenu menuWithTitle:@""
                                                             image:nil
                                                        identifier:nil

@@ -38,6 +38,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (nullable NSURL *)bestAudioDownloadURLFromMediaObject:(nullable id)mediaObject;
 
++ (NSString *)processingBasenameForAudioItem:(SCIAudioItem *)item;
++ (BOOL)shouldConvertAudioURL:(NSURL *)url explicitConvert:(BOOL)explicitConvert;
++ (void)convertAudioAtURL:(NSURL *)sourceURL
+                 basename:(NSString *)basename
+                 progress:(void (^)(float progress, NSString * _Nullable title))progress
+               completion:(void (^)(NSURL * _Nullable outputURL, NSError * _Nullable error))completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

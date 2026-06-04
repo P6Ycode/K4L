@@ -4,7 +4,7 @@
 
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
-#import "../../Downloader/Download.h"
+
 #import "../../Shared/MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../../Shared/Gallery/SCIGalleryFile.h"
 #import "../../Shared/Gallery/SCIGalleryOriginController.h"
@@ -302,10 +302,10 @@ static CGRect SCIProfileGetLeftmostRightButtonFrame(UIView *view, UIView *header
         return currentFrame;
     }
 
-    BOOL isLeafOrControl = (view.subviews.count == 0) || 
-                           [view isKindOfClass:[UIControl class]] || 
-                           [view isKindOfClass:[UIButton class]] || 
-                           [view isKindOfClass:[UILabel class]] || 
+    BOOL isLeafOrControl = (view.subviews.count == 0) ||
+                           [view isKindOfClass:[UIControl class]] ||
+                           [view isKindOfClass:[UIButton class]] ||
+                           [view isKindOfClass:[UILabel class]] ||
                            [view isKindOfClass:[UIImageView class]];
 
     if (isLeafOrControl && view != headerView) {
@@ -336,10 +336,10 @@ static CGRect SCIProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRe
         return currentFrame;
     }
 
-    BOOL isLeafOrControl = (view.subviews.count == 0) || 
-                           [view isKindOfClass:[UIControl class]] || 
-                           [view isKindOfClass:[UIButton class]] || 
-                           [view isKindOfClass:[UILabel class]] || 
+    BOOL isLeafOrControl = (view.subviews.count == 0) ||
+                           [view isKindOfClass:[UIControl class]] ||
+                           [view isKindOfClass:[UIButton class]] ||
+                           [view isKindOfClass:[UILabel class]] ||
                            [view isKindOfClass:[UIImageView class]];
 
     if (isLeafOrControl && view != headerView) {
@@ -379,7 +379,7 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
     }
 
     BOOL ownProfile = titleIsCentered || SCIProfileIsOwnProfile(headerView);
-    
+
     // Completely remove the action button from the own profile
     if (ownProfile) {
         SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
@@ -390,11 +390,11 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
         }
         return;
     }
-    
+
     // For other profiles: manual positioning on the right side
     SCIProfileHeaderActionButton *button = SCIProfileGetOrCreateActionButton(headerView);
     button.fallbackToCurrentUser = NO;
-    
+
     SCIConfigureProfileActionButton(button);
 
     if (button.hidden) {
@@ -413,13 +413,13 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
 
     CGFloat btnW = kSCIProfileActionButtonWidth;
     CGFloat btnH = kSCIProfileActionButtonHeight;
-    
+
     CGFloat x;
     CGFloat centerY;
-    
+
     // Other profiles: place on RIGHT side relative to existing buttons
     CGRect anchorFrame = SCIProfileGetLeftmostRightButtonFrame(headerView, headerView, CGRectZero);
-    
+
     if (!CGRectIsEmpty(anchorFrame)) {
         if (anchorFrame.size.width <= 30.0) {
             // Icon buttons (like Bell, More, Share) - space using center-to-center distance (44pt)
@@ -440,17 +440,17 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
         }
         x = w - btnW - 12.0;
     }
-    
+
     CGFloat y = centerY - btnH * 0.5;
     CGRect expectedFrame = CGRectMake(floor(x), floor(y), btnW, btnH);
-    
+
     NSValue *lastVal = objc_getAssociatedObject(button, kSCIProfileLastExpectedFrameKey);
     CGRect lastFrame = lastVal ? [lastVal CGRectValue] : CGRectZero;
-    
+
     if (button.superview == headerView && CGRectEqualToRect(expectedFrame, lastFrame)) {
         return; // Avoid layout churn and layout resetting mid-animation
     }
-    
+
     button.frame = expectedFrame;
     objc_setAssociatedObject(button, kSCIProfileLastExpectedFrameKey, [NSValue valueWithCGRect:expectedFrame], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [headerView bringSubviewToFront:button];
@@ -461,13 +461,13 @@ static void (*orig_profileHeaderConfigure)(id, SEL, id, id, id, BOOL);
 static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, id leftButtons, id rightButtons, BOOL titleIsCentered) {
     // For own profile, inject our button into leftButtons array
     BOOL ownProfile = titleIsCentered || SCIProfileIsOwnProfile(self);
-    
+
     if (ownProfile && [SCIUtils getBoolPref:@"profile_action_btn"]) {
         // Create our button as a proper UIBarButtonItem or view for injection
         SCIProfileHeaderActionButton *button = SCIProfileGetOrCreateActionButton((UIView *)self);
         button.fallbackToCurrentUser = YES;
         SCIConfigureProfileActionButton(button);
-        
+
         if (!button.hidden) {
             // Inject into leftButtons array (after the + button)
             if ([leftButtons isKindOfClass:[NSArray class]]) {
@@ -479,15 +479,15 @@ static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, i
             }
         }
     }
-    
+
     orig_profileHeaderConfigure(self, _cmd, titleView, leftButtons, rightButtons, titleIsCentered);
-    
+
     // Save titleView so our layout scanner can ignore it and its subviews
     objc_setAssociatedObject(self, kSCIProfileHeaderTitleViewKey, titleView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    
+
     // Save titleIsCentered state for use in layoutSubviews
     objc_setAssociatedObject(self, kSCIProfileTitleIsCenteredKey, @(titleIsCentered), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    
+
     UIView *header = (UIView *)self;
     dispatch_async(dispatch_get_main_queue(), ^{
         SCIProfilePlaceActionButton(header, titleIsCentered);
