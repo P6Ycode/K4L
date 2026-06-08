@@ -1,4 +1,5 @@
 #import "SCIDownloadPresenter.h"
+#import "SCIDownloadService.h"
 
 #import "SCIDownloadJob.h"
 #import "SCIDownloadTypes.h"
@@ -28,6 +29,7 @@ static NSArray<NSURL *> *SCIDownloadSucceededFileURLsForJob(SCIDownloadJob *job)
 @property (nonatomic, copy, nullable) NSString *activeJobID;
 @property (nonatomic, assign) NSTimeInterval lastProgressUpdate;
 @property (nonatomic, assign) BOOL terminalShownForActiveJob;
+@property (nonatomic, assign) BOOL pillDismissedByUser;
 @end
 
 @implementation SCIDownloadPresenter
@@ -95,52 +97,145 @@ static NSArray<NSURL *> *SCIDownloadSucceededFileURLsForJob(SCIDownloadJob *job)
     return progress;
 }
 
+- (NSArray<SCIDownloadJob *> *)activeJobsSortedByCreationTime {
+    NSArray<SCIDownloadJob *> *allJobs = [[SCIDownloadService shared] jobsMatchingFilter:SCIDownloadHistoryFilterAll];
+    NSMutableArray<SCIDownloadJob *> *activeJobs = [NSMutableArray array];
+    for (SCIDownloadJob *job in allJobs) {
+        if ([self jobIsActive:job]) {
+            [activeJobs addObject:job];
+        }
+    }
+    [activeJobs sortUsingComparator:^NSComparisonResult(SCIDownloadJob *a, SCIDownloadJob *b) {
+        if (a.createdAt == b.createdAt) return NSOrderedSame;
+        return a.createdAt < b.createdAt ? NSOrderedAscending : NSOrderedDescending;
+    }];
+    return activeJobs;
+}
+
+- (NSString *)progressSubtitleForJob:(SCIDownloadJob *)job activeJobsCount:(NSUInteger)activeCount activeJobIndex:(NSUInteger)activeIndex {
+    float progress = [self displayProgressForJob:job];
+    NSInteger percent = (NSInteger)lroundf(progress * 100.0f);
+    percent = MAX(0, MIN(100, percent));
+    NSString *percentString = [NSString stringWithFormat:@"%ld%%", (long)percent];
+
+    // Check style
+    NSString *style = [NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationProgressSubtitleStyleKey];
+    if (style.length == 0) style = @"both";
+    if ([style isEqualToString:@"off"]) {
+        return nil;
+    }
+
+    SCIDownloadItem *primary = job.items.firstObject;
+    int64_t bytesWritten = primary.bytesWritten;
+    int64_t totalBytesExpected = primary.totalBytesExpected;
+
+    BOOL hasByteTotals = (bytesWritten > 0 && totalBytesExpected > 0);
+    NSString *bytesString = nil;
+    if (hasByteTotals) {
+        NSByteCountFormatter *formatter = [[NSByteCountFormatter alloc] init];
+        formatter.countStyle = NSByteCountFormatterCountStyleFile;
+        formatter.allowedUnits = NSByteCountFormatterUseKB | NSByteCountFormatterUseMB | NSByteCountFormatterUseGB;
+        formatter.includesUnit = YES;
+        formatter.includesCount = YES;
+        formatter.zeroPadsFractionDigits = NO;
+        bytesString = [NSString stringWithFormat:@"%@ of %@",
+                       [formatter stringFromByteCount:bytesWritten],
+                       [formatter stringFromByteCount:totalBytesExpected]];
+    }
+
+    NSMutableArray *parts = [NSMutableArray array];
+    if ([style isEqualToString:@"percent"]) {
+        [parts addObject:percentString];
+    } else if ([style isEqualToString:@"bytes"]) {
+        if (bytesString) [parts addObject:bytesString];
+        else [parts addObject:percentString];
+    } else { // @"both" or default
+        [parts addObject:percentString];
+        if (bytesString) [parts addObject:bytesString];
+    }
+
+    if (activeCount > 1) {
+        [parts addObject:[NSString stringWithFormat:@"%lu of %lu", (unsigned long)activeIndex, (unsigned long)activeCount]];
+    }
+
+    return [parts componentsJoinedByString:@" • "];
+}
+
 - (void)handleJobSnapshot:(SCIDownloadJob *)job {
     if (job.request.presentationMode == SCIDownloadPresentationModeQuiet) return;
 
-    if (![job.jobID isEqualToString:self.activeJobID] && self.terminalShownForActiveJob) {
-        [self.activePill dismiss];
-        self.activePill = nil;
-        self.activeJobID = nil;
-        self.terminalShownForActiveJob = NO;
-    }
+    NSArray<SCIDownloadJob *> *activeJobs = [self activeJobsSortedByCreationTime];
 
-    if (![self jobIsActive:job]) {
+    if (activeJobs.count > 0) {
+        SCIDownloadJob *focusedJob = activeJobs.firstObject;
+
+        if (![focusedJob.jobID isEqualToString:self.activeJobID]) {
+            self.activeJobID = focusedJob.jobID;
+            self.terminalShownForActiveJob = NO;
+        }
+
+        NSTimeInterval now = NSDate.date.timeIntervalSince1970;
+        BOOL throttle = (now - self.lastProgressUpdate < 0.066) && self.activePill;
+        if (!throttle) self.lastProgressUpdate = now;
+
+        if (!self.activePill && !self.pillDismissedByUser) {
+            __weak typeof(self) weakSelf = self;
+            NSString *identifier = focusedJob.request.notificationIdentifier ?: kSCINotificationDownloadLibrary;
+            self.activePill = SCINotifyProgress(identifier, [self progressTitleForJob:focusedJob], ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (strongSelf && strongSelf.cancelHandlerForActiveJob) {
+                    strongSelf.cancelHandlerForActiveJob(strongSelf.activeJobID);
+                } else if (weakSelf.cancelAllActiveHandler) {
+                    weakSelf.cancelAllActiveHandler();
+                }
+            });
+            self.activePill.onTapWhenProgress = ^{
+                if (weakSelf.openHistoryForJobID) weakSelf.openHistoryForJobID(focusedJob.jobID);
+            };
+            void (^previousDismiss)(void) = [self.activePill.onDidDismiss copy];
+            __weak SCINotificationPillView *weakPill = self.activePill;
+            self.activePill.onDidDismiss = ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (strongSelf) {
+                    if (strongSelf.activePill == weakPill) {
+                        if (!strongSelf.terminalShownForActiveJob) {
+                            strongSelf.pillDismissedByUser = YES;
+                        }
+                        strongSelf.activePill = nil;
+                    }
+                }
+                if (previousDismiss) {
+                    previousDismiss();
+                }
+            };
+            throttle = NO;
+        }
+
+        if (self.activePill && !throttle) {
+            NSUInteger activeIndex = [activeJobs indexOfObject:focusedJob] + 1;
+            NSString *title = [self progressTitleForJob:focusedJob];
+            NSString *subtitle = [self progressSubtitleForJob:focusedJob activeJobsCount:activeJobs.count activeJobIndex:activeIndex];
+
+            [self.activePill updateProgressTitle:title subtitle:subtitle];
+
+            float progress = [self displayProgressForJob:focusedJob];
+            SCIDownloadItem *primary = focusedJob.items.firstObject;
+            if (primary.totalBytesExpected > 0 && primary.bytesWritten > 0) {
+                [self.activePill setProgress:progress
+                                bytesWritten:primary.bytesWritten
+                          totalBytesExpected:primary.totalBytesExpected
+                                    animated:YES];
+            } else {
+                [self.activePill setProgress:progress
+                                bytesWritten:0
+                          totalBytesExpected:0
+                                    animated:YES];
+            }
+        }
+    } else {
         if ([job.jobID isEqualToString:self.activeJobID] && self.activePill && !self.terminalShownForActiveJob) {
             [self showTerminalOnActivePillForJob:job];
             self.terminalShownForActiveJob = YES;
-        }
-        return;
-    }
-
-    self.terminalShownForActiveJob = NO;
-    NSTimeInterval now = NSDate.date.timeIntervalSince1970;
-    BOOL throttle = (now - self.lastProgressUpdate < 0.066) && self.activePill && [job.jobID isEqualToString:self.activeJobID];
-    if (!throttle) self.lastProgressUpdate = now;
-    self.activeJobID = job.jobID;
-
-    if (!self.activePill) {
-        __weak typeof(self) weakSelf = self;
-        NSString *identifier = job.request.notificationIdentifier ?: kSCINotificationDownloadLibrary;
-        self.activePill = SCINotifyProgress(identifier, [self progressTitleForJob:job], ^{
-            if (weakSelf.cancelAllActiveHandler) weakSelf.cancelAllActiveHandler();
-        });
-        self.activePill.onTapWhenProgress = ^{
-            if (weakSelf.openHistoryForJobID) weakSelf.openHistoryForJobID(job.jobID);
-        };
-        throttle = NO;
-    }
-
-    if (!throttle) {
-        [self.activePill updateProgressTitle:[self progressTitleForJob:job] subtitle:nil];
-        SCIDownloadItem *primary = job.items.firstObject;
-        if (primary.totalBytesExpected > 0) {
-            [self.activePill setProgress:[self displayProgressForJob:job]
-                            bytesWritten:primary.bytesWritten
-                      totalBytesExpected:primary.totalBytesExpected
-                                animated:YES];
-        } else {
-            [self.activePill setProgress:[self displayProgressForJob:job] animated:YES];
         }
     }
 }
@@ -237,10 +332,33 @@ static NSArray<NSURL *> *SCIDownloadSucceededFileURLsForJob(SCIDownloadJob *job)
 }
 
 - (void)dismissProgress {
-    [self.activePill dismiss];
+    SCINotificationPillView *oldPill = self.activePill;
     self.activePill = nil;
+    [oldPill dismiss];
     self.activeJobID = nil;
     self.terminalShownForActiveJob = NO;
+    self.pillDismissedByUser = NO;
+}
+
+- (void)prepareForNewJobSubmission {
+    self.pillDismissedByUser = NO;
+    self.terminalShownForActiveJob = NO;
+}
+
+- (BOOL)hasActiveJobWithoutPillForJobID:(NSString *)jobID {
+    if ([self.activeJobID isEqualToString:jobID] && self.activePill == nil) {
+        return YES;
+    }
+    if (self.activeJobID == nil && self.activePill == nil) {
+        return YES;
+    }
+    return NO;
+}
+
+- (void)reshowPillForJob:(SCIDownloadJob *)job {
+    self.activeJobID = job.jobID;
+    self.pillDismissedByUser = NO;
+    [self handleJobSnapshot:job];
 }
 
 @end

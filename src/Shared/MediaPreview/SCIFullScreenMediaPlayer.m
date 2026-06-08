@@ -57,6 +57,8 @@ static SCIActionButtonSource SCIActionButtonSourceForPlaybackSource(
     return SCIActionButtonSourceDirect;
   case SCIFullScreenPlaybackSourceProfile:
     return SCIActionButtonSourceProfile;
+  case SCIFullScreenPlaybackSourceInstants:
+    return SCIActionButtonSourceInstants;
   case SCIFullScreenPlaybackSourceUnknown:
   default:
     return SCIActionButtonSourceFeed;
@@ -68,6 +70,27 @@ static SCIDownloadSourceSurface SCIDownloadSurfaceForPlaybackSource(
   return [SCIDownloadHelpers
       sourceSurfaceForActionButtonSource:SCIActionButtonSourceForPlaybackSource(
                                              playbackSource)];
+}
+
+static SCIGallerySource SCIGallerySourceForPlaybackSource(
+    SCIFullScreenPlaybackSource playbackSource) {
+  switch (playbackSource) {
+  case SCIFullScreenPlaybackSourceFeed:
+    return SCIGallerySourceFeed;
+  case SCIFullScreenPlaybackSourceReels:
+    return SCIGallerySourceReels;
+  case SCIFullScreenPlaybackSourceStories:
+    return SCIGallerySourceStories;
+  case SCIFullScreenPlaybackSourceDirect:
+    return SCIGallerySourceDMs;
+  case SCIFullScreenPlaybackSourceProfile:
+    return SCIGallerySourceProfile;
+  case SCIFullScreenPlaybackSourceInstants:
+    return SCIGallerySourceInstants;
+  case SCIFullScreenPlaybackSourceUnknown:
+  default:
+    return SCIGallerySourceOther;
+  }
 }
 
 static NSString *SCICopiedDownloadURLTitleForPlaybackSource(
@@ -85,6 +108,7 @@ static NSString *SCICopiedDownloadURLTitleForPlaybackSource(
     noun = @"Post";
     break;
   case SCIFullScreenPlaybackSourceDirect:
+  case SCIFullScreenPlaybackSourceInstants:
   case SCIFullScreenPlaybackSourceUnknown:
   default:
     noun = nil;
@@ -1149,8 +1173,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   return [self currentFileURL];
 }
 
-- (SCIGallerySaveMetadata *)metadataForCurrentItem {
-  SCIMediaItem *item = [self currentItem];
+- (SCIGallerySaveMetadata *)metadataForMediaItem:(SCIMediaItem *)item {
   if (item.galleryMetadata) {
     if (item.sourceMediaObject && !item.galleryMetadata.importPostedDate) {
       [SCIGalleryOriginController populateMetadata:item.galleryMetadata
@@ -1164,8 +1187,10 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   }
 
   SCIGallerySaveMetadata *meta = [[SCIGallerySaveMetadata alloc] init];
+  SCIGallerySource fallbackSource =
+      SCIGallerySourceForPlaybackSource(self.playbackSource);
   meta.source = item.gallerySaveSource >= 0 ? (int16_t)item.gallerySaveSource
-                                            : (int16_t)SCIGallerySourceOther;
+                                            : (int16_t)fallbackSource;
   if (item.title.length > 0) {
     meta.sourceUsername = item.title;
   }
@@ -1174,6 +1199,10 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
                                        fromMedia:item.sourceMediaObject];
   }
   return meta;
+}
+
+- (SCIGallerySaveMetadata *)metadataForCurrentItem {
+  return [self metadataForMediaItem:[self currentItem]];
 }
 
 - (void)showCompletedPillForActionIdentifier:(NSString *)identifier
@@ -1239,6 +1268,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   case SCIFullScreenPlaybackSourceProfile:
   case SCIFullScreenPlaybackSourceStories:
   case SCIFullScreenPlaybackSourceDirect:
+  case SCIFullScreenPlaybackSourceInstants:
     return YES;
   case SCIFullScreenPlaybackSourceUnknown:
   default:
@@ -1250,6 +1280,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   switch (self.playbackSource) {
   case SCIFullScreenPlaybackSourceStories:
   case SCIFullScreenPlaybackSourceDirect:
+  case SCIFullScreenPlaybackSourceInstants:
     return YES;
   case SCIFullScreenPlaybackSourceFeed:
   case SCIFullScreenPlaybackSourceReels:
@@ -1315,6 +1346,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
     SCIDownloadMediaKind kind = (mediaItem.mediaType == SCIMediaItemTypeVideo)
                                     ? SCIDownloadMediaKindVideo
                                     : SCIDownloadMediaKindImage;
+    SCIGallerySaveMetadata *metadata = [self metadataForMediaItem:mediaItem];
     if (mediaItem.image && !mediaItem.fileURL) {
       NSString *staged =
           [SCIDownloadHelpers stageImageForDownload:mediaItem.image];
@@ -1323,8 +1355,13 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
             itemWithLocalPath:staged
                     mediaKind:SCIDownloadMediaKindImage];
         req.preferredFileExtension = @"png";
-        req.metadata = mediaItem.galleryMetadata;
+        req.metadata = metadata;
         req.index = index;
+        req.expectedFilenameStem = [[SCIDownloadHelpers
+            preferredFilenameForURL:[NSURL fileURLWithPath:staged]
+                          mediaKind:SCIDownloadMediaKindImage
+                           metadata:metadata]
+            stringByDeletingPathExtension];
         [items addObject:req];
       }
       index++;
@@ -1348,7 +1385,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
             : [SCIDownloadItemRequest itemWithRemoteURL:resolvedURL
                                               mediaKind:kind];
     req.preferredFileExtension = extension;
-    req.metadata = mediaItem.galleryMetadata;
+    req.metadata = metadata;
     req.index = index;
     req.linkString = mediaItem.fileURL.absoluteString.length
                          ? mediaItem.fileURL.absoluteString
@@ -1356,7 +1393,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
     req.expectedFilenameStem = [[SCIDownloadHelpers
         preferredFilenameForURL:resolvedURL
                       mediaKind:kind
-                       metadata:mediaItem.galleryMetadata]
+                       metadata:metadata]
         stringByDeletingPathExtension];
     [items addObject:req];
     index++;

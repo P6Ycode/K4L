@@ -8,9 +8,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy, nullable) void (^openHistoryForJobID)(NSString * _Nullable jobID);
 @property (nonatomic, copy, nullable) void (^cancelAllActiveHandler)(void);
+@property (nonatomic, copy, readonly, nullable) NSString *activeJobID;
+@property (nonatomic, copy, nullable) void (^cancelHandlerForActiveJob)(NSString *jobID);
 
 - (void)handleJobSnapshot:(SCIDownloadJob *)job;
 - (void)dismissProgress;
+- (void)prepareForNewJobSubmission;
+
+- (BOOL)jobIsActive:(SCIDownloadJob *)job;
+- (BOOL)hasActiveJobWithoutPillForJobID:(NSString *)jobID;
+- (void)reshowPillForJob:(SCIDownloadJob *)job;
 
 @end
 

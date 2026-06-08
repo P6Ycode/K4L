@@ -69,6 +69,7 @@ FOUNDATION_EXPORT NSString * const kSCINotificationPillDurationKey;
 FOUNDATION_EXPORT NSString * const kSCINotificationPillGlowEnabledKey;
 FOUNDATION_EXPORT NSString * const kSCINotificationPillLiquidGlassEnabledKey;
 FOUNDATION_EXPORT NSString * const kSCINotificationProgressSubtitleStyleKey;
+FOUNDATION_EXPORT NSString * const kSCINotificationPillPositionKey;
 
 #ifdef __cplusplus
 extern "C" {

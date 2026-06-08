@@ -24,6 +24,7 @@ UIMenu *SCILiquidGlassTabBarStateMenu(void);
 UIMenu *SCISwipeCloseCommentsDirectionMenu(void);
 UIMenu *SCICacheAutoClearMenu(void);
 UIMenu *SCINotificationProgressSubtitleStyleMenu(void);
+UIMenu *SCINotificationPillPositionMenu(void);
 UIMenu *SCIMediaVideoQualityMenu(void);
 UIMenu *SCIMediaPhotoQualityMenu(void);
 UIMenu *SCIGalleryShortcutTargetMenu(void);

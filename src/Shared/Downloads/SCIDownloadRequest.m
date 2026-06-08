@@ -7,10 +7,17 @@ static NSDictionary *SCIDownloadMetadataDict(SCIGallerySaveMetadata *metadata) {
     d[@"source"] = @(metadata.source);
     if (metadata.sourceUsername) d[@"sourceUsername"] = metadata.sourceUsername;
     if (metadata.sourceUserPK) d[@"sourceUserPK"] = metadata.sourceUserPK;
+    if (metadata.sourceProfileURLString) d[@"sourceProfileURLString"] = metadata.sourceProfileURLString;
     if (metadata.sourceMediaPK) d[@"sourceMediaPK"] = metadata.sourceMediaPK;
     if (metadata.sourceMediaCode) d[@"sourceMediaCode"] = metadata.sourceMediaCode;
     if (metadata.sourceMediaURLString) d[@"sourceMediaURLString"] = metadata.sourceMediaURLString;
+    if (metadata.pixelWidth > 0) d[@"pixelWidth"] = @(metadata.pixelWidth);
+    if (metadata.pixelHeight > 0) d[@"pixelHeight"] = @(metadata.pixelHeight);
+    if (metadata.durationSeconds > 0) d[@"durationSeconds"] = @(metadata.durationSeconds);
+    if (metadata.importFileNameStem) d[@"importFileNameStem"] = metadata.importFileNameStem;
     if (metadata.customName) d[@"customName"] = metadata.customName;
+    if (metadata.importCapturedDate) d[@"importCapturedDate"] = @(metadata.importCapturedDate.timeIntervalSince1970);
+    if (metadata.importPostedDate) d[@"importPostedDate"] = @(metadata.importPostedDate.timeIntervalSince1970);
     return d;
 }
 
@@ -20,10 +27,17 @@ static SCIGallerySaveMetadata *SCIDownloadMetadataFromDict(NSDictionary *d) {
     m.source = [d[@"source"] shortValue];
     m.sourceUsername = d[@"sourceUsername"];
     m.sourceUserPK = d[@"sourceUserPK"];
+    m.sourceProfileURLString = d[@"sourceProfileURLString"];
     m.sourceMediaPK = d[@"sourceMediaPK"];
     m.sourceMediaCode = d[@"sourceMediaCode"];
     m.sourceMediaURLString = d[@"sourceMediaURLString"];
+    m.pixelWidth = [d[@"pixelWidth"] intValue];
+    m.pixelHeight = [d[@"pixelHeight"] intValue];
+    m.durationSeconds = [d[@"durationSeconds"] doubleValue];
+    m.importFileNameStem = d[@"importFileNameStem"];
     m.customName = d[@"customName"];
+    if (d[@"importCapturedDate"]) m.importCapturedDate = [NSDate dateWithTimeIntervalSince1970:[d[@"importCapturedDate"] doubleValue]];
+    if (d[@"importPostedDate"]) m.importPostedDate = [NSDate dateWithTimeIntervalSince1970:[d[@"importPostedDate"] doubleValue]];
     return m;
 }
 

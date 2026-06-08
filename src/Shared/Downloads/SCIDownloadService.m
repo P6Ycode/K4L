@@ -31,6 +31,10 @@
     _presenter.cancelAllActiveHandler = ^{
         [SCIDownloadService confirmCancelAllActive];
     };
+    __weak typeof(self) weakSelf = self;
+    _presenter.cancelHandlerForActiveJob = ^(NSString *jobID) {
+        [weakSelf confirmCancelForJobID:jobID];
+    };
     _presenter.openHistoryForJobID = ^(NSString *jobID) {
         (void)jobID;
         [SCIDownloadService presentDownloadsHistorySheet];
@@ -66,7 +70,7 @@
         UIViewController *presenter = topMostController();
         if (!presenter) return;
         [SCIIGAlertPresenter presentAlertFromViewController:presenter
-                                                      title:@"Cancel pending downloads?"
+                                                      title:@"Cancel Pending Downloads"
                                                     message:@"This stops queued work and any active downloads that can still be cancelled."
                                                     actions:@[
             [SCIIGAlertAction actionWithTitle:@"Keep" style:SCIIGAlertActionStyleCancel handler:nil],
@@ -88,6 +92,7 @@
 - (void)submitRequest:(SCIDownloadRequest *)request completion:(SCIDownloadSubmissionCompletion)completion {
     if (request.presentationMode != SCIDownloadPresentationModeQuiet) {
         request.notificationIdentifier = request.notificationIdentifier ?: kSCINotificationDownloadLibrary;
+        [self.presenter prepareForNewJobSubmission];
     }
     [self.scheduler submitRequest:request completion:completion];
 }
@@ -126,5 +131,68 @@
 - (void)clearFinishedHistory { [self.scheduler clearFinishedHistory]; }
 - (void)refreshSettings { [self.scheduler refreshConcurrencyLimit]; }
 - (void)removeJobID:(NSString *)jobID { [self.scheduler removeJobID:jobID]; }
+
+- (BOOL)hasActiveJobWithHiddenPill {
+    for (SCIDownloadJob *job in [self.scheduler allJobs]) {
+        if ([self.presenter jobIsActive:job]) {
+            if ([self.presenter hasActiveJobWithoutPillForJobID:job.jobID]) {
+                return YES;
+            }
+        }
+    }
+    return NO;
+}
+
+- (void)reshowProgressPill {
+    for (SCIDownloadJob *job in [self.scheduler allJobs]) {
+        if ([self.presenter jobIsActive:job]) {
+            if ([self.presenter hasActiveJobWithoutPillForJobID:job.jobID]) {
+                [self.presenter reshowPillForJob:job];
+                break;
+            }
+        }
+    }
+}
+
+- (void)confirmCancelForJobID:(NSString *)jobID {
+    if (!jobID) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *presenterHost = topMostController();
+        if (!presenterHost) return;
+        
+        NSUInteger activeCount = 0;
+        for (SCIDownloadJob *job in [self.scheduler allJobs]) {
+            if ([self.presenter jobIsActive:job]) {
+                activeCount++;
+            }
+        }
+        
+        NSMutableArray<SCIIGAlertAction *> *actions = [NSMutableArray array];
+        
+        // Keep at the top, blue bold font
+        [actions addObject:[SCIIGAlertAction actionWithTitle:@"Keep" style:SCIIGAlertActionStyleCancel handler:nil]];
+        
+        if (activeCount > 1) {
+            // Cancel current, still blue but not bold
+            [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel Current" style:SCIIGAlertActionStyleDefault handler:^{
+                [self cancelJobID:jobID];
+            }]];
+            // Cancel all, red, not bold
+            [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel All" style:SCIIGAlertActionStyleDestructive handler:^{
+                [self cancelAllActive];
+            }]];
+        } else {
+            // Cancel, red not bold
+            [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleDestructive handler:^{
+                [self cancelJobID:jobID];
+            }]];
+        }
+        
+        [SCIIGAlertPresenter presentAlertFromViewController:presenterHost
+                                                      title:@"Cancel Download"
+                                                    message:activeCount > 1 ? @"Do you want to cancel the current download or all active downloads?" : @"Are you sure you want to cancel the download?"
+                                                    actions:actions];
+    });
+}
 
 @end

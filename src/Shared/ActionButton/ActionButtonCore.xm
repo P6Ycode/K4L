@@ -73,6 +73,10 @@ static NSDictionary<NSString *, NSString *> *SCIPendingRepostFeedback = nil;
 @property (nonatomic, strong, nullable) id metadataObject;
 @property (nonatomic, strong, nullable) NSURL *photoURL;
 @property (nonatomic, strong, nullable) NSURL *videoURL;
+@property (nonatomic, copy, nullable) NSString *sourceUsername;
+@property (nonatomic, copy, nullable) NSString *sourceMediaPK;
+@property (nonatomic, copy, nullable) NSString *sourceMediaURLString;
+@property (nonatomic, strong, nullable) NSDate *importPostedDate;
 @end
 
 static void SCIPauseDirectPlaybackFromController(UIViewController *controller);
@@ -273,7 +277,7 @@ static BOOL SCIIsVideoExtension(NSString *ext) {
 	static NSSet<NSString *> *videoExts;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		videoExts = [NSSet setWithArray:@[@"mp4", @"mov", @"m4v", @"avi", @"webm", @"hevc"]];
+		videoExts = [NSSet setWithArray:@[@"mp4", @"mov", @"m4v", @"avi", @"webm", @"hevc", @"m3u8"]];
 	});
 
 	return [videoExts containsObject:ext.lowercaseString];
@@ -791,6 +795,39 @@ static SCIGallerySaveMetadata *SCIGalleryMetadata(SCIActionButtonSource source, 
 	return meta;
 }
 
+static NSString *SCIExplicitSourceUsernameFromObject(id object) {
+    NSString *username = SCIStringFromValue(SCIObjectForSelector(object, @"sourceUsername") ?: SCIKVCObject(object, @"sourceUsername"));
+    return username.length > 0 ? username : nil;
+}
+
+static NSDate *SCIDateFromActionValue(id value) {
+    if ([value isKindOfClass:NSDate.class]) return (NSDate *)value;
+    if ([value respondsToSelector:@selector(doubleValue)]) {
+        double timestamp = [value doubleValue];
+        if (timestamp <= 0) return nil;
+        if (timestamp > 100000000000.0) timestamp /= 1000.0;
+        return [NSDate dateWithTimeIntervalSince1970:timestamp];
+    }
+    return nil;
+}
+
+static NSString *SCIUsernameForEntry(SCIResolvedMediaEntry *entry, NSString *fallbackUsername) {
+    NSString *username = entry.sourceUsername;
+    if (username.length == 0) username = SCIExplicitSourceUsernameFromObject(entry.metadataObject ?: entry.mediaObject);
+    if (username.length == 0) username = SCIExplicitSourceUsernameFromObject(entry.mediaObject);
+    if (username.length == 0) username = SCIUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
+    if (username.length == 0) username = fallbackUsername;
+    return username;
+}
+
+static void SCIApplyEntryMetadata(SCIGallerySaveMetadata *meta, SCIResolvedMediaEntry *entry) {
+    if (!meta || !entry) return;
+    if (entry.sourceUsername.length > 0) meta.sourceUsername = entry.sourceUsername;
+    if (entry.sourceMediaPK.length > 0) meta.sourceMediaPK = entry.sourceMediaPK;
+    if (entry.sourceMediaURLString.length > 0) meta.sourceMediaURLString = entry.sourceMediaURLString;
+    if (entry.importPostedDate) meta.importPostedDate = entry.importPostedDate;
+}
+
 extern "C" NSString *SCIActionButtonTitleForIdentifier(NSString *identifier) {
 	return SCIActionDescriptorDisplayTitle(identifier, nil);
 }
@@ -902,6 +939,8 @@ static SCIFullScreenPlaybackSource SCIPlaybackSourceForActionSource(SCIActionBut
             return SCIFullScreenPlaybackSourceStories;
         case SCIActionButtonSourceDirect:
             return SCIFullScreenPlaybackSourceDirect;
+        case SCIActionButtonSourceInstants:
+            return SCIFullScreenPlaybackSourceInstants;
         default:
             return SCIFullScreenPlaybackSourceUnknown;
     }
@@ -1224,16 +1263,29 @@ static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
 	if (!mediaObject) return nil;
 
     NSURL *instantsURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaMediaURL") ?: SCIKVCObject(mediaObject, @"scinstaMediaURL"));
-    if (instantsURL) {
+    NSURL *instantsPhotoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaPhotoURL") ?: SCIKVCObject(mediaObject, @"scinstaPhotoURL"));
+    NSURL *instantsVideoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaVideoURL") ?: SCIKVCObject(mediaObject, @"scinstaVideoURL"));
+    NSNumber *instantsIsVideoNumber = [SCIUtils numericValueForObj:mediaObject selectorName:@"scinstaIsVideo"];
+    BOOL instantsHasHint = instantsURL || instantsPhotoURL || instantsVideoURL || instantsIsVideoNumber != nil;
+    if (instantsHasHint) {
         SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
         entry.mediaObject = mediaObject;
         entry.metadataObject = mediaObject;
-        if (SCIIsVideoExtension(instantsURL.pathExtension)) {
-            entry.videoURL = instantsURL;
+        entry.sourceUsername = SCIExplicitSourceUsernameFromObject(mediaObject);
+        entry.sourceMediaPK = SCIStringFromValue(SCIObjectForSelector(mediaObject, @"sourceMediaPK") ?: SCIKVCObject(mediaObject, @"sourceMediaPK"));
+        entry.sourceMediaURLString = SCIStringFromValue(SCIObjectForSelector(mediaObject, @"sourceMediaURLString") ?: SCIKVCObject(mediaObject, @"sourceMediaURLString"));
+        entry.importPostedDate = SCIDateFromActionValue(SCIObjectForSelector(mediaObject, @"importPostedDate") ?: SCIKVCObject(mediaObject, @"importPostedDate") ?: SCIObjectForSelector(mediaObject, @"takenAt") ?: SCIKVCObject(mediaObject, @"takenAt"));
+        BOOL isVideo = instantsIsVideoNumber ? instantsIsVideoNumber.boolValue : SCIIsVideoExtension((instantsVideoURL ?: instantsURL).pathExtension);
+        if (isVideo) {
+            entry.videoURL = instantsVideoURL ?: instantsURL;
+            entry.photoURL = instantsPhotoURL;
         } else {
-            entry.photoURL = instantsURL;
+            entry.photoURL = instantsPhotoURL ?: instantsURL;
+            if (!entry.photoURL && instantsVideoURL) {
+                entry.videoURL = instantsVideoURL;
+            }
         }
-        return entry;
+        return (entry.photoURL || entry.videoURL) ? entry : nil;
     }
 
     NSURL *directURL = SCIURLFromValue(mediaObject);
@@ -1393,19 +1445,21 @@ static NSArray<SCIMediaItem *> *SCIPlayerItemsFromEntries(NSArray<SCIResolvedMed
 			continue;
 		}
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
+        NSString *itemUsername = source == SCIActionButtonSourceInstants ? SCIUsernameForEntry(entry, username) : username;
 
 		SCIMediaItem *item = [SCIMediaItem itemWithFileURL:url];
 		item.mediaType = entry.videoURL ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
 		item.gallerySaveSource = SCIGallerySourceForActionSource(source);
-		item.galleryMetadata = SCIGalleryMetadata(source, username, metadataObject);
-		if (metadataObject != media) {
+		item.galleryMetadata = SCIGalleryMetadata(source, itemUsername, metadataObject);
+        SCIApplyEntryMetadata(item.galleryMetadata, entry);
+		if (metadataObject != media && source != SCIActionButtonSourceInstants) {
 			[SCIGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
 			if (entries.count > 1) {
 				item.galleryMetadata.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
 			}
 		}
         item.sourceMediaObject = metadataObject;
-		if (username.length > 0) item.title = username;
+		if (itemUsername.length > 0) item.title = itemUsername;
 		[items addObject:item];
 		index++;
 	}
@@ -1639,8 +1693,10 @@ static NSArray<SCIDownloadItemRequest *> *SCIBulkDownloadItemsFromEntries(NSArra
         }
         BOOL isVideo = (entry.videoURL != nil);
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
-        SCIGallerySaveMetadata *meta = SCIGalleryMetadata(source, username, metadataObject);
-        if (metadataObject != media) {
+        NSString *itemUsername = source == SCIActionButtonSourceInstants ? SCIUsernameForEntry(entry, username) : username;
+        SCIGallerySaveMetadata *meta = SCIGalleryMetadata(source, itemUsername, metadataObject);
+        SCIApplyEntryMetadata(meta, entry);
+        if (metadataObject != media && source != SCIActionButtonSourceInstants) {
             [SCIGalleryOriginController populateMetadata:meta fromMedia:media];
             if (entries.count > 1) {
                 meta.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:meta.sourceMediaURLString];
@@ -2498,7 +2554,7 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 		? SCIDirectUsernameFromController(context.controller)
 		: SCIUsernameFromMediaObject(media);
     if (context.source == SCIActionButtonSourceInstants) {
-        NSString *explicitUsername = SCIStringFromValue(SCIObjectForSelector(metadataObject, @"sourceUsername") ?: SCIKVCObject(metadataObject, @"sourceUsername"));
+        NSString *explicitUsername = SCIUsernameForEntry(currentEntry, nil);
         if (explicitUsername.length > 0) {
             username = explicitUsername;
         }
@@ -2518,7 +2574,8 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 	}
 
 	SCIGallerySaveMetadata *meta = SCIGalleryMetadata(context.source, username, metadataObject);
-	if (metadataObject != media) {
+    SCIApplyEntryMetadata(meta, currentEntry);
+	if (metadataObject != media && context.source != SCIActionButtonSourceInstants) {
 		[SCIGalleryOriginController populateMetadata:meta fromMedia:media];
 		if (entries.count > 1) {
 			meta.sourceMediaURLString = [SCIUtils appendImgIndex:resolvedIndex toURLString:meta.sourceMediaURLString];

@@ -78,6 +78,9 @@
             [SCISetting menuCellWithTitle:@"Download Progress"
                                  subtitle:@""
                                      menu:SCINotificationProgressSubtitleStyleMenu()],
+            [SCISetting menuCellWithTitle:@"Position"
+                                 subtitle:@""
+                                     menu:SCINotificationPillPositionMenu()],
             [SCISetting stepperCellWithTitle:@"Duration"
                                     subtitle:@"Dismiss after %@%@"
                                  defaultsKey:kSCINotificationPillDurationKey

@@ -70,6 +70,7 @@ NSString * const kSCINotificationPillDurationKey = @"notifs_pill_duration";
 NSString * const kSCINotificationPillGlowEnabledKey = @"notifs_pill_glow";
 NSString * const kSCINotificationPillLiquidGlassEnabledKey = @"notifs_pill_liquid_glass";
 NSString * const kSCINotificationProgressSubtitleStyleKey = @"notifs_progress_subtitle_style";
+NSString * const kSCINotificationPillPositionKey = @"notifs_pill_position";
 
 static CGFloat const kSCINotificationStackSpacing = 8.0;
 static CGFloat const kSCINotificationTopMargin = 8.0;
@@ -224,6 +225,7 @@ NSDictionary<NSString *, id> *SCINotificationDefaultPreferences(void) {
         kSCINotificationPillLiquidGlassEnabledKey: @NO,
         kSCINotificationPillDurationKey: @(kSCINotificationDefaultPillDuration),
         kSCINotificationProgressSubtitleStyleKey: @"both",
+        kSCINotificationPillPositionKey: @"top",
     } mutableCopy];
     for (NSDictionary *section in SCINotificationPreferenceSections()) {
         for (NSDictionary *item in section[@"items"] ?: @[]) {
@@ -397,8 +399,10 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
 
 - (void)relayoutAnimated:(BOOL)animated {
     UIView *host = self.overlayRoot.view;
+    BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
     for (NSUInteger i = 0; i < self.visible.count; i++) {
-        self.visible[i].topConstraint.constant = [self offsetForIndex:i];
+        CGFloat offset = [self offsetForIndex:i];
+        self.visible[i].topConstraint.constant = isBottom ? -offset : offset;
     }
     void (^layout)(void) = ^{ [host layoutIfNeeded]; };
     if (animated) {
@@ -411,16 +415,22 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
 - (void)insertPill:(SCINotificationPillView *)pill identifier:(NSString *)identifier progress:(BOOL)progress {
     UIView *host = [self hostView];
     [host addSubview:pill];
-    NSLayoutConstraint *top = [pill.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:-90.0];
-    [pill setPresentationTopConstraint:top];
+    BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
+    NSLayoutConstraint *anchor;
+    if (isBottom) {
+        anchor = [pill.bottomAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.bottomAnchor constant:90.0];
+    } else {
+        anchor = [pill.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:-90.0];
+    }
+    [pill setPresentationTopConstraint:anchor];
     [NSLayoutConstraint activateConstraints:@[
-        top,
+        anchor,
         [pill.centerXAnchor constraintEqualToAnchor:host.centerXAnchor],
     ]];
 
     SCINotificationSlot *slot = [SCINotificationSlot new];
     slot.pill = pill;
-    slot.topConstraint = top;
+    slot.topConstraint = anchor;
     slot.identifier = identifier ?: @"";
     slot.progress = progress;
     [self.visible addObject:slot];
@@ -440,8 +450,9 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
 
     [host layoutIfNeeded];
     pill.alpha = 0.0;
-    pill.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -24.0), CGAffineTransformMakeScale(0.88, 0.88));
-    top.constant = [self offsetForIndex:self.visible.count - 1];
+    CGFloat entranceY = isBottom ? 24.0 : -24.0;
+    pill.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, entranceY), CGAffineTransformMakeScale(0.88, 0.88));
+    anchor.constant = isBottom ? -[self offsetForIndex:self.visible.count - 1] : [self offsetForIndex:self.visible.count - 1];
     [UIView animateWithDuration:kSCINotificationInsertDuration delay:0 usingSpringWithDamping:0.78 initialSpringVelocity:0.85 options:UIViewAnimationOptionCurveEaseOut animations:^{
         pill.alpha = 1.0;
         pill.transform = CGAffineTransformIdentity;

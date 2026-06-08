@@ -127,6 +127,7 @@ NSArray<NSString *> *SCIActionButtonBulkDownloadSupportedActionsForSource(SCIAct
         case SCIActionButtonSourceFeed:
         case SCIActionButtonSourceReels:
         case SCIActionButtonSourceStories:
+        case SCIActionButtonSourceInstants:
             return @[
                 kSCIActionDownloadAllLibrary,
                 kSCIActionDownloadAllShare,
@@ -134,7 +135,6 @@ NSArray<NSString *> *SCIActionButtonBulkDownloadSupportedActionsForSource(SCIAct
             ];
         case SCIActionButtonSourceDirect:
         case SCIActionButtonSourceProfile:
-        case SCIActionButtonSourceInstants:
             return @[];
     }
 }
@@ -144,13 +144,13 @@ NSArray<NSString *> *SCIActionButtonBulkCopySupportedActionsForSource(SCIActionB
         case SCIActionButtonSourceFeed:
         case SCIActionButtonSourceReels:
         case SCIActionButtonSourceStories:
+        case SCIActionButtonSourceInstants:
             return @[
                 kSCIActionDownloadAllClipboard,
                 kSCIActionDownloadAllLinks
             ];
         case SCIActionButtonSourceDirect:
         case SCIActionButtonSourceProfile:
-        case SCIActionButtonSourceInstants:
             return @[];
     }
 }

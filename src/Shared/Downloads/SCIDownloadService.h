@@ -19,6 +19,10 @@ typedef void (^SCIDownloadSubmissionCompletion)(NSString * _Nullable jobID, NSEr
 - (void)submitRequest:(SCIDownloadRequest *)request
            completion:(nullable SCIDownloadSubmissionCompletion)completion;
 
+- (BOOL)hasActiveJobWithHiddenPill;
+- (void)reshowProgressPill;
+- (void)confirmCancelForJobID:(NSString *)jobID;
+
 - (NSArray<SCIDownloadJob *> *)jobsMatchingFilter:(SCIDownloadHistoryFilter)filter;
 - (nullable SCIDownloadJob *)jobWithID:(NSString *)jobID;
 

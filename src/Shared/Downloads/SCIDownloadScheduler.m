@@ -54,11 +54,34 @@ static BOOL SCIDownloadJobHasInFlightItems(SCIDownloadJob *job) {
     return NO;
 }
 
+static NSString *SCIPreferredExtensionForDownloadItem(NSString *stagedPath, NSURL *sourceURL, SCIDownloadItem *item) {
+    NSString *extension = item.request.preferredFileExtension;
+    if (extension.length == 0) extension = stagedPath.pathExtension;
+    if (extension.length == 0) extension = sourceURL.pathExtension;
+    if (extension.length == 0) {
+        switch (item.mediaKind) {
+            case SCIDownloadMediaKindVideo: extension = @"mp4"; break;
+            case SCIDownloadMediaKindAudio: extension = @"m4a"; break;
+            default: extension = @"jpg"; break;
+        }
+    }
+    if ([extension hasPrefix:@"."]) extension = [extension substringFromIndex:1];
+    return extension.length > 0 ? extension : nil;
+}
+
 static NSString *SCIRenameStagedPath(NSString *stagedPath, SCIDownloadItem *item, SCIDownloadJob *job) {
     if (!stagedPath.length) return stagedPath;
     SCIGallerySaveMetadata *metadata = item.request.metadata ?: job.request.metadata;
     NSURL *sourceURL = item.request.remoteURLString.length ? [NSURL URLWithString:item.request.remoteURLString] : [NSURL fileURLWithPath:stagedPath];
-    NSString *preferred = SCIFileNameForMedia(sourceURL, SCIGalleryMediaTypeForDownloadKind(item.mediaKind), metadata);
+    NSString *preferred = nil;
+    NSString *expectedStem = item.request.expectedFilenameStem;
+    if (expectedStem.length > 0) {
+        NSString *extension = SCIPreferredExtensionForDownloadItem(stagedPath, sourceURL, item);
+        preferred = extension.length > 0 ? [expectedStem stringByAppendingPathExtension:extension] : expectedStem;
+    }
+    if (preferred.length == 0) {
+        preferred = SCIFileNameForMedia(sourceURL, SCIGalleryMediaTypeForDownloadKind(item.mediaKind), metadata);
+    }
     if (!preferred.length) return stagedPath;
     NSString *directory = stagedPath.stringByDeletingLastPathComponent;
     NSString *destination = [directory stringByAppendingPathComponent:preferred];
@@ -388,6 +411,8 @@ static NSString *SCIRenameStagedPath(NSString *stagedPath, SCIDownloadItem *item
     [self transitionItemID:item.itemID jobID:job.jobID from:SCIDownloadStateQueued to:SCIDownloadStateRunning update:^(SCIDownloadMutableItemSnapshot *snap) {
         snap.progress = 0.05;
         snap.detail = @"Preparing media";
+        snap.bytesWritten = 0;
+        snap.totalBytesExpected = 0;
     }];
     NSString *basename = req.expectedFilenameStem.length > 0 ? req.expectedFilenameStem : NSUUID.UUID.UUIDString;
     SCIDownloadActiveTransfer *active = [SCIDownloadActiveTransfer new];
@@ -443,6 +468,11 @@ static NSString *SCIRenameStagedPath(NSString *stagedPath, SCIDownloadItem *item
                 }
             }
             if (liveJob && liveItem) {
+                if (SCIDownloadStateIsTerminal(liveItem.state)) {
+                    [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
+                    [weakSelf pumpQueue];
+                    return;
+                }
                 NSString *renamed = SCIRenameStagedPath(outputURL.path, liveItem, liveJob);
                 [weakSelf finalizeItem:liveItem job:liveJob stagedPath:renamed];
             }
@@ -515,11 +545,15 @@ static NSString *SCIRenameStagedPath(NSString *stagedPath, SCIDownloadItem *item
             [strongSelf reportItemProgressForJobID:jobID itemID:itemID block:^(SCIDownloadItem *snap) {
                 snap.progress = 0.72;
                 snap.detail = @"Converting audio";
+                snap.bytesWritten = 0;
+                snap.totalBytesExpected = 0;
             }];
             [SCIAudioDownloadCoordinator convertAudioAtURL:rawURL basename:basename progress:^(float convertProgress, NSString *title) {
                 [strongSelf reportItemProgressForJobID:jobID itemID:itemID block:^(SCIDownloadItem *snap) {
                     snap.progress = 0.72 + (convertProgress * 0.23);
                     snap.detail = title.length > 0 ? title : @"Converting audio";
+                    snap.bytesWritten = 0;
+                    snap.totalBytesExpected = 0;
                 }];
             } completion:^(NSURL *outputURL, NSError *convertError) {
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -550,6 +584,11 @@ static NSString *SCIRenameStagedPath(NSString *stagedPath, SCIDownloadItem *item
                         }
                     }
                     if (liveJob && liveItem) {
+                        if (SCIDownloadStateIsTerminal(liveItem.state)) {
+                            [[NSFileManager defaultManager] removeItemAtPath:dest error:nil];
+                            [strongSelf pumpQueue];
+                            return;
+                        }
                         NSString *renamed = SCIRenameStagedPath(dest, liveItem, liveJob);
                         [strongSelf finalizeItem:liveItem job:liveJob stagedPath:renamed];
                     }

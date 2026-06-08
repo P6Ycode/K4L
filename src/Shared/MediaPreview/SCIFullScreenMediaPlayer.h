@@ -11,6 +11,7 @@ typedef NS_ENUM(NSInteger, SCIFullScreenPlaybackSource) {
     SCIFullScreenPlaybackSourceStories = 3,
     SCIFullScreenPlaybackSourceDirect = 4,
     SCIFullScreenPlaybackSourceProfile = 5,
+    SCIFullScreenPlaybackSourceInstants = 6,
 };
 
 typedef void (^SCIMediaPreviewPlaybackBlock)(void);

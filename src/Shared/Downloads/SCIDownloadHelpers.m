@@ -6,6 +6,24 @@
 #import "../UI/SCINotificationCenter.h"
 #import "SCIDownloadService.h"
 
+static NSString *SCIDownloadDisplayUsername(NSString *username) {
+  NSString *trimmed =
+      [username stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+  if (trimmed.length == 0 || trimmed.length > 30)
+    return nil;
+  NSString *lower = trimmed.lowercaseString;
+  NSSet<NSString *> *blocked = [NSSet setWithArray:@[
+    @"more", @"options", @"menu", @"close", @"done", @"cancel", @"all",
+    @"active", @"queued", @"failed", @"completed", @"clipboard", @"download",
+    @"save", @"share", @"copy", @"gallery", @"photos", @"instants"
+  ]];
+  if ([blocked containsObject:lower])
+    return nil;
+  NSCharacterSet *invalid = [[NSCharacterSet characterSetWithCharactersInString:
+      @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._"] invertedSet];
+  return [trimmed rangeOfCharacterFromSet:invalid].location == NSNotFound ? trimmed : nil;
+}
+
 @implementation SCIDownloadHelpers
 
 + (SCIDownloadSourceSurface)sourceSurfaceForGallerySource:
@@ -63,11 +81,28 @@
 }
 
 + (nullable NSString *)historyTitleForRequest:(SCIDownloadRequest *)request {
-  if (request.metadata.sourceUsername.length > 0)
-    return request.metadata.sourceUsername;
+  if (request.items.count > 1) {
+    NSMutableOrderedSet<NSString *> *usernames = [NSMutableOrderedSet orderedSet];
+    for (SCIDownloadItemRequest *item in request.items) {
+      NSString *username = SCIDownloadDisplayUsername(item.metadata.sourceUsername);
+      if (username.length > 0)
+        [usernames addObject:username];
+    }
+    if (usernames.count == 1)
+      return usernames.firstObject;
+    if (usernames.count > 1)
+      return [NSString stringWithFormat:@"%@ + %lu more", usernames.firstObject,
+                                        (unsigned long)(usernames.count - 1)];
+    return nil;
+  }
+
+  NSString *requestUsername = SCIDownloadDisplayUsername(request.metadata.sourceUsername);
+  if (requestUsername.length > 0)
+    return requestUsername;
   for (SCIDownloadItemRequest *item in request.items) {
-    if (item.metadata.sourceUsername.length > 0)
-      return item.metadata.sourceUsername;
+    NSString *itemUsername = SCIDownloadDisplayUsername(item.metadata.sourceUsername);
+    if (itemUsername.length > 0)
+      return itemUsername;
   }
   return nil;
 }

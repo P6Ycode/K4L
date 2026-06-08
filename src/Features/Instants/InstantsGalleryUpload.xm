@@ -662,6 +662,21 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         });
     }
 
+    // Gallery/files upload: when the user has positioned and cropped an image to send,
+    // this pending image MUST take priority over everything else — including the
+    // confirm-capture frozen frame. The pending image is the user's intended content.
+    UIImage *pendingImage = SCIInstantsUploadFromGalleryEnabled() ? sSCIInstantsPendingImage : nil;
+    if (pendingImage) {
+        CMSampleBufferRef replacement = SCIInstantsSampleBufferForImage(pendingImage, sampleBuffer);
+        if (replacement) {
+            [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
+                                                                   didOutputSampleBuffer:replacement
+                                                                          fromConnection:connection];
+            CFRelease(replacement);
+            return;
+        }
+    }
+
     // While frozen (confirm-capture), replay the snapshotted frame so the preview
     // and the eventual capture are the exact frame the user pressed the shutter on.
     __block CVPixelBufferRef frozen = NULL;
@@ -675,18 +690,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if (frozen) {
         CMSampleBufferRef replacement = SCIInstantsSampleBufferForPixelBuffer(frozen, sampleBuffer);
         CVPixelBufferRelease(frozen);
-        if (replacement) {
-            [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
-                                                                   didOutputSampleBuffer:replacement
-                                                                          fromConnection:connection];
-            CFRelease(replacement);
-            return;
-        }
-    }
-
-    UIImage *pendingImage = SCIInstantsUploadFromGalleryEnabled() ? sSCIInstantsPendingImage : nil;
-    if (pendingImage) {
-        CMSampleBufferRef replacement = SCIInstantsSampleBufferForImage(pendingImage, sampleBuffer);
         if (replacement) {
             [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
                                                                    didOutputSampleBuffer:replacement

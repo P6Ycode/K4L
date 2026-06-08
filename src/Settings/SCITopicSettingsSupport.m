@@ -273,6 +273,13 @@ UIMenu *SCINotificationProgressSubtitleStyleMenu(void) {
     ]];
 }
 
+UIMenu *SCINotificationPillPositionMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SCIMenuCommand(@"Top", nil, nil, kSCINotificationPillPositionKey, @"top", NO),
+        SCIMenuCommand(@"Bottom", nil, nil, kSCINotificationPillPositionKey, @"bottom", NO)
+    ]];
+}
+
 UIMenu *SCIMediaVideoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
         SCIMenuCommand(@"Default", nil, nil, @"general_media_vid_quality", @"high_ignore_dash", NO),

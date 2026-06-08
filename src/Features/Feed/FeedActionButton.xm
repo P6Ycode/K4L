@@ -10,13 +10,30 @@
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
 #import "../../Shared/MediaPreview/SCIMediaItem.h"
 
+extern "C" void MSHookMessageEx(Class cls, SEL sel, IMP replacement, IMP *result);
+
 static NSInteger const kSCIFeedActionButtonTag = 921341;
 static const void *kSCIFeedExpandLongPressMarkerAssocKey = &kSCIFeedExpandLongPressMarkerAssocKey;
+static const void *kSCIFeedExpandLongPressDelegateAssocKey = &kSCIFeedExpandLongPressDelegateAssocKey;
 
 @interface IGFeedItemPageVideoCell : UICollectionViewCell
 @end
 
 static id SCIFeedMediaForZoomFromView(UIView *view);
+static BOOL SCIFeedLongPressExpandEnabled(void);
+static BOOL SCIFeedMediaHasExpandableAsset(id media);
+static BOOL SCIFeedViewHasExpandableAsset(UIView *view);
+static BOOL SCIFeedShouldSuppressNativeLongPress(UIGestureRecognizer *gestureRecognizer);
+static BOOL SCIFeedShouldSuppressNativeLongPressFromHandler(id handler, UIGestureRecognizer *gestureRecognizer);
+
+@interface SCIFeedExpandLongPressDelegate : NSObject <UIGestureRecognizerDelegate>
+@end
+
+@implementation SCIFeedExpandLongPressDelegate
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+	return SCIFeedShouldSuppressNativeLongPress(gestureRecognizer);
+}
+@end
 
 static BOOL SCIFeedLongPressExpandEnabled(void) {
 	return [SCIUtils getBoolPref:@"feed_long_press_expand"];
@@ -309,6 +326,47 @@ static BOOL SCIFeedIsCarouselMedia(id media) {
 	return SCIFeedCarouselChildren(media).count > 0;
 }
 
+static BOOL SCIFeedMediaHasExpandableAsset(id media) {
+	if (!media) return NO;
+
+	if (SCIFeedIsCarouselMedia(media)) {
+		for (id child in SCIFeedCarouselChildren(media)) {
+			NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)child];
+			NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)child];
+			if (videoURL || photoURL) return YES;
+		}
+	}
+
+	NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)media];
+	NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)media];
+	return videoURL || photoURL;
+}
+
+static BOOL SCIFeedViewHasExpandableAsset(UIView *view) {
+	if (!view.window) return NO;
+	id media = SCIFeedMediaForZoomFromView(view);
+	return SCIFeedMediaHasExpandableAsset(media);
+}
+
+static BOOL SCIFeedShouldSuppressNativeLongPress(UIGestureRecognizer *gestureRecognizer) {
+	if (!SCIFeedLongPressExpandEnabled() || !gestureRecognizer) return NO;
+	return SCIFeedViewHasExpandableAsset(gestureRecognizer.view);
+}
+
+static BOOL SCIFeedShouldSuppressNativeLongPressFromHandler(id handler, UIGestureRecognizer *gestureRecognizer) {
+	if (SCIFeedShouldSuppressNativeLongPress(gestureRecognizer)) return YES;
+	if (!SCIFeedLongPressExpandEnabled() || !handler) return NO;
+
+	for (NSString *ivarName in @[@"eligibleView", @"cell", @"_eligibleView", @"_cell"]) {
+		id candidate = [SCIUtils getIvarForObj:handler name:ivarName.UTF8String];
+		if ([candidate isKindOfClass:[UIView class]] &&
+			SCIFeedViewHasExpandableAsset((UIView *)candidate)) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
 static SCIGallerySaveMetadata *SCIFeedMetadataForMedia(id media) {
 	SCIGallerySaveMetadata *metadata = [[SCIGallerySaveMetadata alloc] init];
 	metadata.source = (int16_t)SCIGallerySourceFeed;
@@ -490,12 +548,47 @@ static void SCIInstallFeedActionButton(UIView *barView) {
 	SCIApplyButtonStyle(button, SCIActionButtonSourceFeed);
 }
 
+static BOOL SCIFeedViewIsNearbyMediaContainer(UIView *candidate, UIView *sourceView) {
+	if (!candidate || !sourceView) return NO;
+	if (candidate == sourceView) return YES;
+
+	NSString *className = NSStringFromClass([candidate class]);
+	for (NSString *fragment in @[@"Feed", @"Media", @"Photo", @"Video", @"Page", @"Carousel"]) {
+		if ([className containsString:fragment]) return YES;
+	}
+	return NO;
+}
+
+static void SCIRequireNativeLongPressRecognizersToFail(UIView *view, UILongPressGestureRecognizer *sciLongPress) {
+	if (!view || !sciLongPress) return;
+
+	UIView *walker = view;
+	NSInteger depth = 0;
+	while (walker && depth < 10) {
+		if (SCIFeedViewIsNearbyMediaContainer(walker, view)) {
+			for (UIGestureRecognizer *gesture in walker.gestureRecognizers) {
+				if (gesture == sciLongPress) continue;
+				if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
+				if (objc_getAssociatedObject(gesture, kSCIFeedExpandLongPressMarkerAssocKey)) continue;
+				[gesture requireGestureRecognizerToFail:sciLongPress];
+			}
+		}
+
+		if ([walker isKindOfClass:[UICollectionView class]] || [walker isKindOfClass:[UITableView class]]) {
+			break;
+		}
+		walker = walker.superview;
+		depth++;
+	}
+}
+
 static void SCIAddFeedExpandLongPressIfNeeded(UIView *view, SEL action) {
 	if (!SCIFeedLongPressExpandEnabled() || !view || !action) return;
 
 	for (UIGestureRecognizer *gesture in view.gestureRecognizers) {
 		if ([gesture isKindOfClass:[UILongPressGestureRecognizer class]] &&
 			objc_getAssociatedObject(gesture, kSCIFeedExpandLongPressMarkerAssocKey)) {
+			SCIRequireNativeLongPressRecognizersToFail(view, (UILongPressGestureRecognizer *)gesture);
 			return;
 		}
 	}
@@ -503,8 +596,12 @@ static void SCIAddFeedExpandLongPressIfNeeded(UIView *view, SEL action) {
 	UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:view action:action];
 	longPress.minimumPressDuration = 0.3;
 	longPress.cancelsTouchesInView = NO;
+	SCIFeedExpandLongPressDelegate *delegate = [[SCIFeedExpandLongPressDelegate alloc] init];
+	longPress.delegate = delegate;
 	[view addGestureRecognizer:longPress];
 	objc_setAssociatedObject(longPress, kSCIFeedExpandLongPressMarkerAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(longPress, kSCIFeedExpandLongPressDelegateAssocKey, delegate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	SCIRequireNativeLongPressRecognizersToFail(view, longPress);
 }
 
 static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecognizer *sender) {
@@ -578,12 +675,37 @@ static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecogni
 						 playbackSource:SCIFullScreenPlaybackSourceFeed
 							 sourceView:view
 							 controller:[SCIUtils viewControllerForAncestralView:view]
-						  pausePlayback:nil
-						 resumePlayback:nil];
+							  pausePlayback:nil
+							  resumePlayback:nil];
 }
 
 static void SCIExpandFeedLongPressAction(id self, SEL _cmd, UILongPressGestureRecognizer *sender) {
 	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+}
+
+static void (*orig_singleFeedMoreMenuLongPress)(id, SEL, UIGestureRecognizer *);
+static void SCIHookedSingleFeedMoreMenuLongPress(id self, SEL _cmd, UIGestureRecognizer *gestureRecognizer) {
+	if (gestureRecognizer.state == UIGestureRecognizerStateBegan &&
+		SCIFeedShouldSuppressNativeLongPressFromHandler(self, gestureRecognizer)) {
+		return;
+	}
+	if (orig_singleFeedMoreMenuLongPress) {
+		orig_singleFeedMoreMenuLongPress(self, _cmd, gestureRecognizer);
+	}
+}
+
+static void SCIInstallNativeFeedLongPressSuppressionHooks(void) {
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		Class singleFeedHandler = objc_getClass("IGFeedLongPressOrchestrator.IGSingleFeedMoreMenuLongPressHandler");
+		SEL handleLongPress = @selector(handleLongPress:);
+		if (singleFeedHandler && class_getInstanceMethod(singleFeedHandler, handleLongPress)) {
+			MSHookMessageEx(singleFeedHandler,
+							handleLongPress,
+							(IMP)SCIHookedSingleFeedMoreMenuLongPress,
+							(IMP *)&orig_singleFeedMoreMenuLongPress);
+		}
+	});
 }
 
 static void (*orig_swiftModernFeedVideo_didMove)(id, SEL);
@@ -712,9 +834,10 @@ extern "C" void SCIInstallFeedActionButtonHooksIfEnabled(void) {
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-	%init(SCIFeedActionButtonHooks);
+		%init(SCIFeedActionButtonHooks);
+		SCIInstallNativeFeedLongPressSuppressionHooks();
 
-	Class modernObjCName = objc_getClass("IGModernFeedVideoCell");
+		Class modernObjCName = objc_getClass("IGModernFeedVideoCell");
 	Class modernSwiftRuntime = objc_getClass("IGModernFeedVideoCell.IGModernFeedVideoCell");
 	if (modernSwiftRuntime && modernSwiftRuntime != modernObjCName) {
 		class_addMethod(modernSwiftRuntime, @selector(sci_handleExpandLongPress:), (IMP)SCIExpandFeedLongPressAction, "v@:@");

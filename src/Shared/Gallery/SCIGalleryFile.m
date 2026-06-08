@@ -374,7 +374,12 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     NSString *slug = SCIGallerySourceSlug(src);
     NSString *user = @"media";
 
-    if (metadata.sourceUsername.length > 0) {
+    if (metadata.importFileNameStem.length > 0) {
+        NSString *sanitizedStem = SCISanitizedGalleryUsername(metadata.importFileNameStem);
+        if (sanitizedStem.length > 0) {
+            user = sanitizedStem;
+        }
+    } else if (metadata.sourceUsername.length > 0) {
         NSString *sanitizedUser = SCISanitizedGalleryUsername(metadata.sourceUsername);
         if (sanitizedUser.length > 0) {
             user = sanitizedUser;

@@ -1004,11 +1004,19 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
     self.iconBadgeView.transform = CGAffineTransformIdentity;
     self.closeButton.transform = CGAffineTransformIdentity;
-    self.topConstraint.constant = -(self.heightConstraint.constant + 10.0);
+    
+    BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
+    if (isBottom) {
+        self.topConstraint.constant = self.heightConstraint.constant + 10.0;
+    } else {
+        self.topConstraint.constant = -(self.heightConstraint.constant + 10.0);
+    }
+    CGAffineTransform exitTransform = isBottom ? CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0), CGAffineTransformMakeScale(0.88, 0.88)) : SCIPillEntranceTransform();
+    
     [UIView animateWithDuration:0.28 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
         [self.superview layoutIfNeeded];
         self.alpha = 0;
-        self.transform = SCIPillEntranceTransform();
+        self.transform = exitTransform;
         self.iconBadgeView.transform = CGAffineTransformMakeScale(0.78, 0.78);
         self.closeButton.transform = CGAffineTransformMakeScale(0.84, 0.84);
     } completion:^(BOOL finished) {
@@ -1080,6 +1088,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
     if (!self.isCompleted && self.onCancel) {
         self.onCancel();
+        return;
     }
 
     [self dismissWithCompletion:nil];
@@ -1174,6 +1183,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
 - (void)handlePan:(UIPanGestureRecognizer *)pan {
     CGPoint translation = [pan translationInView:self.superview];
+    BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
 
     switch (pan.state) {
         case UIGestureRecognizerStateBegan:
@@ -1181,15 +1191,27 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
             break;
 
         case UIGestureRecognizerStateChanged: {
-            // Only allow upward movement, rubberband downward
             CGFloat yDelta = translation.y;
-            if (yDelta > 0) {
-                yDelta = yDelta * 0.25; // rubberband down
+            if (isBottom) {
+                // Bottom position: dismiss is down (positive values), rubberband up (negative values)
+                if (yDelta < 0) {
+                    yDelta = yDelta * 0.25;
+                }
+            } else {
+                // Top position: dismiss is up (negative values), rubberband down (positive values)
+                if (yDelta > 0) {
+                    yDelta = yDelta * 0.25;
+                }
             }
             self.center = CGPointMake(self.panOriginCenter.x, self.panOriginCenter.y + yDelta);
 
-            // Fade out as it moves up
-            CGFloat progress = MIN(1.0, MAX(0.0, -yDelta / 60.0));
+            // Fade out as it moves towards the dismissal direction
+            CGFloat progress = 0.0;
+            if (isBottom) {
+                progress = MIN(1.0, MAX(0.0, yDelta / 60.0));
+            } else {
+                progress = MIN(1.0, MAX(0.0, -yDelta / 60.0));
+            }
             self.alpha = 1.0 - (progress * 0.5);
             break;
         }
@@ -1199,8 +1221,14 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
             CGFloat velocity = [pan velocityInView:self.superview].y;
             CGFloat yOffset = self.center.y - self.panOriginCenter.y;
 
-            if (yOffset < -20.0 || velocity < -300.0) {
-                // Dismiss
+            BOOL shouldDismiss = NO;
+            if (isBottom) {
+                shouldDismiss = (yOffset > 20.0 || velocity > 300.0);
+            } else {
+                shouldDismiss = (yOffset < -20.0 || velocity < -300.0);
+            }
+
+            if (shouldDismiss) {
                 [self dismiss];
             } else {
                 // Snap back with spring
