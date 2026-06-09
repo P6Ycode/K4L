@@ -207,7 +207,13 @@ strip_appex_bundles() {
 scinsta_sideload_output_ipa() {
     local ig_base="$1"
     local suffix=""
-    [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ] && suffix="-sidestore"
+    if [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ]; then
+        if [ "${OPT_SIDESTORE:-0}" -eq 1 ] && [[ "$ig_base" == SCInsta* ]]; then
+            suffix="-sidestore"
+        else
+            suffix="-no-ext"
+        fi
+    fi
     if [ "${OPT_INJECT:-0}" -eq 1 ] && [ "${OPT_FFMPEG:-0}" -eq 1 ] && [ "${OPT_PATCH:-0}" -eq 1 ]; then
         if [ "${OPT_DEV:-0}" -eq 1 ]; then
             if [ "${OPT_FLEX:-0}" -eq 1 ]; then
@@ -229,7 +235,7 @@ scinsta_sideload_output_ipa() {
     [ "${OPT_FFMPEG:-0}" -eq 1 ] && parts+=(ffmpeg)
     [ "${OPT_FLEX:-0}" -eq 1 ] && parts+=(flex)
     [ "${OPT_PATCH:-0}" -eq 1 ] && parts+=(patch)
-    [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ] && parts+=(sidestore)
+    [ -n "$suffix" ] && parts+=("${suffix#-}")
     [ "${OPT_DEV:-0}" -eq 1 ] && parts+=(dev)
     local joined
     joined=$(IFS=-; echo "${parts[*]}")
@@ -245,6 +251,7 @@ then
     OPT_FLEX=0
     OPT_PATCH=0
     OPT_STRIP_EXTENSIONS=0
+    OPT_SIDESTORE=0
     OPT_DEV=0
     OPT_BUILDONLY=0
     OPT_BUNDLE_ID=""
@@ -266,6 +273,7 @@ then
                 OPT_FFMPEG=1
                 OPT_PATCH=1
                 OPT_STRIP_EXTENSIONS=1
+                OPT_SIDESTORE=1
                 ;;
             --dev) OPT_DEV=1 ;;
             --buildonly) OPT_BUILDONLY=1 ;;
@@ -315,7 +323,7 @@ then
         ipaFiles=()
         for candidateIpa in "${candidateIpaFiles[@]}"; do
             case "$(basename "$candidateIpa")" in
-                *-dev*.ipa|*-inject*.ipa|*-ffmpeg*.ipa|*-flex*.ipa|*-patch*.ipa|*-sidestore*.ipa)
+                *-dev*.ipa|*-inject*.ipa|*-ffmpeg*.ipa|*-flex*.ipa|*-patch*.ipa|*-sidestore*.ipa|*-no-ext*.ipa)
                     ;;
                 *)
                     ipaFiles+=("$candidateIpa")
