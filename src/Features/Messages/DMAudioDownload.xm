@@ -659,7 +659,7 @@ static id SCIDMPrismMenuViewInit5(id self, SEL _cmd, NSArray *elements, id heade
 %end
 
 extern "C" void SCIInstallDMAudioDownloadHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"general_audio_download_enabled"]) return;
+    if (![SCIUtils getBoolPref:@"downloads_audio_enabled"]) return;
     if (![SCIUtils getBoolPref:@"msgs_download_audio_messages"] &&
         ![SCIUtils getBoolPref:@"msgs_download_notes_audio"] &&
         ![SCIUtils getBoolPref:@"msgs_upload_audio_messages"]) return;

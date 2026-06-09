@@ -10,8 +10,8 @@
 #import "../../Shared/UI/SCINotificationCenter.h"
 #import "../../Utils.h"
 
-static NSString * const kSCICommentCopyTextPref = @"feed_comments_copy_text";
-static NSString * const kSCICommentGIFActionsPref = @"feed_comments_gif_actions";
+static NSString * const kSCICommentCopyTextPref = @"general_comments_copy_text";
+static NSString * const kSCICommentGIFActionsPref = @"general_comments_gif_actions";
 
 static id SCICommentObjectForSelector(id object, NSString *selectorName) {
     if (!object || selectorName.length == 0) return nil;

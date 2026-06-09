@@ -53,17 +53,17 @@ static NSString *SCIFFmpegCommandStringFromArguments(NSArray<NSString *> *argume
 // picker. The default-mode merge command no longer uses these (it switched to
 // libx264+preset), but the advanced+VideoToolbox path still does.
 static BOOL SCIFFmpegDashSpeedTierUsesRealtime(void) {
-    NSString *speed = SCIFFmpegStringPref(@"general_media_encoding_speed", @"medium");
+    NSString *speed = SCIFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     return [speed isEqualToString:@"ultrafast"];
 }
 
 static BOOL SCIFFmpegDashSpeedTierIsMaxQuality(void) {
-    NSString *speed = SCIFFmpegStringPref(@"general_media_encoding_speed", @"medium");
+    NSString *speed = SCIFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     return [speed isEqualToString:@"slower"];
 }
 
 static NSInteger SCIFFmpegConfiguredVideoBitrateKbpsOrZero(void) {
-    NSString *value = SCIFFmpegStringPref(@"general_media_encoding_vid_bitrate_kbps", @"");
+    NSString *value = SCIFFmpegStringPref(@"downloads_encoding_vid_bitrate_kbps", @"");
     NSInteger parsed = value.integerValue;
     return parsed > 0 ? parsed : 0;
 }
@@ -299,7 +299,7 @@ static NSString *SCIFFmpegDefaultMergeCommand(NSURL *videoFileURL,
     (void)height;
     (void)sourceBitrate;
 
-    NSString *speed  = SCIFFmpegStringPref(@"general_media_encoding_speed", @"medium");
+    NSString *speed  = SCIFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     NSString *preset = SCIFFmpegPresetForSpeed(speed);
 
     NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithArray:@[
@@ -352,7 +352,7 @@ static NSArray<NSString *> *SCIFFmpegDefaultMergeArguments(NSURL *videoFileURL,
                                                            NSURL *audioFileURL,
                                                            NSURL *outputURL,
                                                            NSString *extraVideoFilter) {
-    NSString *speed  = SCIFFmpegStringPref(@"general_media_encoding_speed", @"medium");
+    NSString *speed  = SCIFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     NSString *preset = SCIFFmpegPresetForSpeed(speed);
 
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
@@ -421,7 +421,7 @@ static NSArray<NSString *> *SCIFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
     }
 
     // Optional scale filter
-    NSString *maxResolution = SCIFFmpegStringPref(@"general_media_encoding_max_resolution", @"original");
+    NSString *maxResolution = SCIFFmpegStringPref(@"downloads_encoding_max_resolution", @"original");
     NSInteger targetMaxResolution = [maxResolution isEqualToString:@"original"] ? 0 : MAX(maxResolution.integerValue, 0);
     if (targetMaxResolution > 0 && width > 0 && height > 0) {
         NSString *scaleFilter = width >= height
@@ -434,16 +434,16 @@ static NSArray<NSString *> *SCIFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
     }
 
     // Advanced DASH merge path respects the selected video codec.
-    NSString *selectedCodec = codecOverride.length > 0 ? codecOverride : SCIFFmpegStringPref(@"general_media_encoding_vid_codec", @"videotoolbox");
+    NSString *selectedCodec = codecOverride.length > 0 ? codecOverride : SCIFFmpegStringPref(@"downloads_encoding_vid_codec", @"videotoolbox");
     NSInteger configuredBitrate = SCIFFmpegConfiguredVideoBitrateKbpsOrZero();
     NSInteger targetBitrate = configuredBitrate > 0 ? configuredBitrate : SCIFFmpegAdvancedDefaultBitrateKbps(sourceBitrate);
     BOOL maxQualityTier = SCIFFmpegDashSpeedTierIsMaxQuality();
 
     if ([selectedCodec isEqualToString:@"libx264"]) {
-        NSString *preset = SCIFFmpegStringPref(@"general_media_encoding_preset", @"medium");
-        NSString *profile = SCIFFmpegStringPref(@"general_media_encoding_h264_profile", @"main");
-        NSString *level = SCIFFmpegStringPref(@"general_media_encoding_h264_level", @"auto");
-        NSString *crf = SCIFFmpegStringPref(@"general_media_encoding_crf", @"");
+        NSString *preset = SCIFFmpegStringPref(@"downloads_encoding_preset", @"medium");
+        NSString *profile = SCIFFmpegStringPref(@"downloads_encoding_h264_profile", @"main");
+        NSString *level = SCIFFmpegStringPref(@"downloads_encoding_h264_level", @"auto");
+        NSString *crf = SCIFFmpegStringPref(@"downloads_encoding_crf", @"");
 
         [args addObjectsFromArray:@[
             @"-c:v", @"libx264",
@@ -476,7 +476,7 @@ static NSArray<NSString *> *SCIFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
     }
 
     // Pixel format
-    NSString *pixelFormat = SCIFFmpegStringPref(@"general_media_encoding_pixel_format", @"yuv420p");
+    NSString *pixelFormat = SCIFFmpegStringPref(@"downloads_encoding_pixel_format", @"yuv420p");
     if (![pixelFormat isEqualToString:@"default"] && pixelFormat.length > 0) {
         [args addObjectsFromArray:@[@"-pix_fmt", pixelFormat]];
     }
@@ -538,12 +538,12 @@ static NSArray<NSString *> *SCIFFmpegAudioReencodeArguments(NSURL *sourceURL, NS
         @"-c:a", @"aac"
     ]];
 
-    NSInteger audioBitrate = SCIFFmpegIntegerPref(@"general_media_encoding_audio_bitrate_kbps", 128);
+    NSInteger audioBitrate = SCIFFmpegIntegerPref(@"downloads_encoding_audio_bitrate_kbps", 128);
     if (audioBitrate > 0) {
         [args addObjectsFromArray:@[@"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate]]];
     }
 
-    NSString *channels = SCIFFmpegStringPref(@"general_media_encoding_audio_channels", @"original").lowercaseString;
+    NSString *channels = SCIFFmpegStringPref(@"downloads_encoding_audio_channels", @"original").lowercaseString;
     if ([channels isEqualToString:@"mono"]) {
         [args addObjectsFromArray:@[@"-ac", @"1"]];
     } else if ([channels isEqualToString:@"stereo"]) {
@@ -1324,7 +1324,7 @@ static void SCIFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
 
     NSMutableArray<NSDictionary<NSString *, id> *> *attempts = [NSMutableArray array];
 
-    BOOL useAdvanced = [SCIUtils getBoolPref:@"general_media_adv_encoding"];
+    BOOL useAdvanced = [SCIUtils getBoolPref:@"downloads_adv_encoding"];
     if (!useAdvanced) {
         // Default mode starts with the direct libx264+preset path, then retries
         // with normalized video inputs (and finally a setpts re-stamping pass)
@@ -1390,7 +1390,7 @@ static void SCIFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
             @"cleanupPaths": @[normalizedSetPTSVideoURL.path ?: @"", normalizedSetPTSEncodeURL.path ?: @""]
         }];
     } else {
-        NSString *selectedCodec = SCIFFmpegStringPref(@"general_media_encoding_vid_codec", @"videotoolbox");
+        NSString *selectedCodec = SCIFFmpegStringPref(@"downloads_encoding_vid_codec", @"videotoolbox");
         BOOL isLibx264 = [selectedCodec isEqualToString:@"libx264"];
 
         NSURL *advancedEncodeURL = SCIFFmpegPreFaststartURL(basename, isLibx264 ? @"advanced-libx264-pre-faststart" : @"advanced-videotoolbox-pre-faststart");

@@ -3,10 +3,6 @@
 #import "../SCIAppIconCatalog.h"
 #import "../SCIAppIconPickerViewController.h"
 #import "../SCITopicSettingsSupport.h"
-#import "../../Shared/MediaDownload/SCIMediaFFmpeg.h"
-#import "../../Shared/MediaDownload/SCIMediaQualityManager.h"
-#import "../../Shared/Downloads/SCIDownloadsHistoryViewController.h"
-#import "../../Shared/Downloads/SCIDownloadTypes.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 
@@ -26,54 +22,7 @@
     return setting;
 }
 
-+ (UIMenu *)audioPageDefaultActionMenu {
-    NSArray<NSDictionary *> *items = @[
-        @{@"title": @"Save to Files", @"value": @"files", @"icon": @"audio_download"},
-        @{@"title": @"Share", @"value": @"share", @"icon": @"share"},
-        @{@"title": @"Save to Gallery", @"value": @"gallery", @"icon": @"media"},
-        @{@"title": @"Play", @"value": @"play", @"icon": @"play"},
-        @{@"title": @"Copy Download URL", @"value": @"copy_url", @"icon": @"link"},
-        @{@"title": @"None", @"value": @"none", @"icon": @"action"}
-    ];
-    NSMutableArray<UICommand *> *commands = [NSMutableArray array];
-    for (NSDictionary *item in items) {
-        [commands addObject:[UICommand commandWithTitle:item[@"title"]
-                                                  image:[SCIAssetUtils instagramIconNamed:item[@"icon"] pointSize:22.0]
-                                                 action:@selector(menuChanged:)
-                                           propertyList:@{@"defaultsKey": @"general_audio_page_default_action", @"value": item[@"value"], @"iconName": item[@"icon"]}]];
-    }
-    return [UIMenu menuWithChildren:commands];
-}
-
 + (SCISetting *)rootSetting {
-    BOOL ffmpegAvailable = [SCIMediaFFmpeg isAvailable];
-    if (!ffmpegAvailable) {
-        [[NSUserDefaults standardUserDefaults] setObject:@"high_ignore_dash" forKey:@"general_media_vid_quality"];
-    }
-
-    SCISetting *videoQualitySetting = [SCISetting menuCellWithTitle:@"Default Video Quality"
-                                                           subtitle:(ffmpegAvailable ? @"" : @"Requires FFmpegKit")
-                                                               icon:SCISettingsIcon(@"video")
-                                                               menu:SCIMediaVideoQualityMenu()];
-    videoQualitySetting.userInfo = @{@"enabled": @(ffmpegAvailable)};
-
-    SCISetting *encodingSettings = [SCISetting navigationCellWithTitle:@"Encoding Settings"
-                                                              subtitle:(ffmpegAvailable ? @"" : @"Requires FFmpegKit")
-                                                                  icon:SCISettingsIcon(@"settings")
-                                                        viewController:[SCIMediaQualityManager encodingSettingsViewController]];
-    encodingSettings.userInfo = @{@"enabled": @(ffmpegAvailable)};
-    encodingSettings.searchSectionsProvider = ^NSArray *{
-        return [SCIMediaQualityManager encodingSettingsSearchSections];
-    };
-
-    SCISetting *encodingLogs = [SCISetting navigationCellWithTitle:@"View Encoding Logs"
-                                                          subtitle:@""
-                                                              icon:SCISettingsIcon(@"logs")
-                                                    viewController:[SCIMediaFFmpeg logsViewController]];
-    encodingLogs.userInfo = @{@"enabled": @YES};
-
-    NSString *qualityFooter = ffmpegAvailable ? @"\"High\" merges DASH files for best quality. \"Default\" uses ready-to-play files. \"Always Ask\" prompts for selection." : @"FFmpegKit is required for video quality options and encoding features.";
-
     SCISetting *clearCacheSetting = [SCISetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SCISettingsIcon(@"trash") action:^(void) {
         [SCIUtils cleanCache];
         SCINotify(kSCINotificationSettingsClearCache, @"Cache cleared", nil, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
@@ -140,25 +89,14 @@
                 ], nil)
             ]]
         ], @"Control ads, AI and suggestions visibility by surface."),
-        SCITopicSection(@"Media Saving", @[
-            [SCISetting switchCellWithTitle:@"Enhanced Media Resolution" icon:SCISettingsIcon(@"hd") defaultsKey:@"general_enhanced_media_resolution"],
-            [SCISetting switchCellWithTitle:@"Detect Duplicate Downloads" icon:SCISettingsIcon(@"media") defaultsKey:@"general_detect_duplicate_downloads"],
-            [SCISetting stepperCellWithTitle:@"Parallel Downloads" subtitle:@"%@ concurrent %@" defaultsKey:kSCIDownloadMaxConcurrentKey min:1 max:4 step:1 label:@"downloads" singularLabel:@"download"],
-            [SCISetting stepperCellWithTitle:@"History Limit" subtitle:@"%@ saved %@" defaultsKey:kSCIDownloadHistoryLimitKey min:50 max:1000 step:50 label:@"entries" singularLabel:@"entry"],
-            [SCISetting navigationCellWithTitle:@"Downloads"
-                                       subtitle:@"Queue, history, retry, and cancellation"
-                                           icon:SCISettingsIcon(@"download")
-                                 viewController:[SCIDownloadsHistoryViewController new]],
-            [SCISetting menuCellWithTitle:@"Default Photo Quality" icon:SCISettingsIcon(@"photo") menu:SCIMediaPhotoQualityMenu()],
-            videoQualitySetting,
-            encodingSettings,
-            encodingLogs
-        ], [NSString stringWithFormat:@"%@\n\nDuplicate detection runs before downloading. Gallery checks are exact. Photos checks cover media SCInsta saved while tracking is enabled.", qualityFooter]),
-        SCITopicSection(@"Audio", @[
-            [SCISetting switchCellWithTitle:@"Audio Downloads" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"general_audio_download_enabled"],
-            [SCISetting switchCellWithTitle:@"Audio Page Button" icon:SCISettingsIcon(@"audio_page") defaultsKey:@"general_audio_page_download" requiresRestart:YES],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Audio Page Default Action" icon:SCISettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SCISettingsIcon(@"action"))
-        ], @"Adds audio actions for audio pages and media action buttons."),
+        SCITopicSection(@"Comments", @[
+            [SCISetting switchCellWithTitle:@"Swipe to Close Comments" icon:SCISettingsIcon(@"left_right") defaultsKey:@"general_comments_swipe_close"],
+            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Swipe Direction" icon:SCISettingsIcon(@"left_right") menu:SCISwipeCloseCommentsDirectionMenu()], SCISettingsIcon(@"left_right")),
+            [SCISetting switchCellWithTitle:@"Copy Comment Text" icon:SCISettingsIcon(@"copy") defaultsKey:@"general_comments_copy_text"],
+            [SCISetting switchCellWithTitle:@"GIF Comment Actions" icon:SCISettingsIcon(@"gif") defaultsKey:@"general_comments_gif_actions"],
+            [SCISetting switchCellWithTitle:@"Confirm Comment Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"general_comments_confirm_like"],
+            [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"general_comments_hide_shopping"]
+        ], @"Copy Comment Text adds a copy action to comment menus. GIF Comment Actions adds Photos, Share, Gallery, and link actions for GIF comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads."),
         SCITopicSection(@"Storage", @[
             clearCacheSetting,
             [SCISetting menuCellWithTitle:@"Auto Clear Cache" icon:SCISettingsIcon(@"clock") menu:SCICacheAutoClearMenu()]

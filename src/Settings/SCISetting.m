@@ -168,10 +168,32 @@
                                label:(NSString *)label
                        singularLabel:(NSString *)singularLabel
 {
+    return [self stepperCellWithTitle:title
+                             subtitle:subtitle
+                                 icon:nil
+                          defaultsKey:defaultsKey
+                                  min:min
+                                  max:max
+                                 step:step
+                                label:label
+                        singularLabel:singularLabel];
+}
+
++ (instancetype)stepperCellWithTitle:(NSString *)title
+                            subtitle:(NSString *)subtitle
+                                icon:(UIImage *)icon
+                         defaultsKey:(NSString *)defaultsKey
+                                 min:(double)min
+                                 max:(double)max
+                                step:(double)step
+                               label:(NSString *)label
+                       singularLabel:(NSString *)singularLabel
+{
     SCISetting *setting = [[self alloc] initWithType:SCITableCellStepper];
 
     setting.title = title;
     setting.subtitle = subtitle;
+    setting.icon = icon;
     setting.defaultsKey = defaultsKey;
 
     setting.min = min;

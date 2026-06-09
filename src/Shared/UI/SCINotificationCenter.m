@@ -541,12 +541,20 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
         pill = [SCINotificationPillView progressPill];
         [pill updateProgressTitle:title ?: @"Downloading..." subtitle:nil];
         pill.onCancel = onCancel;
+        __weak SCINotificationPillView *weakPillRef = pill;
         pill.onTonePresented = ^(SCINotificationTone tone) {
-            if ([SCIUtils getBoolPref:@"general_disable_haptics"]) return;
-            UINotificationFeedbackGenerator *haptic = [[UINotificationFeedbackGenerator alloc] init];
-            if (tone == SCINotificationToneError) [haptic notificationOccurred:UINotificationFeedbackTypeError];
-            else if (tone == SCINotificationToneSuccess) [haptic notificationOccurred:UINotificationFeedbackTypeSuccess];
-            else [haptic notificationOccurred:UINotificationFeedbackTypeWarning];
+            if (![SCIUtils getBoolPref:@"general_disable_haptics"]) {
+                UINotificationFeedbackGenerator *haptic = [[UINotificationFeedbackGenerator alloc] init];
+                if (tone == SCINotificationToneError) [haptic notificationOccurred:UINotificationFeedbackTypeError];
+                else if (tone == SCINotificationToneSuccess) [haptic notificationOccurred:UINotificationFeedbackTypeSuccess];
+                else [haptic notificationOccurred:UINotificationFeedbackTypeWarning];
+            }
+            // Auto-dismiss progress pills in terminal state after the configured duration.
+            NSTimeInterval duration = SCINotificationPillDuration();
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(duration * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                SCINotificationPillView *p = weakPillRef;
+                if (p && p.superview) [p dismiss];
+            });
         };
         [self insertPill:pill identifier:@"download_queue_aggregate" progress:YES];
     };

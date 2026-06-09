@@ -51,8 +51,16 @@ static NSString *SCIGalleryNormalizedExtension(NSString * _Nullable origExt, SCI
         videoExts = [NSSet setWithArray:@[ @"mp4", @"mov", @"m4v", @"webm" ]];
         audioExts = [NSSet setWithArray:@[ @"m4a", @"aac", @"mp3", @"wav", @"caf", @"aiff", @"flac", @"opus", @"ogg" ]];
     });
-    if (e.length > 0 && e.length <= 5 && ([imageExts containsObject:e] || [videoExts containsObject:e] || [audioExts containsObject:e])) {
-        return [e isEqualToString:@"jpeg"] ? @"jpg" : e;
+    // Only keep the original extension when it belongs to the SAME category as the
+    // requested media type. Otherwise we'd e.g. keep a ".mp4" extension for audio
+    // (audio extracted from a video container), which makes the file look like a
+    // video to every downstream extension-based check and breaks duplicate detection.
+    if (e.length > 0 && e.length <= 5) {
+        if (mediaType == SCIGalleryMediaTypeAudio && [audioExts containsObject:e]) return e;
+        if (mediaType == SCIGalleryMediaTypeVideo && [videoExts containsObject:e]) return e;
+        if (mediaType == SCIGalleryMediaTypeImage && [imageExts containsObject:e]) {
+            return [e isEqualToString:@"jpeg"] ? @"jpg" : e;
+        }
     }
     if (mediaType == SCIGalleryMediaTypeAudio) return @"m4a";
     return (mediaType == SCIGalleryMediaTypeVideo) ? @"mp4" : @"jpg";

@@ -14,7 +14,7 @@
 
 static NSInteger const kSCIAudioPageDownloadButtonTag = 1351;
 static const void *kSCIAudioPageButtonKey = &kSCIAudioPageButtonKey;
-static NSString * const kSCIAudioPageDefaultActionKey = @"general_audio_page_default_action";
+static NSString * const kSCIAudioPageDefaultActionKey = @"downloads_audio_page_default_action";
 static NSString * const kSCIAudioPageActionFiles = @"files";
 static NSString * const kSCIAudioPageActionShare = @"share";
 static NSString * const kSCIAudioPageActionConvertShare = @"convert_share";
@@ -110,7 +110,7 @@ static SCIAudioItem *SCIAudioPageItem(NSURL *url, SCIGallerySaveMetadata *metada
 }
 
 static void SCIAudioPageRunAction(NSString *action, NSURL *url, UIView *sourceView, SCIGallerySaveMetadata *metadata) {
-    if (![SCIUtils getBoolPref:@"general_audio_download_enabled"] && ![action isEqualToString:kSCIAudioPageActionPlay]) {
+    if (![SCIUtils getBoolPref:@"downloads_audio_enabled"] && ![action isEqualToString:kSCIAudioPageActionPlay]) {
         SCINotify(kSCINotificationDownloadShare, @"Audio downloads disabled", nil, @"error_filled", SCINotificationToneError);
         return;
     }
@@ -242,7 +242,7 @@ static UIButton *SCIAudioPageButtonForHost(UIView *host) {
 }
 
 static void SCIAudioPageInstallButton(UIView *bar) {
-    if (![SCIUtils getBoolPref:@"general_audio_page_download"]) {
+    if (![SCIUtils getBoolPref:@"downloads_audio_page_button"]) {
         [[bar viewWithTag:kSCIAudioPageDownloadButtonTag] removeFromSuperview];
         return;
     }
@@ -339,8 +339,8 @@ static void SCIAudioPageInstallButton(UIView *bar) {
 %end
 
 extern "C" void SCIInstallAudioPageDownloadHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"general_audio_download_enabled"]) return;
-    if (![SCIUtils getBoolPref:@"general_audio_page_download"]) return;
+    if (![SCIUtils getBoolPref:@"downloads_audio_enabled"]) return;
+    if (![SCIUtils getBoolPref:@"downloads_audio_page_button"]) return;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SCIAudioPageDownloadHooks);

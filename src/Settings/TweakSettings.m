@@ -6,6 +6,7 @@
 #import "Topics/SCIInstantsSettingsProvider.h"
 #import "Topics/SCIInterfaceSettingsProvider.h"
 #import "Topics/SCIGallerySettingsProvider.h"
+#import "Topics/SCIDownloadsSettingsProvider.h"
 #import "Topics/SCIMessagesSettingsProvider.h"
 #import "Topics/SCIProfileSettingsProvider.h"
 #import "Topics/SCIProfileAnalyzerSettingsProvider.h"
@@ -34,6 +35,7 @@
             @"header": @"",
             @"rows": @[
                 [SCIGallerySettingsProvider rootSetting],
+                [SCIDownloadsSettingsProvider rootSetting],
                 [SCIProfileAnalyzerSettingsProvider rootSetting]
             ]
         },

@@ -289,7 +289,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 // Demangled name: IGCommentThreadCommerceCarouselPill.IGCommentThreadCommerceCarousel
 %hook _TtC35IGCommentThreadCommerceCarouselPill31IGCommentThreadCommerceCarousel
 - (id)initWithFrame:(CGRect)frame pillText:(id)text pillStyle:(NSInteger)style {
-    if ([SCIUtils getBoolPref:@"feed_hide_comment_shopping"]) {
+    if ([SCIUtils getBoolPref:@"general_comments_hide_shopping"]) {
         return nil;
     }
 
@@ -466,7 +466,7 @@ extern "C" void SCIInstallAdBlockingEarlyHooksIfEnabled(void) {
     if (![SCIUtils getBoolPref:@"general_hide_ads_feed"] &&
         ![SCIUtils getBoolPref:@"general_hide_ads_reels"] &&
         ![SCIUtils getBoolPref:@"general_hide_ads_explore"] &&
-        ![SCIUtils getBoolPref:@"feed_hide_comment_shopping"] &&
+        ![SCIUtils getBoolPref:@"general_comments_hide_shopping"] &&
         ![SCIUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
         return;
     }

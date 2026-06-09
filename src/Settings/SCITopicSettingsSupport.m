@@ -202,16 +202,16 @@ UIMenu *SCINavigationIconOrderingMenu(void) {
 
 UIMenu *SCILaunchTabMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Instagram Default", nil, nil, @"interface_launch_tab", @"default", YES),
+        SCIMenuCommand(@"Default", nil, nil, @"interface_launch_tab", @"default", YES),
         [UIMenu menuWithTitle:@""
                         image:nil
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
             SCIMenuCommand(@"Feed", @"home", nil, @"interface_launch_tab", @"feed", YES),
-            SCIMenuCommand(@"Explore", @"search", nil, @"interface_launch_tab", @"explore", YES),
             SCIMenuCommand(@"Reels", @"reels", nil, @"interface_launch_tab", @"reels", YES),
             SCIMenuCommand(@"Messages", @"messages", nil, @"interface_launch_tab", @"inbox", YES),
+            SCIMenuCommand(@"Explore", @"search", nil, @"interface_launch_tab", @"explore", YES),
             SCIMenuCommand(@"Profile", @"user_circle", nil, @"interface_launch_tab", @"profile", YES)
         ]]
     ]];
@@ -246,7 +246,7 @@ UIMenu *SCILiquidGlassTabBarStateMenu(void) {
 }
 
 UIMenu *SCISwipeCloseCommentsDirectionMenu(void) {
-    static NSString * const kSCISwipeCloseCommentsDirectionKey = @"feed_comments_swipe_close_direction";
+    static NSString * const kSCISwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
     return [UIMenu menuWithChildren:@[
         SCIMenuCommand(@"Both", @"left_right", nil, kSCISwipeCloseCommentsDirectionKey, @"both", NO),
         SCIMenuCommand(@"Left", @"arrow_left", nil, kSCISwipeCloseCommentsDirectionKey, @"left", NO),
@@ -282,25 +282,25 @@ UIMenu *SCINotificationPillPositionMenu(void) {
 
 UIMenu *SCIMediaVideoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Default", nil, nil, @"general_media_vid_quality", @"high_ignore_dash", NO),
+        SCIMenuCommand(@"Default", nil, nil, @"downloads_video_quality", @"high_ignore_dash", NO),
         [UIMenu menuWithTitle:@""
                         image:nil
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SCIMenuCommand(@"Always Ask", nil, nil, @"general_media_vid_quality", @"always_ask", NO),
-            SCIMenuCommand(@"High", nil, nil, @"general_media_vid_quality", @"high", NO),
-            SCIMenuCommand(@"Medium", nil, nil, @"general_media_vid_quality", @"medium", NO),
-            SCIMenuCommand(@"Low", nil, nil, @"general_media_vid_quality", @"low", NO)
+            SCIMenuCommand(@"Always Ask", nil, nil, @"downloads_video_quality", @"always_ask", NO),
+            SCIMenuCommand(@"High", nil, nil, @"downloads_video_quality", @"high", NO),
+            SCIMenuCommand(@"Medium", nil, nil, @"downloads_video_quality", @"medium", NO),
+            SCIMenuCommand(@"Low", nil, nil, @"downloads_video_quality", @"low", NO)
         ]]
     ]];
 }
 
 UIMenu *SCIMediaPhotoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIMenuCommand(@"Always Ask", nil, nil, @"general_media_img_quality", @"always_ask", NO),
-        SCIMenuCommand(@"High", nil, nil, @"general_media_img_quality", @"high", NO),
-        SCIMenuCommand(@"Low", nil, nil, @"general_media_img_quality", @"low", NO)
+        SCIMenuCommand(@"Always Ask", nil, nil, @"downloads_photo_quality", @"always_ask", NO),
+        SCIMenuCommand(@"High", nil, nil, @"downloads_photo_quality", @"high", NO),
+        SCIMenuCommand(@"Low", nil, nil, @"downloads_photo_quality", @"low", NO)
     ]];
 }
 

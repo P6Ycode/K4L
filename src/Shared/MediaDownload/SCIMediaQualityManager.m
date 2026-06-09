@@ -954,8 +954,8 @@ SCIMediaFFmpegFreeHighOption(SCIMediaAnalysis *analysis) {
 
 static SCIMediaOption *
 SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
-  NSString *preferenceKey = analysis.isVideo ? @"general_media_vid_quality"
-                                             : @"general_media_img_quality";
+  NSString *preferenceKey = analysis.isVideo ? @"downloads_video_quality"
+                                             : @"downloads_photo_quality";
   NSString *quality = [SCIUtils getStringPref:preferenceKey];
   if (quality.length == 0) {
     quality = analysis.isVideo ? @"always_ask" : @"high";
@@ -1339,7 +1339,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 - (void)switchChanged:(UISwitch *)sender {
   [super switchChanged:sender];
   SCISetting *row = [self settingForSender:sender];
-  if ([row.defaultsKey isEqualToString:@"general_media_adv_encoding"]) {
+  if ([row.defaultsKey isEqualToString:@"downloads_adv_encoding"]) {
     [self replaceSections:[self buildSections]];
   }
 }
@@ -1352,13 +1352,13 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
                     @"",
                     @[ [SCISetting
                         switchCellWithTitle:@"Advanced Encoding"
-                                defaultsKey:@"general_media_adv_encoding"] ],
+                                defaultsKey:@"downloads_adv_encoding"] ],
                     @"Advanced Encoding exposes codec, preset, bitrate, CRF, "
                     @"resolution, and audio overrides. In advanced mode, the "
                     @"selected video codec is used for DASH merges while audio "
                     @"remains copied.")];
 
-  if ([SCIUtils getBoolPref:@"general_media_adv_encoding"]) {
+  if ([SCIUtils getBoolPref:@"downloads_adv_encoding"]) {
     [sections addObject:SCITopicSection(
                             @"Video",
                             @[
@@ -1386,11 +1386,11 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
                       textFieldCellWithTitle:@"CRF"
                                  placeholder:@"Auto"
                                 keyboardType:UIKeyboardTypeNumberPad
-                                 defaultsKey:@"general_media_encoding_crf"],
+                                 defaultsKey:@"downloads_encoding_crf"],
                   [SCISetting textFieldCellWithTitle:@"Video Bitrate"
                                          placeholder:@"Auto"
                                         keyboardType:UIKeyboardTypeNumberPad
-                                         defaultsKey:@"general_media_encoding_"
+                                         defaultsKey:@"downloads_encoding_"
                                                      @"vid_bitrate_kbps"],
                   [SCISetting menuCellWithTitle:@"Max Resolution"
                                        subtitle:nil
@@ -1406,7 +1406,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
                             textFieldCellWithTitle:@"Audio Bitrate"
                                        placeholder:@"128"
                                       keyboardType:UIKeyboardTypeNumberPad
-                                       defaultsKey:@"general_media_encoding_"
+                                       defaultsKey:@"downloads_encoding_"
                                                    @"audio_bitrate_kbps"],
                         [SCISetting menuCellWithTitle:@"Audio Channels"
                                              subtitle:nil
@@ -1424,7 +1424,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
                         [SCISetting
                             switchCellWithTitle:@"Fast Start"
                                     defaultsKey:
-                                        @"general_media_encoding_faststart"]
+                                        @"downloads_encoding_faststart"]
                       ],
                       @"Fast Start moves MP4 metadata to the beginning of the "
                       @"file, allowing the video to start playing immediately "
@@ -1464,7 +1464,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
     SCITopicSection(
         @"",
         @[ [SCISetting switchCellWithTitle:@"Advanced Encoding"
-                               defaultsKey:@"general_media_adv_encoding"] ],
+                               defaultsKey:@"downloads_adv_encoding"] ],
         @"Advanced Encoding exposes codec, preset, bitrate, CRF, resolution, "
         @"and audio overrides. In advanced mode, the selected video codec is "
         @"used for DASH merges while audio remains copied."),
@@ -1496,13 +1496,13 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
           [SCISetting textFieldCellWithTitle:@"CRF"
                                  placeholder:@"Auto"
                                 keyboardType:UIKeyboardTypeNumberPad
-                                 defaultsKey:@"general_media_encoding_crf"],
+                                 defaultsKey:@"downloads_encoding_crf"],
           [SCISetting
               textFieldCellWithTitle:@"Video Bitrate"
                          placeholder:@"Auto"
                         keyboardType:UIKeyboardTypeNumberPad
                          defaultsKey:
-                             @"general_media_encoding_vid_bitrate_kbps"],
+                             @"downloads_encoding_vid_bitrate_kbps"],
           [SCISetting menuCellWithTitle:@"Max Resolution"
                                subtitle:nil
                                    menu:[self maxResMenu]]
@@ -1516,7 +1516,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
                          placeholder:@"128"
                         keyboardType:UIKeyboardTypeNumberPad
                          defaultsKey:
-                             @"general_media_encoding_audio_bitrate_kbps"],
+                             @"downloads_encoding_audio_bitrate_kbps"],
           [SCISetting menuCellWithTitle:@"Audio Channels"
                                subtitle:nil
                                    menu:[self audioChannelsMenu]]
@@ -1530,7 +1530,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
                                    menu:[self pixelFormatMenu]],
           [SCISetting
               switchCellWithTitle:@"Fast Start"
-                      defaultsKey:@"general_media_encoding_faststart"]
+                      defaultsKey:@"downloads_encoding_faststart"]
         ],
         @"Fast Start moves MP4 metadata to the beginning of the file, allowing "
         @"the video to start playing immediately when shared online or "
@@ -1540,7 +1540,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)speedMenu {
-  return [self buildMenuForPref:@"general_media_encoding_speed"
+  return [self buildMenuForPref:@"downloads_encoding_speed"
                           items:@[
                             @{@"value" : @"ultrafast", @"label" : @"Ultrafast"},
                             @{@"value" : @"faster", @"label" : @"Faster"},
@@ -1551,7 +1551,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 
 - (UIMenu *)codecMenu {
   return [self
-      buildMenuForPref:@"general_media_encoding_vid_codec"
+      buildMenuForPref:@"downloads_encoding_vid_codec"
                  items:@[
                    @{@"value" : @"videotoolbox", @"label" : @"VideoToolbox"},
                    @{@"value" : @"libx264", @"label" : @"libx264"}
@@ -1559,7 +1559,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)presetMenu {
-  return [self buildMenuForPref:@"general_media_encoding_preset"
+  return [self buildMenuForPref:@"downloads_encoding_preset"
                           items:@[
                             @{@"value" : @"ultrafast", @"label" : @"Ultrafast"},
                             @{@"value" : @"superfast", @"label" : @"Superfast"},
@@ -1574,7 +1574,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)profileMenu {
-  return [self buildMenuForPref:@"general_media_encoding_h264_profile"
+  return [self buildMenuForPref:@"downloads_encoding_h264_profile"
                           items:@[
                             @{@"value" : @"baseline", @"label" : @"Baseline"},
                             @{@"value" : @"main", @"label" : @"Main"},
@@ -1583,7 +1583,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)levelMenu {
-  return [self buildMenuForPref:@"general_media_encoding_h264_level"
+  return [self buildMenuForPref:@"downloads_encoding_h264_level"
                           items:@[
                             @{@"value" : @"auto", @"label" : @"Auto"},
                             @{@"value" : @"3.1", @"label" : @"3.1"},
@@ -1594,7 +1594,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)maxResMenu {
-  return [self buildMenuForPref:@"general_media_encoding_max_resolution"
+  return [self buildMenuForPref:@"downloads_encoding_max_resolution"
                           items:@[
                             @{@"value" : @"original", @"label" : @"Original"},
                             @{@"value" : @"480", @"label" : @"480p"},
@@ -1604,7 +1604,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)audioChannelsMenu {
-  return [self buildMenuForPref:@"general_media_encoding_audio_channels"
+  return [self buildMenuForPref:@"downloads_encoding_audio_channels"
                           items:@[
                             @{@"value" : @"original", @"label" : @"Original"},
                             @{@"value" : @"stereo", @"label" : @"Stereo"},
@@ -1613,7 +1613,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (UIMenu *)pixelFormatMenu {
-  return [self buildMenuForPref:@"general_media_encoding_pixel_format"
+  return [self buildMenuForPref:@"downloads_encoding_pixel_format"
                           items:@[
                             @{@"value" : @"default", @"label" : @"Default"},
                             @{@"value" : @"yuv420p", @"label" : @"yuv420p"},

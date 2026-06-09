@@ -1,6 +1,7 @@
 #import "SCIDownloadsHistoryViewController.h"
 
 #import "SCIDownloadService.h"
+#import "SCIDownloadsSettingsViewController.h"
 #import "../UI/SCIIGAlertPresenter.h"
 #import "SCIDownloadTypes.h"
 #import "../Gallery/SCIGalleryViewController.h"
@@ -27,49 +28,6 @@ static NSString *SCIDownloadHistoryDisplayUsername(NSString *username) {
     if ([blocked containsObject:lower]) return nil;
     NSCharacterSet *invalid = [[NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._"] invertedSet];
     return [trimmed rangeOfCharacterFromSet:invalid].location == NSNotFound ? trimmed : nil;
-}
-
-static NSCache<NSString *, UIImage *> *SCIDownloadThumbnailCache(void) {
-    static NSCache *cache;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        cache = [[NSCache alloc] init];
-        cache.countLimit = 100;
-    });
-    return cache;
-}
-
-static void SCIDownloadLoadThumbnailForItem(SCIDownloadItem *item, void (^completion)(UIImage * _Nullable)) {
-    if (!item) { completion(nil); return; }
-    NSString *path = item.finalPath ?: item.stagedPath;
-    if (!path || ![[NSFileManager defaultManager] fileExistsAtPath:path]) { completion(nil); return; }
-
-    UIImage *cached = [SCIDownloadThumbnailCache() objectForKey:item.itemID];
-    if (cached) { completion(cached); return; }
-
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        UIImage *thumb = nil;
-        if (item.mediaKind == SCIDownloadMediaKindImage) {
-            UIImage *full = [UIImage imageWithContentsOfFile:path];
-            if (full) {
-                CGFloat s = MIN(200.0 / full.size.width, 200.0 / full.size.height);
-                CGSize sz = CGSizeMake(full.size.width * s, full.size.height * s);
-                UIGraphicsBeginImageContextWithOptions(sz, NO, 1.0);
-                [full drawInRect:CGRectMake(0, 0, sz.width, sz.height)];
-                thumb = UIGraphicsGetImageFromCurrentImageContext();
-                UIGraphicsEndImageContext();
-            }
-        } else if (item.mediaKind == SCIDownloadMediaKindVideo) {
-            AVAsset *asset = [AVAsset assetWithURL:[NSURL fileURLWithPath:path]];
-            AVAssetImageGenerator *gen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
-            gen.appliesPreferredTrackTransform = YES;
-            gen.maximumSize = CGSizeMake(200.0, 200.0);
-            CGImageRef cg = [gen copyCGImageAtTime:CMTimeMake(1, 2) actualTime:NULL error:nil];
-            if (cg) { thumb = [UIImage imageWithCGImage:cg]; CGImageRelease(cg); }
-        }
-        if (thumb) [SCIDownloadThumbnailCache() setObject:thumb forKey:item.itemID];
-        dispatch_async(dispatch_get_main_queue(), ^{ completion(thumb); });
-    });
 }
 
 static NSString *SCIDownloadHistoryDateString(NSTimeInterval timestamp) {
@@ -105,12 +63,19 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 @property (nonatomic, strong) UIImageView *thumbnailView;
 @property (nonatomic, strong) UIImageView *statusBadge;
 @property (nonatomic, strong) UIImageView *rowTypeIcon;
+@property (nonatomic, strong) UIImageView *chevronView;
+@property (nonatomic, strong) UIView *highlightOverlay;
+@property (nonatomic, strong) UIView *separatorLine;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *technicalLabel;
 @property (nonatomic, strong) UIView *pillBackground;
 @property (nonatomic, strong) UILabel *pillLabel;
 @property (nonatomic, strong) UILabel *dateLabel;
+@property (nonatomic, strong) UIImageView *compactStatusIcon;
+@property (nonatomic, strong) UILabel *compactLabel;
 @property (nonatomic, strong) NSLayoutConstraint *thumbLeading;
+@property (nonatomic, strong) NSLayoutConstraint *rowTypeIconWidth;
+@property (nonatomic, strong) NSLayoutConstraint *separatorLeading;
 @property (nonatomic, copy, nullable) NSString *representedID;
 @end
 
@@ -120,10 +85,33 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
     if ((self = [super initWithStyle:style reuseIdentifier:reuseIdentifier])) {
         self.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
         self.contentView.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
 
-        UIView *bg = [UIView new];
-        bg.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
-        self.selectedBackgroundView = bg;
+        // Highlight overlay (manual — avoids separator jump that UIKit selection causes)
+        _highlightOverlay = [UIView new];
+        _highlightOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+        _highlightOverlay.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
+        _highlightOverlay.hidden = YES;
+        [self.contentView addSubview:_highlightOverlay];
+        [NSLayoutConstraint activateConstraints:@[
+            [_highlightOverlay.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+            [_highlightOverlay.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+            [_highlightOverlay.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+            [_highlightOverlay.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        ]];
+
+        // Custom separator line (avoids the jump issue with system separators)
+        _separatorLine = [UIView new];
+        _separatorLine.translatesAutoresizingMaskIntoConstraints = NO;
+        _separatorLine.backgroundColor = [SCIUtils SCIColor_InstagramSeparator];
+        [self.contentView addSubview:_separatorLine];
+        _separatorLeading = [_separatorLine.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:80];
+        [NSLayoutConstraint activateConstraints:@[
+            _separatorLeading,
+            [_separatorLine.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+            [_separatorLine.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+            [_separatorLine.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
+        ]];
 
         // Thumbnail 52x52, rounded
         _thumbnailView = [UIImageView new];
@@ -191,6 +179,7 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
         [self.contentView addSubview:_dateLabel];
 
         _thumbLeading = [_thumbnailView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16];
+        _rowTypeIconWidth = [_rowTypeIcon.widthAnchor constraintEqualToConstant:14];
 
         [NSLayoutConstraint activateConstraints:@[
             _thumbLeading,
@@ -209,12 +198,13 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 
             [_rowTypeIcon.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
             [_rowTypeIcon.centerYAnchor constraintEqualToAnchor:_technicalLabel.centerYAnchor],
-            [_rowTypeIcon.widthAnchor constraintEqualToConstant:14],
+            _rowTypeIconWidth,
             [_rowTypeIcon.heightAnchor constraintEqualToConstant:14],
 
             [_technicalLabel.leadingAnchor constraintEqualToAnchor:_rowTypeIcon.trailingAnchor constant:4],
             [_technicalLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:3],
             [_technicalLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16],
+            [_technicalLabel.heightAnchor constraintGreaterThanOrEqualToConstant:14],
 
             [_pillBackground.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
             [_pillBackground.topAnchor constraintEqualToAnchor:_technicalLabel.bottomAnchor constant:4],
@@ -225,27 +215,95 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 
             [_dateLabel.leadingAnchor constraintEqualToAnchor:_pillBackground.trailingAnchor constant:8],
             [_dateLabel.centerYAnchor constraintEqualToAnchor:_pillBackground.centerYAnchor],
-            [_dateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16],
+            [_dateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-36],
+        ]];
+
+        // Chevron (custom, not accessoryView — avoids selection color bleed)
+        _chevronView = [UIImageView new];
+        _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
+        _chevronView.contentMode = UIViewContentModeScaleAspectFit;
+        _chevronView.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
+        _chevronView.hidden = YES;
+        [self.contentView addSubview:_chevronView];
+        [NSLayoutConstraint activateConstraints:@[
+            [_chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
+            [_chevronView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_chevronView.widthAnchor constraintEqualToConstant:12],
+            [_chevronView.heightAnchor constraintEqualToConstant:12],
+        ]];
+
+        // Compact child layout: a small status icon + single metadata line, both
+        // vertically centered. Independent of the parent layout (which anchors the
+        // title to the thumbnail top and breaks at short row heights).
+        _compactStatusIcon = [UIImageView new];
+        _compactStatusIcon.translatesAutoresizingMaskIntoConstraints = NO;
+        _compactStatusIcon.contentMode = UIViewContentModeScaleAspectFit;
+        _compactStatusIcon.hidden = YES;
+        [self.contentView addSubview:_compactStatusIcon];
+
+        _compactLabel = [UILabel new];
+        _compactLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        _compactLabel.font = [UIFont systemFontOfSize:13];
+        _compactLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+        _compactLabel.numberOfLines = 1;
+        _compactLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        _compactLabel.hidden = YES;
+        [self.contentView addSubview:_compactLabel];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [_compactStatusIcon.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:40],
+            [_compactStatusIcon.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_compactStatusIcon.widthAnchor constraintEqualToConstant:16],
+            [_compactStatusIcon.heightAnchor constraintEqualToConstant:16],
+
+            [_compactLabel.leadingAnchor constraintEqualToAnchor:_compactStatusIcon.trailingAnchor constant:10],
+            [_compactLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_compactLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16],
         ]];
     }
     return self;
 }
 
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
+    [super setHighlighted:highlighted animated:animated];
+    if (animated) {
+        [UIView animateWithDuration:highlighted ? 0.05 : 0.3 animations:^{
+            self.highlightOverlay.hidden = !highlighted;
+        }];
+    } else {
+        self.highlightOverlay.hidden = !highlighted;
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
+    self.highlightOverlay.hidden = YES;
     self.thumbnailView.image = nil;
     self.thumbnailView.tintColor = nil;
     self.thumbnailView.contentMode = UIViewContentModeScaleAspectFill;
+    self.thumbnailView.hidden = NO;
+    self.thumbnailView.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
+    self.thumbnailView.layer.cornerRadius = 6;
     self.statusBadge.image = nil;
     self.statusBadge.hidden = YES;
     self.rowTypeIcon.image = nil;
+    self.rowTypeIcon.hidden = NO;
+    self.rowTypeIconWidth.constant = 14;
     self.titleLabel.text = nil;
+    self.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    self.titleLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
     self.technicalLabel.text = nil;
     self.pillLabel.text = nil;
     self.pillBackground.hidden = NO;
     self.dateLabel.text = nil;
     self.dateLabel.hidden = NO;
     self.thumbLeading.constant = 16;
+    self.chevronView.hidden = YES;
+    self.chevronView.transform = CGAffineTransformIdentity;
+    self.compactStatusIcon.hidden = YES;
+    self.compactStatusIcon.image = nil;
+    self.compactLabel.hidden = YES;
+    self.compactLabel.text = nil;
     self.accessoryType = UITableViewCellAccessoryNone;
     self.representedID = nil;
 }
@@ -301,8 +359,7 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.separatorInset = UIEdgeInsetsMake(0, 80, 0, 0);
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.tableView registerClass:[SCIDownloadHistoryCell class] forCellReuseIdentifier:@"cell"];
     [self.view addSubview:self.tableView];
 
@@ -399,11 +456,22 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 
     UIMenu *menu = [self moreMenu];
     UIBarButtonItem *moreItem = SCIMediaChromeTopBarMenuButtonItem(@"more", menu, @"More");
+    UIBarButtonItem *settingsItem = SCIMediaChromeTopBarButtonItem(@"settings", self, @selector(pushSettings));
     if (hasHiddenPill) {
         UIBarButtonItem *showProgressItem = SCIMediaChromeTopBarButtonItem(@"play_filled", self, @selector(showProgressTapped));
-        SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[showProgressItem, moreItem]);
+        SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[showProgressItem, settingsItem, moreItem]);
     } else {
-        SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[moreItem]);
+        SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[settingsItem, moreItem]);
+    }
+}
+
+- (void)pushSettings {
+    SCIDownloadsSettingsViewController *vc = [SCIDownloadsSettingsViewController new];
+    if (self.navigationController) {
+        [self.navigationController pushViewController:vc animated:YES];
+    } else {
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        [self presentViewController:nav animated:YES completion:nil];
     }
 }
 
@@ -509,11 +577,11 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 
 - (void)clearFinished {
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:@"Clear finished downloads?"
+                                                  title:@"Clear Finished Downloads"
                                                 message:@"Active and queued downloads are kept."
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
-        [SCIIGAlertAction actionWithTitle:@"Clear Finished" style:SCIIGAlertActionStyleDestructive handler:^{
+        [SCIIGAlertAction actionWithTitle:@"Clear" style:SCIIGAlertActionStyleDestructive handler:^{
             [[SCIDownloadService shared] clearFinishedHistory];
             [self reload];
         }],
@@ -532,11 +600,27 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
     __weak typeof(self) weakSelf = self;
     NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
 
+    // Navigation actions (top)
+    NSMutableArray<UIAction *> *nav = [NSMutableArray array];
+    [nav addObject:[UIAction actionWithTitle:@"Open Gallery"
+                                       image:[SCIAssetUtils instagramIconNamed:@"media" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                  identifier:nil
+                                     handler:^(__unused UIAction *a) { [SCIGalleryViewController presentGallery]; }]];
+    [nav addObject:[UIAction actionWithTitle:@"Open Photos App"
+                                       image:[SCIAssetUtils instagramIconNamed:@"photo_gallery" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                  identifier:nil
+                                     handler:^(__unused UIAction *a) { [SCIUtils openPhotosApp]; }]];
+    [elements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:nav]];
+
+    // Destructive actions (bottom — inline section keeps them visually grouped last)
+    NSMutableArray<UIAction *> *destructive = [NSMutableArray array];
+
     UIAction *clearAction = [UIAction actionWithTitle:@"Clear Finished"
                                                 image:[SCIAssetUtils instagramIconNamed:@"trash" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                            identifier:nil
                                               handler:^(__unused UIAction *a) { [weakSelf clearFinished]; }];
-    [elements addObject:clearAction];
+    clearAction.attributes = UIMenuElementAttributesDestructive;
+    [destructive addObject:clearAction];
 
     BOOL hasActive = NO;
     for (SCIDownloadJob *job in [[SCIDownloadService shared] jobsMatchingFilter:SCIDownloadHistoryFilterAll]) {
@@ -550,19 +634,10 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
                                              identifier:nil
                                                 handler:^(__unused UIAction *a) { [SCIDownloadService confirmCancelAllActive]; }];
         cancelAll.attributes = UIMenuElementAttributesDestructive;
-        [elements addObject:cancelAll];
+        [destructive addObject:cancelAll];
     }
 
-    NSMutableArray<UIAction *> *nav = [NSMutableArray array];
-    [nav addObject:[UIAction actionWithTitle:@"Go to Gallery"
-                                       image:[SCIAssetUtils instagramIconNamed:@"media" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
-                                  identifier:nil
-                                     handler:^(__unused UIAction *a) { [SCIGalleryViewController presentGallery]; }]];
-    [nav addObject:[UIAction actionWithTitle:@"Open Photos App"
-                                       image:[SCIAssetUtils instagramIconNamed:@"photo" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
-                                  identifier:nil
-                                     handler:^(__unused UIAction *a) { [SCIUtils openPhotosApp]; }]];
-    [elements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:nav]];
+    [elements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:destructive]];
     return elements;
 }
 
@@ -575,9 +650,13 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 
 #pragma mark - Cell configuration helpers
 
-/// Returns the icon name for the download destination, used as thumbnail placeholder.
-static NSString *SCIActionIconForDestination(SCIDownloadDestination dest) {
-    switch (dest) {
+/// Returns the icon name reflecting the ACTION that was performed on this job.
+/// Batch share/clipboard jobs use CacheOnly destination + finalize flags, so we must
+/// check those flags first; otherwise they'd all show the generic download icon.
+static NSString *SCIActionIconForJob(SCIDownloadJob *job) {
+    if (job.request.finalizeAsBatchShare) return @"share";
+    if (job.request.finalizeAsBatchClipboard) return @"copy";
+    switch (job.request.destination) {
         case SCIDownloadDestinationPhotos:    return @"photo";
         case SCIDownloadDestinationGallery:   return @"media";
         case SCIDownloadDestinationShare:     return @"share";
@@ -648,7 +727,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
-    return self.rows[indexPath.row].kind == SCIDownloadsHistoryRowKindChild ? 60 : 72;
+    return self.rows[indexPath.row].kind == SCIDownloadsHistoryRowKindChild ? 40 : 72;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -672,7 +751,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
     cell.titleLabel.text = job.title ?: @"Download";
 
     // Thumbnail: destination action icon, no tint bleed
-    NSString *actionIcon = SCIActionIconForDestination(job.request.destination);
+    NSString *actionIcon = SCIActionIconForJob(job);
     cell.thumbnailView.contentMode = UIViewContentModeCenter;
     cell.thumbnailView.image = [SCIAssetUtils instagramIconNamed:actionIcon pointSize:24];
     cell.thumbnailView.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
@@ -681,6 +760,8 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
     SCIApplyStatusBadge(cell, job.state);
 
     // Row-type icon (carousel vs media kind)
+    cell.rowTypeIcon.hidden = NO;
+    cell.rowTypeIconWidth.constant = 14;
     if (job.items.count > 1) {
         cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:@"carousel" pointSize:12];
     } else {
@@ -688,10 +769,8 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
         cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:SCIMediaIconName(first.mediaKind) pointSize:12];
     }
 
-    // Technical line
+    // Technical line (gallery-style: size · duration for video/audio, size · items for carousel)
     NSMutableArray *parts = [NSMutableArray array];
-    NSString *destName = SCIDownloadDestinationDisplayName(job.request.destination);
-    [parts addObject:destName];
     if (job.state == SCIDownloadStateRunning || job.state == SCIDownloadStateFinalizing) {
         int pct = MIN(100, MAX(0, (int)(job.aggregateProgress * 100)));
         [parts addObject:[NSString stringWithFormat:@"%d%%", pct]];
@@ -700,8 +779,20 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
         [parts addObject:[NSString stringWithFormat:@"%lu items", (unsigned long)job.items.count]];
     } else {
         SCIDownloadItem *first = job.items.firstObject;
-        if (first.totalBytesExpected > 0) {
-            [parts addObject:[NSByteCountFormatter stringFromByteCount:first.totalBytesExpected countStyle:NSByteCountFormatterCountStyleFile]];
+        int64_t size = first.totalBytesExpected > 0 ? first.totalBytesExpected : first.bytesWritten;
+        if (size > 0) {
+            [parts addObject:[NSByteCountFormatter stringFromByteCount:size countStyle:NSByteCountFormatterCountStyleFile]];
+        }
+        // Duration for video/audio (like gallery)
+        SCIGallerySaveMetadata *meta = first.metadata ?: first.request.metadata;
+        double duration = meta.durationSeconds;
+        if (duration > 0.5 && (first.mediaKind == SCIDownloadMediaKindVideo || first.mediaKind == SCIDownloadMediaKindAudio)) {
+            NSInteger total = (NSInteger)llround(duration);
+            if (total >= 3600) {
+                [parts addObject:[NSString stringWithFormat:@"%ld:%02ld:%02ld", (long)(total / 3600), (long)((total % 3600) / 60), (long)(total % 60)]];
+            } else {
+                [parts addObject:[NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)]];
+            }
         }
     }
     cell.technicalLabel.text = [parts componentsJoinedByString:@" · "];
@@ -714,65 +805,91 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
     cell.dateLabel.hidden = NO;
     cell.dateLabel.text = SCIDownloadHistoryDateString(job.createdAt);
 
-    cell.accessoryType = job.items.count > 1 ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
+    // Chevron for carousels (animated rotation on expand/collapse)
+    if (job.items.count > 1) {
+        cell.chevronView.image = [UIImage systemImageNamed:@"chevron.right" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightMedium]];
+        cell.chevronView.hidden = NO;
+        BOOL expanded = [self.expandedJobIDs containsObject:job.jobID];
+        cell.chevronView.transform = expanded
+            ? CGAffineTransformMakeRotation(M_PI_2) // 90° = chevron.down
+            : CGAffineTransformIdentity;            // 0° = chevron.right
+    } else {
+        cell.chevronView.hidden = YES;
+    }
+    cell.accessoryType = UITableViewCellAccessoryNone;
     cell.thumbLeading.constant = 16;
+    cell.separatorLeading.constant = 80;
 }
 
 - (void)configureCell:(SCIDownloadHistoryCell *)cell withChildItem:(SCIDownloadItem *)item job:(SCIDownloadJob *)job {
     cell.representedID = item.itemID;
 
-    // Title
-    NSString *username = SCIDownloadHistoryDisplayUsername(item.metadata.sourceUsername);
-    cell.titleLabel.text = username.length > 0 ? username : [NSString stringWithFormat:@"Item %ld", (long)(item.index + 1)];
+    // Hide ALL parent-layout views; the compact child uses its own centered views.
+    cell.thumbnailView.hidden = YES;
+    cell.thumbnailView.image = nil;
+    cell.statusBadge.hidden = YES;
+    cell.rowTypeIcon.hidden = YES;
+    cell.rowTypeIconWidth.constant = 0;
+    cell.titleLabel.text = nil;
+    cell.technicalLabel.text = nil;
+    cell.pillBackground.hidden = YES;
+    cell.dateLabel.hidden = YES;
+    cell.chevronView.hidden = YES;
 
-    // Thumbnail: placeholder then async load
-    NSString *mediaIcon = SCIMediaIconName(item.mediaKind);
-    cell.thumbnailView.contentMode = UIViewContentModeCenter;
-    cell.thumbnailView.image = [SCIAssetUtils instagramIconNamed:mediaIcon pointSize:20];
-    cell.thumbnailView.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    // Status icon
+    NSString *statusIcon = nil;
+    UIColor *statusColor = nil;
+    switch (item.state) {
+        case SCIDownloadStateSucceeded:
+            statusIcon = @"circle_check_filled"; statusColor = [UIColor systemGreenColor]; break;
+        case SCIDownloadStateFailed:
+        case SCIDownloadStateInterrupted:
+            statusIcon = @"error_filled"; statusColor = [SCIUtils SCIColor_InstagramDestructive]; break;
+        case SCIDownloadStateCancelled:
+            statusIcon = @"circle_off"; statusColor = [SCIUtils SCIColor_InstagramSecondaryText]; break;
+        case SCIDownloadStateRunning:
+        case SCIDownloadStateFinalizing:
+            statusIcon = @"play_filled"; statusColor = [SCIUtils SCIColor_Primary]; break;
+        case SCIDownloadStateQueued:
+        case SCIDownloadStatePending:
+        case SCIDownloadStateWaitingForPreflight:
+            statusIcon = @"clock"; statusColor = [SCIUtils SCIColor_InstagramSecondaryText]; break;
+        case SCIDownloadStatePartial:
+            statusIcon = @"error"; statusColor = [UIColor systemOrangeColor]; break;
+        default: break;
+    }
+    cell.compactStatusIcon.hidden = (statusIcon == nil);
+    cell.compactStatusIcon.image = statusIcon ? [SCIAssetUtils instagramIconNamed:statusIcon pointSize:14] : nil;
+    cell.compactStatusIcon.tintColor = statusColor;
 
-    NSString *targetID = item.itemID;
-    __weak typeof(cell) weakCell = cell;
-    SCIDownloadLoadThumbnailForItem(item, ^(UIImage *img) {
-        if (!img) return;
-        SCIDownloadHistoryCell *c = weakCell;
-        if (c && [c.representedID isEqualToString:targetID]) {
-            c.thumbnailView.contentMode = UIViewContentModeScaleAspectFill;
-            c.thumbnailView.tintColor = nil;
-            c.thumbnailView.image = img;
-        }
-    });
-
-    // Status badge
-    SCIApplyStatusBadge(cell, item.state);
-
-    // Row type icon
-    cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:mediaIcon pointSize:12];
-
-    // Technical line
+    // Single metadata line
     NSMutableArray *parts = [NSMutableArray array];
+    switch (item.mediaKind) {
+        case SCIDownloadMediaKindVideo: [parts addObject:@"Video"]; break;
+        case SCIDownloadMediaKindAudio: [parts addObject:@"Audio"]; break;
+        case SCIDownloadMediaKindImage: [parts addObject:@"Photo"]; break;
+        default: [parts addObject:[NSString stringWithFormat:@"Item %ld", (long)(item.index + 1)]]; break;
+    }
     if (item.state == SCIDownloadStateRunning || item.state == SCIDownloadStateFinalizing) {
         int pct = MIN(100, MAX(0, (int)(item.progress * 100)));
         [parts addObject:[NSString stringWithFormat:@"%d%%", pct]];
     }
-    if (item.totalBytesExpected > 0) {
-        [parts addObject:[NSByteCountFormatter stringFromByteCount:item.totalBytesExpected countStyle:NSByteCountFormatterCountStyleFile]];
+    int64_t size = item.totalBytesExpected > 0 ? item.totalBytesExpected : item.bytesWritten;
+    if (size > 0) {
+        [parts addObject:[NSByteCountFormatter stringFromByteCount:size countStyle:NSByteCountFormatterCountStyleFile]];
     }
-    if (item.metadata.pixelWidth > 0 && item.metadata.pixelHeight > 0) {
-        [parts addObject:[NSString stringWithFormat:@"%dx%d", (int)item.metadata.pixelWidth, (int)item.metadata.pixelHeight]];
-    }
-    if (item.metadata.durationSeconds > 0.05) {
+    if (item.metadata.durationSeconds > 0.5) {
         NSInteger total = (NSInteger)llround(item.metadata.durationSeconds);
-        [parts addObject:[NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)]];
+        if (total >= 3600) {
+            [parts addObject:[NSString stringWithFormat:@"%ld:%02ld:%02ld", (long)(total / 3600), (long)((total % 3600) / 60), (long)(total % 60)]];
+        } else {
+            [parts addObject:[NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)]];
+        }
     }
-    cell.technicalLabel.text = parts.count > 0 ? [parts componentsJoinedByString:@" · "] : SCIDownloadDestinationDisplayName(job.request.destination);
+    cell.compactLabel.hidden = NO;
+    cell.compactLabel.text = [parts componentsJoinedByString:@" · "];
 
-    // No pill/date for children
-    cell.pillBackground.hidden = YES;
-    cell.dateLabel.hidden = YES;
-
-    cell.accessoryType = UITableViewCellAccessoryNone;
-    cell.thumbLeading.constant = 40;
+    cell.separatorLeading.constant = 56;
 }
 
 #pragma mark - UITableViewDelegate
@@ -783,8 +900,19 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
 
     // Expand/collapse carousel
     if (row.kind == SCIDownloadsHistoryRowKindJob && row.job.items.count > 1) {
-        if ([self.expandedJobIDs containsObject:row.job.jobID]) [self.expandedJobIDs removeObject:row.job.jobID];
+        BOOL wasExpanded = [self.expandedJobIDs containsObject:row.job.jobID];
+        if (wasExpanded) [self.expandedJobIDs removeObject:row.job.jobID];
         else [self.expandedJobIDs addObject:row.job.jobID];
+
+        // Animate chevron rotation
+        SCIDownloadHistoryCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+        if (cell.chevronView && !cell.chevronView.hidden) {
+            [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+                cell.chevronView.transform = wasExpanded
+                    ? CGAffineTransformIdentity                // collapse: chevron.right
+                    : CGAffineTransformMakeRotation(M_PI_2);  // expand: chevron.down
+            } completion:nil];
+        }
         [self reload];
         return;
     }
@@ -815,6 +943,26 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
     // Completed → preview
     NSString *path = item.finalPath ?: item.stagedPath;
     if (path.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        // For carousel children: build all sibling items so the user can swipe between them
+        if (row.kind == SCIDownloadsHistoryRowKindChild && row.job.items.count > 1) {
+            NSMutableArray<SCIMediaItem *> *allMedia = [NSMutableArray array];
+            NSInteger startIndex = 0;
+            for (NSUInteger i = 0; i < row.job.items.count; i++) {
+                SCIDownloadItem *sibling = row.job.items[i];
+                NSString *siblingPath = sibling.finalPath ?: sibling.stagedPath;
+                if (siblingPath.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:siblingPath]) {
+                    SCIMediaItem *m = [SCIMediaItem itemWithFileURL:[NSURL fileURLWithPath:siblingPath]];
+                    m.galleryMetadata = sibling.metadata;
+                    [allMedia addObject:m];
+                    if ([sibling.itemID isEqualToString:item.itemID]) startIndex = (NSInteger)allMedia.count - 1;
+                }
+            }
+            if (allMedia.count > 0) {
+                [SCIFullScreenMediaPlayer showMediaItems:allMedia startingAtIndex:startIndex metadata:item.metadata playbackSource:SCIFullScreenPlaybackSourceUnknown sourceView:nil controller:self pausePlayback:nil resumePlayback:nil];
+                return;
+            }
+        }
+        // Single item preview
         SCIMediaItem *media = [SCIMediaItem itemWithFileURL:[NSURL fileURLWithPath:path]];
         [SCIFullScreenMediaPlayer showMediaItems:@[media] startingAtIndex:0 metadata:item.metadata playbackSource:SCIFullScreenPlaybackSourceUnknown sourceView:nil controller:self pausePlayback:nil resumePlayback:nil];
         return;

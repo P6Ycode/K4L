@@ -269,8 +269,8 @@ static NSArray<NSURL *> *SCIDownloadSucceededFileURLsForJob(SCIDownloadJob *job)
 - (void)showTerminalOnActivePillForJob:(SCIDownloadJob *)job {
     if (!self.activePill) return;
     __weak typeof(self) weakSelf = self;
-    NSString *title = @"Download complete";
-    NSString *subtitle = @"Tap to open Downloads";
+    NSString *title = nil;
+    NSString *subtitle = nil;
     void (^openHistory)(void) = ^{
         if (weakSelf.openHistoryForJobID) weakSelf.openHistoryForJobID(nil);
     };
@@ -294,38 +294,64 @@ static NSArray<NSURL *> *SCIDownloadSucceededFileURLsForJob(SCIDownloadJob *job)
         self.activePill.onTapWhenCompleted = openHistory;
         return;
     }
-    if (job.request.destination == SCIDownloadDestinationPhotos) {
-        title = @"Saved to Photos";
-        subtitle = @"Tap to open Photos";
-        self.activePill.onTapWhenCompleted = ^{
-            [SCIUtils openPhotosApp];
-        };
-    } else if (job.request.destination == SCIDownloadDestinationGallery) {
-        title = @"Saved to Gallery";
-        subtitle = @"Tap to open Gallery";
-        self.activePill.onTapWhenCompleted = ^{
-            [SCIGalleryViewController presentGallery];
-        };
-    } else if (job.request.finalizeAsBatchShare) {
-        title = [NSString stringWithFormat:@"Shared %lu items", (unsigned long)[self completedItemCount:job]];
-        subtitle = @"Tap to open Downloads";
-        self.activePill.onTapWhenCompleted = openHistory;
-    } else if (job.request.finalizeAsBatchClipboard) {
-        title = [NSString stringWithFormat:@"Copied %lu items", (unsigned long)[self completedItemCount:job]];
-        subtitle = @"Tap to open Downloads";
-        self.activePill.onTapWhenCompleted = openHistory;
-    } else if (job.request.destination == SCIDownloadDestinationShare) {
-        title = @"Ready to share";
-        subtitle = nil;
-        self.activePill.onTapWhenCompleted = nil;
-    } else if (job.items.count > 1) {
-        title = [NSString stringWithFormat:@"%lu items saved", (unsigned long)[self completedItemCount:job]];
-        subtitle = @"Tap to open Downloads";
-        self.activePill.onTapWhenCompleted = openHistory;
-    } else {
-        title = @"Download complete";
-        subtitle = @"Tap to open Downloads";
-        self.activePill.onTapWhenCompleted = openHistory;
+
+    // Determine terminal title/subtitle/action based on destination
+    switch (job.request.destination) {
+        case SCIDownloadDestinationPhotos:
+            title = @"Saved to Photos";
+            subtitle = @"Tap to open Photos";
+            self.activePill.onTapWhenCompleted = ^{ [SCIUtils openPhotosApp]; };
+            break;
+        case SCIDownloadDestinationGallery:
+            title = @"Saved to Gallery";
+            subtitle = @"Tap to open Gallery";
+            self.activePill.onTapWhenCompleted = ^{ [SCIGalleryViewController presentGallery]; };
+            break;
+        case SCIDownloadDestinationShare:
+            if (job.request.finalizeAsBatchShare) {
+                NSUInteger count = [self completedItemCount:job];
+                title = count > 1
+                    ? [NSString stringWithFormat:@"Shared %lu items", (unsigned long)count]
+                    : @"Shared";
+                subtitle = @"Tap to open Downloads";
+                self.activePill.onTapWhenCompleted = openHistory;
+            } else {
+                title = @"Ready to share";
+                subtitle = nil;
+                self.activePill.onTapWhenCompleted = nil;
+            }
+            break;
+        case SCIDownloadDestinationClipboard:
+            if (job.request.finalizeAsBatchClipboard) {
+                NSUInteger count = [self completedItemCount:job];
+                title = count > 1
+                    ? [NSString stringWithFormat:@"Copied %lu items to clipboard", (unsigned long)count]
+                    : @"Copied to clipboard";
+            } else {
+                SCIDownloadItem *first = job.items.firstObject;
+                switch (first.mediaKind) {
+                    case SCIDownloadMediaKindVideo: title = @"Copied video to clipboard"; break;
+                    case SCIDownloadMediaKindAudio: title = @"Copied audio to clipboard"; break;
+                    case SCIDownloadMediaKindImage: title = @"Copied photo to clipboard"; break;
+                    default: title = @"Copied to clipboard"; break;
+                }
+            }
+            subtitle = nil;
+            self.activePill.onTapWhenCompleted = nil;
+            break;
+        case SCIDownloadDestinationCacheOnly:
+        default:
+            if (job.items.count > 1) {
+                NSUInteger count = [self completedItemCount:job];
+                title = [NSString stringWithFormat:@"%lu items saved", (unsigned long)count];
+                subtitle = @"Tap to open Downloads";
+                self.activePill.onTapWhenCompleted = openHistory;
+            } else {
+                title = @"Download complete";
+                subtitle = @"Tap to open Downloads";
+                self.activePill.onTapWhenCompleted = openHistory;
+            }
+            break;
     }
 
     [self.activePill showSuccessWithTitle:title subtitle:subtitle icon:nil];

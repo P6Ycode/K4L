@@ -4,9 +4,9 @@ NSErrorDomain const SCIDownloadErrorDomain = @"com.scinsta.download";
 
 NSInteger const SCIDownloadStoreSchemaVersion = 2;
 
-NSString * const kSCIDownloadMaxConcurrentKey = @"general_download_max_concurrent";
-NSString * const kSCIDownloadHistoryLimitKey = @"general_download_history_limit";
-NSString * const kSCIDownloadDetectDuplicatesKey = @"general_detect_duplicate_downloads";
+NSString * const kSCIDownloadMaxConcurrentKey = @"downloads_max_concurrent";
+NSString * const kSCIDownloadHistoryLimitKey = @"downloads_history_limit";
+NSString * const kSCIDownloadDetectDuplicatesKey = @"downloads_detect_duplicates";
 
 NSNotificationName const SCIDownloadServiceDidChangeNotification = @"SCIDownloadServiceDidChangeNotification";
 NSNotificationName const SCIDownloadJobDidChangeNotification = @"SCIDownloadJobDidChangeNotification";

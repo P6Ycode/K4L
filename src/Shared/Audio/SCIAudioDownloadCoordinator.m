@@ -696,8 +696,18 @@ SCIAudioMetadataFromItem(SCIAudioItem *item, SCIGallerySaveMetadata *metadata) {
     resolved.sourceMediaPK = item.mediaIdentifier;
   }
   if (!resolved.sourceMediaURLString.length) {
-    resolved.sourceMediaURLString =
-        item.sourceURLString ?: item.url.absoluteString;
+    NSString *rawURL = item.sourceURLString ?: item.url.absoluteString;
+    // Normalize by stripping query/fragment for stable duplicate detection (CDN params change)
+    if (rawURL.length > 0) {
+      NSURLComponents *components = [NSURLComponents componentsWithString:rawURL];
+      if (components) {
+        components.query = nil;
+        components.fragment = nil;
+        resolved.sourceMediaURLString = components.string ?: rawURL;
+      } else {
+        resolved.sourceMediaURLString = rawURL;
+      }
+    }
   }
   if (!resolved.customName.length && item.title.length > 0) {
     resolved.customName = item.title;
@@ -1092,25 +1102,32 @@ static void SCIAudioDownloadForSaveToFiles(SCIAudioItem *item, BOOL convert,
   }
 
   if (!SCIAudioShouldConvertURL(item.url, convert)) {
-    if (item.url.isFileURL) {
-      [SCIDownloadHelpers
-          submitLocalFileURL:item.url
-                   extension:[item preferredFileExtension]
-                 destination:destination
-                    metadata:resolvedMetadata
-              notificationID:identifier
-                   presenter:presenter
-                  anchorView:sourceView
-               sourceSurface:SCIDownloadSourceSurfaceAudioPage];
-    } else {
-      [SCIDownloadHelpers downloadURL:item.url
-                                  extension:[item preferredFileExtension]
-                                destination:destination
-                                   metadata:resolvedMetadata
-                             notificationID:identifier
-                                  presenter:presenter
-                              sourceSurface:SCIDownloadSourceSurfaceAudioPage];
-    }
+    NSString *extension = [item preferredFileExtension];
+    SCIDownloadItemRequest *itemRequest = item.url.isFileURL
+        ? [SCIDownloadItemRequest itemWithLocalPath:item.url.path
+                                          mediaKind:SCIDownloadMediaKindAudio]
+        : [SCIDownloadItemRequest itemWithRemoteURL:item.url
+                                          mediaKind:SCIDownloadMediaKindAudio];
+    itemRequest.preferredFileExtension = extension;
+    itemRequest.metadata = resolvedMetadata;
+    itemRequest.expectedFilenameStem =
+        [[SCIDownloadHelpers preferredFilenameForURL:item.url
+                                          mediaKind:SCIDownloadMediaKindAudio
+                                           metadata:resolvedMetadata] stringByDeletingPathExtension];
+    SCIDownloadRequest *request =
+        [SCIDownloadRequest requestWithItems:@[ itemRequest ]
+                                 destination:destination];
+    request.metadata = resolvedMetadata;
+    request.notificationIdentifier = identifier;
+    request.presenter = presenter;
+    request.anchorView = sourceView;
+    request.sourceSurface = SCIDownloadSourceSurfaceAudioPage;
+    request.titleOverride =
+        item.title.length > 0 ? item.title : @"Audio download";
+    request.presentationMode = SCINotificationIsEnabled(identifier)
+                                   ? SCIDownloadPresentationModeQueuePill
+                                   : SCIDownloadPresentationModeQuiet;
+    [[SCIDownloadService shared] submitRequest:request completion:nil];
     return;
   }
 

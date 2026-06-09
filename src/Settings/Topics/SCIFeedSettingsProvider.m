@@ -44,15 +44,7 @@ static NSString * const kSCIFeedActionButtonEnabledKey = @"feed_action_btn";
             [SCISetting switchCellWithTitle:@"Confirm Double-Tap Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"feed_confirm_double_tap_like"],
             [SCISetting switchCellWithTitle:@"Confirm Repost" icon:SCISettingsIcon(@"repost") defaultsKey:@"feed_confirm_repost"],
             [SCISetting switchCellWithTitle:@"Confirm Posting Comment" icon:SCISettingsIcon(@"comment") defaultsKey:@"feed_confirm_post_comment"]
-        ], @"Shows confirmation alerts before the enabled feed actions are performed."),
-        SCITopicSection(@"Comments", @[
-            [SCISetting switchCellWithTitle:@"Swipe to Close Comments" icon:SCISettingsIcon(@"left_right") defaultsKey:@"feed_comments_swipe_close"],
-            SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Swipe Direction" icon:SCISettingsIcon(@"left_right") menu:SCISwipeCloseCommentsDirectionMenu()], SCISettingsIcon(@"left_right")),
-            [SCISetting switchCellWithTitle:@"Copy Comment Text" icon:SCISettingsIcon(@"copy") defaultsKey:@"feed_comments_copy_text"],
-            [SCISetting switchCellWithTitle:@"GIF Comment Actions" icon:SCISettingsIcon(@"gif") defaultsKey:@"feed_comments_gif_actions"],
-            [SCISetting switchCellWithTitle:@"Confirm Comment Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"feed_confirm_comment_like"],
-            [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"feed_hide_comment_shopping"]
-        ], @"Copy Comment Text adds a copy action to comment menus. GIF Comment Actions adds Photos, Share, Gallery, and link actions for GIF comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads.")
+        ], @"Shows confirmation alerts before the enabled feed actions are performed.")
     ]);
 }
 

@@ -125,6 +125,16 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
                                label:(NSString *)label
                        singularLabel:(NSString *)singularLabel;
 
++ (instancetype)stepperCellWithTitle:(NSString *)title
+                            subtitle:(NSString *)subtitle
+                                icon:(nullable UIImage *)icon
+                         defaultsKey:(NSString *)defaultsKey
+                                 min:(double)min
+                                 max:(double)max
+                                step:(double)step
+                               label:(NSString *)label
+                       singularLabel:(NSString *)singularLabel;
+
 + (instancetype)buttonCellWithTitle:(NSString *)title
                            subtitle:(nullable NSString *)subtitle
                                icon:(nullable UIImage *)icon

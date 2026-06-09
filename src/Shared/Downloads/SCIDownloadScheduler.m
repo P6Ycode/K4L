@@ -58,6 +58,21 @@ static NSString *SCIPreferredExtensionForDownloadItem(NSString *stagedPath, NSUR
     NSString *extension = item.request.preferredFileExtension;
     if (extension.length == 0) extension = stagedPath.pathExtension;
     if (extension.length == 0) extension = sourceURL.pathExtension;
+    if ([extension hasPrefix:@"."]) extension = [extension substringFromIndex:1];
+    extension = extension.lowercaseString;
+
+    // Guard against an audio item inheriting a video/container extension (e.g. an
+    // audio track extracted from an .mp4). The on-disk file is audio, so its name
+    // must reflect that — otherwise it gets misclassified as video everywhere.
+    if (item.mediaKind == SCIDownloadMediaKindAudio) {
+        static NSSet<NSString *> *audioExts;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{
+            audioExts = [NSSet setWithArray:@[ @"m4a", @"aac", @"mp3", @"wav", @"caf", @"aiff", @"flac", @"opus", @"ogg" ]];
+        });
+        if (![audioExts containsObject:extension]) extension = @"m4a";
+    }
+
     if (extension.length == 0) {
         switch (item.mediaKind) {
             case SCIDownloadMediaKindVideo: extension = @"mp4"; break;
@@ -65,7 +80,6 @@ static NSString *SCIPreferredExtensionForDownloadItem(NSString *stagedPath, NSUR
             default: extension = @"jpg"; break;
         }
     }
-    if ([extension hasPrefix:@"."]) extension = [extension substringFromIndex:1];
     return extension.length > 0 ? extension : nil;
 }
 

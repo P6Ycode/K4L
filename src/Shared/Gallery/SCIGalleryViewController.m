@@ -706,6 +706,12 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 #pragma mark - NSFetchedResultsControllerDelegate
 
 - (void)controllerDidChangeContent:(NSFetchedResultsController *)controller {
+    // If the last media from a filtered user was removed, drop that username from
+    // the active filter so the user isn't left staring at an empty filtered view.
+    if ([self pruneStaleUsernameFilters]) {
+        [self refetch];
+        return;
+    }
     [self reloadSubfolders];
     [self.collectionView reloadData];
     [self updateEmptyState];
@@ -1673,6 +1679,28 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     }
     [self refetch];
 }
+
+/// Drops any active username filters that no longer have matching media (e.g. after
+/// the last item from that user was deleted). Returns YES if the filter set changed.
+- (BOOL)pruneStaleUsernameFilters {
+    if (self.filterUsernames.count == 0) return NO;
+    NSArray<NSString *> *available = [self availableSourceUsernamesForCurrentFilterContext];
+    NSMutableArray<NSString *> *stale = [NSMutableArray array];
+    for (NSString *selected in self.filterUsernames) {
+        BOOL stillPresent = NO;
+        for (NSString *candidate in available) {
+            if ([candidate caseInsensitiveCompare:selected] == NSOrderedSame) {
+                stillPresent = YES;
+                break;
+            }
+        }
+        if (!stillPresent) [stale addObject:selected];
+    }
+    if (stale.count == 0) return NO;
+    for (NSString *username in stale) [self.filterUsernames removeObject:username];
+    return YES;
+}
+
 
 #pragma mark - Sort / Filter
 
