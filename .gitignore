@@ -56,5 +56,6 @@ livecontainer
 src/**/wip.x
 src/**/wip.xm
 headers/
+plans/
 .cache/
 modules/*
