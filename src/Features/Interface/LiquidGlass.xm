@@ -16,6 +16,56 @@ static BOOL SCIIsLiquidGlassEnabled(void) {
     return [SCIUtils sci_isLiquidGlassEffectivelyEnabled];
 }
 
+// MARK: - Experiment-helper overrides (IG 433+)
+//
+// On 433+ the real per-account gate is
+// IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper, which
+// exposes @objc override setters (overrideIsEnabled: etc.). Driving these is
+// IG's own QE-override path and propagates consistently to the nav chrome /
+// follow button, unlike swizzling individual getters.
+
+static Class SCILiquidGlassNavHelperClass(void) {
+    Class c = objc_getClass("_TtC29IGLiquidGlassExperimentHelper39IGLiquidGlassNavigationExperimentHelper");
+    if (!c) c = NSClassFromString(@"IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper");
+    return c;
+}
+
+static id SCILiquidGlassSharedSingleton(Class cls) {
+    if (cls && [cls respondsToSelector:@selector(shared)]) {
+        return ((id (*)(id, SEL))objc_msgSend)(cls, @selector(shared));
+    }
+    return nil;
+}
+
+// Calls a "-(void)overrideXxx:" setter, adapting to whether the first argument
+// is a scalar BOOL or a boxed object (Bool? bridges to NSNumber *).
+static void SCILiquidGlassCallOverrideBool(id target, SEL sel, BOOL value) {
+    if (!target || ![target respondsToSelector:sel]) return;
+    Method m = class_getInstanceMethod([target class], sel);
+    char argType[16] = {0};
+    if (m) method_getArgumentType(m, 2, argType, sizeof(argType));
+    if (argType[0] == '@') {
+        ((void (*)(id, SEL, id))objc_msgSend)(target, sel, @(value));
+    } else {
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(target, sel, value);
+    }
+}
+
+// Force the navigation Liquid Glass experiment on, matching the gate values
+// observed on a server-enabled account (isEnabled=YES, everything else left at
+// its natural value).
+extern "C" void SCIApplyLiquidGlassExperimentOverridesIfEnabled(void) {
+    if (!SCIIsLiquidGlassEnabled()) return;
+    id nav = SCILiquidGlassSharedSingleton(SCILiquidGlassNavHelperClass());
+    if (!nav) {
+        SCILog(@"LiquidGlass", @"NavExperimentHelper unavailable; override skipped");
+        return;
+    }
+    SCILiquidGlassCallOverrideBool(nav, @selector(overrideIsEnabled:), YES);
+    SCILog(@"LiquidGlass", @"Applied NavExperimentHelper overrideIsEnabled:YES");
+}
+
+
 // MARK: - UIScrollEdgeEffect declaration
 @interface UIScrollEdgeEffect : NSObject
 + (void)hide;
@@ -205,6 +255,8 @@ extern "C" void SCIInstallLiquidGlassHooksIfEnabled(void) {
         SCIHookInstanceMethodIfPresent(cls, @selector(layoutSubviews), (IMP)hook_directInboxHeader_layoutSubviews, (IMP *)&orig_directInboxHeader_layoutSubviews);
         SCIHookInstanceMethodIfPresent(cls, @selector(didMoveToWindow), (IMP)hook_directInboxHeader_didMoveToWindow, (IMP *)&orig_directInboxHeader_didMoveToWindow);
         SCIHookInstanceMethodIfPresent(cls, @selector(setSeparatorAlpha:), (IMP)hook_directInboxHeader_setSeparatorAlpha, (IMP *)&orig_directInboxHeader_setSeparatorAlpha);
+
+        SCIApplyLiquidGlassExperimentOverridesIfEnabled();
     });
 }
 
