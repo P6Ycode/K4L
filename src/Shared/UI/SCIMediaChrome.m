@@ -253,8 +253,6 @@ void SCIMediaChromeSetBarsMaterialActive(UINavigationController *navigationContr
     UIToolbar *toolbar = navigationController.toolbar;
     toolbar.standardAppearance = toolbarAppearance;
     toolbar.scrollEdgeAppearance = toolbarAppearance;
-    if (@available(iOS 15.0, *)) {
-        toolbar.compactAppearance = toolbarAppearance;
-    }
+    toolbar.compactAppearance = toolbarAppearance;
     toolbar.tintColor = tint;
 }

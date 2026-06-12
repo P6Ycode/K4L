@@ -52,15 +52,13 @@
         SCIDownloadsHistoryViewController *vc = [SCIDownloadsHistoryViewController new];
         UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
         nav.modalPresentationStyle = UIModalPresentationPageSheet;
-        if (@available(iOS 15.0, *)) {
-            UISheetPresentationController *sheet = nav.sheetPresentationController;
-            sheet.prefersGrabberVisible = YES;
-            sheet.detents = @[
-                UISheetPresentationControllerDetent.mediumDetent,
-                UISheetPresentationControllerDetent.largeDetent
-            ];
-            sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
-        }
+        UISheetPresentationController *sheet = nav.sheetPresentationController;
+        sheet.prefersGrabberVisible = YES;
+        sheet.detents = @[
+            UISheetPresentationControllerDetent.mediumDetent,
+            UISheetPresentationControllerDetent.largeDetent
+        ];
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
         [presenter presentViewController:nav animated:YES completion:nil];
     });
 }

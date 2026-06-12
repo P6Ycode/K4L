@@ -5,10 +5,7 @@
 
 static CGFloat SCIStoryTrailingButtonX(UIView *overlayView, CGFloat size) {
     CGFloat width = CGRectGetWidth(overlayView.bounds);
-    UIEdgeInsets safeInsets = UIEdgeInsetsZero;
-    if (@available(iOS 11.0, *)) {
-        safeInsets = overlayView.safeAreaInsets;
-    }
+    UIEdgeInsets safeInsets = overlayView.safeAreaInsets;
 
     CGFloat trailingInset = MAX(6.0, safeInsets.right + 6.0);
     return MAX(0.0, width - size - trailingInset);

@@ -2913,26 +2913,15 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 	}
 
     if (context.source == SCIActionButtonSourceProfile) {
-        if (@available(iOS 15.0, *)) {
-            UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
-                id freshMedia = SCIResolveMediaForContext(context);
-                completion(SCIProfileInfoMenuElements(freshMedia));
-            }];
-            [menuElements addObject:[UIMenu menuWithTitle:@""
-                                                    image:nil
-                                               identifier:nil
-                                                  options:UIMenuOptionsDisplayInline
-                                                 children:@[deferred]]];
-        } else {
-            NSArray<UIMenuElement *> *profileInfoItems = SCIProfileInfoMenuElements(media);
-            if (profileInfoItems.count > 0) {
-                [menuElements addObject:[UIMenu menuWithTitle:@""
-                                                        image:nil
-                                                   identifier:nil
-                                                      options:UIMenuOptionsDisplayInline
-                                                     children:profileInfoItems]];
-            }
-        }
+        UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+            id freshMedia = SCIResolveMediaForContext(context);
+            completion(SCIProfileInfoMenuElements(freshMedia));
+        }];
+        [menuElements addObject:[UIMenu menuWithTitle:@""
+                                                image:nil
+                                            identifier:nil
+                                                options:UIMenuOptionsDisplayInline
+                                                children:@[deferred]]];
     }
 
 	if (menuElements.count == 0) {
