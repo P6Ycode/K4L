@@ -761,37 +761,6 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-// FLEX explorer gesture handler
-%group SCITweakRootUIHooks
-
-%hook IGRootViewController
-- (void)viewDidLoad {
-    %orig;
-
-    if (objc_getAssociatedObject(self.view, kSCIFlexThreeFingerGestureKey)) {
-        return;
-    }
-
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(sci_handleFlexGesture:)];
-    longPress.minimumPressDuration = 1.0;
-    longPress.numberOfTouchesRequired = 5;
-    longPress.cancelsTouchesInView = NO;
-    longPress.delaysTouchesBegan = NO;
-    longPress.delaysTouchesEnded = NO;
-    [self.view addGestureRecognizer:longPress];
-    objc_setAssociatedObject(self.view, kSCIFlexThreeFingerGestureKey, longPress, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-}
-%new - (void)sci_handleFlexGesture:(UILongPressGestureRecognizer *)sender {
-    if (sender.state != UIGestureRecognizerStateBegan) return;
-
-    if ([SCIUtils getBoolPref:@"tools_flex_instagram"]) {
-        SCIFlexShowExplorer(@"three_finger");
-    }
-}
-%end
-
-%end
-
 %group SCITweakFlexEarlyCompatibilityHooks
 
 %hook UIWindow
@@ -801,6 +770,36 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
         return YES;
     }
     return %orig;
+}
+
+- (void)becomeKeyWindow {
+    %orig;
+
+    if (objc_getAssociatedObject(self, kSCIFlexThreeFingerGestureKey)) {
+        return;
+    }
+
+    Class flexWindowClass = SCIFlexWindowClass();
+    if (flexWindowClass && [self isKindOfClass:flexWindowClass]) {
+        return;
+    }
+
+    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(sci_handleFlexGesture:)];
+    longPress.minimumPressDuration = 1.0;
+    longPress.numberOfTouchesRequired = 3;
+    longPress.cancelsTouchesInView = NO;
+    longPress.delaysTouchesBegan = NO;
+    longPress.delaysTouchesEnded = NO;
+    [self addGestureRecognizer:longPress];
+    objc_setAssociatedObject(self, kSCIFlexThreeFingerGestureKey, longPress, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new - (void)sci_handleFlexGesture:(UILongPressGestureRecognizer *)sender {
+    if (sender.state != UIGestureRecognizerStateBegan) return;
+
+    if ([SCIUtils getBoolPref:@"tools_flex_instagram"]) {
+        SCIFlexShowExplorer(@"three_finger");
+    }
 }
 %end
 
@@ -879,16 +878,9 @@ static void SCIInstallTweakPrivacyHooksIfNeeded(void) {
     });
 }
 
-static BOOL SCIAnyFlexOpeningPrefEnabled(void) {
-    return SCIAnyPrefEnabled(@[
-        @"tools_flex_app_launch",
-        @"tools_flex_app_start",
-        @"tools_flex_instagram"
-    ]);
-}
 
 static void SCIInstallTweakFlexSupportHooksIfNeeded(void) {
-    if (!SCIAnyFlexOpeningPrefEnabled()) {
+    if (!SCIFlexIsBundled()) {
         return;
     }
 
@@ -896,13 +888,6 @@ static void SCIInstallTweakFlexSupportHooksIfNeeded(void) {
     dispatch_once(&flexEarlyOnceToken, ^{
         %init(SCITweakFlexEarlyCompatibilityHooks);
     });
-
-    if (SCIPrefEnabled(@"tools_flex_instagram")) {
-        static dispatch_once_t rootOnceToken;
-        dispatch_once(&rootOnceToken, ^{
-            %init(SCITweakRootUIHooks);
-        });
-    }
 }
 
 void SCIInstallFlexLoadedCompatibilityHooksIfNeeded(void) {

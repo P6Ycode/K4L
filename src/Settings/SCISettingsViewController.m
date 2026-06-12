@@ -501,14 +501,19 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
 
         case SCITableCellButton: {
             NSString *accessoryText = SCISettingsAccessoryText(row);
-            if (accessoryText.length > 0) {
+            if (rowEnabled && accessoryText.length > 0) {
                 cellContentConfig.secondaryText = accessoryText;
                 cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
                 cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
                 cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
                                                                                    weight:UIFontWeightMedium];
             }
-            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            cell.accessoryType = rowEnabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
+            if (!rowEnabled) {
+                cell.selectionStyle = UITableViewCellSelectionStyleNone;
+                cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
+                cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramTertiaryText];
+            }
             break;
         }
 

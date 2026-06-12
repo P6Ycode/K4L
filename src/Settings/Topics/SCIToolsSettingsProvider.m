@@ -222,8 +222,8 @@ static NSArray *SCIManageSettingsDataSections(void) {
     BOOL flexInstalled = SCIFlexIsBundled();
     NSString *flexFooter = flexInstalled
         ? @"The first time FLEX is opened in a session it can take a moment to initialize."
-        : @"FLEX not installed. Rebuild with \"--flex\" flag or install libFLEX.dylib to enable these options.";
-    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Five-finger Hold" defaultsKey:@"tools_flex_instagram"];
+        : @"FLEX is not installed. Rebuild with \"--flex\" flag or install \"libFLEX.dylib\" to enable these options.";
+    SCISetting *flexGesture = [SCISetting switchCellWithTitle:@"Three-finger Hold" defaultsKey:@"tools_flex_instagram"];
     SCISetting *flexLaunch = [SCISetting switchCellWithTitle:@"Open on App Launch" defaultsKey:@"tools_flex_app_launch"];
     SCISetting *flexFocus = [SCISetting switchCellWithTitle:@"Open on App Focus" defaultsKey:@"tools_flex_app_start"];
     SCISetting *flexOpen = [SCISetting buttonCellWithTitle:@"Open FLEX Now" subtitle:@"" icon:nil action:^(void) {
@@ -236,7 +236,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
         flexOpen.userInfo = @{@"enabled": @NO};
     }
     NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
-        SCITopicSection(@"FLEX", @[flexOpen, flexGesture, flexLaunch, flexFocus], [NSString stringWithFormat:@"Open FLEX directly here, or enable five-finger hold to open it from Instagram. %@", flexFooter]),
+        SCITopicSection(@"FLEX", @[flexOpen, flexGesture, flexLaunch, flexFocus], flexFooter),
         SCITopicSection(@"Tweak", @[
             [SCISetting switchCellWithTitle:@"Quick Settings Access" defaultsKey:@"tools_settings_shortcut" requiresRestart:YES],
             [SCISetting switchCellWithTitle:@"Show Settings on App Launch" defaultsKey:@"tools_open_settings_on_launch"],
@@ -254,7 +254,7 @@ static NSArray *SCIManageSettingsDataSections(void) {
                 SCIStabilityGuardReset();
                 [SCIUtils showRestartConfirmation];
             }],
-        ], @"1. Suppresses the Instagram Beta update popup in TestFlight builds.\n"
+        ], @"1. Suppresses the Instagram Beta update popup.\n"
            @"2. Makes Instagram not reset settings after subsequent crashes. Use at your own risk.\n"
            @"3. Clears failed-launch counters and temporary hook suppression."),
         SCITopicSection(@"Backup & Transfer", @[
