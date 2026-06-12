@@ -941,9 +941,54 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return NO;
 }
 
++ (void)dismissPresentedViewControllers {
+    UIViewController *rootVC = nil;
+    for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
+        if (scene.activationState == UISceneActivationStateForegroundActive) {
+            for (UIWindow *window in scene.windows) {
+                if (window.isKeyWindow) {
+                    rootVC = window.rootViewController;
+                    break;
+                }
+            }
+        }
+        if (rootVC) break;
+    }
+    if (!rootVC) {
+        rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    }
+    if (!rootVC) return;
+
+    Class galleryManagerClass = NSClassFromString(@"SCIGalleryManager");
+    if (galleryManagerClass) {
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        id manager = [galleryManagerClass performSelector:@selector(sharedManager)];
+        #pragma clang diagnostic pop
+        if (manager) {
+            BOOL isLockEnabled = NO;
+            @try {
+                isLockEnabled = [[manager valueForKey:@"isLockEnabled"] boolValue];
+            } @catch (NSException *exception) {}
+            if (isLockEnabled) {
+                #pragma clang diagnostic push
+                #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                [manager performSelector:@selector(lockGallery)];
+                #pragma clang diagnostic pop
+            }
+        }
+    }
+
+    if (rootVC.presentedViewController) {
+        [rootVC dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
 + (BOOL)openInstagramProfileForUsername:(NSString *)username {
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
     if (encodedUsername.length == 0) return NO;
+
+    [self dismissPresentedViewControllers];
 
     NSURL *appURL = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://user?username=%@", encodedUsername]];
     if (appURL && [[UIApplication sharedApplication] canOpenURL:appURL]) {
@@ -961,6 +1006,8 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     UIApplication *application = [UIApplication sharedApplication];
     id<UIApplicationDelegate> delegate = application.delegate;
 
+    [self dismissPresentedViewControllers];
+
     if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
         NSUserActivity *activity = [[NSUserActivity alloc] initWithActivityType:NSUserActivityTypeBrowsingWeb];
         activity.webpageURL = url;
@@ -968,7 +1015,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
         if ([delegate respondsToSelector:continueSelector]) {
             BOOL handled = [delegate application:application
                             continueUserActivity:activity
-                              restorationHandler:^(__unused NSArray<id<UIUserActivityRestoring>> *restorableObjects) {}];
+                               restorationHandler:^(__unused NSArray<id<UIUserActivityRestoring>> *restorableObjects) {}];
             if (handled) return YES;
         }
         if ([self openURLThroughApplicationDelegate:url]) return YES;

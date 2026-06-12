@@ -93,6 +93,7 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 + (NSError *)errorWithDescription:(NSString *)errorDesc;
 + (NSError *)errorWithDescription:(NSString *)errorDesc code:(NSInteger)errorCode;
 + (BOOL)openURL:(NSURL *)url;
++ (void)dismissPresentedViewControllers;
 + (BOOL)openInstagramProfileForUsername:(NSString *)username;
 + (BOOL)openInstagramMediaURL:(NSURL *)url;
 + (BOOL)openPhotosApp;

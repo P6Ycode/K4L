@@ -41,7 +41,41 @@ static id SCIDirectObjectForSelector(id target, NSString *selectorName) {
     if (!target || selectorName.length == 0) return nil;
     SEL selector = NSSelectorFromString(selectorName);
     if (![target respondsToSelector:selector]) return nil;
-    return ((id (*)(id, SEL))objc_msgSend)(target, selector);
+
+    NSMethodSignature *sig = [target methodSignatureForSelector:selector];
+    if (!sig) return nil;
+
+    const char *returnType = [sig methodReturnType];
+    if (returnType == NULL) return nil;
+
+    if (strcmp(returnType, "@") == 0) {
+        return ((id (*)(id, SEL))objc_msgSend)(target, selector);
+    }
+
+    if (strcmp(returnType, "c") == 0 || strcmp(returnType, "B") == 0) {
+        BOOL val = ((BOOL (*)(id, SEL))objc_msgSend)(target, selector);
+        return @(val);
+    }
+    if (strcmp(returnType, "i") == 0 || strcmp(returnType, "I") == 0 ||
+        strcmp(returnType, "s") == 0 || strcmp(returnType, "S") == 0) {
+        int val = ((int (*)(id, SEL))objc_msgSend)(target, selector);
+        return @(val);
+    }
+    if (strcmp(returnType, "l") == 0 || strcmp(returnType, "L") == 0 ||
+        strcmp(returnType, "q") == 0 || strcmp(returnType, "Q") == 0) {
+        long long val = ((long long (*)(id, SEL))objc_msgSend)(target, selector);
+        return @(val);
+    }
+    if (strcmp(returnType, "f") == 0) {
+        float val = ((float (*)(id, SEL))objc_msgSend)(target, selector);
+        return @(val);
+    }
+    if (strcmp(returnType, "d") == 0) {
+        double val = ((double (*)(id, SEL))objc_msgSend)(target, selector);
+        return @(val);
+    }
+
+    return nil;
 }
 
 static NSString *SCIDirectStringFromValue(id value) {
