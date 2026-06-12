@@ -90,6 +90,12 @@ UIBarButtonItem *SCIMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMe
     button.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
     button.menu = menu;
     button.showsMenuAsPrimaryAction = YES;
+    // Force the menu to keep the order we declare (navigation first, destructive last)
+    // instead of iOS reordering by proximity/priority — which on iOS 26 floated the
+    // destructive group to the top depending on how the popover opened.
+    if (@available(iOS 16.0, *)) {
+        button.preferredMenuElementOrder = UIContextMenuConfigurationElementOrderFixed;
+    }
     button.accessibilityLabel = accessibilityLabel;
     UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:button];
     item.accessibilityLabel = accessibilityLabel;

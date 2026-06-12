@@ -589,11 +589,7 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 }
 
 - (UIMenu *)moreMenu {
-    __weak typeof(self) weakSelf = self;
-    UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
-        completion([weakSelf moreMenuElements]);
-    }];
-    return [UIMenu menuWithTitle:@"" children:@[deferred]];
+    return [UIMenu menuWithTitle:@"" children:[self moreMenuElements]];
 }
 
 - (NSArray<UIMenuElement *> *)moreMenuElements {
@@ -674,6 +670,20 @@ static NSString *SCIMediaIconName(SCIDownloadMediaKind kind) {
     }
 }
 
+/// YES when a job is an Instants batch whose children span more than one source user.
+/// Instants bulk actions can pull snaps from multiple accounts, so the per-child rows
+/// need the username to stay unambiguous. Single-user jobs (incl. feed carousels) don't.
+static BOOL SCIJobIsMultiUserInstants(SCIDownloadJob *job) {
+    if (job.request.sourceSurface != SCIDownloadSourceSurfaceInstants) return NO;
+    NSMutableSet<NSString *> *users = [NSMutableSet set];
+    for (SCIDownloadItem *item in job.items) {
+        NSString *trimmed = [item.metadata.sourceUsername stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (trimmed.length > 0) [users addObject:trimmed.lowercaseString];
+        if (users.count > 1) return YES;
+    }
+    return NO;
+}
+
 /// Sets the status badge on the cell.
 static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState state) {
     NSString *icon = nil;
@@ -727,7 +737,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
-    return self.rows[indexPath.row].kind == SCIDownloadsHistoryRowKindChild ? 40 : 72;
+    return self.rows[indexPath.row].kind == SCIDownloadsHistoryRowKindChild ? 52 : 72;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -864,6 +874,10 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
 
     // Single metadata line
     NSMutableArray *parts = [NSMutableArray array];
+    if (SCIJobIsMultiUserInstants(job)) {
+        NSString *user = [item.metadata.sourceUsername stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (user.length > 0) [parts addObject:[@"@" stringByAppendingString:user]];
+    }
     switch (item.mediaKind) {
         case SCIDownloadMediaKindVideo: [parts addObject:@"Video"]; break;
         case SCIDownloadMediaKindAudio: [parts addObject:@"Audio"]; break;

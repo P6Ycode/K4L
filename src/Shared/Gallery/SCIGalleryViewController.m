@@ -1181,6 +1181,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
             return;
         }
         SCINotify(kSCINotificationGalleryDeleteSelected, @"Deleted selected files", nil, @"circle_check_filled", SCINotificationToneSuccess);
+        [self pruneStaleUsernameFilters];
         [self exitSelectionMode];
     }],
     ]];
@@ -1682,23 +1683,47 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 /// Drops any active username filters that no longer have matching media (e.g. after
 /// the last item from that user was deleted). Returns YES if the filter set changed.
+///
+/// Uses a per-username count fetch with `includesPendingChanges = YES` rather than the
+/// store-only distinct fetch in `availableSourceUsernamesForCurrentFilterContext`. This
+/// matters because the FRC fires `controllerDidChangeContent:` during `processPendingChanges`,
+/// *before* the deletes are flushed to SQLite — a store-only (NSDictionaryResultType) fetch
+/// would still see the just-deleted rows and never prune the filter.
 - (BOOL)pruneStaleUsernameFilters {
     if (self.filterUsernames.count == 0) return NO;
-    NSArray<NSString *> *available = [self availableSourceUsernamesForCurrentFilterContext];
+    NSManagedObjectContext *ctx = [SCIGalleryCoreDataStack shared].viewContext;
     NSMutableArray<NSString *> *stale = [NSMutableArray array];
     for (NSString *selected in self.filterUsernames) {
-        BOOL stillPresent = NO;
-        for (NSString *candidate in available) {
-            if ([candidate caseInsensitiveCompare:selected] == NSOrderedSame) {
-                stillPresent = YES;
-                break;
-            }
+        if ([self countOfMediaForUsername:selected inContext:ctx] == 0) {
+            [stale addObject:selected];
         }
-        if (!stillPresent) [stale addObject:selected];
     }
     if (stale.count == 0) return NO;
     for (NSString *username in stale) [self.filterUsernames removeObject:username];
     return YES;
+}
+
+/// Counts media for a username within the current (non-username) filter context, honoring
+/// unsaved in-memory deletions so prune works mid-save from the FRC delegate.
+- (NSUInteger)countOfMediaForUsername:(NSString *)username inContext:(NSManagedObjectContext *)ctx {
+    if (username.length == 0) return 0;
+    NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SCIGalleryFile"];
+    req.includesPendingChanges = YES;
+
+    NSMutableArray<NSPredicate *> *predicates = [NSMutableArray array];
+    [predicates addObject:[NSPredicate predicateWithFormat:@"sourceUsername ==[c] %@", username]];
+    NSPredicate *contextPredicate = [SCIGalleryFilterViewController predicateForTypes:self.filterTypes
+                                                                             sources:self.filterSources
+                                                                       favoritesOnly:self.filterFavoritesOnly
+                                                                           usernames:[NSSet set]
+                                                                          folderPath:self.currentFolderPath];
+    if (contextPredicate) [predicates addObject:contextPredicate];
+    NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
+    if (visibleSources) [predicates addObject:visibleSources];
+    req.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
+
+    NSUInteger count = [ctx countForFetchRequest:req error:nil];
+    return count == NSNotFound ? 0 : count;
 }
 
 

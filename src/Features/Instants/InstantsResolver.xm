@@ -1289,9 +1289,21 @@ SCIInstantsResolverResult *SCIInstantsResolveForHeader(UIView *header, NSString 
     if (snaps.count > 0) {
         NSInteger activeIndex = -1;
 
-        // Try PK match first (most reliable)
+        // The active VIEW frequently exposes no PK on the first interaction (its backing
+        // media isn't wired up yet, and the resolved URL is a temp/derived one that won't
+        // match the store's CDN URL). The model object at the same display slot does carry
+        // a PK, so use it to map the active snap into the store list reliably.
+        NSString *activeModelPK = nil;
+        if (displayIndex >= 0 && displayIndex < (NSInteger)modelItems.count) {
+            activeModelPK = SCIInstantsMediaPKForObject(modelItems[(NSUInteger)displayIndex], 0);
+        }
+
+        // Try PK match first (most reliable) — view PK, then model PK.
         if (activePK.length > 0) {
             activeIndex = SCIInstantsFindSnapIndexByPK(snaps, activePK);
+        }
+        if (activeIndex < 0 && activeModelPK.length > 0) {
+            activeIndex = SCIInstantsFindSnapIndexByPK(snaps, activeModelPK);
         }
 
         // PK match failed (the active view often exposes no PK). Match by media URL:
@@ -1314,8 +1326,10 @@ SCIInstantsResolverResult *SCIInstantsResolveForHeader(UIView *header, NSString 
             }
         }
 
-        // Still no match (active snap not in store list, e.g. already pruned). Prepend it
-        // so single-tap downloads the right thing and it's part of the bulk set.
+        // Still no match (active snap genuinely not in the store list, e.g. already pruned,
+        // or unkeyable). Prepend it so single-tap and the open index stay correct. This is a
+        // last resort: when the model-PK match above succeeds — the common first-interaction
+        // case — we never reach here, so the topmost snap is no longer duplicated.
         if (activeIndex < 0 && activeSnap && activeSnap.scinstaMediaURL) {
             [snaps insertObject:activeSnap atIndex:0];
             activeIndex = 0;

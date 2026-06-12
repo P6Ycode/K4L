@@ -1176,8 +1176,12 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 - (SCIGallerySaveMetadata *)metadataForMediaItem:(SCIMediaItem *)item {
   if (item.galleryMetadata) {
     if (item.sourceMediaObject && !item.galleryMetadata.importPostedDate) {
+      NSString *preservedURL = [item.galleryMetadata.sourceMediaURLString copy];
       [SCIGalleryOriginController populateMetadata:item.galleryMetadata
                                          fromMedia:item.sourceMediaObject];
+      if (preservedURL.length > 0 && [preservedURL containsString:@"img_index"]) {
+        item.galleryMetadata.sourceMediaURLString = preservedURL;
+      }
     }
     return item.galleryMetadata;
   }

@@ -37,6 +37,8 @@ NSString *_Nullable SCIDirectCurrentThreadRuleConfirmationTitle(SCIDirectThreadC
 NSString *_Nullable SCIDirectCurrentThreadRuleConfirmationMessage(SCIDirectThreadContext *_Nullable context);
 BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *_Nullable context, NSString *_Nullable *_Nullable notificationTitle, NSString *_Nullable *_Nullable notificationSubtitle);
 
+extern BOOL SCIDirectSeenDebugPrintEnabled;
+
 #ifdef __cplusplus
 }
 #endif

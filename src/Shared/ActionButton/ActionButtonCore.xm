@@ -209,6 +209,15 @@ willDisplayMenuForConfiguration:(id)configuration
 	(void)configuration;
 	(void)animator;
 
+	// Menu-open haptic (long-press, or tap when the button opens the menu as its primary
+	// action). Lives here rather than on touch-down so it fires only when the menu actually
+	// appears — a touch-down tick stacked a second haptic on top of the action's own
+	// completion feedback for plain action taps.
+	if (![SCIUtils getBoolPref:@"general_disable_haptics"]) {
+		UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
+		[feedback selectionChanged];
+	}
+
 	SCIActionButtonContext *context = SCIActionButtonContextFromButton(self);
 	if (!context) return;
 
@@ -1032,11 +1041,6 @@ static NSInteger SCIClampedIndex(NSInteger index, NSInteger count) {
 	if (index < 0) return 0;
 	if (index >= count) return count - 1;
 	return index;
-}
-
-static void SCIPlayActionButtonTapHaptic(void) {
-	UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
-	[feedback selectionChanged];
 }
 
 static NSURL *SCIURLFromURLCollectionValue(id collection) {
@@ -1937,7 +1941,14 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 	NSURL *currentURL = currentEntry.videoURL ?: currentEntry.photoURL;
 
 	if ([identifier isEqualToString:kSCIActionViewThumbnail]) {
-		return currentEntry.videoURL != nil;
+		if (!currentEntry.videoURL) return NO;
+		// For stories, photo items may falsely expose a videoURL.
+		// Only show thumbnail if no photoURL exists (pure video),
+		// or if both exist but are distinct URLs.
+		if (context.source == SCIActionButtonSourceStories && currentEntry.photoURL) {
+			return ![currentEntry.videoURL isEqual:currentEntry.photoURL];
+		}
+		return YES;
 	}
 	if ([identifier isEqualToString:kSCIActionDownloadLibrary] ||
 		[identifier isEqualToString:kSCIActionDownloadShare] ||
@@ -2390,7 +2401,11 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 	}
 
 	if ([identifier isEqualToString:kSCIActionViewThumbnail]) {
-		if (!currentEntry.videoURL) {
+		BOOL isVideo = currentEntry.videoURL != nil;
+		if (isVideo && context.source == SCIActionButtonSourceStories && currentEntry.photoURL) {
+			isVideo = ![currentEntry.videoURL isEqual:currentEntry.photoURL];
+		}
+		if (!isVideo) {
 			SCINotify(identifier, @"Thumbnail is only available for videos", nil, @"error_filled", SCINotificationToneError);
 			return YES;
 		}
@@ -2761,13 +2776,16 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 	}
 
 	__weak UIButton *weakButton = button;
+	// No bespoke touch-down haptic: the resolved action emits its own completion haptic
+	// (via SCINotify, which already respects general_disable_haptics), and the menu-open
+	// (None) path uses the system context-menu haptic. A selection haptic on touch-down
+	// stacked a second, wrong-feeling tick on top of those. Clear any stale one left on a
+	// reused button by an earlier configure pass.
 	UIAction *oldHapticAction = objc_getAssociatedObject(button, kSCIActionButtonHapticActionAssocKey);
-	if (oldHapticAction) [button removeAction:oldHapticAction forControlEvents:UIControlEventTouchDown];
-	UIAction *newHapticAction = [UIAction actionWithHandler:^(__unused UIAction *action) {
-		SCIPlayActionButtonTapHaptic();
-	}];
-	[button addAction:newHapticAction forControlEvents:UIControlEventTouchDown];
-	objc_setAssociatedObject(button, kSCIActionButtonHapticActionAssocKey, newHapticAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	if (oldHapticAction) {
+		[button removeAction:oldHapticAction forControlEvents:UIControlEventTouchDown];
+		objc_setAssociatedObject(button, kSCIActionButtonHapticActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	}
 
 	UIAction *oldTapAction = objc_getAssociatedObject(button, kSCIActionButtonTapActionAssocKey);
 	if (oldTapAction) [button removeAction:oldTapAction forControlEvents:UIControlEventTouchUpInside];

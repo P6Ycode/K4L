@@ -10,6 +10,7 @@
 #import "../../Shared/UI/SCIMediaChrome.h"
 #import "../../Shared/UI/SCINotificationCenter.h"
 #import "../../Utils.h"
+#import "SCIDirectUserResolver.h"
 
 static NSString * const kSCIDirectManualSeenThreadsKey = @"msgs_manual_seen_threads";
 
@@ -25,6 +26,7 @@ static NSString * const kSCIDirectManualSeenThreadsKey = @"msgs_manual_seen_thre
 static SCIDirectThreadContext *SCIDirectActiveContext;
 static NSArray<NSDictionary *> *SCIDirectManualSeenThreadsCache;
 static NSSet<NSString *> *SCIDirectManualSeenThreadIdsCache;
+BOOL SCIDirectSeenDebugPrintEnabled = NO;
 
 static id SCIDirectKVCObject(id target, NSString *key) {
     if (!target || key.length == 0) return nil;
@@ -126,6 +128,8 @@ static NSArray<NSDictionary *> *SCIDirectUsersFromObject(id object) {
             if (pk.length > 0) entry[@"pk"] = pk;
             if (username.length > 0) entry[@"username"] = username;
             if (fullName.length > 0) entry[@"fullName"] = fullName;
+            NSString *profilePicUrl = sciDirectUserResolverProfilePicURLStringFromUser(user);
+            if (profilePicUrl.length > 0) entry[@"profilePicUrl"] = profilePicUrl;
             if (entry.count > 0) [users addObject:entry];
         }
 
@@ -165,11 +169,56 @@ static SCIDirectThreadContext *SCIDirectThreadContextFromSourceInternal(id sourc
 static SCIDirectThreadContext *SCIDirectContextDirectlyFromObject(id object) {
     if (!object) return nil;
 
-    NSString *threadId = SCIDirectThreadIdDirectlyFromObject(object);
+    id target = object;
+
+    // Resolve threadInfoProvider (e.g. from IGDirectThreadViewController, or via _threadSession)
+    id provider = [SCIUtils getIvarForObj:object name:"_threadInfoProvider"];
+    if (!provider) {
+        provider = SCIDirectObjectForSelector(object, @"threadInfoProvider");
+    }
+    if (!provider) {
+        id threadSession = [SCIUtils getIvarForObj:object name:"_threadSession"];
+        if (threadSession) {
+            provider = [SCIUtils getIvarForObj:threadSession name:"_threadInfoProvider"];
+            if (!provider) provider = SCIDirectObjectForSelector(threadSession, @"threadInfoProvider");
+        }
+    }
+    if (!provider) {
+        id vcCtx = [SCIUtils getIvarForObj:object name:"_threadViewControllerContext"];
+        if (!vcCtx) vcCtx = SCIDirectObjectForSelector(object, @"threadViewControllerContext");
+        if (vcCtx) {
+            provider = SCIDirectObjectForSelector(vcCtx, @"threadInfoProvider");
+        }
+    }
+    if (provider) {
+        target = provider;
+    }
+
+    id metadata = nil;
+    if ([target respondsToSelector:NSSelectorFromString(@"threadMetadata")]) {
+        id meta = SCIDirectObjectForSelector(target, @"threadMetadata");
+        if (meta) {
+            metadata = meta;
+            target = meta;
+        }
+    }
+
+    NSString *threadId = SCIDirectThreadIdDirectlyFromObject(target);
+    if (threadId.length == 0 && target != object) {
+        threadId = SCIDirectThreadIdDirectlyFromObject(object);
+    }
+    if (threadId.length == 0 && [object respondsToSelector:NSSelectorFromString(@"threadKey")]) {
+        id key = SCIDirectObjectForSelector(object, @"threadKey");
+        threadId = SCIDirectThreadIdDirectlyFromObject(key);
+    }
     if (threadId.length == 0) return nil;
 
-    NSArray<NSDictionary *> *users = SCIDirectUsersFromObject(object);
-    NSString *threadName = SCIDirectFirstStringForSelectors(object, @[@"threadName", @"threadTitle", @"title", @"name"]);
+    NSArray<NSDictionary *> *users = SCIDirectUsersFromObject(target);
+    if (users.count == 0 && target != object) {
+        users = SCIDirectUsersFromObject(object);
+    }
+
+    NSString *threadName = SCIDirectFirstStringForSelectors(target, @[@"threadName", @"threadTitle", @"title", @"name"]);
     if (threadName.length == 0 && [object isKindOfClass:[UIViewController class]]) {
         threadName = ((UIViewController *)object).navigationItem.title;
     }
@@ -177,13 +226,31 @@ static SCIDirectThreadContext *SCIDirectContextDirectlyFromObject(id object) {
         NSDictionary *dict = (NSDictionary *)object;
         threadName = SCIDirectStringFromValue(dict[@"threadName"] ?: dict[@"thread_title"] ?: dict[@"title"]);
     }
+    if (threadName.length == 0 && target != object) {
+        threadName = SCIDirectFirstStringForSelectors(object, @[@"threadName", @"threadTitle", @"title", @"name"]);
+    }
     if (threadName.length == 0) threadName = SCIDirectNameFromUsers(users);
 
-    NSNumber *isGroupValue = SCIDirectFirstNumberForSelectors(object, @[@"isGroup", @"isGroupThread", @"groupThread"]);
+    NSNumber *isGroupValue = SCIDirectFirstNumberForSelectors(target, @[@"isGroup", @"isGroupThread", @"groupThread"]);
     if (!isGroupValue && [object isKindOfClass:[NSDictionary class]]) {
         NSDictionary *dict = (NSDictionary *)object;
         id raw = dict[@"isGroup"] ?: dict[@"is_group"] ?: dict[@"is_group_thread"];
         if ([raw respondsToSelector:@selector(boolValue)]) isGroupValue = @([raw boolValue]);
+    }
+    if (!isGroupValue && target != object) {
+        isGroupValue = SCIDirectFirstNumberForSelectors(object, @[@"isGroup", @"isGroupThread", @"groupThread"]);
+    }
+
+    if (SCIDirectSeenDebugPrintEnabled) {
+        SCILog(@"Messages", @"SCIDirectContextDirectlyFromObject: object=%@ provider=%@ metadata=%@ target=%@ threadId=%@ name=%@ usersCount=%lu users=%@",
+               NSStringFromClass([object class]),
+               provider ? NSStringFromClass([provider class]) : @"nil",
+               metadata ? NSStringFromClass([metadata class]) : @"nil",
+               NSStringFromClass([target class]),
+               threadId,
+               threadName,
+               (unsigned long)users.count,
+               users);
     }
 
     SCIDirectThreadContext *context = [SCIDirectThreadContext new];
@@ -285,12 +352,56 @@ static id SCIDirectInboxValueForKeys(id candidate, NSArray<NSString *> *keys) {
 static SCIDirectThreadContext *SCIDirectContextFromShallowInboxObject(id object) {
     if (!object) return nil;
 
-    NSString *threadId = SCIDirectStringFromValue(SCIDirectInboxValueForKeys(object, @[@"threadId", @"threadID", @"thread_id"]));
+    id target = object;
+    
+    id provider = [SCIUtils getIvarForObj:object name:"_threadInfoProvider"];
+    if (!provider) provider = SCIDirectObjectForSelector(object, @"threadInfoProvider");
+    if (!provider) {
+        id threadSession = [SCIUtils getIvarForObj:object name:"_threadSession"];
+        if (threadSession) {
+            provider = [SCIUtils getIvarForObj:threadSession name:"_threadInfoProvider"];
+            if (!provider) provider = SCIDirectObjectForSelector(threadSession, @"threadInfoProvider");
+        }
+    }
+    if (!provider) {
+        id vcCtx = [SCIUtils getIvarForObj:object name:"_threadViewControllerContext"];
+        if (!vcCtx) vcCtx = SCIDirectObjectForSelector(object, @"threadViewControllerContext");
+        if (vcCtx) {
+            provider = SCIDirectObjectForSelector(vcCtx, @"threadInfoProvider");
+        }
+    }
+    if (provider) {
+        target = provider;
+    }
+
+    if ([target respondsToSelector:NSSelectorFromString(@"threadMetadata")]) {
+        id meta = SCIDirectObjectForSelector(target, @"threadMetadata");
+        if (meta) target = meta;
+    }
+
+    NSString *threadId = SCIDirectStringFromValue(SCIDirectInboxValueForKeys(target, @[@"threadId", @"threadID", @"thread_id"]));
+    if (threadId.length == 0 && target != object) {
+        threadId = SCIDirectStringFromValue(SCIDirectInboxValueForKeys(object, @[@"threadId", @"threadID", @"thread_id"]));
+    }
     if (threadId.length == 0) return nil;
 
-    NSString *threadName = SCIDirectStringFromValue(SCIDirectInboxValueForKeys(object, @[@"threadName", @"threadTitle", @"thread_title", @"title", @"name"]));
-    id isGroupValue = SCIDirectInboxValueForKeys(object, @[@"isGroup", @"isGroupThread", @"groupThread", @"is_group", @"is_group_thread"]);
-    NSArray<NSDictionary *> *users = SCIDirectUsersFromObject(object);
+    NSString *threadName = SCIDirectStringFromValue(SCIDirectInboxValueForKeys(target, @[@"threadName", @"threadTitle", @"thread_title", @"title", @"name"]));
+    if (threadName.length == 0 && target != object) {
+        threadName = SCIDirectStringFromValue(SCIDirectInboxValueForKeys(object, @[@"threadName", @"threadTitle", @"thread_title", @"title", @"name"]));
+    }
+
+    id isGroupValue = SCIDirectInboxValueForKeys(target, @[@"isGroup", @"isGroupThread", @"groupThread", @"is_group", @"is_group_thread"]);
+    if (!isGroupValue && target != object) {
+        isGroupValue = SCIDirectInboxValueForKeys(object, @[@"isGroup", @"isGroupThread", @"groupThread", @"is_group", @"is_group_thread"]);
+    }
+
+    NSArray<NSDictionary *> *users = SCIDirectUsersFromObject(target);
+    if (users.count == 0 && target != object) {
+        users = SCIDirectUsersFromObject(object);
+    }
+    if (threadName.length == 0) {
+        threadName = SCIDirectNameFromUsers(users);
+    }
 
     SCIDirectThreadContext *context = [SCIDirectThreadContext new];
     context.threadId = threadId;
@@ -498,18 +609,33 @@ static void SCIDirectEnrichManualSeenThreadEntryIfNeeded(NSDictionary *entry, BO
     if ([entry[@"isGroup"] boolValue]) return;
     NSString *threadId = SCIDirectStringFromValue(entry[@"threadId"]);
     NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
-    NSDictionary *user = users.count == 1 && [users.firstObject isKindOfClass:[NSDictionary class]] ? users.firstObject : nil;
+    
+    NSString *currentPk = [SCIUtils currentUserPK];
+    NSDictionary *user = nil;
+    for (NSDictionary *u in users) {
+        if (![u isKindOfClass:[NSDictionary class]]) continue;
+        NSString *pk = u[@"pk"];
+        if (currentPk.length > 0 && [pk isEqualToString:currentPk]) continue;
+        user = u;
+        break;
+    }
+    if (!user && users.count > 0) {
+        user = users.firstObject;
+    }
+
     NSString *username = SCIDirectStringFromValue(user[@"username"]);
-    NSString *existingFullName = SCIDirectCleanFullName(user[@"fullName"], username);
-    if (threadId.length == 0 || username.length == 0 || existingFullName.length > 0) return;
+    NSString *pk = SCIDirectStringFromValue(user[@"pk"]);
+    NSString *profilePicUrl = SCIDirectStringFromValue(user[@"profilePicUrl"]);
+    if (threadId.length == 0 || username.length == 0) return;
+    if (pk.length > 0 && profilePicUrl.length > 0) return; // already fully enriched!
 
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
     if (encodedUsername.length == 0) return;
 
     [SCIInstagramAPI sendRequestWithMethod:@"GET"
-                                      path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
-                                      body:nil
-                                completion:^(NSDictionary *response, NSError *error) {
+                                       path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
+                                       body:nil
+                                 completion:^(NSDictionary *response, NSError *error) {
         NSDictionary *resolvedUser = response[@"data"][@"user"];
         if (![resolvedUser isKindOfClass:[NSDictionary class]]) resolvedUser = response[@"user"];
         if (![resolvedUser isKindOfClass:[NSDictionary class]] || error) {
@@ -521,9 +647,9 @@ static void SCIDirectEnrichManualSeenThreadEntryIfNeeded(NSDictionary *entry, BO
         }
 
         NSString *resolvedUsername = SCIDirectStringFromValue(resolvedUser[@"username"]) ?: username;
-        NSString *pk = SCIDirectStringFromValue(resolvedUser[@"id"] ?: resolvedUser[@"pk"]) ?: SCIDirectStringFromValue(user[@"pk"]) ?: @"";
-        NSString *fullName = SCIDirectCleanFullName(SCIDirectStringFromValue(resolvedUser[@"full_name"] ?: resolvedUser[@"fullName"]), resolvedUsername) ?: @"";
-        if (fullName.length == 0) return;
+        NSString *resolvedPk = SCIDirectStringFromValue(resolvedUser[@"id"] ?: resolvedUser[@"pk"]) ?: pk ?: @"";
+        NSString *fullName = SCIDirectCleanFullName(SCIDirectStringFromValue(resolvedUser[@"full_name"] ?: resolvedUser[@"fullName"]), resolvedUsername) ?: SCIDirectStringFromValue(user[@"fullName"]) ?: @"";
+        NSString *profilePic = SCIDirectStringFromValue(resolvedUser[@"profile_pic_url"] ?: resolvedUser[@"profile_pic_url_hd"]);
 
         NSMutableDictionary *updatedEntry = [entry mutableCopy];
         NSString *threadName = SCIDirectStringFromValue(updatedEntry[@"threadName"]);
@@ -532,14 +658,20 @@ static void SCIDirectEnrichManualSeenThreadEntryIfNeeded(NSDictionary *entry, BO
         if (threadName.length == 0 ||
             [normalizedThreadName isEqualToString:normalizedUsername] ||
             [[threadName stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"@"]] caseInsensitiveCompare:resolvedUsername] == NSOrderedSame) {
-            updatedEntry[@"threadName"] = fullName;
+            updatedEntry[@"threadName"] = fullName.length > 0 ? fullName : resolvedUsername;
         }
-        updatedEntry[@"users"] = @[@{
-            @"pk": pk,
-            @"username": resolvedUsername,
-            @"fullName": fullName,
-        }];
-        SCIDirectAddOrUpdateManualSeenThreadEntry(updatedEntry, manualSeenEnabled);
+        
+        NSMutableDictionary *mutUser = [NSMutableDictionary dictionary];
+        mutUser[@"pk"] = resolvedPk;
+        mutUser[@"username"] = resolvedUsername;
+        mutUser[@"fullName"] = fullName;
+        if (profilePic.length > 0) mutUser[@"profilePicUrl"] = profilePic;
+        
+        updatedEntry[@"users"] = @[mutUser.copy];
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            SCIDirectAddOrUpdateManualSeenThreadEntry(updatedEntry, manualSeenEnabled);
+        });
     }];
 }
 
@@ -601,14 +733,7 @@ BOOL SCIDirectManualSeenAppliesToSource(id source) {
 }
 
 BOOL SCIDirectShouldShowSeenButtonForSource(id source) {
-    BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
-    if (manualSeenEnabled) return YES;
-
-    NSArray<NSDictionary *> *threads = SCIDirectManualSeenThreadList(NO);
-    if (threads.count == 0) return NO;
-
-    NSString *threadId = SCIDirectFastThreadIdForSource(source);
-    return threadId.length > 0 && SCIDirectManualSeenListContainsThreadIdInList(threadId, threads);
+    return SCIDirectManualSeenAppliesToSource(source);
 }
 
 static BOOL SCIDirectCurrentThreadRuleState(SCIDirectThreadContext *context, NSString **outThreadId, NSString **outThreadName, NSString **outListTitle, BOOL *outListed, BOOL *outManualSeenEnabled) {
@@ -733,8 +858,11 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
 }
 
 - (NSString *)subtitleForEntry:(NSDictionary *)entry {
-    NSMutableArray<NSString *> *parts = [NSMutableArray array];
     NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
+    if ([entry[@"isGroup"] boolValue]) {
+        return [NSString stringWithFormat:@"%lu participant%@", (unsigned long)users.count, users.count == 1 ? @"" : @"s"];
+    }
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
     for (NSDictionary *user in users) {
         NSString *username = [user[@"username"] isKindOfClass:[NSString class]] ? user[@"username"] : nil;
         if (username.length > 0) [parts addObject:[@"@" stringByAppendingString:username]];
@@ -756,6 +884,25 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
                                                    action:^{
             [weakSelf showChatActionsForIndex:idx];
         }];
+        
+        if (!isGroup) {
+            NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
+            NSString *profilePicUrl = nil;
+            for (NSDictionary *user in users) {
+                if ([user[@"profilePicUrl"] isKindOfClass:[NSString class]]) {
+                    profilePicUrl = user[@"profilePicUrl"];
+                    break;
+                }
+                if ([user[@"pk"] isKindOfClass:[NSString class]]) {
+                    profilePicUrl = sciDirectUserResolverProfilePicURLStringForPK(user[@"pk"]);
+                    if (profilePicUrl) break;
+                }
+            }
+            if (profilePicUrl.length > 0) {
+                row.imageUrl = [NSURL URLWithString:profilePicUrl];
+            }
+        }
+        
         [rows addObject:row];
     }
 
@@ -777,16 +924,21 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
     NSDictionary *entry = self.threads[index];
     NSMutableArray<SCIIGAlertAction *> *actions = [NSMutableArray array];
     NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
-    if (![entry[@"isGroup"] boolValue] && users.count == 1) {
+    
+    BOOL isGroup = [entry[@"isGroup"] boolValue];
+    
+    SCIIGAlertAction *openProfileAction = nil;
+    if (!isGroup && users.count == 1) {
         NSString *username = [users.firstObject[@"username"] isKindOfClass:[NSString class]] ? users.firstObject[@"username"] : nil;
         if (username.length > 0) {
-            [actions addObject:[SCIIGAlertAction actionWithTitle:@"Open Profile" style:SCIIGAlertActionStyleDefault handler:^{
+            openProfileAction = [SCIIGAlertAction actionWithTitle:@"Open Profile" style:SCIIGAlertActionStyleDefault handler:^{
                 [SCIUtils openInstagramProfileForUsername:username];
-            }]];
+            }];
         }
     }
+    
     __weak typeof(self) weakSelf = self;
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Remove" style:SCIIGAlertActionStyleDestructive handler:^{
+    SCIIGAlertAction *removeAction = [SCIIGAlertAction actionWithTitle:@"Remove" style:SCIIGAlertActionStyleDestructive handler:^{
         NSString *threadId = [entry[@"threadId"] isKindOfClass:[NSString class]] ? entry[@"threadId"] : nil;
         if (threadId.length > 0) {
             NSString *threadName = [weakSelf displayNameForEntry:entry];
@@ -798,9 +950,42 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
                       SCINotificationToneSuccess);
             [weakSelf rebuildSections];
         }
-    }]];
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]];
-    [SCIIGAlertPresenter presentAlertFromViewController:self title:[self displayNameForEntry:entry] message:nil actions:actions];
+    }];
+    
+    SCIIGAlertAction *cancelAction = [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil];
+    
+    if (openProfileAction) {
+        [actions addObject:openProfileAction];
+        [actions addObject:removeAction];
+        [actions addObject:cancelAction];
+    } else {
+        // Only 2 actions: Cancel (safe) on left, Remove (destructive) on right
+        [actions addObject:cancelAction];
+        [actions addObject:removeAction];
+    }
+    
+    NSString *message = nil;
+    if (isGroup) {
+        NSMutableArray<NSString *> *userLines = [NSMutableArray array];
+        for (NSDictionary *user in users) {
+            NSString *username = [user[@"username"] isKindOfClass:[NSString class]] ? user[@"username"] : nil;
+            NSString *fullName = [user[@"fullName"] isKindOfClass:[NSString class]] ? user[@"fullName"] : nil;
+            if (username.length > 0) {
+                if (fullName.length > 0) {
+                    [userLines addObject:[NSString stringWithFormat:@"@%@ (%@)", username, fullName]];
+                } else {
+                    [userLines addObject:[NSString stringWithFormat:@"@%@", username]];
+                }
+            } else if (fullName.length > 0) {
+                [userLines addObject:fullName];
+            }
+        }
+        if (userLines.count > 0) {
+            message = [userLines componentsJoinedByString:@"\n"];
+        }
+    }
+    
+    [SCIIGAlertPresenter presentAlertFromViewController:self title:[self displayNameForEntry:entry] message:message actions:actions];
 }
 
 - (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -905,6 +1090,7 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
         NSString *pk = SCIDirectStringFromValue(user[@"id"] ?: user[@"pk"]);
         NSString *resolvedUsername = SCIDirectStringFromValue(user[@"username"]) ?: username;
         NSString *fullName = SCIDirectStringFromValue(user[@"full_name"] ?: user[@"fullName"]) ?: @"";
+        NSString *profilePicUrl = SCIDirectStringFromValue(user[@"profile_pic_url"] ?: user[@"profile_pic_url_hd"]);
         if (pk.length == 0) {
             SCILog(@"Messages", @"[SCInsta MessagesSeen] Settings add chat user lookup missing pk username=%@ response=%@", username, user);
             [strongSelf presentError:@"Could not resolve this user's Instagram id."];
@@ -942,16 +1128,22 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
                 ? [NSString stringWithFormat:@"@%@ (%@)", resolvedUsername, fullName]
                 : [@"@" stringByAppendingString:resolvedUsername];
             [SCIIGAlertPresenter presentAlertFromViewController:innerSelf
-                                                          title:@"Add to List?"
-                                                        message:message
-                                                        actions:@[
+                                                           title:@"Add to List?"
+                                                         message:message
+                                                         actions:@[
                 [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
                 [SCIIGAlertAction actionWithTitle:@"Add" style:SCIIGAlertActionStyleDefault handler:^{
+                    NSMutableDictionary *usersEntry = [@{
+                        @"pk": pk,
+                        @"username": resolvedUsername,
+                        @"fullName": fullName,
+                    } mutableCopy];
+                    if (profilePicUrl.length > 0) usersEntry[@"profilePicUrl"] = profilePicUrl;
                     SCIDirectAddOrUpdateManualSeenThreadEntry(@{
                         @"threadId": threadId,
                         @"threadName": threadName,
                         @"isGroup": @(NO),
-                        @"users": @[@{@"pk": pk, @"username": resolvedUsername, @"fullName": fullName}],
+                        @"users": @[usersEntry.copy],
                     }, innerSelf.manualSeenEnabled);
                     SCINotify(kSCINotificationDirectThreadSeenRule,
                               [NSString stringWithFormat:@"Added %@", threadName],

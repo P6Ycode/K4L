@@ -39,7 +39,7 @@ NSString *sciDirectUserResolverUsernameFromUser(id user) {
 NSString *sciDirectUserResolverProfilePicURLStringFromUser(id user) {
     if (!user) return nil;
     @try {
-        for (NSString *key in @[@"profilePicURL", @"profilePictureURL", @"profileImageURL"]) {
+        for (NSString *key in @[@"profilePicURL", @"profilePictureURL", @"profileImageURL", @"profilePicURLString"]) {
             @try {
                 id v = [user valueForKey:key];
                 if ([v isKindOfClass:[NSURL class]]) return [(NSURL *)v absoluteString];

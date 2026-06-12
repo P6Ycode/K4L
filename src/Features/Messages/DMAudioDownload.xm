@@ -455,7 +455,7 @@ static id SCIDMUploadAudioMenuItemForComposer(id composer) {
     }
 
     __weak id weakComposer = composer;
-    return SCIDMMenuItem(@"Upload Audio", [SCIAssetUtils instagramIconNamed:@"audio" pointSize:24.0], ^(__unused id item) {
+    return SCIDMMenuItem(@"Upload Audio", [SCIAssetUtils instagramIconNamed:@"audio_upload" pointSize:24.0], ^(__unused id item) {
         id strongComposer = weakComposer;
         if (!strongComposer) return;
         UIViewController *presenter = [SCIUtils viewControllerForAncestralView:(UIView *)strongComposer] ?: topMostController();
@@ -513,7 +513,7 @@ static id SCIDMDownloadAudioMenuItemForViewModel(id viewModel) {
     if (![SCIAudioDownloadCoordinator bestAudioURLFromMediaObject:viewModel]) return nil;
 
     __strong id capturedViewModel = viewModel;
-    return SCIDMMenuItem(@"Audio Actions", [SCIAssetUtils instagramIconNamed:@"audio" pointSize:24.0], ^(__unused id item) {
+    return SCIDMMenuItem(@"Audio Actions", [SCIAssetUtils instagramIconNamed:@"action" pointSize:24.0], ^(__unused id item) {
         SCIDMPresentDownloadAudioActionsForViewModel(capturedViewModel);
     });
 }
@@ -538,7 +538,7 @@ static id SCIDMPrismAudioDownloadElement(id templateElement, id viewModel) {
     };
 
     id builder = ((id (*)(id, SEL, id))objc_msgSend)([builderClass alloc], initSelector, @"Audio Actions");
-    builder = ((id (*)(id, SEL, id))objc_msgSend)(builder, imageSelector, [SCIAssetUtils instagramIconNamed:@"audio" pointSize:24.0]);
+    builder = ((id (*)(id, SEL, id))objc_msgSend)(builder, imageSelector, [SCIAssetUtils instagramIconNamed:@"action" pointSize:24.0]);
     builder = ((id (*)(id, SEL, id))objc_msgSend)(builder, handlerSelector, handler);
     id menuItem = ((id (*)(id, SEL))objc_msgSend)(builder, buildSelector);
     if (!menuItem) return nil;

@@ -12,6 +12,7 @@
 #import "../../Settings/SCISetting.h"
 #import "../../Settings/SCITopicSettingsSupport.h"
 #import "../../Shared/UI/SCIMediaChrome.h"
+#import "../Messages/SCIDirectUserResolver.h"
 
 static __weak UIView *SCIStoryActiveOverlayView;
 static NSString * const kSCIStoryManualSeenUserNamesKey = @"stories_manual_seen_user_names";
@@ -347,17 +348,28 @@ static NSString *SCIStoryFullNameFromMediaObject(id media) {
     return nil;
 }
 
-static NSArray<NSString *> *SCIStoryManualSeenUserListForRawValue(id rawStored) {
-    NSArray *stored = [rawStored isKindOfClass:[NSArray class]] ? rawStored : nil;
-    if (!stored && [rawStored isKindOfClass:[NSString class]]) {
-        stored = [(NSString *)rawStored componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@",\n"]];
+static id SCIStoryUserFromMediaObject(id media) {
+    if (!media) return nil;
+    Class userClass = NSClassFromString(@"IGUser");
+    if (userClass && [media isKindOfClass:userClass]) {
+        return media;
     }
-    NSMutableOrderedSet<NSString *> *users = [NSMutableOrderedSet orderedSet];
-    for (id value in stored) {
-        NSString *username = [value isKindOfClass:[NSString class]] ? SCIStoryNormalizeUsername(value) : nil;
-        if (username.length > 0) [users addObject:username];
+    for (NSString *userSelector in @[@"user", @"owner", @"author", @"sender", @"fromUser", @"userObject"]) {
+        id user = SCIStoryFirstObjectForSelectors(media, @[userSelector]);
+        if (user) return user;
     }
-    return users.array;
+    for (NSString *nestedSelector in @[@"media", @"item", @"storyItem", @"reelShare", @"currentStoryItem", @"currentItem"]) {
+        id nested = SCIStoryFirstObjectForSelectors(media, @[nestedSelector]);
+        if (!nested || nested == media) continue;
+        id user = SCIStoryUserFromMediaObject(nested);
+        if (user) return user;
+    }
+    return nil;
+}
+
+NSString *SCIStoryUserPKFromMediaObject(id media) {
+    id user = SCIStoryUserFromMediaObject(media);
+    return user ? [SCIUtils pkFromIGUser:user] : nil;
 }
 
 static NSString *SCIStoryNormalizeUsername(NSString *username) {
@@ -366,55 +378,146 @@ static NSString *SCIStoryNormalizeUsername(NSString *username) {
     return trimmed;
 }
 
-NSArray<NSString *> *SCIStoryManualSeenUserList(BOOL manualSeenEnabled) {
-    NSString *key = SCIStoryManualSeenListKey(manualSeenEnabled);
-    id rawStored = [[NSUserDefaults standardUserDefaults] objectForKey:key];
-    if (!rawStored) {
-        NSArray *excluded = SCIStoryManualSeenUserListForRawValue([[NSUserDefaults standardUserDefaults] objectForKey:@"stories_seen_excluded_users"]);
-        NSArray *included = SCIStoryManualSeenUserListForRawValue([[NSUserDefaults standardUserDefaults] objectForKey:@"stories_seen_included_users"]);
-        NSMutableOrderedSet *merged = [NSMutableOrderedSet orderedSetWithArray:excluded ?: @[]];
-        for (NSString *user in included ?: @[]) [merged addObject:user];
-        if (merged.count > 0) {
-            SCIStorySetManualSeenUserList(merged.array, manualSeenEnabled);
-            return merged.array;
+static NSArray<NSDictionary *> *SCIStoryManualSeenUserListFromRawValue(id rawStored) {
+    if (![rawStored isKindOfClass:[NSArray class]]) return @[];
+    
+    NSMutableArray<NSDictionary *> *users = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenPks = [NSMutableSet set];
+    
+    for (id value in (NSArray *)rawStored) {
+        if ([value isKindOfClass:[NSDictionary class]]) {
+            NSDictionary *dict = (NSDictionary *)value;
+            NSString *pk = SCIStringFromValue(dict[@"pk"]);
+            NSString *username = SCIStoryNormalizeUsername(dict[@"username"]);
+            
+            if (pk.length > 0) {
+                if ([seenPks containsObject:pk]) continue;
+                [seenPks addObject:pk];
+            } else {
+                continue;
+            }
+            
+            NSMutableDictionary *entry = [dict mutableCopy];
+            if (username.length > 0) entry[@"username"] = username;
+            if (!entry[@"fullName"]) entry[@"fullName"] = @"";
+            [users addObject:entry.copy];
         }
     }
-    return SCIStoryManualSeenUserListForRawValue(rawStored);
+    return users.copy;
 }
 
-void SCIStorySetManualSeenUserList(NSArray<NSString *> *users, BOOL manualSeenEnabled) {
-    NSMutableOrderedSet<NSString *> *normalized = [NSMutableOrderedSet orderedSet];
-    for (NSString *user in users) {
-        NSString *username = SCIStoryNormalizeUsername(user);
-        if (username.length > 0) [normalized addObject:username];
+NSArray *SCIStoryManualSeenUserList(BOOL manualSeenEnabled) {
+    (void)manualSeenEnabled;
+    NSString *key = SCIStoryManualSeenListKey(manualSeenEnabled);
+    id rawStored = [[NSUserDefaults standardUserDefaults] objectForKey:key];
+    return SCIStoryManualSeenUserListFromRawValue(rawStored);
+}
+
+void SCIStorySetManualSeenUserList(NSArray *users, BOOL manualSeenEnabled) {
+    (void)manualSeenEnabled;
+    NSArray *normalized = SCIStoryManualSeenUserListFromRawValue(users);
+    [[NSUserDefaults standardUserDefaults] setObject:normalized forKey:SCIStoryManualSeenListKey(manualSeenEnabled)];
+}
+
+BOOL SCIStoryManualSeenListContainsUser(NSString *pk, BOOL manualSeenEnabled) {
+    if (pk.length == 0) return NO;
+    NSArray<NSDictionary *> *users = SCIStoryManualSeenUserList(manualSeenEnabled);
+    for (NSDictionary *user in users) {
+        NSString *userPk = user[@"pk"];
+        if (userPk.length > 0 && [pk isEqualToString:userPk]) {
+            return YES;
+        }
     }
-    [[NSUserDefaults standardUserDefaults] setObject:[normalized.array componentsJoinedByString:@", "] forKey:SCIStoryManualSeenListKey(manualSeenEnabled)];
-}
-
-BOOL SCIStoryManualSeenListContainsUsername(NSString *username, BOOL manualSeenEnabled) {
-    NSString *normalized = SCIStoryNormalizeUsername(username);
-    return normalized.length > 0 && [SCIStoryManualSeenUserList(manualSeenEnabled) containsObject:normalized];
+    return NO;
 }
 
 BOOL SCIStoryManualSeenAppliesToContext(SCIStoryContext *context) {
     BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
-    NSString *username = SCIStoryUsernameForContext(context);
-    BOOL listed = SCIStoryManualSeenListContainsUsername(username, manualSeenEnabled);
+    NSString *pk = SCIStoryUserPKFromMediaObject(context.media);
+    BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
     return manualSeenEnabled ? !listed : listed;
 }
 
-void SCIStoryToggleUsernameForCurrentManualSeenMode(NSString *username) {
+static void SCIStoryEnrichManualSeenUserEntryIfNeeded(NSDictionary *entry, BOOL manualSeenEnabled) {
+    NSString *pk = SCIStringFromValue(entry[@"pk"]);
+    NSString *username = SCIStringFromValue(entry[@"username"]);
+    NSString *profilePicUrl = SCIStringFromValue(entry[@"profilePicUrl"]);
+    if (pk.length == 0 || username.length == 0) return;
+    if (profilePicUrl.length > 0) return; // already fully enriched!
+
+    NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
+    if (encodedUsername.length == 0) return;
+
+    [SCIInstagramAPI sendRequestWithMethod:@"GET"
+                                      path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
+                                      body:nil
+                                completion:^(NSDictionary *response, NSError *error) {
+        NSDictionary *resolvedUser = response[@"data"][@"user"];
+        if (![resolvedUser isKindOfClass:[NSDictionary class]]) resolvedUser = response[@"user"];
+        if (![resolvedUser isKindOfClass:[NSDictionary class]] || error) {
+            return;
+        }
+
+        NSString *resolvedUsername = SCIStringFromValue(resolvedUser[@"username"]) ?: username;
+        NSString *fullName = SCIStoryCleanDisplayName(SCIStringFromValue(resolvedUser[@"full_name"] ?: resolvedUser[@"fullName"]), resolvedUsername) ?: SCIStringFromValue(entry[@"fullName"]) ?: @"";
+        NSString *profilePic = SCIStringFromValue(resolvedUser[@"profile_pic_url"] ?: resolvedUser[@"profile_pic_url_hd"]);
+        if (profilePic.length == 0) return;
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSArray *users = SCIStoryManualSeenUserList(manualSeenEnabled);
+            NSMutableArray *newUsers = [users mutableCopy];
+            for (NSUInteger i = 0; i < newUsers.count; i++) {
+                NSDictionary *u = newUsers[i];
+                if ([u[@"pk"] isEqualToString:pk]) {
+                    NSMutableDictionary *mutU = [u mutableCopy];
+                    mutU[@"username"] = resolvedUsername;
+                    mutU[@"fullName"] = fullName;
+                    mutU[@"profilePicUrl"] = profilePic;
+                    newUsers[i] = mutU.copy;
+                    break;
+                }
+            }
+            SCIStorySetManualSeenUserList(newUsers.copy, manualSeenEnabled);
+        });
+    }];
+}
+
+void SCIStoryToggleUserForCurrentManualSeenMode(NSString *pk, NSString *username, NSString *fullName, NSString *profilePicUrl) {
+    if (pk.length == 0) return;
     BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
     NSString *normalized = SCIStoryNormalizeUsername(username);
-    if (normalized.length == 0) return;
-    NSMutableArray<NSString *> *users = [SCIStoryManualSeenUserList(manualSeenEnabled) mutableCopy];
-    if ([users containsObject:normalized]) {
-        [users removeObject:normalized];
-    } else {
-        [users addObject:normalized];
-        [users sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+    
+    NSArray<NSDictionary *> *users = SCIStoryManualSeenUserList(manualSeenEnabled);
+    NSMutableArray<NSDictionary *> *newUsers = [users mutableCopy];
+    
+    NSInteger existingIndex = -1;
+    for (NSInteger idx = 0; idx < (NSInteger)newUsers.count; idx++) {
+        NSDictionary *user = newUsers[idx];
+        NSString *userPk = user[@"pk"];
+        if (userPk.length > 0 && [pk isEqualToString:userPk]) {
+            existingIndex = idx;
+            break;
+        }
     }
-    SCIStorySetManualSeenUserList(users, manualSeenEnabled);
+    
+    if (existingIndex >= 0) {
+        [newUsers removeObjectAtIndex:existingIndex];
+    } else {
+        NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+        entry[@"pk"] = pk;
+        if (username.length > 0) entry[@"username"] = normalized;
+        entry[@"fullName"] = fullName ?: @"";
+        if (profilePicUrl.length > 0) entry[@"profilePicUrl"] = profilePicUrl;
+        entry[@"addedAt"] = @([[NSDate date] timeIntervalSince1970]);
+        [newUsers addObject:entry.copy];
+        [newUsers sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+            NSString *aName = a[@"username"] ?: @"";
+            NSString *bName = b[@"username"] ?: @"";
+            return [aName localizedCaseInsensitiveCompare:bName];
+        }];
+        SCIStoryEnrichManualSeenUserEntryIfNeeded(entry.copy, manualSeenEnabled);
+    }
+    SCIStorySetManualSeenUserList(newUsers.copy, manualSeenEnabled);
 }
 
 NSString *SCIStoryManualSeenListTitle(BOOL manualSeenEnabled) {
@@ -432,7 +535,7 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
 }
 
 @interface SCIStoryManualSeenUsersViewController : SCISettingsViewController
-@property (nonatomic, strong) NSMutableArray<NSString *> *users;
+@property (nonatomic, strong) NSMutableArray<NSDictionary *> *users;
 @property (nonatomic, assign) BOOL manualSeenEnabled;
 @end
 
@@ -463,8 +566,10 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
     NSMutableArray<SCISetting *> *rows = [NSMutableArray array];
     __weak typeof(self) weakSelf = self;
     for (NSUInteger idx = 0; idx < self.users.count; idx++) {
-        NSString *username = self.users[idx];
-        NSString *fullName = SCIStoryCachedManualSeenUserName(username);
+        NSDictionary *entry = self.users[idx];
+        NSString *username = entry[@"username"];
+        NSString *fullName = entry[@"fullName"];
+        if (fullName.length == 0) fullName = SCIStoryCachedManualSeenUserName(username);
         NSString *handle = [@"@" stringByAppendingString:username];
         SCISetting *row = [SCISetting buttonCellWithTitle:(fullName.length > 0 ? fullName : handle)
                                                  subtitle:(fullName.length > 0 ? handle : nil)
@@ -472,6 +577,15 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
                                                    action:^{
             [weakSelf showUserActionsForIndex:idx];
         }];
+        
+        NSString *profilePicUrl = entry[@"profilePicUrl"];
+        if (profilePicUrl.length == 0 && entry[@"pk"]) {
+            profilePicUrl = sciDirectUserResolverProfilePicURLStringForPK(entry[@"pk"]);
+        }
+        if (profilePicUrl.length > 0) {
+            row.imageUrl = [NSURL URLWithString:profilePicUrl];
+        }
+        
         [rows addObject:row];
     }
     
@@ -484,29 +598,24 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
 
 - (void)showHowItWorks {
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:@"How It Works"
-                                                message:SCIStoryManualSeenListHelpText(self.manualSeenEnabled)
-                                                actions:@[
+                                                   title:@"How It Works"
+                                                 message:SCIStoryManualSeenListHelpText(self.manualSeenEnabled)
+                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"OK" style:SCIIGAlertActionStyleCancel handler:nil]
     ]];
 }
 
 - (void)showUserActionsForIndex:(NSUInteger)index {
     if (index >= self.users.count) return;
-    NSString *username = self.users[index];
+    NSDictionary *entry = self.users[index];
+    NSString *username = entry[@"username"];
     __weak typeof(self) weakSelf = self;
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:[NSString stringWithFormat:@"@%@", username]
-                                                message:nil
-                                                actions:@[
+                                                   title:[NSString stringWithFormat:@"@%@", username]
+                                                 message:nil
+                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Open Profile" style:SCIIGAlertActionStyleDefault handler:^{
-            NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
-            if (encodedUsername.length) {
-                NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://user?username=%@", encodedUsername]];
-                if (url && [[UIApplication sharedApplication] canOpenURL:url]) {
-                    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
-                }
-            }
+            [SCIUtils openInstagramProfileForUsername:username];
         }],
         [SCIIGAlertAction actionWithTitle:@"Remove" style:SCIIGAlertActionStyleDestructive handler:^{
             [weakSelf.users removeObjectAtIndex:index];
@@ -536,7 +645,8 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
             completionHandler(NO);
             return;
         }
-        NSString *username = strongSelf.users[indexPath.row];
+        NSDictionary *entry = strongSelf.users[indexPath.row];
+        NSString *username = entry[@"username"];
         [strongSelf.users removeObjectAtIndex:indexPath.row];
         SCIStorySetManualSeenUserList(strongSelf.users, strongSelf.manualSeenEnabled);
         SCINotify(kSCINotificationStorySeenUserRule,
@@ -558,7 +668,8 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (editingStyle != UITableViewCellEditingStyleDelete) return;
     if (indexPath.row >= self.users.count) return;
-    NSString *username = self.users[indexPath.row];
+    NSDictionary *entry = self.users[indexPath.row];
+    NSString *username = entry[@"username"];
     [self.users removeObjectAtIndex:indexPath.row];
     SCIStorySetManualSeenUserList(self.users, self.manualSeenEnabled);
     SCINotify(kSCINotificationStorySeenUserRule,
@@ -569,35 +680,99 @@ static NSString *SCIStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
     [self rebuildSections];
 }
 
+- (void)presentError:(NSString *)message {
+    [SCIIGAlertPresenter presentAlertFromViewController:self
+                                                   title:@"Unable to Add User"
+                                                 message:message
+                                                 actions:@[[SCIIGAlertAction actionWithTitle:@"OK" style:SCIIGAlertActionStyleCancel handler:nil]]];
+}
+
 - (void)addUser {
     __weak typeof(self) weakSelf = self;
     [SCIIGAlertPresenter presentTextInputAlertFromViewController:self
                                                            title:@"Add User"
-                                                         message:nil
+                                                         message:@"Enter the Instagram username to add."
                                                      placeholder:@"username"
                                                      initialText:nil
                                                  autocapitalized:NO
-                                                    confirmTitle:@"Add"
-                                                     cancelTitle:@"Cancel"
+                                                     confirmTitle:@"Search"
+                                                      cancelTitle:@"Cancel"
                                                      confirmStyle:SCIIGAlertActionStyleDefault
                                                      confirmBlock:^(NSString *text) {
-        NSString *username = SCIStoryNormalizeUsername(text);
-        if (username.length == 0) return;
-        if (![weakSelf.users containsObject:username]) {
-            [weakSelf.users addObject:username];
-            [weakSelf.users sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
-            SCIStorySetManualSeenUserList(weakSelf.users, weakSelf.manualSeenEnabled);
-            SCINotify(kSCINotificationStorySeenUserRule,
-                      [NSString stringWithFormat:@"Added @%@", username],
-                      SCIStoryManualSeenListTitle(weakSelf.manualSeenEnabled),
-                      @"circle_check_filled",
-                      SCINotificationToneSuccess);
-            [weakSelf rebuildSections];
-            SCIStoryResolveAndRememberManualSeenUserName(username, ^{
-                [weakSelf rebuildSections];
-            });
-        }
+        [weakSelf lookupUsername:text];
     } cancelBlock:nil];
+}
+
+- (void)lookupUsername:(NSString *)rawUsername {
+    NSString *username = [[[rawUsername ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"@"]];
+    if (username.length == 0) return;
+    NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
+    if (encodedUsername.length == 0) return;
+
+    __weak typeof(self) weakSelf = self;
+    [SCIInstagramAPI sendRequestWithMethod:@"GET"
+                                      path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
+                                      body:nil
+                                completion:^(NSDictionary *response, NSError *error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        NSDictionary *user = response[@"data"][@"user"];
+        if (![user isKindOfClass:[NSDictionary class]]) user = response[@"user"];
+        if (![user isKindOfClass:[NSDictionary class]] || error) {
+            [strongSelf presentError:[NSString stringWithFormat:@"User '%@' was not found.", username]];
+            return;
+        }
+        NSString *pk = SCIStringFromValue(user[@"id"] ?: user[@"pk"]);
+        NSString *resolvedUsername = SCIStringFromValue(user[@"username"]) ?: username;
+        NSString *fullName = SCIStringFromValue(user[@"full_name"] ?: user[@"fullName"]) ?: @"";
+        NSString *profilePicUrl = SCIStringFromValue(user[@"profile_pic_url"] ?: user[@"profile_pic_url_hd"]);
+        if (pk.length == 0) {
+            [strongSelf presentError:@"Could not resolve this user's Instagram ID."];
+            return;
+        }
+
+        NSString *message = fullName.length > 0
+            ? [NSString stringWithFormat:@"@%@ (%@)", resolvedUsername, fullName]
+            : [@"@" stringByAppendingString:resolvedUsername];
+            
+        [SCIIGAlertPresenter presentAlertFromViewController:strongSelf
+                                                      title:@"Add to List?"
+                                                    message:message
+                                                    actions:@[
+            [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
+            [SCIIGAlertAction actionWithTitle:@"Add" style:SCIIGAlertActionStyleDefault handler:^{
+                BOOL alreadyExists = NO;
+                for (NSDictionary *u in strongSelf.users) {
+                    if ([u[@"pk"] isEqualToString:pk] || [u[@"username"] isEqualToString:resolvedUsername]) {
+                        alreadyExists = YES;
+                        break;
+                    }
+                }
+                if (!alreadyExists) {
+                    NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+                    entry[@"pk"] = pk;
+                    entry[@"username"] = resolvedUsername;
+                    entry[@"fullName"] = fullName;
+                    if (profilePicUrl.length > 0) entry[@"profilePicUrl"] = profilePicUrl;
+                    entry[@"addedAt"] = @([[NSDate date] timeIntervalSince1970]);
+                    
+                    [strongSelf.users addObject:entry.copy];
+                    [strongSelf.users sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+                        NSString *aName = a[@"username"] ?: @"";
+                        NSString *bName = b[@"username"] ?: @"";
+                        return [aName localizedCaseInsensitiveCompare:bName];
+                    }];
+                    SCIStorySetManualSeenUserList(strongSelf.users, strongSelf.manualSeenEnabled);
+                    SCINotify(kSCINotificationStorySeenUserRule,
+                              [NSString stringWithFormat:@"Added @%@", resolvedUsername],
+                              SCIStoryManualSeenListTitle(strongSelf.manualSeenEnabled),
+                              @"circle_check_filled",
+                              SCINotificationToneSuccess);
+                    [strongSelf rebuildSections];
+                }
+            }],
+        ]];
+    }];
 }
 
 @end
@@ -611,7 +786,8 @@ static BOOL SCIStoryCurrentUserRuleState(SCIStoryContext *context, NSString **ou
     if (username.length == 0) return NO;
 
     BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
-    BOOL listed = SCIStoryManualSeenListContainsUsername(username, manualSeenEnabled);
+    NSString *pk = SCIStoryUserPKFromMediaObject(context.media);
+    BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
     NSString *listTitle = SCIStoryManualSeenListTitle(manualSeenEnabled);
 
     if (outUsername) *outUsername = username;
@@ -658,11 +834,25 @@ BOOL SCIStoryToggleCurrentUserRule(SCIStoryContext *context, NSString **notifica
     BOOL listed = NO;
     if (!SCIStoryCurrentUserRuleState(context, &username, &listTitle, &listed, NULL)) return NO;
 
-    SCIStoryToggleUsernameForCurrentManualSeenMode(username);
+    id user = SCIStoryUserFromMediaObject(context.media);
+    NSString *pk = SCIStoryUserPKFromMediaObject(context.media);
+    if (pk.length == 0) {
+        pk = sciDirectUserResolverPKFromUser(user);
+    }
+    NSString *fullName = SCIStoryFullNameForContext(context);
+
+    NSString *profilePicUrl = sciDirectUserResolverProfilePicURLStringForPK(pk);
+    if (profilePicUrl.length == 0) {
+        profilePicUrl = sciDirectUserResolverProfilePicURLStringFromUser(user);
+    }
+    
+    SCIStoryToggleUserForCurrentManualSeenMode(pk, username, fullName, profilePicUrl);
+    
     if (!listed) {
-        NSString *fullName = SCIStoryFullNameForContext(context);
-        SCIStoryRememberManualSeenUserName(username, fullName);
-        if (SCIStoryCleanDisplayName(fullName, username).length == 0) {
+        if (username.length > 0 && fullName.length > 0) {
+            SCIStoryRememberManualSeenUserName(username, fullName);
+        }
+        if (username.length > 0 && SCIStoryCleanDisplayName(fullName, username).length == 0) {
             SCIStoryResolveAndRememberManualSeenUserName(username, nil);
         }
     }

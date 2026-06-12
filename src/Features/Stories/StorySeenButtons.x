@@ -417,7 +417,7 @@ UIView *SCIActiveStoryOverlayForInteractions(void) {
 
     SCIStoryContext *storyContext = SCIStoryContextFromOverlay(overlayView);
     BOOL showSeenButton = SCIStoryManualSeenAppliesToContext(storyContext);
-    if (!showSeenButton && SCIManualStorySeenEnabled() && SCIStoryManualSeenListContainsUsername(SCIStoryUsernameForContext(storyContext), YES)) {
+    if (!showSeenButton && SCIManualStorySeenEnabled() && SCIStoryManualSeenListContainsUser(SCIStoryUserPKFromMediaObject(storyContext.media), YES)) {
         static NSMutableSet<NSString *> *autoSeenMarked;
         static dispatch_once_t autoSeenOnceToken;
         dispatch_once(&autoSeenOnceToken, ^{

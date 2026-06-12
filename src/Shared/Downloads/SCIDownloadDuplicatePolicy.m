@@ -39,6 +39,16 @@ static NSString *SCIDuplicateKey(SCIGallerySaveMetadata *metadata, NSInteger med
     NSString *identity = nil;
     if (metadata.sourceMediaPK.length > 0) {
         identity = [@"pk:" stringByAppendingString:metadata.sourceMediaPK];
+        // Differentiate carousel slides by their img_index
+        if (metadata.sourceMediaURLString.length > 0) {
+            NSURLComponents *components = [NSURLComponents componentsWithString:metadata.sourceMediaURLString];
+            for (NSURLQueryItem *item in components.queryItems) {
+                if ([item.name isEqualToString:@"img_index"] && item.value.length > 0) {
+                    identity = [identity stringByAppendingFormat:@"|idx:%@", item.value];
+                    break;
+                }
+            }
+        }
     } else if (metadata.sourceMediaURLString.length > 0) {
         identity = [@"url:" stringByAppendingString:SCINormalizedMediaURLString(metadata.sourceMediaURLString)];
     }

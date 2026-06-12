@@ -246,7 +246,13 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
 
 - (void)reloadData {
     self.ownerPK = SCIDMCurrentUserPK();
-    self.groups = [SCIDeletedMessagesStorage groupedBySenderForOwnerPK:self.ownerPK];
+    NSArray<SCIDeletedMessageGroup *> *allGroups = [SCIDeletedMessagesStorage groupedBySenderForOwnerPK:self.ownerPK];
+    NSMutableArray<SCIDeletedMessageGroup *> *filtered = [NSMutableArray array];
+    for (SCIDeletedMessageGroup *g in allGroups) {
+        if ([g.senderPk isEqualToString:self.ownerPK]) continue;
+        [filtered addObject:g];
+    }
+    self.groups = [filtered copy];
     [self applyFilter];
     [self rebuildMenus];
 }

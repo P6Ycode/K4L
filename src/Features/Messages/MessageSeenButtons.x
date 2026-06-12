@@ -14,10 +14,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SCIApplyButtonStyle(UIButton *button, NSInteger source);
 #ifdef __cplusplus
 }
 #endif
+
+@interface UIViewController (SCIRefreshNavigationBar)
+- (void)refreshRightBarButtonItems;
+- (void)updateThreadNavigationBar;
+@end
 
 static NSString * const kSCISeenMessagesBarIconResource = @"eye";
 static const void *kSCIDirectThreadIdAssocKey = &kSCIDirectThreadIdAssocKey;
@@ -308,7 +312,9 @@ static void SCIDirectResolveChatPartner(SCIDirectThreadContext *context, NSStrin
 
 static UIMenu *SCIDirectSeenButtonMenu(id source) {
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
+    SCIDirectSeenDebugPrintEnabled = YES;
     SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(source);
+    SCIDirectSeenDebugPrintEnabled = NO;
     NSString *toggleTitle = SCIDirectCurrentThreadRuleActionTitle(context);
     if (toggleTitle.length > 0) {
         UIImage *toggleImage = [SCIAssetUtils instagramIconNamed:SCIDirectManualSeenListContainsThreadId(context.threadId, [SCIUtils getBoolPref:@"msgs_manual_seen"]) ? @"eye" : @"eye_off"];
@@ -327,6 +333,13 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
                 return;
             }
             SCINotify(kSCINotificationDirectThreadSeenRule, title, subtitle, @"circle_check_filled", SCINotificationToneSuccess);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if ([source respondsToSelector:@selector(refreshRightBarButtonItems)]) {
+                    [source refreshRightBarButtonItems];
+                } else if ([source respondsToSelector:@selector(updateThreadNavigationBar)]) {
+                    [source updateThreadNavigationBar];
+                }
+            });
         }];
         [children addObject:toggleAction];
     }

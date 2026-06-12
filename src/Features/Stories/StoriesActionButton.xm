@@ -135,6 +135,8 @@ static BOOL SCIStoriesActionFrameMatches(UIButton *button, CGRect frame) {
 	       ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
 }
 
+static const void *kSCIStoriesActionButtonMediaKey = &kSCIStoriesActionButtonMediaKey;
+
 static void SCIInstallStoriesActionButton(UIView *overlayView) {
 	if (!overlayView) return;
 
@@ -156,11 +158,17 @@ static void SCIInstallStoriesActionButton(UIView *overlayView) {
 		[button removeFromSuperview];
 		return;
 	}
-	if (SCIStoriesActionFrameMatches(button, expectedFrame)) return;
+
+	id currentMedia = SCIStoryMediaFromOverlay(overlayView);
+	id lastMedia = button ? objc_getAssociatedObject(button, kSCIStoriesActionButtonMediaKey) : nil;
+
+	if (SCIStoriesActionFrameMatches(button, expectedFrame) && lastMedia == currentMedia) return;
 
 	button = SCIActionButtonWithTag(overlayView, kSCIStoriesActionButtonTag);
 	button.translatesAutoresizingMaskIntoConstraints = YES;
 	SCIConfigureActionButton(button, SCIStoriesActionContext(overlayView));
+	objc_setAssociatedObject(button, kSCIStoriesActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
 	if (button.hidden) return;
 
 	button.frame = expectedFrame;

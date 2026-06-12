@@ -34,10 +34,10 @@ NSURL *_Nullable SCIStoryURLForContext(SCIStoryContext *_Nullable context);
 NSString *_Nullable SCIStoryMediaIdentifierForContext(SCIStoryContext *_Nullable context);
 
 BOOL SCIStoryManualSeenAppliesToContext(SCIStoryContext *_Nullable context);
-NSArray<NSString *> *SCIStoryManualSeenUserList(BOOL manualSeenEnabled);
-void SCIStorySetManualSeenUserList(NSArray<NSString *> *users, BOOL manualSeenEnabled);
-BOOL SCIStoryManualSeenListContainsUsername(NSString *_Nullable username, BOOL manualSeenEnabled);
-void SCIStoryToggleUsernameForCurrentManualSeenMode(NSString *username);
+NSArray *SCIStoryManualSeenUserList(BOOL manualSeenEnabled);
+void SCIStorySetManualSeenUserList(NSArray *users, BOOL manualSeenEnabled);
+BOOL SCIStoryManualSeenListContainsUser(NSString *_Nullable pk, BOOL manualSeenEnabled);
+NSString *_Nullable SCIStoryUserPKFromMediaObject(id _Nullable media);
 NSString *SCIStoryManualSeenListTitle(BOOL manualSeenEnabled);
 UIViewController *SCIStoryManualSeenListViewController(void);
 NSString *_Nullable SCIStoryCurrentUserRuleActionTitle(SCIStoryContext *_Nullable context);

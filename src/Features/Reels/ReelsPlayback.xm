@@ -55,6 +55,18 @@
         return %orig(arg1, arg2);
     }
 }
+
+- (void)triggerRefreshFromTabTap {
+    if ([SCIUtils getBoolPref:@"reels_confirm_refresh"]) {
+        [SCIUtils showConfirmation:^(void) {
+            %orig;
+        } cancelHandler:nil
+            title:@"Confirm Reels Refresh"
+            message:@"Are you sure you want to refresh the reels feed?"];
+    } else {
+        %orig;
+    }
+}
 %end
 
 // * Disable volume/mute button triggering unmutes
