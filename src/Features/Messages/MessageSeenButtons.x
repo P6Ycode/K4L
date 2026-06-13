@@ -318,7 +318,7 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
     NSString *toggleTitle = SCIDirectCurrentThreadRuleActionTitle(context);
     if (toggleTitle.length > 0) {
         BOOL applies = SCIDirectManualSeenAppliesToSource(context);
-        UIImage *toggleImage = [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye"];
+        UIImage *toggleImage = [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:22.0];
         UIAction *toggleAction = [UIAction actionWithTitle:toggleTitle
                                                      image:toggleImage
                                                 identifier:nil
