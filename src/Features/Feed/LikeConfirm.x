@@ -14,12 +14,17 @@ static inline BOOL SCIStoryMarkSeenOnReplyEnabled(void) {
     return [SCIUtils getBoolPref:@"stories_mark_seen_on_reply"];
 }
 
+static inline BOOL SCIStoryQuickReactionConfirmEnabled(void) {
+    return [SCIUtils getBoolPref:@"stories_confirm_quick_reaction"];
+}
+
 static inline BOOL SCIStoryInteractionHooksNeeded(void) {
     return [SCIUtils getBoolPref:@"stories_confirm_like"] ||
         SCIStoryMarkSeenOnLikeEnabled() ||
         SCIStoryMarkSeenOnReplyEnabled() ||
         [SCIUtils getBoolPref:@"stories_advance_on_like_seen"] ||
-        [SCIUtils getBoolPref:@"stories_advance_on_reply_seen"];
+        [SCIUtils getBoolPref:@"stories_advance_on_reply_seen"] ||
+        SCIStoryQuickReactionConfirmEnabled();
 }
 
 static inline id SCIObjectForSelectorIfAvailable(id target, NSString *selectorName) {
@@ -478,6 +483,14 @@ static void SCIInstallStoryLikeConfirmHookIfNeeded(void) {
 }
 
 - (void)_didTapEmojiQuickReactionButton:(id)button {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            %orig;
+            if (SCIActiveStoryOverlayForInteractions()) SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (SCIActiveStoryOverlayForInteractions()) {
         %orig;
         SCIStoryReplySideEffects();
@@ -487,6 +500,14 @@ static void SCIInstallStoryLikeConfirmHookIfNeeded(void) {
 }
 
 - (void)_didTapEmojiReactionButton:(id)button {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            %orig;
+            if (SCIActiveStoryOverlayForInteractions()) SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (SCIActiveStoryOverlayForInteractions()) {
         %orig;
         SCIStoryReplySideEffects();
@@ -498,30 +519,70 @@ static void SCIInstallStoryLikeConfirmHookIfNeeded(void) {
 
 static void (*orig_storyFooterEmojiQuick)(id, SEL, id, id);
 static void SCIHookedStoryFooterEmojiQuick(id self, SEL _cmd, id inputView, id button) {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            if (orig_storyFooterEmojiQuick) orig_storyFooterEmojiQuick(self, _cmd, inputView, button);
+            SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (orig_storyFooterEmojiQuick) orig_storyFooterEmojiQuick(self, _cmd, inputView, button);
     SCIStoryReplySideEffects();
 }
 
 static void (*orig_storyFooterEmojiReaction)(id, SEL, id, id);
 static void SCIHookedStoryFooterEmojiReaction(id self, SEL _cmd, id inputView, id button) {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            if (orig_storyFooterEmojiReaction) orig_storyFooterEmojiReaction(self, _cmd, inputView, button);
+            SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (orig_storyFooterEmojiReaction) orig_storyFooterEmojiReaction(self, _cmd, inputView, button);
     SCIStoryReplySideEffects();
 }
 
 static void (*orig_storyQuickReaction)(id, SEL, id, id, id);
 static void SCIHookedStoryQuickReaction(id self, SEL _cmd, id view, id sourceButton, id emoji) {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            if (orig_storyQuickReaction) orig_storyQuickReaction(self, _cmd, view, sourceButton, emoji);
+            SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (orig_storyQuickReaction) orig_storyQuickReaction(self, _cmd, view, sourceButton, emoji);
     SCIStoryReplySideEffects();
 }
 
 static void (*orig_storyPrivateEmojiQuick)(id, SEL, id);
 static void SCIHookedStoryPrivateEmojiQuick(id self, SEL _cmd, id button) {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            if (orig_storyPrivateEmojiQuick) orig_storyPrivateEmojiQuick(self, _cmd, button);
+            SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (orig_storyPrivateEmojiQuick) orig_storyPrivateEmojiQuick(self, _cmd, button);
     SCIStoryReplySideEffects();
 }
 
 static void (*orig_directReshareQuickReaction)(id, SEL, id);
 static void SCIHookedDirectReshareQuickReaction(id self, SEL _cmd, id arg) {
+    if (SCIStoryQuickReactionConfirmEnabled()) {
+        [SCIUtils showConfirmation:^{
+            if (orig_directReshareQuickReaction) orig_directReshareQuickReaction(self, _cmd, arg);
+            SCIStoryReplySideEffects();
+        } title:@"Confirm Quick Reaction"
+          message:@"Are you sure you want to send this emoji reaction?"];
+        return;
+    }
     if (orig_directReshareQuickReaction) orig_directReshareQuickReaction(self, _cmd, arg);
     SCIStoryReplySideEffects();
 }
@@ -554,6 +615,7 @@ static void SCIInstallStoryReplyHooksIfNeeded(void) {
         }
 
         Class quickReactionClass = NSClassFromString(@"IGStoryQuickReactions.IGStoryQuickReactionsController");
+        if (!quickReactionClass) quickReactionClass = NSClassFromString(@"IGStoryQuickReactionsController");
         SEL quickReactionSelector = NSSelectorFromString(@"quickReactionsView:sourceEmojiButton:didTapEmoji:");
         if (quickReactionClass && class_getInstanceMethod(quickReactionClass, quickReactionSelector)) {
             MSHookMessageEx(quickReactionClass, quickReactionSelector, (IMP)SCIHookedStoryQuickReaction, (IMP *)&orig_storyQuickReaction);

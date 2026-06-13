@@ -77,9 +77,11 @@ static NSArray *SCIStoriesSettingsSections(void) {
            @"4. Move to the next story when you reply."),
         SCITopicSection(@"Confirmations", @[
             [SCISetting switchCellWithTitle:@"Confirm Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"stories_confirm_like"],
+            [SCISetting switchCellWithTitle:@"Confirm Quick Reaction" icon:SCISettingsIcon(@"reactions") defaultsKey:@"stories_confirm_quick_reaction"],
             [SCISetting switchCellWithTitle:@"Confirm Sticker Interaction" icon:SCISettingsIcon(@"sticker") defaultsKey:@"stories_confirm_sticker"]
         ], @"1. Show a confirmation alert when you try to like a story.\n"
-           @"2. Show a confirmation alert when a story has a sticker and you tap on it."),
+           @"2. Show a confirmation alert when you tap a quick reaction emoji.\n"
+           @"3. Show a confirmation alert when a story has a sticker and you tap on it."),
         SCITopicSection(@"Other", @[
             [SCISetting switchCellWithTitle:@"Show Story Mentions" icon:SCISettingsIcon(@"mention") defaultsKey:@"stories_mentions_btn"],
             [SCISetting switchCellWithTitle:@"Show Poll Vote Counts" icon:SCISettingsIcon(@"poll") defaultsKey:@"stories_poll_vote_counts"],
