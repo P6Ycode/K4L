@@ -70,6 +70,7 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
 + (void)showShareVC:(id)item;
 + (void)showSettingsVC:(UIWindow *)window;
 + (void)showSettingsForTopicTitle:(NSString *)title;
++ (void)presentViewControllerInSheet:(UIViewController *)vc;
 
 // Colours
 + (UIColor *)SCIColor_Primary;

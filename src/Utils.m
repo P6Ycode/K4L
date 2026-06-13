@@ -845,6 +845,31 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     });
 }
 
++ (void)presentViewControllerInSheet:(UIViewController *)vc {
+    if (!vc) return;
+    UIViewController *presenter = topMostController();
+    SCIPresentSettingsAfterUnlock(presenter, ^{
+        UINavigationController *navigationController = [[SCISettingsNavigationController alloc] initWithRootViewController:vc];
+        navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
+        UIUserInterfaceStyle interfaceStyle = presenter.view.window.traitCollection.userInterfaceStyle;
+        if (interfaceStyle == UIUserInterfaceStyleUnspecified) {
+            interfaceStyle = presenter.traitCollection.userInterfaceStyle;
+        }
+        if (interfaceStyle != UIUserInterfaceStyleUnspecified) {
+            navigationController.overrideUserInterfaceStyle = interfaceStyle;
+            vc.overrideUserInterfaceStyle = interfaceStyle;
+        }
+        UISheetPresentationController *sheet = navigationController.sheetPresentationController;
+        sheet.detents = @[
+            [UISheetPresentationControllerDetent mediumDetent],
+            [UISheetPresentationControllerDetent largeDetent]
+        ];
+        sheet.selectedDetentIdentifier = UISheetPresentationControllerDetentIdentifierLarge;
+
+        [presenter presentViewController:navigationController animated:YES completion:nil];
+    });
+}
+
 // MARK: Colours
 + (UIColor *)SCIColor_Primary {
     return [UIColor colorWithRed:0/255.0 green:149/255.0 blue:246/255.0 alpha:1.0];

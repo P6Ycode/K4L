@@ -39,8 +39,9 @@ FOUNDATION_EXPORT NSString * const kSCINotificationUnsentReaction;
 FOUNDATION_EXPORT NSString * const kSCINotificationInstantsCaptureBlocked;
 
 FOUNDATION_EXPORT NSString * const kSCINotificationProfileCopyInfo;
-
 FOUNDATION_EXPORT NSString * const kSCINotificationProfileAnalyzerComplete;
+FOUNDATION_EXPORT NSString * const kSCINotificationProfileStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSCINotificationProfileMessagesSeenUserRule;
 
 FOUNDATION_EXPORT NSString * const kSCINotificationMediaPreviewSavePhotos;
 FOUNDATION_EXPORT NSString * const kSCINotificationMediaPreviewSaveGallery;

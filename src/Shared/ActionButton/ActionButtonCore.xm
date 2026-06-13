@@ -19,9 +19,12 @@
 #import "../Audio/SCIAudioDownloadCoordinator.h"
 #import "../Audio/SCIAudioItem.h"
 #import "../Stories/SCIStoryContext.h"
+#import "../Messages/SCIDirectSeenContext.h"
+#import "../Messages/SCIDirectUserResolver.h"
 #import "../UI/SCINotificationCenter.h"
 #import "../UI/SCIChrome.h"
 #import "../../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesViewController.h"
+#import "../../Networking/SCIInstagramAPI.h"
 
 NSString * const kSCIActionNone = @"none";
 NSString * const kSCIActionDownloadLibrary = @"download_library";
@@ -47,6 +50,8 @@ NSString * const kSCIActionOpenTopicSettings = @"open_topic_settings";
 NSString * const kSCIActionDeletedMessagesLog = @"deleted_messages_log";
 NSString * const kSCIActionRepost = @"repost";
 NSString * const kSCIActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
+NSString * const kSCIActionToggleProfileStorySeenUserRule = @"toggle_profile_story_seen_user_rule";
+NSString * const kSCIActionToggleProfileMessagesSeenUserRule = @"toggle_profile_messages_seen_user_rule";
 NSString * const kSCIActionStoryMentionsSheet = @"story_mentions_sheet";
 NSString * const kSCIActionProfileCopyInfo = @"profile_copy_info";
 NSString * const kSCIActionProfileCopyID = @"profile_copy_id";
@@ -893,6 +898,29 @@ static NSString *SCIActionButtonDisplayTitleForContext(NSString *identifier,
         NSString *title = SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context));
         return title ?: SCIActionDescriptorDisplayTitle(identifier, context.settingsTitle);
     }
+    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
+        id user = SCIResolveMediaForContext(context);
+        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+        if (pk.length > 0) {
+            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
+            BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+            BOOL applies = manualSeenEnabled ? !listed : listed;
+            return applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
+        }
+        return @"Toggle Story Seen";
+    }
+    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
+        id user = SCIResolveMediaForContext(context);
+        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+        if (pk.length > 0) {
+            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
+            NSDictionary *existingEntry = SCIDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
+            BOOL listed = (existingEntry != nil);
+            BOOL applies = manualSeenEnabled ? !listed : listed;
+            return applies ? @"Start Marking Messages as Seen" : @"Stop Marking Messages as Seen";
+        }
+        return @"Toggle Messages Seen";
+    }
     if ([identifier isEqualToString:kSCIActionCopyMedia]) {
         BOOL isVideo = (currentEntry.videoURL != nil);
         if (isVideo) {
@@ -932,6 +960,34 @@ static UIImage *SCIIconForActionIdentifier(NSString *identifier, SCIActionButton
 			return reelsImage;
 		}
 	}
+
+    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
+        SCIStoryContext *storyCtx = SCIStoryContextForActionButtonContext(context);
+        BOOL applies = storyCtx ? SCIStoryManualSeenAppliesToContext(storyCtx) : YES;
+        return [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+    }
+    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
+        id user = context ? SCIResolveMediaForContext(context) : nil;
+        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+        BOOL applies = YES;
+        if (pk.length > 0) {
+            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
+            BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+            applies = manualSeenEnabled ? !listed : listed;
+        }
+        return [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+    }
+    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
+        id user = context ? SCIResolveMediaForContext(context) : nil;
+        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+        BOOL applies = YES;
+        if (pk.length > 0) {
+            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
+            NSDictionary *existingEntry = SCIDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
+            applies = manualSeenEnabled ? !(existingEntry != nil) : (existingEntry != nil);
+        }
+        return [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+    }
 
 	return [SCIAssetUtils instagramIconNamed:iconName pointSize:size];
 }
@@ -1921,6 +1977,14 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
         return context.source == SCIActionButtonSourceStories &&
                SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context)).length > 0;
     }
+    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
+        return context.source == SCIActionButtonSourceProfile &&
+               SCIResolveMediaForContext(context) != nil;
+    }
+    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
+        return context.source == SCIActionButtonSourceProfile &&
+               SCIResolveMediaForContext(context) != nil;
+    }
     if ([identifier isEqualToString:kSCIActionStoryMentionsSheet]) {
         return context.source == SCIActionButtonSourceStories && SCIStoryMediaHasMentions(media);
     }
@@ -2051,15 +2115,23 @@ static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
     NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleStorySeenUserRule]
         ? SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context))
         : @"";
+    NSString *dynamicProfileStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleProfileStorySeenUserRule]
+        ? SCIActionButtonDisplayTitleForContext(kSCIActionToggleProfileStorySeenUserRule, context, nil)
+        : @"";
+    NSString *dynamicProfileMessagesRuleTitle = [visibleActions containsObject:kSCIActionToggleProfileMessagesSeenUserRule]
+        ? SCIActionButtonDisplayTitleForContext(kSCIActionToggleProfileMessagesSeenUserRule, context, nil)
+        : @"";
     NSString *profileInfoSignature = (context.source == SCIActionButtonSourceProfile)
         ? SCIProfileInfoSignature(SCIResolveMediaForContext(context))
         : @"";
-	return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@",
+	return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@|%@|%@",
 			SCIActionButtonTopicKeyForSource(context.source),
 			defaultIdentifier ?: @"",
 			[visibleActions componentsJoinedByString:@","],
             (unsigned long)bulkEntryCount,
             dynamicStoryRuleTitle ?: @"",
+            dynamicProfileStoryRuleTitle ?: @"",
+            dynamicProfileMessagesRuleTitle ?: @"",
             profileInfoSignature ?: @"",
 			configuration.dictionaryRepresentation.description ?: @""];
 }
@@ -2503,6 +2575,104 @@ static BOOL SCIExecuteToggleStorySeenUserRuleAction(SCIActionButtonContext *cont
     return YES;
 }
 
+static BOOL SCIExecuteToggleProfileStorySeenUserRuleAction(SCIActionButtonContext *context) {
+    id user = SCIResolveMediaForContext(context);
+    NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+    NSString *username = user ? SCIProfileUsername(user) : nil;
+    NSString *fullName = user ? SCIProfileFullName(user) : nil;
+    NSString *profilePicUrl = user ? sciDirectUserResolverProfilePicURLStringFromUser(user) : nil;
+    if (pk.length == 0 || username.length == 0) {
+        SCINotify(kSCINotificationProfileStorySeenUserRule, @"User not found", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+
+    BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
+    BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+    BOOL applies = manualSeenEnabled ? !listed : listed;
+
+    NSString *title = applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
+    NSString *message = applies
+        ? [NSString stringWithFormat:@"Do you want to start marking stories from @%@ as seen?", username]
+        : [NSString stringWithFormat:@"Do you want to stop marking stories from @%@ as seen?", username];
+
+    [SCIUtils showConfirmation:^{
+        SCIStoryToggleUserRuleForPK(pk, username, fullName, profilePicUrl);
+        NSString *notificationTitle = applies
+            ? [NSString stringWithFormat:@"Stories seen on for @%@", username]
+            : [NSString stringWithFormat:@"Stories seen off for @%@", username];
+        SCINotify(kSCINotificationProfileStorySeenUserRule, notificationTitle, nil, @"circle_check_filled", SCINotificationToneSuccess);
+        [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+    } title:title message:message];
+    return YES;
+}
+
+static BOOL SCIExecuteToggleProfileMessagesSeenUserRuleAction(SCIActionButtonContext *context) {
+    id user = SCIResolveMediaForContext(context);
+    NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+    NSString *username = user ? SCIProfileUsername(user) : nil;
+    NSString *fullName = user ? SCIProfileFullName(user) : nil;
+    NSString *profilePicUrl = user ? sciDirectUserResolverProfilePicURLStringFromUser(user) : nil;
+    if (pk.length == 0 || username.length == 0) {
+        SCINotify(kSCINotificationProfileMessagesSeenUserRule, @"User not found", nil, @"error_filled", SCINotificationToneError);
+        return YES;
+    }
+
+    BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
+    NSDictionary *existingEntry = SCIDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
+    BOOL listed = (existingEntry != nil);
+    BOOL applies = manualSeenEnabled ? !listed : listed;
+
+    NSString *title = applies ? @"Start Marking Messages as Seen" : @"Stop Marking Messages as Seen";
+    NSString *message = applies
+        ? [NSString stringWithFormat:@"Do you want to start marking messages from %@ as seen?", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])]
+        : [NSString stringWithFormat:@"Do you want to stop marking messages from %@ as seen?", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];    [SCIUtils showConfirmation:^{
+        if (listed) {
+            NSString *threadId = existingEntry[@"threadId"];
+            SCIDirectRemoveManualSeenThreadId(threadId, manualSeenEnabled);
+            NSString *notificationTitle = [NSString stringWithFormat:@"Messages seen off for %@", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];
+            NSString *notificationSubtitle = SCIDirectManualSeenListTitle(manualSeenEnabled);
+            SCINotify(kSCINotificationProfileMessagesSeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
+            [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+        } else {
+            NSString *encodedRecipients = [[NSString stringWithFormat:@"[%@]", pk] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
+            [SCIInstagramAPI sendRequestWithMethod:@"GET"
+                                              path:[NSString stringWithFormat:@"direct_v2/threads/get_by_participants/?recipient_users=%@", encodedRecipients]
+                                              body:nil
+                                         completion:^(NSDictionary *threadResponse, NSError *threadError) {
+                NSDictionary *thread = threadResponse[@"thread"];
+                NSString *threadId = SCIStringFromValue(thread[@"thread_id"] ?: thread[@"threadId"]);
+                if (threadId.length == 0 || threadError) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        SCINotify(kSCINotificationProfileMessagesSeenUserRule, @"No 1:1 chat thread found", @"Make sure you have an active chat with this user.", @"error_filled", SCINotificationToneError);
+                    });
+                    return;
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    NSMutableDictionary *usersEntry = [@{
+                        @"pk": pk,
+                        @"username": username,
+                        @"fullName": fullName ?: @"",
+                    } mutableCopy];
+                    if (profilePicUrl.length > 0) usersEntry[@"profilePicUrl"] = profilePicUrl;
+                    
+                    SCIDirectAddOrUpdateManualSeenThreadEntry(@{
+                        @"threadId": threadId,
+                        @"threadName": fullName.length > 0 ? fullName : username,
+                        @"isGroup": @(NO),
+                        @"users": @[usersEntry.copy],
+                    }, manualSeenEnabled);
+
+                    NSString *notificationTitle = [NSString stringWithFormat:@"Messages seen on for %@", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];
+                    NSString *notificationSubtitle = SCIDirectManualSeenListTitle(manualSeenEnabled);
+                    SCINotify(kSCINotificationProfileMessagesSeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
+                    [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+                });
+            }];
+        }
+    } title:title message:message];
+    return YES;
+}
+
 static BOOL SCIExecuteStoryMentionsSheetAction(SCIActionButtonContext *context) {
     if (context.source != SCIActionButtonSourceStories || !context.view) {
         SCINotify(kSCINotificationStoryMentionsSheet, @"Story mentions unavailable", nil, @"error_filled", SCINotificationToneError);
@@ -2524,6 +2694,12 @@ BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *co
 
     if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
         return SCIExecuteToggleStorySeenUserRuleAction(context);
+    }
+    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
+        return SCIExecuteToggleProfileStorySeenUserRuleAction(context);
+    }
+    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
+        return SCIExecuteToggleProfileMessagesSeenUserRuleAction(context);
     }
     if ([identifier isEqualToString:kSCIActionStoryMentionsSheet]) {
         return SCIExecuteStoryMentionsSheetAction(context);

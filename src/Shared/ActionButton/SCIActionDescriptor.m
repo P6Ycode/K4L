@@ -42,6 +42,8 @@
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDeletedMessagesLog title:@"Deleted Messages Log" iconName:@"logs"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionRepost title:@"Repost" iconName:@"repost"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionToggleStorySeenUserRule title:@"Toggle Story User Rule" iconName:@"eye"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionToggleProfileStorySeenUserRule title:@"Toggle Story Seen" iconName:@"eye"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionToggleProfileMessagesSeenUserRule title:@"Toggle Messages Seen" iconName:@"eye"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionStoryMentionsSheet title:@"Story Mentions" iconName:@"mention"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyInfo title:@"Copy Info" iconName:@"info"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionProfileCopyID title:@"Copy ID" iconName:@"key"],

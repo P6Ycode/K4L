@@ -717,6 +717,21 @@ NSUInteger SCIDirectManualSeenThreadCount(BOOL manualSeenEnabled) {
     return SCIDirectManualSeenThreadList(manualSeenEnabled).count;
 }
 
+NSDictionary *SCIDirectManualSeenThreadEntryForUserPK(NSString *pk, BOOL manualSeenEnabled) {
+    if (pk.length == 0) return nil;
+    NSArray<NSDictionary *> *threads = SCIDirectManualSeenThreadList(manualSeenEnabled);
+    for (NSDictionary *entry in threads) {
+        if ([entry[@"isGroup"] boolValue]) continue;
+        NSArray *users = entry[@"users"];
+        for (NSDictionary *user in users) {
+            if ([user[@"pk"] isEqualToString:pk]) {
+                return entry;
+            }
+        }
+    }
+    return nil;
+}
+
 static BOOL SCIDirectManualSeenListContainsThreadIdInList(NSString *threadId, NSArray<NSDictionary *> *threads) {
     if (threads == SCIDirectManualSeenThreadsCache) {
         return SCIDirectManualSeenListContainsThreadId(threadId, [SCIUtils getBoolPref:@"msgs_manual_seen"]);
@@ -788,31 +803,24 @@ static BOOL SCIDirectCurrentThreadRuleState(SCIDirectThreadContext *context, NSS
 }
 
 NSString *SCIDirectCurrentThreadRuleActionTitle(SCIDirectThreadContext *context) {
-    NSString *listTitle = nil;
-    BOOL listed = NO;
-    if (!SCIDirectCurrentThreadRuleState(context, NULL, NULL, &listTitle, &listed, NULL)) return nil;
-    return listed
-        ? [NSString stringWithFormat:@"Remove from %@", listTitle]
-        : [NSString stringWithFormat:@"Add to %@", listTitle];
+    if (!context) return nil;
+    BOOL applies = SCIDirectManualSeenAppliesToSource(context);
+    return applies ? @"Start Marking as Seen" : @"Stop Marking as Seen";
 }
 
 NSString *SCIDirectCurrentThreadRuleConfirmationTitle(SCIDirectThreadContext *context) {
-    NSString *listTitle = nil;
-    BOOL listed = NO;
-    if (!SCIDirectCurrentThreadRuleState(context, NULL, NULL, &listTitle, &listed, NULL)) return nil;
-    return listed
-        ? [NSString stringWithFormat:@"Confirm Removal from %@", listTitle]
-        : [NSString stringWithFormat:@"Confirm Addition to %@", listTitle];
+    if (!context) return nil;
+    BOOL applies = SCIDirectManualSeenAppliesToSource(context);
+    return applies ? @"Confirm Start Marking as Seen" : @"Confirm Stop Marking as Seen";
 }
 
 NSString *SCIDirectCurrentThreadRuleConfirmationMessage(SCIDirectThreadContext *context) {
     NSString *threadName = nil;
-    NSString *listTitle = nil;
-    BOOL listed = NO;
-    if (!SCIDirectCurrentThreadRuleState(context, NULL, &threadName, &listTitle, &listed, NULL)) return nil;
-    return listed
-        ? [NSString stringWithFormat:@"Do you want to remove %@ from %@?", threadName, listTitle]
-        : [NSString stringWithFormat:@"Do you want to add %@ to %@?", threadName, listTitle];
+    if (!SCIDirectCurrentThreadRuleState(context, NULL, &threadName, NULL, NULL, NULL)) return nil;
+    BOOL applies = SCIDirectManualSeenAppliesToSource(context);
+    return applies
+        ? [NSString stringWithFormat:@"Do you want to start marking %@ as seen?", threadName]
+        : [NSString stringWithFormat:@"Do you want to stop marking %@ as seen?", threadName];
 }
 
 BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString **notificationTitle, NSString **notificationSubtitle) {
@@ -825,6 +833,8 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
         SCILog(@"Messages", @"[SCInsta MessagesSeen] Toggle thread rule failed: missing current thread context=%@", context);
         return NO;
     }
+
+    BOOL applies = SCIDirectManualSeenAppliesToSource(context);
 
     if (listed) {
         SCIDirectRemoveManualSeenThreadId(threadId, manualSeenEnabled);
@@ -842,7 +852,9 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
            manualSeenEnabled);
 
     if (notificationTitle) {
-        *notificationTitle = [NSString stringWithFormat:@"%@ %@", listed ? @"Removed" : @"Added", threadName];
+        *notificationTitle = applies
+            ? [NSString stringWithFormat:@"Messages seen on for %@", threadName]
+            : [NSString stringWithFormat:@"Messages seen off for %@", threadName];
     }
     if (notificationSubtitle) *notificationSubtitle = listTitle;
     return YES;

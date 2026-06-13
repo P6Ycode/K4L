@@ -2,6 +2,8 @@
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 #import "../../Settings/SCIPreferences.h"
+#import "../Stories/SCIStoryContext.h"
+#import "../Messages/SCIDirectSeenContext.h"
 
 #define SCI_NOTIF_CONST(name, value) NSString * const name = @value
 SCI_NOTIF_CONST(kSCINotificationDownloadLibrary, "download_library");
@@ -40,6 +42,8 @@ SCI_NOTIF_CONST(kSCINotificationInstantsCaptureBlocked, "instants_capture_blocke
 
 SCI_NOTIF_CONST(kSCINotificationProfileCopyInfo, "profile_copy_info");
 SCI_NOTIF_CONST(kSCINotificationProfileAnalyzerComplete, "profile_analyzer_complete");
+SCI_NOTIF_CONST(kSCINotificationProfileStorySeenUserRule, "toggle_profile_story_seen_user_rule");
+SCI_NOTIF_CONST(kSCINotificationProfileMessagesSeenUserRule, "toggle_profile_messages_seen_user_rule");
 
 SCI_NOTIF_CONST(kSCINotificationMediaPreviewSavePhotos, "media_preview_save_photos");
 SCI_NOTIF_CONST(kSCINotificationMediaPreviewSaveGallery, "media_preview_save_gallery");
@@ -167,6 +171,8 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
         @{@"title": @"Profile", @"items": @[
             SCINotificationItem(kSCINotificationProfileCopyInfo, @"Copy Profile Info", @"copy"),
             SCINotificationItem(kSCINotificationProfileAnalyzerComplete, @"Profile Analyzer Complete", @"profile_analyzer"),
+            SCINotificationItem(kSCINotificationProfileStorySeenUserRule, @"Story Seen List Changes", @"eye"),
+            SCINotificationItem(kSCINotificationProfileMessagesSeenUserRule, @"Chat Seen List Changes", @"eye"),
         ]},
         @{@"title": @"Comments", @"items": @[
             SCINotificationItem(kSCINotificationCopyComment, @"Copy Comment Text", @"copy"),
@@ -518,11 +524,39 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
             }];
             return;
         }
+        NSString *resolvedSubtitle = subtitle;
+        if (tone == SCINotificationToneSuccess) {
+            if ([identifier isEqualToString:kSCINotificationStorySeenUserRule] ||
+                [identifier isEqualToString:kSCINotificationProfileStorySeenUserRule]) {
+                BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
+                resolvedSubtitle = [NSString stringWithFormat:@"Tap to open %@", manualSeenEnabled ? @"excluded list" : @"included list"];
+            } else if ([identifier isEqualToString:kSCINotificationDirectThreadSeenRule] ||
+                       [identifier isEqualToString:kSCINotificationProfileMessagesSeenUserRule]) {
+                BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
+                resolvedSubtitle = [NSString stringWithFormat:@"Tap to open %@", manualSeenEnabled ? @"excluded list" : @"included list"];
+            }
+        }
+
         NSString *resolvedIconResource = SCINotificationIconResourceForTone(iconResource, tone);
         UIImage *icon = resolvedIconResource.length
             ? [SCIAssetUtils instagramIconNamed:resolvedIconResource pointSize:16.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
             : nil;
-        SCINotificationPillView *pill = [SCINotificationPillView toastPillWithTitle:title subtitle:subtitle icon:icon tone:tone];
+        SCINotificationPillView *pill = [SCINotificationPillView toastPillWithTitle:title subtitle:resolvedSubtitle icon:icon tone:tone];
+        
+        if (tone == SCINotificationToneSuccess) {
+            if ([identifier isEqualToString:kSCINotificationStorySeenUserRule] ||
+                [identifier isEqualToString:kSCINotificationProfileStorySeenUserRule]) {
+                pill.onTapWhenCompleted = ^{
+                    [SCIUtils presentViewControllerInSheet:SCIStoryManualSeenListViewController()];
+                };
+            } else if ([identifier isEqualToString:kSCINotificationDirectThreadSeenRule] ||
+                       [identifier isEqualToString:kSCINotificationProfileMessagesSeenUserRule]) {
+                pill.onTapWhenCompleted = ^{
+                    [SCIUtils presentViewControllerInSheet:SCIDirectManualSeenListViewController()];
+                };
+            }
+        }
+        
         [self insertPill:pill identifier:identifier progress:NO];
     }];
 }

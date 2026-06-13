@@ -798,41 +798,51 @@ static BOOL SCIStoryCurrentUserRuleState(SCIStoryContext *context, NSString **ou
 }
 
 NSString *SCIStoryCurrentUserRuleActionTitle(SCIStoryContext *context) {
-    NSString *listTitle = nil;
-    BOOL listed = NO;
-    if (!SCIStoryCurrentUserRuleState(context, NULL, &listTitle, &listed, NULL)) return nil;
-
-    return listed
-        ? [NSString stringWithFormat:@"Remove from %@", listTitle]
-        : [NSString stringWithFormat:@"Add to %@", listTitle];
+    NSString *username = nil;
+    if (!SCIStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL)) return nil;
+    BOOL applies = SCIStoryManualSeenAppliesToContext(context);
+    return applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
 }
 
 NSString *SCIStoryCurrentUserRuleConfirmationTitle(SCIStoryContext *context) {
-    NSString *listTitle = nil;
-    BOOL listed = NO;
-    if (!SCIStoryCurrentUserRuleState(context, NULL, &listTitle, &listed, NULL)) return nil;
-
-    return listed
-        ? [NSString stringWithFormat:@"Confirm Removal from %@", listTitle]
-        : [NSString stringWithFormat:@"Confirm Addition to %@", listTitle];
+    NSString *username = nil;
+    if (!SCIStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL)) return nil;
+    BOOL applies = SCIStoryManualSeenAppliesToContext(context);
+    return applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
 }
 
 NSString *SCIStoryCurrentUserRuleConfirmationMessage(SCIStoryContext *context) {
     NSString *username = nil;
-    NSString *listTitle = nil;
-    BOOL listed = NO;
-    if (!SCIStoryCurrentUserRuleState(context, &username, &listTitle, &listed, NULL)) return nil;
+    if (!SCIStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL)) return nil;
+    BOOL applies = SCIStoryManualSeenAppliesToContext(context);
+    return applies
+        ? [NSString stringWithFormat:@"Do you want to start marking stories from @%@ as seen?", username]
+        : [NSString stringWithFormat:@"Do you want to stop marking stories from @%@ as seen?", username];
+}
 
-    return listed
-        ? [NSString stringWithFormat:@"Do you want to remove @%@ from %@?", username, listTitle]
-        : [NSString stringWithFormat:@"Do you want to add @%@ to %@?", username, listTitle];
+void SCIStoryToggleUserRuleForPK(NSString *pk, NSString *username, NSString *fullName, NSString *profilePicUrl) {
+    if (pk.length == 0) return;
+    BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
+    BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+    SCIStoryToggleUserForCurrentManualSeenMode(pk, username, fullName, profilePicUrl);
+    if (!listed) {
+        if (username.length > 0 && fullName.length > 0) {
+            SCIStoryRememberManualSeenUserName(username, fullName);
+        }
+        if (username.length > 0 && SCIStoryCleanDisplayName(fullName, username).length == 0) {
+            SCIStoryResolveAndRememberManualSeenUserName(username, nil);
+        }
+    }
 }
 
 BOOL SCIStoryToggleCurrentUserRule(SCIStoryContext *context, NSString **notificationTitle, NSString **notificationSubtitle) {
     NSString *username = nil;
     NSString *listTitle = nil;
     BOOL listed = NO;
-    if (!SCIStoryCurrentUserRuleState(context, &username, &listTitle, &listed, NULL)) return NO;
+    BOOL manualSeenEnabled = NO;
+    if (!SCIStoryCurrentUserRuleState(context, &username, &listTitle, &listed, &manualSeenEnabled)) return NO;
+
+    BOOL applies = SCIStoryManualSeenAppliesToContext(context);
 
     id user = SCIStoryUserFromMediaObject(context.media);
     NSString *pk = SCIStoryUserPKFromMediaObject(context.media);
@@ -846,19 +856,12 @@ BOOL SCIStoryToggleCurrentUserRule(SCIStoryContext *context, NSString **notifica
         profilePicUrl = sciDirectUserResolverProfilePicURLStringFromUser(user);
     }
     
-    SCIStoryToggleUserForCurrentManualSeenMode(pk, username, fullName, profilePicUrl);
+    SCIStoryToggleUserRuleForPK(pk, username, fullName, profilePicUrl);
     
-    if (!listed) {
-        if (username.length > 0 && fullName.length > 0) {
-            SCIStoryRememberManualSeenUserName(username, fullName);
-        }
-        if (username.length > 0 && SCIStoryCleanDisplayName(fullName, username).length == 0) {
-            SCIStoryResolveAndRememberManualSeenUserName(username, nil);
-        }
-    }
     if (notificationTitle) {
-        NSString *verb = listed ? @"Removed" : @"Added";
-        *notificationTitle = [NSString stringWithFormat:@"%@ @%@", verb, username];
+        *notificationTitle = applies
+            ? [NSString stringWithFormat:@"Stories seen on for @%@", username]
+            : [NSString stringWithFormat:@"Stories seen off for @%@", username];
     }
     if (notificationSubtitle) *notificationSubtitle = listTitle;
     return YES;

@@ -317,7 +317,8 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
     SCIDirectSeenDebugPrintEnabled = NO;
     NSString *toggleTitle = SCIDirectCurrentThreadRuleActionTitle(context);
     if (toggleTitle.length > 0) {
-        UIImage *toggleImage = [SCIAssetUtils instagramIconNamed:SCIDirectManualSeenListContainsThreadId(context.threadId, [SCIUtils getBoolPref:@"msgs_manual_seen"]) ? @"eye" : @"eye_off"];
+        BOOL applies = SCIDirectManualSeenAppliesToSource(context);
+        UIImage *toggleImage = [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye"];
         UIAction *toggleAction = [UIAction actionWithTitle:toggleTitle
                                                      image:toggleImage
                                                 identifier:nil
@@ -501,7 +502,8 @@ static id SCIDirectInboxContextMenuConfiguration(id self, SEL _cmd, id indexPath
             return [UIMenu menuWithChildren:suggestedActions ?: @[]];
         }
         NSString *currentTitle = SCIDirectCurrentThreadRuleActionTitle(context) ?: toggleTitle;
-        UIImage *image = [SCIAssetUtils instagramIconNamed:SCIDirectManualSeenListContainsThreadId(context.threadId, [SCIUtils getBoolPref:@"msgs_manual_seen"]) ? @"eye" : @"eye_off"];
+        BOOL applies = SCIDirectManualSeenAppliesToSource(context);
+        UIImage *image = [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye"];
         UIAction *toggleAction = [UIAction actionWithTitle:currentTitle image:image identifier:nil handler:^(__unused UIAction *action) {
             NSString *notificationTitle = nil;
             NSString *notificationSubtitle = nil;

@@ -117,6 +117,8 @@ NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(SCIActionButtonSou
                 kSCIActionDownloadGallery,
                 kSCIActionExpand,
                 kSCIActionProfileCopyInfo,
+                kSCIActionToggleProfileStorySeenUserRule,
+                kSCIActionToggleProfileMessagesSeenUserRule,
                 kSCIActionOpenTopicSettings
             ];
     }
@@ -212,6 +214,8 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
         moreActions = @[kSCIActionExpand, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings];
     } else if (source == SCIActionButtonSourceDirect) {
         moreActions = @[kSCIActionExpand, kSCIActionDeletedMessagesLog, kSCIActionOpenTopicSettings];
+    } else if (source == SCIActionButtonSourceProfile) {
+        moreActions = @[kSCIActionExpand, kSCIActionToggleProfileStorySeenUserRule, kSCIActionToggleProfileMessagesSeenUserRule, kSCIActionOpenTopicSettings];
     } else {
         moreActions = @[kSCIActionExpand, kSCIActionOpenTopicSettings];
     }

@@ -44,6 +44,7 @@ NSString *_Nullable SCIStoryCurrentUserRuleActionTitle(SCIStoryContext *_Nullabl
 NSString *_Nullable SCIStoryCurrentUserRuleConfirmationTitle(SCIStoryContext *_Nullable context);
 NSString *_Nullable SCIStoryCurrentUserRuleConfirmationMessage(SCIStoryContext *_Nullable context);
 BOOL SCIStoryToggleCurrentUserRule(SCIStoryContext *_Nullable context, NSString *_Nullable *_Nullable notificationTitle, NSString *_Nullable *_Nullable notificationSubtitle);
+void SCIStoryToggleUserRuleForPK(NSString *pk, NSString *username, NSString *_Nullable fullName, NSString *_Nullable profilePicUrl);
 
 #ifdef __cplusplus
 }

@@ -37,6 +37,8 @@ FOUNDATION_EXPORT NSString * const kSCIActionOpenTopicSettings;
 FOUNDATION_EXPORT NSString * const kSCIActionDeletedMessagesLog;
 FOUNDATION_EXPORT NSString * const kSCIActionRepost;
 FOUNDATION_EXPORT NSString * const kSCIActionToggleStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSCIActionToggleProfileStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSCIActionToggleProfileMessagesSeenUserRule;
 FOUNDATION_EXPORT NSString * const kSCIActionStoryMentionsSheet;
 FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyInfo;
 FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyID;

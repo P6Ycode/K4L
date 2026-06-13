@@ -1041,7 +1041,10 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
 
 - (void)handleTap {
     if (self.mode == SCINotificationPillModeToast) {
-        [self dismissWithCompletion:nil];
+        void (^onCompletedTap)(void) = [self.onTapWhenCompleted copy];
+        [self dismissWithCompletion:^{
+            if (onCompletedTap) onCompletedTap();
+        }];
         return;
     }
 

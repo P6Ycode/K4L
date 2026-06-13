@@ -29,6 +29,7 @@ void SCIDirectRemoveManualSeenThreadId(NSString *threadId, BOOL manualSeenEnable
 NSString *SCIDirectManualSeenListTitle(BOOL manualSeenEnabled);
 NSUInteger SCIDirectManualSeenThreadCount(BOOL manualSeenEnabled);
 UIViewController *SCIDirectManualSeenListViewController(void);
+NSDictionary *_Nullable SCIDirectManualSeenThreadEntryForUserPK(NSString * _Nullable pk, BOOL manualSeenEnabled);
 
 BOOL SCIDirectManualSeenAppliesToSource(id _Nullable source);
 BOOL SCIDirectShouldShowSeenButtonForSource(id _Nullable source);
