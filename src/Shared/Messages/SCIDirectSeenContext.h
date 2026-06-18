@@ -8,6 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) NSString *threadName;
 @property (nonatomic, assign) BOOL isGroup;
 @property (nonatomic, copy) NSArray<NSDictionary *> *users;
+@property (nonatomic, copy, nullable) NSString *groupPhotoUrl;
 @end
 
 #ifdef __cplusplus

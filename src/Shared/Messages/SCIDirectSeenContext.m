@@ -9,6 +9,7 @@
 #import "../../Shared/UI/SCIIGAlertPresenter.h"
 #import "../../Shared/UI/SCIMediaChrome.h"
 #import "../../Shared/UI/SCINotificationCenter.h"
+#import "../../AssetUtils.h"
 #import "../../Utils.h"
 #import "SCIDirectUserResolver.h"
 
@@ -292,6 +293,19 @@ static SCIDirectThreadContext *SCIDirectContextDirectlyFromObject(id object) {
     context.threadName = threadName ?: @"";
     context.isGroup = [isGroupValue boolValue];
     context.users = users ?: @[];
+
+    if (context.isGroup && target) {
+        @try {
+            id groupMeta = SCIDirectObjectForSelector(target, @"groupMetadata");
+            id photoId   = groupMeta  ? SCIDirectObjectForSelector(groupMeta, @"groupPhotoIdentifier")   : nil;
+            id specifier = photoId    ? SCIDirectObjectForSelector(photoId,   @"groupImageSpecifier")    : nil;
+            id remoteUrl = specifier  ? SCIDirectObjectForSelector(specifier, @"remoteImageURL")         : nil;
+            id url       = remoteUrl  ? SCIDirectObjectForSelector(remoteUrl, @"url")                    : nil;
+            if ([url isKindOfClass:[NSURL class]])   context.groupPhotoUrl = ((NSURL *)url).absoluteString;
+            else if ([url isKindOfClass:[NSString class]] && [(NSString *)url length]) context.groupPhotoUrl = url;
+        } @catch (__unused id e) {}
+    }
+
     return context;
 }
 
@@ -497,6 +511,7 @@ NSDictionary *SCIDirectThreadEntryFromContext(SCIDirectThreadContext *context) {
     entry[@"threadName"] = context.threadName ?: @"";
     entry[@"isGroup"] = @(context.isGroup);
     entry[@"users"] = context.users ?: @[];
+    if (context.groupPhotoUrl.length) entry[@"groupPhotoUrl"] = context.groupPhotoUrl;
     return entry.copy;
 }
 
@@ -535,6 +550,8 @@ static NSArray<NSDictionary *> *SCIDirectManualSeenThreadListFromRawValue(id raw
         entry[@"isGroup"] = @([dict[@"isGroup"] respondsToSelector:@selector(boolValue)] ? [dict[@"isGroup"] boolValue] : NO);
         entry[@"users"] = [dict[@"users"] isKindOfClass:[NSArray class]] ? dict[@"users"] : @[];
         if (dict[@"addedAt"]) entry[@"addedAt"] = dict[@"addedAt"];
+        NSString *groupPhotoUrl = SCIDirectStringFromValue(dict[@"groupPhotoUrl"]);
+        if (groupPhotoUrl.length) entry[@"groupPhotoUrl"] = groupPhotoUrl;
         [threads addObject:entry.copy];
     }
 
@@ -604,6 +621,7 @@ void SCIDirectAddOrUpdateManualSeenThreadEntry(NSDictionary *entry, BOOL manualS
         merged[@"addedAt"] = existing[@"addedAt"];
     }
     if (!merged[@"addedAt"]) merged[@"addedAt"] = @([[NSDate date] timeIntervalSince1970]);
+    if (!merged[@"groupPhotoUrl"] && existing[@"groupPhotoUrl"]) merged[@"groupPhotoUrl"] = existing[@"groupPhotoUrl"];
 
     if (existingIndex >= 0) {
         threads[existingIndex] = merged.copy;
@@ -860,6 +878,31 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
     return YES;
 }
 
+// Circular 45pt avatar with a 24pt group glyph centered inside — matches the
+// profile-picture style used for 1:1 entries but keeps the glyph at native size.
+static UIImage *SCIDirectGroupAvatarPlaceholderImage(void) {
+    static CGFloat const kSize = 45.0;
+    UIGraphicsImageRendererFormat *fmt = [UIGraphicsImageRendererFormat preferredFormat];
+    fmt.opaque = NO;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(kSize, kSize) format:fmt];
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+        (void)ctx;
+        [[SCIUtils SCIColor_InstagramTertiaryBackground] setFill];
+        [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, kSize, kSize)] fill];
+
+        UIImage *glyph = nil;
+        for (NSString *name in @[@"group", @"people", @"members"]) {
+            glyph = [SCIAssetUtils instagramIconNamed:name pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+            if (glyph) break;
+        }
+        if (!glyph) glyph = [SCIAssetUtils instagramIconNamed:@"user_circle" pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+        if (!glyph) return;
+        UIImage *tinted = [glyph imageWithTintColor:[SCIUtils SCIColor_InstagramSecondaryText]];
+        CGFloat g = 24.0;
+        [tinted drawInRect:CGRectMake((kSize - g) / 2.0, (kSize - g) / 2.0, g, g)];
+    }];
+}
+
 @interface SCIDirectManualSeenThreadsViewController : SCISettingsViewController
 @property (nonatomic, assign) BOOL manualSeenEnabled;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *threads;
@@ -926,12 +969,20 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
         BOOL isGroup = [entry[@"isGroup"] boolValue];
         SCISetting *row = [SCISetting buttonCellWithTitle:title
                                                  subtitle:[self subtitleForEntry:entry]
-                                                     icon:SCISettingsIcon(isGroup ? @"group" : @"user")
+                                                     icon:nil
                                                    action:^{
             [weakSelf showChatActionsForIndex:idx];
         }];
-        
-        if (!isGroup) {
+
+        if (isGroup) {
+            NSString *groupPhotoUrl = [entry[@"groupPhotoUrl"] isKindOfClass:[NSString class]] ? entry[@"groupPhotoUrl"] : nil;
+            if (groupPhotoUrl.length) {
+                row.imageUrl = [NSURL URLWithString:groupPhotoUrl];
+            } else {
+                row.iconProvider = ^UIImage *{ return SCIDirectGroupAvatarPlaceholderImage(); };
+                row.userInfo = @{@"avatarIcon": @YES};
+            }
+        } else {
             NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
             NSString *profilePicUrl = nil;
             for (NSDictionary *user in users) {
@@ -946,9 +997,11 @@ BOOL SCIDirectToggleCurrentThreadRule(SCIDirectThreadContext *context, NSString 
             }
             if (profilePicUrl.length > 0) {
                 row.imageUrl = [NSURL URLWithString:profilePicUrl];
+            } else {
+                row.icon = SCISettingsIcon(@"user");
             }
         }
-        
+
         [rows addObject:row];
     }
 

@@ -393,7 +393,15 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     UIImage *rowIcon = row.iconProvider ? row.iconProvider() : row.icon;
     if (rowIcon != nil) {
         cellContentConfig.image = rowIcon;
-        cellContentConfig.imageProperties.tintColor = row.iconTintColor ?: [SCIUtils SCIColor_InstagramPrimaryText];
+        if ([row.userInfo[@"avatarIcon"] boolValue]) {
+            // Pre-rendered circular avatar image: apply the same sizing as remote imageUrl.
+            cellContentConfig.imageProperties.tintColor = nil;
+            cellContentConfig.imageProperties.maximumSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
+            cellContentConfig.imageProperties.reservedLayoutSize = CGSizeMake(kSCISettingsRemoteImageSize, kSCISettingsRemoteImageSize);
+            cellContentConfig.imageToTextPadding = 14;
+        } else {
+            cellContentConfig.imageProperties.tintColor = row.iconTintColor ?: [SCIUtils SCIColor_InstagramPrimaryText];
+        }
     }
 
     if ([row.userInfo[@"showsReorderGrabber"] boolValue] && rowIcon != nil) {
