@@ -2,6 +2,7 @@
 #import "SCIDeletedMessagesModels.h"
 #import "SCIDeletedMessagesStorage.h"
 #import "../../../Shared/Messages/SCIDirectUserResolver.h"
+#import "../../../Shared/Messages/SCIDirectSeenContext.h"
 #import "../../../Utils.h"
 #import "../../../Shared/MediaDownload/SCIDashParser.h"
 #import "../../../Shared/MediaDownload/SCIMediaFFmpeg.h"
@@ -633,6 +634,17 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
         threadId = sciStrIvar(meta, "_threadId") ?: sciStrIvar(meta, "_threadID");
     }
     if (threadId.length) snap[@"thread_id"] = threadId;
+
+    // Stamp group-ness + title from the open thread's metadata when this capture
+    // happens while the chat is foregrounded (the common case). Read-time
+    // grouping falls back to a multi-sender heuristic when this isn't available.
+    if (threadId.length) {
+        SCIDirectThreadContext *ctx = SCIDirectActiveThreadContext();
+        if (ctx && [ctx.threadId isEqualToString:threadId]) {
+            if (ctx.isGroup) snap[@"is_group"] = @YES;
+            if (ctx.threadName.length) snap[@"thread_title"] = ctx.threadName;
+        }
+    }
 
     NSString *senderPk = sciSenderPkFromMessage(message);
     if (senderPk.length) {
@@ -1423,6 +1435,8 @@ static BOOL sciFinalizeSnapshot(NSDictionary *snap, NSString *sid, NSString *thr
     SCIDeletedMessage *m = [SCIDeletedMessage new];
     m.messageId           = sid;
     m.threadId            = snap[@"thread_id"] ?: thread ?: @"";
+    m.threadTitle         = snap[@"thread_title"];
+    m.isGroup             = [snap[@"is_group"] boolValue];
     m.senderPk            = senderPk ?: @"";
     m.senderUsername      = snap[@"sender_username"];
     m.senderFullName      = snap[@"sender_full_name"];
@@ -1517,6 +1531,9 @@ void sciDMCaptureNoteRemoveKeys(NSArray *keys, id applicator,
     NSString *owner  = ownerPk.length  ? [ownerPk copy]  : @"";
     NSString *thread = threadId.length ? [threadId copy] : nil;
 
+    // Resolve the real group name from IG's cache (deduped per thread).
+    if (thread.length && owner.length) sciDMCaptureResolveThreadMeta(applicator, thread, owner);
+
     for (id key in keys) {
         NSString *sid = sciExtractKeySid(key);
         if (sid.length) {
@@ -1563,6 +1580,151 @@ void sciDMCaptureRetryPendingRemovals(id applicator, NSString *ownerPk) {
             else sciFetchThreadForPendingRemoval(applicator, sid, thread, owner);
         }
     });
+}
+
+#pragma mark - Group thread title resolution
+
+static NSString *sciJoinThreadNames(NSArray<NSString *> *names) {
+    if (!names.count) return nil;
+    if (names.count <= 3) return [names componentsJoinedByString:@", "];
+    NSArray *head = [names subarrayWithRange:NSMakeRange(0, 3)];
+    return [NSString stringWithFormat:@"%@ +%lu", [head componentsJoinedByString:@", "], (unsigned long)(names.count - 3)];
+}
+
+static NSString *sciGroupCustomName(id metadata) {
+    id groupMeta = sciTryObjectSelector(metadata, @"groupMetadata") ?: sciAnyIvar(metadata, "_groupMetadata");
+    if (!groupMeta) return nil;
+    NSString *name = sciTryStringSelectors(groupMeta, @[@"customName"]);
+    if (!name.length) name = sciStrIvar(groupMeta, "_customName");
+    return name.length ? name : nil;
+}
+
+// metadata.groupMetadata.groupPhotoIdentifier.groupImageSpecifier.remoteImageURL.url
+// Only set for groups with an explicit custom photo.
+static NSString *sciGroupPhotoURL(id metadata) {
+    id groupMeta = sciTryObjectSelector(metadata, @"groupMetadata") ?: sciAnyIvar(metadata, "_groupMetadata");
+    if (!groupMeta) return nil;
+    id identifier = sciTryObjectSelector(groupMeta, @"groupPhotoIdentifier") ?: sciAnyIvar(groupMeta, "_groupPhotoIdentifier");
+    if (!identifier) return nil;
+    id specifier = sciTryObjectSelector(identifier, @"groupImageSpecifier") ?: sciAnyIvar(identifier, "_groupImageSpecifier");
+    if (!specifier) return nil;
+    id imageURL = sciTryObjectSelector(specifier, @"remoteImageURL") ?: sciAnyIvar(specifier, "_remoteImageURL");
+    if (!imageURL) return nil;
+    NSString *s = sciTryURLSelectors(imageURL, @[@"url", @"fallbackURL"]);
+    return s.length ? s : nil;
+}
+
+static NSArray<NSString *> *sciThreadUserNames(id metadata) {
+    id users = sciTryObjectSelector(metadata, @"users") ?: sciAnyIvar(metadata, "_users");
+    if (![users isKindOfClass:[NSArray class]]) return nil;
+    NSMutableArray<NSString *> *names = [NSMutableArray array];
+    for (id u in (NSArray *)users) {
+        NSString *n = sciTryStringSelectors(u, @[@"fullName"]);
+        if (!n.length) {
+            id fc = sciAnyIvar(u, "_fieldCache");
+            if ([fc isKindOfClass:[NSDictionary class]]) {
+                id v = ((NSDictionary *)fc)[@"full_name"] ?: ((NSDictionary *)fc)[@"username"];
+                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length]) n = v;
+            }
+        }
+        if (!n.length) n = sciTryStringSelectors(u, @[@"username"]);
+        if (n.length) [names addObject:n];
+    }
+    return names.count ? names : nil;
+}
+
+static id sciThreadMetadataFromObject(id threadObj) {
+    if (!threadObj) return nil;
+    Class metaCls = NSClassFromString(@"IGDirectThreadMetadata");
+    id meta = sciTryObjectSelector(threadObj, @"threadMetadata") ?: sciAnyIvar(threadObj, "_threadMetadata");
+    if (metaCls && [meta isKindOfClass:metaCls]) return meta;
+    id provider = sciTryObjectSelector(threadObj, @"threadInfoProvider") ?: sciAnyIvar(threadObj, "_threadInfoProvider");
+    if (provider) {
+        id pmeta = sciTryObjectSelector(provider, @"threadMetadata") ?: sciAnyIvar(provider, "_threadMetadata");
+        if (metaCls && [pmeta isKindOfClass:metaCls]) return pmeta;
+        if (!meta) meta = pmeta;
+    }
+    if (metaCls) {
+        id found = sciFindObjectWithClassNames(threadObj, @[@"IGDirectThreadMetadata"], 6);
+        if (found) return found;
+    }
+    return meta;
+}
+
+// YES when metadata was read (group-ness known), even for a 1:1. *outTitle is
+// set only for groups: the custom name, else IG-style joined participant names.
+static BOOL sciExtractThreadMeta(id threadObj, BOOL *outIsGroup, NSString **outTitle, NSString **outPhotoURL) {
+    id meta = sciThreadMetadataFromObject(threadObj);
+    if (!meta) return NO;
+    BOOL found = NO;
+    BOOL isGroup = sciBoolSelector(meta, @"isGroup", &found);
+    if (!found) isGroup = sciBoolIvar(meta, "_isGroup", &found);
+    if (!found) return NO;
+    NSString *title = nil;
+    NSString *photo = nil;
+    if (isGroup) {
+        title = sciGroupCustomName(meta);
+        if (!title.length) title = sciJoinThreadNames(sciThreadUserNames(meta));
+        photo = sciGroupPhotoURL(meta);
+    }
+    if (outIsGroup) *outIsGroup = isGroup;
+    if (outTitle) *outTitle = title;
+    if (outPhotoURL) *outPhotoURL = photo;
+    return YES;
+}
+
+static NSMutableSet<NSString *> *sciResolvedThreadMetaKeys(void) {
+    static NSMutableSet<NSString *> *set;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ set = [NSMutableSet set]; });
+    return set;
+}
+
+void sciDMCaptureResolveThreadMeta(id applicator, NSString *threadId, NSString *ownerPk) {
+    if (!sciCaptureEnabled() || !threadId.length || !ownerPk.length) return;
+    NSString *key = [NSString stringWithFormat:@"%@:%@", ownerPk, threadId];
+    @synchronized (sciResolvedThreadMetaKeys()) {
+        if ([sciResolvedThreadMetaKeys() containsObject:key]) return;
+        [sciResolvedThreadMetaKeys() addObject:key];
+    }
+    NSString *owner = [ownerPk copy];
+    NSString *tid = [threadId copy];
+
+    void (^clearKey)(void) = ^{
+        @synchronized (sciResolvedThreadMetaKeys()) { [sciResolvedThreadMetaKeys() removeObject:key]; }
+    };
+    // Returns YES once metadata was read (group or confirmed 1:1) so we stop
+    // re-resolving; NO means try again on the next unsend in this thread.
+    BOOL (^apply)(id) = ^BOOL(id threadObj) {
+        BOOL isGroup = NO; NSString *title = nil; NSString *photo = nil;
+        if (!sciExtractThreadMeta(threadObj, &isGroup, &title, &photo)) return NO;
+        if (isGroup) [SCIDeletedMessagesStorage backfillThreadTitle:title isGroup:YES photoURL:photo forThreadId:tid ownerPK:owner];
+        return YES;
+    };
+
+    id cache = sciDirectCacheFromApplicator(applicator);
+    if (!cache) { clearKey(); return; }
+
+    // Synchronous attempt via the in-memory client state.
+    @try {
+        SEL sel = NSSelectorFromString(@"threadClientStateForThreadId:");
+        if ([cache respondsToSelector:sel]) {
+            id state = ((id(*)(id, SEL, id))objc_msgSend)(cache, sel, tid);
+            if (state && apply(state)) return;
+        }
+    } @catch (__unused id e) {}
+
+    // Async cache fetch — the thread object carries IGDirectThreadMetadata.
+    SEL publicFetch = NSSelectorFromString(@"fetchThreadWithThreadId:completion:");
+    @try {
+        if ([cache respondsToSelector:publicFetch]) {
+            ((void(*)(id, SEL, id, id))objc_msgSend)(cache, publicFetch, tid, ^(id fetchedThread) {
+                if (!apply(fetchedThread)) clearKey();
+            });
+            return;
+        }
+    } @catch (__unused id e) {}
+    clearKey();
 }
 
 #pragma mark - Reaction unsend capture
@@ -1625,6 +1787,16 @@ NSDictionary *sciDMCaptureNoteReactionUnsend(id reaction,
     NSString *u = nil, *fn = nil, *pic = nil;
     sciResolveSenderInfo(pk, &u, &fn, &pic);
 
+    BOOL threadIsGroup = NO;
+    NSString *threadTitle = nil;
+    if (threadId.length) {
+        SCIDirectThreadContext *ctx = SCIDirectActiveThreadContext();
+        if (ctx && [ctx.threadId isEqualToString:threadId]) {
+            threadIsGroup = ctx.isGroup;
+            threadTitle = ctx.threadName.length ? ctx.threadName : nil;
+        }
+    }
+
     NSDate *now = [NSDate date];
     dispatch_async(sciCaptureQueue(), ^{
         if (pk.length && [SCIDeletedMessagesStorage isSenderBlocked:pk ownerPK:owner]) return;
@@ -1632,6 +1804,8 @@ NSDictionary *sciDMCaptureNoteReactionUnsend(id reaction,
         SCIDeletedMessage *m = [SCIDeletedMessage new];
         m.messageId            = recordId;
         m.threadId             = threadId ?: @"";
+        m.threadTitle          = threadTitle;
+        m.isGroup              = threadIsGroup;
         m.senderPk             = pk;
         m.senderUsername       = u;
         m.senderFullName       = fn;

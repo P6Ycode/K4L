@@ -1,4 +1,5 @@
 #import "SCIDeletedMessageBubbleCell.h"
+#import "SCIDeletedMessagesAvatarView.h"
 #import "SCIDeletedMessagesDate.h"
 #import "../../../Utils.h"
 #import "../../../AssetUtils.h"
@@ -43,6 +44,12 @@ static NSString *SCIDeletedFormatDuration(double seconds);
 @property (nonatomic, strong) UIImageView *cardPlaceholder;
 @property (nonatomic, strong) UILabel *cardTitle;
 @property (nonatomic, strong) UILabel *cardURL;
+
+// Per-sender avatar + name row above incoming bubbles (group threads only).
+@property (nonatomic, strong) SCIDeletedMessagesAvatarView *senderAvatarView;
+@property (nonatomic, strong) UILabel *senderLabel;
+@property (nonatomic, strong) NSLayoutConstraint *bubbleTopDefault;     // bubble pinned to contentView top
+@property (nonatomic, strong) NSLayoutConstraint *bubbleTopBelowName;   // bubble pinned below the avatar row
 
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingPin;     // incoming: pin to left
@@ -92,6 +99,20 @@ static NSString *SCIDeletedFormatDuration(double seconds);
     [_contentStack addArrangedSubview:_voicePill];
     [_contentStack addArrangedSubview:_cardView];
 
+    // 22pt circular avatar shown to the left of the sender name (group threads only).
+    static CGFloat const kSenderAvatarSize = 22.0;
+    _senderAvatarView = [[SCIDeletedMessagesAvatarView alloc] initWithFrame:CGRectZero];
+    _senderAvatarView.translatesAutoresizingMaskIntoConstraints = NO;
+    _senderAvatarView.hidden = YES;
+    [self.contentView addSubview:_senderAvatarView];
+
+    _senderLabel = [UILabel new];
+    _senderLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _senderLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    _senderLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    _senderLabel.hidden = YES;
+    [self.contentView addSubview:_senderLabel];
+
     _timeLabel = [UILabel new];
     _timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _timeLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
@@ -109,8 +130,23 @@ static NSString *SCIDeletedFormatDuration(double seconds);
     _timeLeadingPin  = [_timeLabel.leadingAnchor constraintEqualToAnchor:_bubble.leadingAnchor constant:4.0];
     _timeTrailingPin = [_timeLabel.trailingAnchor constraintEqualToAnchor:_bubble.trailingAnchor constant:-4.0];
 
+    // Bubble top is normally pinned to the cell top; when a sender avatar+name row
+    // is shown (group threads) the bubble drops below the avatar instead.
+    _bubbleTopDefault   = [_bubble.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0];
+    _bubbleTopBelowName = [_bubble.topAnchor constraintEqualToAnchor:_senderAvatarView.bottomAnchor constant:4.0];
+    _bubbleTopDefault.active = YES;
+
     [NSLayoutConstraint activateConstraints:@[
-        [_bubble.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
+        // Avatar: left-aligned with the bubble, sits at the top of the name row.
+        [_senderAvatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:sideInset],
+        [_senderAvatarView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
+        [_senderAvatarView.widthAnchor constraintEqualToConstant:kSenderAvatarSize],
+        [_senderAvatarView.heightAnchor constraintEqualToConstant:kSenderAvatarSize],
+
+        // Name: to the right of the avatar, vertically centered with it.
+        [_senderLabel.leadingAnchor constraintEqualToAnchor:_senderAvatarView.trailingAnchor constant:6.0],
+        [_senderLabel.centerYAnchor constraintEqualToAnchor:_senderAvatarView.centerYAnchor],
+        [_senderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
 
         [_contentStack.leadingAnchor constraintEqualToAnchor:_bubble.leadingAnchor constant:12.0],
         [_contentStack.trailingAnchor constraintEqualToAnchor:_bubble.trailingAnchor constant:-12.0],
@@ -397,6 +433,27 @@ static NSString *SCIDeletedFormatDuration(double seconds);
     self.message = nil;
     self.mediaView.image = nil;
     self.cardThumb.image = nil;
+    [self applySenderName:nil senderPk:nil avatarURL:nil];
+}
+
+// Show a sender avatar + name above the bubble (group threads, incoming only).
+// Pass nil to hide — outgoing messages or consecutive messages from the same sender.
+- (void)applySenderName:(NSString *)name senderPk:(NSString *)senderPk avatarURL:(NSString *)avatarURL {
+    if (name.length) {
+        self.senderLabel.text = name;
+        self.senderLabel.hidden = NO;
+        self.senderAvatarView.hidden = NO;
+        [self.senderAvatarView configureWithPK:senderPk urlString:avatarURL];
+        self.bubbleTopDefault.active = NO;
+        self.bubbleTopBelowName.active = YES;
+    } else {
+        self.senderLabel.text = nil;
+        self.senderLabel.hidden = YES;
+        self.senderAvatarView.hidden = YES;
+        [self.senderAvatarView prepareForReuse];
+        self.bubbleTopBelowName.active = NO;
+        self.bubbleTopDefault.active = YES;
+    }
 }
 
 - (void)handleMediaTap {

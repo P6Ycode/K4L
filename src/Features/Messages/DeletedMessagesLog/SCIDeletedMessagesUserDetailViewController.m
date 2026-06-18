@@ -1,6 +1,7 @@
 #import "SCIDeletedMessagesUserDetailViewController.h"
 
 #import "SCIDeletedMessageBubbleCell.h"
+#import "SCIDeletedMessagesAvatarView.h"
 #import "SCIDeletedMessagesChipBar.h"
 #import "SCIDeletedMessagesDate.h"
 #import "SCIDeletedMessagesFilter.h"
@@ -79,7 +80,11 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = self.group.senderUsername.length ? [@"@" stringByAppendingString:self.group.senderUsername] : @"Deleted Messages";
+    // Groups keep the thread title. 1:1 threads use a static title so the
+    // sticky profile header can serve as the primary identity anchor.
+    self.title = self.group.isGroup
+        ? (self.group.displayName.length ? self.group.displayName : @"Group Chat")
+        : @"Deleted Messages";
     self.view.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
 
     UIBarButtonItem *moreItem = SCIMediaChromeTopBarMenuButtonItem(@"more", [self moreMenu], @"More");
@@ -127,6 +132,15 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
         [self.tableView.topAnchor constraintEqualToAnchor:self.chipBar.bottomAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
     ]];
+
+    if (!self.group.isGroup) {
+        // tableHeaderView scrolls with content (non-sticky) so it doesn't
+        // permanently eat screen space. UITableView sets the width to its own
+        // width; we only need to supply the height.
+        UIView *header = [self buildProfileHeaderView];
+        header.frame = CGRectMake(0, 0, 0, 56.0);
+        self.tableView.tableHeaderView = header;
+    }
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadData) name:SCIDeletedMessagesDidChangeNotification object:nil];
     [self reloadData];
@@ -292,33 +306,39 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
 - (NSArray<UIMenuElement *> *)moreMenuElements {
     __weak typeof(self) weakSelf = self;
 
-    UIAction *pinAction = [UIAction actionWithTitle:(self.group.isPinned ? @"Unpin Sender" : @"Pin Sender")
+    BOOL isGroup = self.group.isGroup;
+    NSString *noun = isGroup ? @"Chat" : @"Sender";
+
+    UIAction *pinAction = [UIAction actionWithTitle:[NSString stringWithFormat:@"%@ %@", self.group.isPinned ? @"Unpin" : @"Pin", noun]
                                               image:[SCIAssetUtils instagramIconNamed:(self.group.isPinned ? @"pin_filled" : @"pin_outline") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                          identifier:nil
                                             handler:^(__unused UIAction *a) {
-        [SCIDeletedMessagesStorage setSenderPinned:!weakSelf.group.isPinned senderPK:weakSelf.group.senderPk ownerPK:weakSelf.ownerPK];
+        [SCIDeletedMessagesStorage setSenderPinned:!weakSelf.group.isPinned senderPK:weakSelf.group.flagKey ownerPK:weakSelf.ownerPK];
         weakSelf.group.isPinned = !weakSelf.group.isPinned;
     }];
 
-    UIAction *blockAction = [UIAction actionWithTitle:(self.group.isBlocked ? @"Unblock Sender" : @"Block Sender")
+    UIAction *blockAction = [UIAction actionWithTitle:[NSString stringWithFormat:@"%@ %@", self.group.isBlocked ? @"Unblock" : @"Block", noun]
                                                image:[SCIAssetUtils instagramIconNamed:self.group.isBlocked ? @"circle" : @"block" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
-        [SCIDeletedMessagesStorage setSenderBlocked:!weakSelf.group.isBlocked senderPK:weakSelf.group.senderPk ownerPK:weakSelf.ownerPK];
+        [SCIDeletedMessagesStorage setSenderBlocked:!weakSelf.group.isBlocked senderPK:weakSelf.group.flagKey ownerPK:weakSelf.ownerPK];
         weakSelf.group.isBlocked = !weakSelf.group.isBlocked;
     }];
 
-    UIAction *deleteAction = [UIAction actionWithTitle:@"Delete Sender Log"
+    UIAction *deleteAction = [UIAction actionWithTitle:[NSString stringWithFormat:@"Delete %@ Log", noun]
                                                 image:[SCIAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                            identifier:nil
                                               handler:^(__unused UIAction *a) {
+        NSString *who = isGroup ? weakSelf.group.displayName
+                                : (weakSelf.group.senderUsername.length ? [@"@" stringByAppendingString:weakSelf.group.senderUsername] : @"this sender");
         [SCIIGAlertPresenter presentAlertFromViewController:weakSelf
-                                                      title:@"Delete sender log?"
-                                                    message:[NSString stringWithFormat:@"This removes all logged messages from %@.", weakSelf.group.senderUsername.length ? [@"@" stringByAppendingString:weakSelf.group.senderUsername] : @"this sender"]
+                                                      title:isGroup ? @"Delete group log?" : @"Delete sender log?"
+                                                    message:[NSString stringWithFormat:@"This removes all logged messages from %@.", who]
                                                     actions:@[
             [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
             [SCIIGAlertAction actionWithTitle:@"Delete" style:SCIIGAlertActionStyleDestructive handler:^{
-                [SCIDeletedMessagesStorage deleteMessagesForSenderPK:weakSelf.group.senderPk ownerPK:weakSelf.ownerPK];
+                if (weakSelf.group.isGroup) [SCIDeletedMessagesStorage deleteMessagesForThreadId:weakSelf.group.threadId ownerPK:weakSelf.ownerPK];
+                else [SCIDeletedMessagesStorage deleteMessagesForSenderPK:weakSelf.group.senderPk ownerPK:weakSelf.ownerPK];
                 [weakSelf.navigationController popViewControllerAnimated:YES];
             }],
         ]];
@@ -328,8 +348,116 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
 
     UIMenu *destructiveSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[deleteAction]];
 
+    if (!isGroup && self.group.senderUsername.length) {
+        NSString *username = self.group.senderUsername;
+        UIAction *openProfileAction = [UIAction actionWithTitle:@"Open Profile"
+                                                          image:[SCIAssetUtils instagramIconNamed:@"user" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                     identifier:nil
+                                                        handler:^(__unused UIAction *a) {
+            [SCIUtils openInstagramProfileForUsername:username];
+        }];
+        return @[openProfileAction, pinAction, blockAction, destructiveSection];
+    }
+
     return @[pinAction, blockAction, destructiveSection];
 }
+
+#pragma mark - Profile header (1:1 only)
+
+// Scrolling table header for 1:1 threads: profile picture, full name, @username,
+// and an "Open Profile" button. Scrolls away with the content so it never
+// permanently steals space. Groups skip this — identity lives in the navbar title
+// and the per-bubble sender labels.
+- (UIView *)buildProfileHeaderView {
+    UIView *container = [UIView new];
+    container.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+
+    // Avatar (36pt circle).
+    SCIDeletedMessagesAvatarView *avatar = [[SCIDeletedMessagesAvatarView alloc] initWithFrame:CGRectZero];
+    avatar.translatesAutoresizingMaskIntoConstraints = NO;
+    [avatar configureWithPK:self.group.senderPk urlString:self.group.senderProfilePicURL];
+    [container addSubview:avatar];
+
+    // Name label.
+    UILabel *nameLabel = [UILabel new];
+    nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    nameLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+    nameLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    nameLabel.numberOfLines = 1;
+    NSString *displayName = self.group.senderFullName.length ? self.group.senderFullName
+                          : (self.group.senderUsername.length ? self.group.senderUsername : @"Unknown");
+    nameLabel.text = displayName;
+
+    // Username label.
+    UILabel *usernameLabel = [UILabel new];
+    usernameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    usernameLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
+    usernameLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    usernameLabel.numberOfLines = 1;
+    usernameLabel.hidden = (self.group.senderUsername.length == 0);
+    if (self.group.senderUsername.length) {
+        usernameLabel.text = [@"@" stringByAppendingString:self.group.senderUsername];
+    }
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[nameLabel, usernameLabel]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 2.0;
+    textStack.alignment = UIStackViewAlignmentLeading;
+    [container addSubview:textStack];
+
+    // "Open Profile" button (only when username is known).
+    if (self.group.senderUsername.length) {
+        NSString *username = self.group.senderUsername;
+        UIButton *openBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        openBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        UIImage *icon = [SCIAssetUtils instagramIconNamed:@"external_link" pointSize:18.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+        if (!icon) icon = [UIImage systemImageNamed:@"arrow.up.right"];
+        [openBtn setImage:icon forState:UIControlStateNormal];
+        openBtn.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+        openBtn.accessibilityLabel = @"Open Profile";
+        [openBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__unused UIAction *a) {
+            [SCIUtils openInstagramProfileForUsername:username];
+        }] forControlEvents:UIControlEventTouchUpInside];
+        [container addSubview:openBtn];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [openBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16.0],
+            [openBtn.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
+            [openBtn.widthAnchor constraintEqualToConstant:30.0],
+            [openBtn.heightAnchor constraintEqualToConstant:30.0],
+            [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:openBtn.leadingAnchor constant:-8.0],
+        ]];
+    } else {
+        [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:container.trailingAnchor constant:-16.0].active = YES;
+    }
+
+    // Separator line at bottom.
+    UIView *separator = [UIView new];
+    separator.translatesAutoresizingMaskIntoConstraints = NO;
+    separator.backgroundColor = [SCIUtils SCIColor_InstagramTertiaryBackground];
+    [container addSubview:separator];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [avatar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
+        [avatar.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
+        [avatar.widthAnchor constraintEqualToConstant:36.0],
+        [avatar.heightAnchor constraintEqualToConstant:36.0],
+        [avatar.topAnchor constraintGreaterThanOrEqualToAnchor:container.topAnchor constant:10.0],
+        [avatar.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-10.0],
+
+        [textStack.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:12.0],
+        [textStack.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
+
+        [separator.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [separator.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [separator.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+        [separator.heightAnchor constraintEqualToConstant:0.5],
+    ]];
+
+    return container;
+}
+
 
 #pragma mark - Table
 
@@ -345,6 +473,22 @@ static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
     UIImage *cached = message.messageId.length ? [self.thumbnailCache objectForKey:message.messageId] : nil;
     BOOL outgoing = self.ownerPK.length && [message.senderPk isEqualToString:self.ownerPK];
     [cell configureWithMessage:message thumbnail:cached outgoing:outgoing];
+
+    // In a group, show sender avatar + name on the first bubble in each run.
+    NSString *senderName = nil;
+    NSString *senderPk = nil;
+    NSString *senderAvatarURL = nil;
+    if (self.group.isGroup && !outgoing) {
+        SCIDeletedMessage *prev = indexPath.row > 0 ? self.visibleMessages[indexPath.row - 1] : nil;
+        BOOL newSender = !prev || ![prev.senderPk isEqualToString:message.senderPk];
+        if (newSender) {
+            senderName = message.senderFullName.length ? message.senderFullName
+                       : (message.senderUsername.length ? [@"@" stringByAppendingString:message.senderUsername] : nil);
+            senderPk = message.senderPk;
+            senderAvatarURL = message.senderProfilePicURL;
+        }
+    }
+    [cell applySenderName:senderName senderPk:senderPk avatarURL:senderAvatarURL];
     if (!cached && [self messageHasThumbnail:message]) {
         [self loadThumbnailForMessage:message atIndexPath:indexPath];
     }

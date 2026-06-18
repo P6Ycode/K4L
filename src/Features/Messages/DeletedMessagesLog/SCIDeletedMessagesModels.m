@@ -97,6 +97,8 @@ static double sciDouble(id v) {
     m.messageId            = sciStr(dict[@"message_id"]);
     m.threadId             = sciStr(dict[@"thread_id"]);
     m.threadTitle          = sciStr(dict[@"thread_title"]);
+    m.isGroup              = [dict[@"is_group"] boolValue];
+    m.threadPhotoURL       = sciStr(dict[@"thread_photo_url"]);
     m.senderPk             = sciStr(dict[@"sender_pk"]);
     m.senderUsername       = sciStr(dict[@"sender_username"]);
     m.senderFullName       = sciStr(dict[@"sender_full_name"]);
@@ -133,6 +135,8 @@ static double sciDouble(id v) {
     if (self.messageId)            d[@"message_id"]            = self.messageId;
     if (self.threadId)             d[@"thread_id"]             = self.threadId;
     if (self.threadTitle.length)   d[@"thread_title"]          = self.threadTitle;
+    if (self.isGroup)              d[@"is_group"]              = @YES;
+    if (self.threadPhotoURL.length) d[@"thread_photo_url"]     = self.threadPhotoURL;
     if (self.senderPk)             d[@"sender_pk"]             = self.senderPk;
     if (self.senderUsername)       d[@"sender_username"]       = self.senderUsername;
     if (self.senderFullName)       d[@"sender_full_name"]      = self.senderFullName;
@@ -169,5 +173,20 @@ static double sciDouble(id v) {
 - (NSUInteger)count { return self.messages.count; }
 - (NSDate *)lastDeletedAt { return self.latest.deletedAt ?: self.latest.capturedAt; }
 - (SCIDeletedMessage *)latest { return self.messages.firstObject; }
+
+- (NSString *)displayName {
+    if (self.isGroup) {
+        if (self.threadTitle.length) return self.threadTitle;
+        return @"Group chat";
+    }
+    if (self.senderUsername.length) return [@"@" stringByAppendingString:self.senderUsername];
+    if (self.senderFullName.length) return self.senderFullName;
+    return @"Unknown user";
+}
+
+- (NSString *)flagKey {
+    if (self.isGroup) return self.threadId.length ? [@"thread:" stringByAppendingString:self.threadId] : @"";
+    return self.senderPk ?: @"";
+}
 
 @end

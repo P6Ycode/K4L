@@ -124,7 +124,8 @@
                 && self.dateRange == SCIDMDateRangeAll) {
                 NSStringCompareOptions opt = NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch;
                 BOOL hit = ([(g.senderUsername ?: @"") rangeOfString:self.searchText options:opt].location != NSNotFound)
-                        || ([(g.senderFullName ?: @"") rangeOfString:self.searchText options:opt].location != NSNotFound);
+                        || ([(g.senderFullName ?: @"") rangeOfString:self.searchText options:opt].location != NSNotFound)
+                        || ([(g.threadTitle ?: @"") rangeOfString:self.searchText options:opt].location != NSNotFound);
                 if (!hit) continue;
                 filtered = g.messages;
             } else {
@@ -136,6 +137,10 @@
         copy.senderUsername      = g.senderUsername;
         copy.senderFullName      = g.senderFullName;
         copy.senderProfilePicURL = g.senderProfilePicURL;
+        copy.isGroup             = g.isGroup;
+        copy.threadId            = g.threadId;
+        copy.threadTitle         = g.threadTitle;
+        copy.threadPhotoURL      = g.threadPhotoURL;
         copy.isPinned            = g.isPinned;
         copy.isBlocked           = g.isBlocked;
         copy.messages            = filtered;

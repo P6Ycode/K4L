@@ -39,6 +39,14 @@ void sciDMCaptureNoteRemoveKeys(NSArray * _Nullable keys,
 void sciDMCaptureRetryPendingRemovals(id _Nullable applicator,
                                       NSString * _Nullable ownerPk);
 
+// Resolve a thread's real group name + group flag from IG's cache (the open
+// thread's IGDirectThreadMetadata.groupMetadata.customName), then backfill it
+// onto stored messages so the log shows the actual chat title. Deduped per
+// thread per session; safe to call on every unsend.
+void sciDMCaptureResolveThreadMeta(id _Nullable applicator,
+                                   NSString * _Nullable threadId,
+                                   NSString * _Nullable ownerPk);
+
 NSArray<NSDictionary *> *sciDMCapturePreviewMetadataForKeys(NSArray * _Nullable keys,
                                                             id _Nullable applicator,
                                                             NSString * _Nullable ownerPk,

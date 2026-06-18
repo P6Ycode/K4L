@@ -228,6 +228,116 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
     return out;
 }
 
+// Best display label for a sender, from any captured message by them. Prefer
+// the full name (IG titles untitled groups with participant names, not handles).
+static NSString *sciSenderLabel(SCIDeletedMessage *m) {
+    if (m.senderFullName.length) return m.senderFullName;
+    if (m.senderUsername.length) return [@"@" stringByAppendingString:m.senderUsername];
+    return nil;
+}
+
+// Generated group title from the distinct non-owner sender labels — used when
+// the real thread name wasn't captured (e.g. messages logged before the chat
+// was opened with the tweak active).
+static NSString *sciGeneratedGroupTitle(NSArray<SCIDeletedMessage *> *msgs, NSString *ownerPK) {
+    NSMutableArray<NSString *> *labels = [NSMutableArray array];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+    for (SCIDeletedMessage *m in msgs) {
+        if (!m.senderPk.length || [m.senderPk isEqualToString:ownerPK]) continue;
+        if ([seen containsObject:m.senderPk]) continue;
+        [seen addObject:m.senderPk];
+        NSString *label = sciSenderLabel(m);
+        if (label.length) [labels addObject:label];
+    }
+    if (!labels.count) return @"Group chat";
+    if (labels.count <= 3) return [labels componentsJoinedByString:@", "];
+    NSArray *head = [labels subarrayWithRange:NSMakeRange(0, 3)];
+    return [NSString stringWithFormat:@"%@ +%lu", [head componentsJoinedByString:@", "], (unsigned long)(labels.count - 3)];
+}
+
++ (NSArray<SCIDeletedMessageGroup *> *)groupedForOwnerPK:(NSString *)ownerPK {
+    NSArray<SCIDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];   // newest-first
+
+    // First pass: per-thread aggregates that decide group-ness and title.
+    NSMutableDictionary<NSString *, NSMutableArray<SCIDeletedMessage *> *> *byThread = [NSMutableDictionary dictionary];
+    NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *nonOwnerSenders = [NSMutableDictionary dictionary];
+    NSMutableSet<NSString *> *flaggedGroupThreads = [NSMutableSet set];
+    NSMutableDictionary<NSString *, NSString *> *titleByThread = [NSMutableDictionary dictionary];
+    NSMutableDictionary<NSString *, NSString *> *photoByThread = [NSMutableDictionary dictionary];
+    for (SCIDeletedMessage *m in all) {
+        NSString *tid = m.threadId;
+        if (!tid.length) continue;
+        NSMutableArray *list = byThread[tid];
+        if (!list) { list = [NSMutableArray array]; byThread[tid] = list; }
+        [list addObject:m];
+        if (m.senderPk.length && ![m.senderPk isEqualToString:ownerPK]) {
+            NSMutableSet *s = nonOwnerSenders[tid];
+            if (!s) { s = [NSMutableSet set]; nonOwnerSenders[tid] = s; }
+            [s addObject:m.senderPk];
+        }
+        if (m.isGroup) [flaggedGroupThreads addObject:tid];
+        if (m.threadTitle.length && !titleByThread[tid]) titleByThread[tid] = m.threadTitle;
+        if (m.threadPhotoURL.length && !photoByThread[tid]) photoByThread[tid] = m.threadPhotoURL;
+    }
+
+    NSMutableSet<NSString *> *groupThreads = [NSMutableSet set];
+    for (NSString *tid in byThread) {
+        if ([flaggedGroupThreads containsObject:tid] || nonOwnerSenders[tid].count >= 2) {
+            [groupThreads addObject:tid];
+        }
+    }
+
+    NSMutableArray<SCIDeletedMessageGroup *> *groups = [NSMutableArray array];
+
+    // Group-thread entries — one per thread.
+    for (NSString *tid in groupThreads) {
+        NSArray<SCIDeletedMessage *> *msgs = byThread[tid];
+        if (!msgs.count) continue;
+        SCIDeletedMessageGroup *g = [SCIDeletedMessageGroup new];
+        g.isGroup     = YES;
+        g.threadId    = tid;
+        g.threadTitle = titleByThread[tid].length ? titleByThread[tid] : sciGeneratedGroupTitle(msgs, ownerPK);
+        g.threadPhotoURL = photoByThread[tid];
+        g.messages    = msgs;
+        NSDictionary *flags = sciSenderFlags(g.flagKey, ownerPK);
+        g.isPinned    = [flags[@"pinned"] boolValue];
+        g.isBlocked   = [flags[@"blocked"] boolValue];
+        [groups addObject:g];
+    }
+
+    // 1:1 entries — bucket the rest by sender (legacy behaviour).
+    NSMutableDictionary<NSString *, NSMutableArray<SCIDeletedMessage *> *> *byPk = [NSMutableDictionary dictionary];
+    for (SCIDeletedMessage *m in all) {
+        if (m.threadId.length && [groupThreads containsObject:m.threadId]) continue;
+        if (!m.senderPk.length) continue;
+        NSMutableArray *list = byPk[m.senderPk];
+        if (!list) { list = [NSMutableArray array]; byPk[m.senderPk] = list; }
+        [list addObject:m];
+    }
+    for (NSString *pk in byPk) {
+        NSArray<SCIDeletedMessage *> *msgs = byPk[pk];
+        SCIDeletedMessage *latest = msgs.firstObject;
+        SCIDeletedMessageGroup *g = [SCIDeletedMessageGroup new];
+        g.senderPk            = pk;
+        g.senderUsername      = latest.senderUsername;
+        g.senderFullName      = latest.senderFullName;
+        g.senderProfilePicURL = latest.senderProfilePicURL;
+        NSDictionary *flags   = sciSenderFlags(pk, ownerPK);
+        g.isPinned            = [flags[@"pinned"] boolValue];
+        g.isBlocked           = [flags[@"blocked"] boolValue];
+        g.messages            = msgs;
+        [groups addObject:g];
+    }
+
+    [groups sortUsingComparator:^NSComparisonResult(SCIDeletedMessageGroup *a, SCIDeletedMessageGroup *b) {
+        if (a.isPinned != b.isPinned) return a.isPinned ? NSOrderedAscending : NSOrderedDescending;
+        NSDate *da = a.lastDeletedAt ?: [NSDate distantPast];
+        NSDate *db = b.lastDeletedAt ?: [NSDate distantPast];
+        return [db compare:da];
+    }];
+    return groups;
+}
+
 + (NSArray<SCIDeletedMessageGroup *> *)groupedBySenderForOwnerPK:(NSString *)ownerPK {
     NSArray<SCIDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];
     NSMutableDictionary<NSString *, NSMutableArray<SCIDeletedMessage *> *> *byPk = [NSMutableDictionary dictionary];
@@ -281,19 +391,39 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
 
 + (SCIDeletedMessageGroup *)groupForThreadId:(NSString *)threadId ownerPK:(NSString *)ownerPK {
     if (!threadId.length) return nil;
-    // Pick the non-owner sender that appears in this thread. Captured messages
-    // store threadId, so we can map a chat to its sender without participant PKs.
-    NSArray<SCIDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];
-    NSString *senderPK = nil;
+    NSArray<SCIDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];   // newest-first
+    NSMutableArray<SCIDeletedMessage *> *msgs = [NSMutableArray array];
+    NSMutableSet<NSString *> *nonOwner = [NSMutableSet set];
+    BOOL flagged = NO;
+    NSString *title = nil;
+    NSString *photo = nil;
+    NSString *fallbackSender = nil;
     for (SCIDeletedMessage *m in all) {
         if (![m.threadId isEqualToString:threadId]) continue;
-        if (m.senderPk.length && ![m.senderPk isEqualToString:ownerPK]) {
-            senderPK = m.senderPk;
-            break;
-        }
-        // Fall back to whatever sender we have (e.g. own unsends in a self-thread).
-        if (!senderPK.length && m.senderPk.length) senderPK = m.senderPk;
+        [msgs addObject:m];
+        if (m.senderPk.length && ![m.senderPk isEqualToString:ownerPK]) [nonOwner addObject:m.senderPk];
+        if (m.senderPk.length && !fallbackSender) fallbackSender = m.senderPk;
+        if (m.isGroup) flagged = YES;
+        if (m.threadTitle.length && !title) title = m.threadTitle;
+        if (m.threadPhotoURL.length && !photo) photo = m.threadPhotoURL;
     }
+    if (!msgs.count) return nil;
+
+    if (flagged || nonOwner.count >= 2) {
+        SCIDeletedMessageGroup *g = [SCIDeletedMessageGroup new];
+        g.isGroup     = YES;
+        g.threadId    = threadId;
+        g.threadTitle = title.length ? title : sciGeneratedGroupTitle(msgs, ownerPK);
+        g.threadPhotoURL = photo;
+        g.messages    = msgs;
+        NSDictionary *flags = sciSenderFlags(g.flagKey, ownerPK);
+        g.isPinned    = [flags[@"pinned"] boolValue];
+        g.isBlocked   = [flags[@"blocked"] boolValue];
+        return g;
+    }
+
+    // 1:1 — prefer the non-owner sender, else whatever sender we have.
+    NSString *senderPK = nonOwner.anyObject ?: fallbackSender;
     return senderPK.length ? [self groupForSenderPK:senderPK ownerPK:ownerPK] : nil;
 }
 
@@ -371,6 +501,28 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
     return touched;
 }
 
++ (BOOL)backfillThreadTitle:(NSString *)title
+                    isGroup:(BOOL)isGroup
+                   photoURL:(NSString *)photoURL
+               forThreadId:(NSString *)threadId
+                    ownerPK:(NSString *)ownerPK {
+    if (!threadId.length) return NO;
+    __block BOOL changed = NO;
+    dispatch_sync(sciDMQueue(), ^{
+        NSString *path = sciJSONPathForOwner(ownerPK);
+        NSMutableArray<SCIDeletedMessage *> *cur = [sciDecode(sciReadArray(path)) mutableCopy];
+        for (SCIDeletedMessage *m in cur) {
+            if (![m.threadId isEqualToString:threadId]) continue;
+            if (isGroup && !m.isGroup) { m.isGroup = YES; changed = YES; }
+            if (title.length && ![m.threadTitle isEqualToString:title]) { m.threadTitle = title; changed = YES; }
+            if (photoURL.length && ![m.threadPhotoURL isEqualToString:photoURL]) { m.threadPhotoURL = photoURL; changed = YES; }
+        }
+        if (changed) sciWriteArray(path, sciEncode(cur));
+    });
+    if (changed) sciPostChanged(ownerPK);
+    return changed;
+}
+
 + (BOOL)isSenderPinned:(NSString *)senderPK ownerPK:(NSString *)ownerPK {
     return [sciSenderFlags(senderPK, ownerPK)[@"pinned"] boolValue];
 }
@@ -439,6 +591,14 @@ static NSArray<NSDictionary *> *sciEncode(NSArray<SCIDeletedMessage *> *msgs) {
 + (void)deleteMessagesForSenderPK:(NSString *)senderPK ownerPK:(NSString *)ownerPK {
     if (!senderPK.length) return;
     NSArray *toDrop = [self messagesForSenderPK:senderPK ownerPK:ownerPK];
+    for (SCIDeletedMessage *m in toDrop) {
+        [self deleteMessageId:m.messageId forOwnerPK:ownerPK];
+    }
+}
+
++ (void)deleteMessagesForThreadId:(NSString *)threadId ownerPK:(NSString *)ownerPK {
+    if (!threadId.length) return;
+    NSArray *toDrop = [self messagesForThreadId:threadId ownerPK:ownerPK];
     for (SCIDeletedMessage *m in toDrop) {
         [self deleteMessageId:m.messageId forOwnerPK:ownerPK];
     }

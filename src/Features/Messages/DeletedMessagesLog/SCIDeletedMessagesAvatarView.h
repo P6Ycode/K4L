@@ -10,6 +10,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)configureWithPK:(nullable NSString *)pk
               urlString:(nullable NSString *)urlString;
 
+// Group-thread avatar: shows the group's custom photo when `photoURL` is set
+// (cached by threadId), otherwise a native-size multi-person glyph.
+- (void)configureAsGroupWithThreadId:(nullable NSString *)threadId
+                            photoURL:(nullable NSString *)photoURL;
+
 - (void)prepareForReuse;
 
 @end

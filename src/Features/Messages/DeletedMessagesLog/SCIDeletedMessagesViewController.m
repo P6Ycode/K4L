@@ -246,10 +246,11 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
 
 - (void)reloadData {
     self.ownerPK = SCIDMCurrentUserPK();
-    NSArray<SCIDeletedMessageGroup *> *allGroups = [SCIDeletedMessagesStorage groupedBySenderForOwnerPK:self.ownerPK];
+    NSArray<SCIDeletedMessageGroup *> *allGroups = [SCIDeletedMessagesStorage groupedForOwnerPK:self.ownerPK];
     NSMutableArray<SCIDeletedMessageGroup *> *filtered = [NSMutableArray array];
     for (SCIDeletedMessageGroup *g in allGroups) {
-        if ([g.senderPk isEqualToString:self.ownerPK]) continue;
+        // Hide the owner's own 1:1 bucket (self-thread); group threads always show.
+        if (!g.isGroup && [g.senderPk isEqualToString:self.ownerPK]) continue;
         [filtered addObject:g];
     }
     self.groups = [filtered copy];
@@ -447,15 +448,18 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
 }
 
 - (void)confirmDeleteGroup:(SCIDeletedMessageGroup *)group {
-    if (!group.senderPk.length) return;
-    NSString *sender = group.senderUsername.length ? [@"@" stringByAppendingString:group.senderUsername] : @"this sender";
+    BOOL isGroup = group.isGroup;
+    if (isGroup ? !group.threadId.length : !group.senderPk.length) return;
+    NSString *who = isGroup ? group.displayName
+                            : (group.senderUsername.length ? [@"@" stringByAppendingString:group.senderUsername] : @"this sender");
     [SCIIGAlertPresenter presentAlertFromViewController:self
-                                                  title:@"Delete sender log?"
-                                                message:[NSString stringWithFormat:@"This removes all logged messages from %@.", sender]
+                                                  title:isGroup ? @"Delete group log?" : @"Delete sender log?"
+                                                message:[NSString stringWithFormat:@"This removes all logged messages from %@.", who]
                                                 actions:@[
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
         [SCIIGAlertAction actionWithTitle:@"Delete" style:SCIIGAlertActionStyleDestructive handler:^{
-            [SCIDeletedMessagesStorage deleteMessagesForSenderPK:group.senderPk ownerPK:self.ownerPK];
+            if (isGroup) [SCIDeletedMessagesStorage deleteMessagesForThreadId:group.threadId ownerPK:self.ownerPK];
+            else [SCIDeletedMessagesStorage deleteMessagesForSenderPK:group.senderPk ownerPK:self.ownerPK];
         }],
     ]];
 }
@@ -479,14 +483,14 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     SCIDeletedMessageGroup *group = self.visibleGroups[indexPath.row];
     UIContextualAction *pinAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [SCIDeletedMessagesStorage setSenderPinned:!group.isPinned senderPK:group.senderPk ownerPK:self.ownerPK];
+        [SCIDeletedMessagesStorage setSenderPinned:!group.isPinned senderPK:group.flagKey ownerPK:self.ownerPK];
         completionHandler(YES);
     }];
     pinAction.image = [SCIAssetUtils instagramIconNamed:(group.isPinned ? @"pin_filled" : @"pin") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     pinAction.backgroundColor = [SCIUtils SCIColor_Primary];
     pinAction.accessibilityLabel = group.isPinned ? @"Unpin" : @"Pin";
     UIContextualAction *blockAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [SCIDeletedMessagesStorage setSenderBlocked:!group.isBlocked senderPK:group.senderPk ownerPK:self.ownerPK];
+        [SCIDeletedMessagesStorage setSenderBlocked:!group.isBlocked senderPK:group.flagKey ownerPK:self.ownerPK];
         completionHandler(YES);
     }];
     blockAction.image = [SCIAssetUtils instagramIconNamed:(group.isBlocked ? @"circle" : @"circle_off") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];

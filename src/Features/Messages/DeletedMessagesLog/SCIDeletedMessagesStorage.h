@@ -17,6 +17,12 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 + (NSArray<SCIDeletedMessage *> *)allMessagesForOwnerPK:(NSString *)ownerPK;
 + (NSArray<NSString *> *)allOwnerPKs;
 + (NSArray<SCIDeletedMessageGroup *> *)groupedBySenderForOwnerPK:(NSString *)ownerPK;
+
+// Thread-aware grouping for the top list: group threads collapse into one entry
+// (keyed by threadId, isGroup == YES), while 1:1 chats stay keyed by sender. A
+// thread is treated as a group when any captured message carries the group flag
+// or when it has two or more distinct non-owner senders.
++ (NSArray<SCIDeletedMessageGroup *> *)groupedForOwnerPK:(NSString *)ownerPK;
 + (NSArray<SCIDeletedMessage *> *)messagesForSenderPK:(NSString *)senderPK
                                             ownerPK:(NSString *)ownerPK;
 
@@ -54,6 +60,15 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
             forSenderPK:(NSString *)senderPK
                 ownerPK:(NSString *)ownerPK;
 
+// Stamp the resolved group name + group flag onto every stored message in a
+// thread. Used by capture once it reads the real thread metadata from IG's
+// cache. Returns YES when anything changed (and posts a change notification).
++ (BOOL)backfillThreadTitle:(nullable NSString *)title
+                    isGroup:(BOOL)isGroup
+                   photoURL:(nullable NSString *)photoURL
+               forThreadId:(NSString *)threadId
+                    ownerPK:(NSString *)ownerPK;
+
 + (BOOL)isSenderPinned:(NSString *)senderPK ownerPK:(NSString *)ownerPK;
 + (BOOL)isSenderBlocked:(NSString *)senderPK ownerPK:(NSString *)ownerPK;
 + (void)setSenderPinned:(BOOL)pinned senderPK:(NSString *)senderPK ownerPK:(NSString *)ownerPK;
@@ -61,6 +76,9 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 
 // Drop every record for one sender.
 + (void)deleteMessagesForSenderPK:(NSString *)senderPK ownerPK:(NSString *)ownerPK;
+
+// Drop every record in one thread (used to delete a whole group log).
++ (void)deleteMessagesForThreadId:(NSString *)threadId ownerPK:(NSString *)ownerPK;
 
 // Wipe entire log + media for one account.
 + (void)resetForOwnerPK:(NSString *)ownerPK;

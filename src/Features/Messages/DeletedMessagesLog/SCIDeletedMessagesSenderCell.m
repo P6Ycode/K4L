@@ -111,9 +111,7 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group);
 }
 
 - (void)configureWithGroup:(SCIDeletedMessageGroup *)group {
-    NSString *name = group.senderUsername.length ? [@"@" stringByAppendingString:group.senderUsername]
-                                                 : (group.senderFullName.length ? group.senderFullName : @"Unknown user");
-    self.nameLabel.text = name;
+    self.nameLabel.text = group.displayName;
     self.pinBadge.hidden = !group.isPinned;
 
     SCIDeletedMessage *latest = group.latest;
@@ -127,7 +125,11 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group);
     self.nameLabel.alpha = group.isBlocked ? 0.5 : 1.0;
     self.previewRow.alpha = group.isBlocked ? 0.5 : 1.0;
 
-    [self.avatarView configureWithPK:group.senderPk urlString:group.senderProfilePicURL];
+    if (group.isGroup) {
+        [self.avatarView configureAsGroupWithThreadId:group.threadId photoURL:group.threadPhotoURL];
+    } else {
+        [self.avatarView configureWithPK:group.senderPk urlString:group.senderProfilePicURL];
+    }
 }
 
 // Latest message preview: text body when present, otherwise a kind label plus
@@ -140,6 +142,13 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group) 
     else body = SCIDeletedMessageKindLocalizedName(latest.kind);
 
     body = [body stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+
+    // In a group, lead with who sent the latest unsent message.
+    if (group.isGroup) {
+        NSString *who = latest.senderUsername.length ? latest.senderUsername
+                                                     : (latest.senderFullName.length ? latest.senderFullName : nil);
+        if (who.length) body = [NSString stringWithFormat:@"%@: %@", who, body];
+    }
 
     if (group.count > 1) {
         return [NSString stringWithFormat:@"%@  ·  %lu unsent", body, (unsigned long)group.count];

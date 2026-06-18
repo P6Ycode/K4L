@@ -24,6 +24,12 @@ extern NSString *const SCIDeletedMessageBubbleCellReuseID;
                    thumbnail:(nullable UIImage *)thumbnail
                     outgoing:(BOOL)outgoing;
 
+// Show a sender avatar + name above the bubble (group detail, incoming messages).
+// Pass nil to hide — outgoing messages or consecutive messages from the same sender.
+- (void)applySenderName:(nullable NSString *)name
+              senderPk:(nullable NSString *)senderPk
+             avatarURL:(nullable NSString *)avatarURL;
+
 // Apply a thumbnail that arrived asynchronously, if the cell still shows
 // `messageId`. Avoids a full row reload (which can miss during initial layout).
 - (void)applyLoadedThumbnail:(UIImage *)thumbnail forMessageId:(NSString *)messageId;

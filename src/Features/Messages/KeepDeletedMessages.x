@@ -64,6 +64,42 @@ static void sciSetIvar(id obj, const char *name, id value) {
 	@try { object_setIvar(obj, iv, value); } @catch (__unused id e) {}
 }
 
+// First non-nil object ivar among several candidate names. IG 434 turned
+// IGDirectMessageCell into a Swift class, so several ivars lost their `_`
+// prefix and lazy-stored ones gained a `$__lazy_storage_$` prefix.
+static id sciIvarAny(id obj, NSArray<NSString *> *names) {
+	for (NSString *n in names) {
+		id v = sciIvar(obj, n.UTF8String);
+		if (v) return v;
+	}
+	return nil;
+}
+
+static double sciDoubleIvarAny(id obj, NSArray<NSString *> *names, double fallback) {
+	if (!obj) return fallback;
+	for (NSString *n in names) {
+		Ivar iv = class_getInstanceVariable([obj class], n.UTF8String);
+		if (!iv) continue;
+		@try {
+			ptrdiff_t off = ivar_getOffset(iv);
+			return *(double *)((char *)(__bridge void *)obj + off);
+		} @catch (__unused id e) {}
+	}
+	return fallback;
+}
+
+// IGDirectMessageCell is an Obj-C class up to ~433 and a Swift class from 434
+// (runtime name mangled as `_TtC<n>IGDirectMessageCell<n>IGDirectMessageCell`).
+static Class sciDirectMessageCellClass(void) {
+	static Class cls;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		cls = NSClassFromString(@"IGDirectMessageCell");
+		if (!cls) cls = NSClassFromString(@"_TtC19IGDirectMessageCell19IGDirectMessageCell");
+	});
+	return cls;
+}
+
 static long long sciIntegerIvar(id obj, const char *name, long long fallback) {
 	if (!obj || !name) return fallback;
 	Ivar iv = class_getInstanceVariable([obj class], name);
@@ -744,7 +780,7 @@ static void sciShowUnsentReactionToast(NSDictionary *preview, NSString *ownerAcc
 static void sciRefreshVisibleCellIndicators(void) {
 	if (!sciIndicatorEnabled()) return;
 
-	Class cellClass = NSClassFromString(@"IGDirectMessageCell");
+	Class cellClass = sciDirectMessageCellClass();
 	UIWindow *window = UIApplication.sharedApplication.keyWindow;
 	if (!cellClass || !window) return;
 
@@ -918,7 +954,7 @@ static UIView *sciAccessoryWrapper(UIView *view) {
 }
 
 static void sciSetTrailingAccessoriesHidden(id cell, BOOL hidden) {
-	NSArray *views = sciIvar(cell, "_tappableAccessoryViews");
+	NSArray *views = sciIvarAny(cell, @[@"_tappableAccessoryViews", @"tappableAccessoryViews"]);
 	if (![views isKindOfClass:NSArray.class]) return;
 
 	for (UIView *v in views) {
@@ -940,14 +976,7 @@ static CGRect sciMessageContentRectInHost(id cell, UIView *content, UIView *host
 	}
 	if (size.width <= 1.0 || size.height <= 1.0) return rect;
 
-	CGFloat xOffset = 0.0;
-	Ivar ivar = class_getInstanceVariable([cell class], "_messageBubbleXOffset");
-	if (ivar) {
-		@try {
-			ptrdiff_t off = ivar_getOffset(ivar);
-			xOffset = *(double *)((char *)(__bridge void *)cell + off);
-		} @catch (__unused id e) {}
-	}
+	CGFloat xOffset = sciDoubleIvarAny(cell, @[@"_messageBubbleXOffset", @"messageBubbleXOffset"], 0.0);
 
 	CGRect hostBounds = host.bounds;
 	CGFloat x = xOffset;
@@ -997,7 +1026,8 @@ static void sciUpdateCellIndicator(id cell) {
 	BOOL sentByCurrentUser = sciCellSenderIsCurrentUser(cell);
 	NSNumber *oldDirection = old ? objc_getAssociatedObject(old, &kSCIPreservedIndicatorOwnMessageKey) : nil;
 	NSString *oldStyle = old ? objc_getAssociatedObject(old, &kSCIPreservedIndicatorStyleKey) : nil;
-	UIView *content = sciIvar(cell, "_messageContentContainerView") ?: view;
+	UIView *content = sciIvarAny(cell, @[@"_messageContentContainerView",
+	                                     @"$__lazy_storage_$_messageContentContainerView"]) ?: view;
 	UIView *host = nil;
 	if ([cell isKindOfClass:UICollectionViewCell.class]) host = ((UICollectionViewCell *)cell).contentView;
 	if (!host) host = view;
@@ -1118,7 +1148,7 @@ static BOOL sciHook(Class cls, SEL sel, IMP imp, IMP *orig) {
 	Class removeCls = NSClassFromString(@"IGDirectMessageOutgoingUpdateRemoveMessagesMutationProcessor");
 	sciHook(removeCls, NSSelectorFromString(@"executeWithResultHandler:accessoryPackage:"), (IMP)new_removeMutationExecute, (IMP *)&orig_removeMutationExecute);
 
-	Class cellCls = NSClassFromString(@"IGDirectMessageCell");
+	Class cellCls = sciDirectMessageCellClass();
 	sciHook(cellCls, NSSelectorFromString(@"configureWithViewModel:ringViewSpecFactory:launcherSet:"), (IMP)new_configureCell, (IMP *)&orig_configureCell);
 	sciHook(cellCls, @selector(layoutSubviews), (IMP)new_cellLayoutSubviews, (IMP *)&orig_cellLayoutSubviews);
 	sciHook(cellCls, NSSelectorFromString(@"_addTappableAccessoryView:"), (IMP)new_addAccessory, (IMP *)&orig_addAccessory);
