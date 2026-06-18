@@ -115,7 +115,7 @@ static id SCICommentContextMenu(id self, SEL _cmd, id collectionView, id indexPa
         NSMutableArray<UIMenuElement *> *extraActions = [NSMutableArray array];
 
         if (offersCopyText) {
-            [extraActions addObject:SCICommentAction(@"Copy Comment Text", @"copy", ^{
+            [extraActions addObject:SCICommentAction(@"Copy Comment", @"copy", ^{
                 UIPasteboard.generalPasteboard.string = text;
                 SCINotify(kSCINotificationCopyComment, @"Comment copied", nil, @"copy_filled", SCINotificationToneSuccess);
             })];
@@ -134,6 +134,9 @@ static id SCICommentContextMenu(id self, SEL _cmd, id collectionView, id indexPa
                 }),
                 SCICommentAction(@"Save GIF to Gallery", @"media", ^{
                     SCICommentDownloadGIF(gifURL, metadata, SCIDownloadDestinationGallery);
+                }),
+                SCICommentAction(@"Copy GIF", @"copy", ^{
+                    SCICommentDownloadGIF(gifURL, metadata, SCIDownloadDestinationClipboard);
                 }),
                 SCICommentAction(@"Copy GIF Link", @"link", ^{
                     UIPasteboard.generalPasteboard.string = pageURLString;

@@ -1,6 +1,7 @@
 #import "SCIStoryContext.h"
 
 #import <objc/message.h>
+#import <objc/runtime.h>
 
 #import "../../Tweak.h"
 #import "../../Networking/SCIInstagramAPI.h"
@@ -72,6 +73,7 @@ static id SCIStoryMediaFromAnyObject(id object) {
 }
 
 static NSArray *SCIStoryItemsFromCandidate(id candidate) {
+    if (!candidate) return nil;
     for (NSString *selectorName in @[@"items", @"storyItems", @"reelItems", @"mediaItems", @"allItems"]) {
         NSArray *items = SCIArrayFromCollection(SCIStoryFirstObjectForSelectors(candidate, @[selectorName]));
         if (items.count > 0) return items;
@@ -83,6 +85,26 @@ static NSArray *SCIStoryItemsFromCandidate(id candidate) {
             if (items.count > 0) return items;
         } @catch (__unused NSException *exception) {
         }
+    }
+    // Dynamic ivar fallback scanning
+    for (Class cls = [candidate class]; cls && cls != [NSObject class]; cls = class_getSuperclass(cls)) {
+        unsigned int ivarCount = 0;
+        Ivar *ivars = class_copyIvarList(cls, &ivarCount);
+        for (unsigned int i = 0; i < ivarCount; i++) {
+            const char *typeEncoding = ivar_getTypeEncoding(ivars[i]);
+            if (typeEncoding && typeEncoding[0] == '@') {
+                const char *name = ivar_getName(ivars[i]);
+                id value = [SCIUtils getIvarForObj:candidate name:name];
+                if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
+                    NSArray *arr = SCIArrayFromCollection(value);
+                    if (arr.count > 1) {
+                        free(ivars);
+                        return arr;
+                    }
+                }
+            }
+        }
+        free(ivars);
     }
     return nil;
 }
@@ -159,13 +181,23 @@ SCIStoryContext *SCIStoryContextFromOverlay(UIView *overlayView) {
 
     id currentViewModel = SCIStoryFirstObjectForSelectors(context.viewerController, @[@"currentViewModel"]);
     NSMutableArray *resolved = [NSMutableArray array];
+    NSString *currentUserPK = SCIStoryUserPKFromMediaObject(context.media);
     for (id candidate in @[context.sectionController ?: (id)NSNull.null, currentViewModel ?: (id)NSNull.null, context.viewerController ?: (id)NSNull.null]) {
         if (candidate == (id)NSNull.null) continue;
         NSArray *items = SCIStoryItemsFromCandidate(candidate);
         if (items.count == 0) continue;
         for (id item in items) {
             id itemMedia = SCIStoryMediaFromAnyObject(item);
-            if (itemMedia) [resolved addObject:itemMedia];
+            if (itemMedia) {
+                if (currentUserPK) {
+                    NSString *itemUserPK = SCIStoryUserPKFromMediaObject(itemMedia);
+                    if ([itemUserPK isEqualToString:currentUserPK]) {
+                        [resolved addObject:itemMedia];
+                    }
+                } else {
+                    [resolved addObject:itemMedia];
+                }
+            }
         }
         if (resolved.count > 0) break;
     }

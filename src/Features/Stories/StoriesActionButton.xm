@@ -1,4 +1,5 @@
 #import <objc/message.h>
+#import <objc/runtime.h>
 
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
@@ -68,6 +69,27 @@ static NSArray *SCIStoryItemsFromCandidate(id candidate) {
         }
     }
 
+    // Dynamic ivar fallback scanning
+    for (Class cls = [candidate class]; cls && cls != [NSObject class]; cls = class_getSuperclass(cls)) {
+        unsigned int ivarCount = 0;
+        Ivar *ivars = class_copyIvarList(cls, &ivarCount);
+        for (unsigned int i = 0; i < ivarCount; i++) {
+            const char *typeEncoding = ivar_getTypeEncoding(ivars[i]);
+            if (typeEncoding && typeEncoding[0] == '@') {
+                const char *name = ivar_getName(ivars[i]);
+                id value = [SCIUtils getIvarForObj:candidate name:name];
+                if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
+                    NSArray *arr = SCIArrayFromCollection(value);
+                    if (arr.count > 1) {
+                        free(ivars);
+                        return arr;
+                    }
+                }
+            }
+        }
+        free(ivars);
+    }
+
     return nil;
 }
 
@@ -89,6 +111,8 @@ static id SCIStoryBulkMediaFromOverlay(UIView *overlayView) {
     UIViewController *controller = SCIStoryControllerFromOverlay(overlayView);
     id currentViewModel = SCIObjectForSelector(controller, @"currentViewModel") ?: SCIKVCObject(controller, @"currentViewModel");
 
+    NSString *currentUserPK = SCIStoryUserPKFromMediaObject(current);
+
     for (id candidate in @[sectionController ?: (id)NSNull.null, currentViewModel ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
         if (!candidate || candidate == (id)NSNull.null) continue;
         NSArray *items = SCIStoryItemsFromCandidate(candidate);
@@ -97,7 +121,16 @@ static id SCIStoryBulkMediaFromOverlay(UIView *overlayView) {
         NSMutableArray *resolvedMedia = [NSMutableArray array];
         for (id item in items) {
             id media = SCIStoryMediaObjectFromCandidate(item);
-            if (media) [resolvedMedia addObject:media];
+            if (media) {
+                if (currentUserPK) {
+                    NSString *itemUserPK = SCIStoryUserPKFromMediaObject(media);
+                    if ([itemUserPK isEqualToString:currentUserPK]) {
+                        [resolvedMedia addObject:media];
+                    }
+                } else {
+                    [resolvedMedia addObject:media];
+                }
+            }
         }
         if (resolvedMedia.count > 1) {
             return [resolvedMedia copy];

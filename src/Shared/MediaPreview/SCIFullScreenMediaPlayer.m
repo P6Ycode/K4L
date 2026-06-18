@@ -5,6 +5,8 @@
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 #import "../ActionButton/ActionButtonCore.h"
+#import "../ActionButton/SCIActionDescriptor.h"
+#import "../ActionButton/SCIBulkMediaSelectionViewController.h"
 #import "../Downloads/SCIDownloadHelpers.h"
 #import "../Gallery/SCIGalleryCoreDataStack.h"
 #import "../Gallery/SCIGalleryFile.h"
@@ -174,6 +176,10 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 @property(nonatomic, strong, nullable) id<UIViewControllerContextTransitioning>
     interactiveDismissTransitionContext;
 @property(nonatomic, assign) BOOL presentingTransition;
+
+- (void)presentBulkSelectionForItems:(NSArray<SCIDownloadItemRequest *> *)bulkItems
+                         identifiers:(NSArray<NSString *> *)identifiers
+                       sourceSurface:(SCIDownloadSourceSurface)surface;
 
 @property(nonatomic, assign) SCIFullScreenPlaybackSource playbackSource;
 @property(nonatomic, weak, nullable) UIView *playbackSourceView;
@@ -1422,7 +1428,20 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 }
 
 - (void)copyAllDownloadLinks {
-  NSArray<NSString *> *links = [self bulkDownloadLinksForPreview];
+  [self copyDownloadLinks:[self bulkDownloadLinksForPreview]];
+}
+
+- (void)copyDownloadLinksForItems:(NSArray<SCIDownloadItemRequest *> *)items {
+  NSMutableOrderedSet<NSString *> *links = [NSMutableOrderedSet orderedSet];
+  for (SCIDownloadItemRequest *req in items) {
+    if (req.linkString.length > 0) {
+      [links addObject:req.linkString];
+    }
+  }
+  [self copyDownloadLinks:links.array];
+}
+
+- (void)copyDownloadLinks:(NSArray<NSString *> *)links {
   if (links.count == 0) {
     SCINotify(kSCIActionCopyDownloadLink, @"No links available", nil,
               @"error_filled", SCINotificationToneError);
@@ -1454,6 +1473,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 
   SCIDownloadSourceSurface surface =
       SCIDownloadSurfaceForPlaybackSource(self.playbackSource);
+  __weak typeof(self) weakSelf = self;
   NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
   for (NSString *identifier in identifiers) {
     NSString *title = SCIActionButtonTitleForIdentifier(identifier);
@@ -1463,58 +1483,116 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
                   image:image
              identifier:nil
                 handler:^(__unused UIAction *a) {
-                  if ([identifier
-                          isEqualToString:kSCIActionDownloadAllLibrary]) {
-                    [SCIDownloadHelpers
-                              performBulkItems:bulkItems
-                                   destination:SCIDownloadDestinationPhotos
-                              actionIdentifier:kSCIActionDownloadAllLibrary
-                                     presenter:self
-                                    anchorView:[self bottomBarAnchorView]
-                                 sourceSurface:surface
-                            finalizeBatchShare:NO
-                        finalizeBatchClipboard:NO];
-                  } else if ([identifier
-                                 isEqualToString:kSCIActionDownloadAllShare]) {
-                    [SCIDownloadHelpers
-                              performBulkItems:bulkItems
-                                   destination:SCIDownloadDestinationCacheOnly
-                              actionIdentifier:kSCIActionDownloadAllShare
-                                     presenter:self
-                                    anchorView:[self bottomBarAnchorView]
-                                 sourceSurface:surface
-                            finalizeBatchShare:YES
-                        finalizeBatchClipboard:NO];
-                  } else if ([identifier isEqualToString:
-                                             kSCIActionDownloadAllGallery]) {
-                    [SCIDownloadHelpers
-                              performBulkItems:bulkItems
-                                   destination:SCIDownloadDestinationGallery
-                              actionIdentifier:kSCIActionDownloadAllGallery
-                                     presenter:self
-                                    anchorView:[self bottomBarAnchorView]
-                                 sourceSurface:surface
-                            finalizeBatchShare:NO
-                        finalizeBatchClipboard:NO];
-                  } else if ([identifier isEqualToString:
-                                             kSCIActionDownloadAllClipboard]) {
-                    [SCIDownloadHelpers
-                              performBulkItems:bulkItems
-                                   destination:SCIDownloadDestinationCacheOnly
-                              actionIdentifier:kSCIActionDownloadAllClipboard
-                                     presenter:self
-                                    anchorView:[self bottomBarAnchorView]
-                                 sourceSurface:surface
-                            finalizeBatchShare:NO
-                        finalizeBatchClipboard:YES];
-                  } else if ([identifier
-                                 isEqualToString:kSCIActionDownloadAllLinks]) {
-                    [self copyAllDownloadLinks];
+                  typeof(self) strongSelf = weakSelf;
+                  if (!strongSelf)
+                    return;
+                  if (![SCIDownloadHelpers
+                          performBulkDownloadIdentifier:identifier
+                                                  items:bulkItems
+                                              presenter:strongSelf
+                                             anchorView:[strongSelf
+                                                            bottomBarAnchorView]
+                                          sourceSurface:surface]) {
+                    if ([identifier
+                            isEqualToString:kSCIActionDownloadAllLinks]) {
+                      [strongSelf copyAllDownloadLinks];
+                    }
                   }
                 }];
     [children addObject:action];
   }
-  return [UIMenu menuWithTitle:@"" children:children];
+
+  // Mirror the action-button bulk menu: let the user hand-pick a subset.
+  UIAction *selectMediaAction = [UIAction
+      actionWithTitle:[NSString stringWithFormat:@"Select Media · %lu",
+                                                 (unsigned long)bulkItems.count]
+                image:[SCIAssetUtils instagramIconNamed:@"carousel"
+                                              pointSize:22.0]
+           identifier:nil
+              handler:^(__unused UIAction *a) {
+                typeof(self) strongSelf = weakSelf;
+                if (strongSelf)
+                  [strongSelf presentBulkSelectionForItems:bulkItems
+                                              identifiers:identifiers
+                                            sourceSurface:surface];
+              }];
+  UIMenu *selectGroup = [UIMenu menuWithTitle:@""
+                                        image:nil
+                                   identifier:nil
+                                      options:UIMenuOptionsDisplayInline
+                                     children:@[ selectMediaAction ]];
+  UIMenu *destinationGroup = [UIMenu menuWithTitle:@""
+                                             image:nil
+                                        identifier:nil
+                                           options:UIMenuOptionsDisplayInline
+                                          children:children];
+  return [UIMenu menuWithTitle:@"" children:@[ destinationGroup, selectGroup ]];
+}
+
+- (void)presentBulkSelectionForItems:(NSArray<SCIDownloadItemRequest *> *)bulkItems
+                         identifiers:(NSArray<NSString *> *)identifiers
+                       sourceSurface:(SCIDownloadSourceSurface)surface {
+  // Build the destination buttons and selection thumbnails 1:1 with bulkItems.
+  NSMutableArray<SCIBulkSelectionDestination *> *destinations =
+      [NSMutableArray array];
+  for (NSString *identifier in identifiers) {
+    [destinations
+        addObject:[SCIBulkSelectionDestination
+                      destinationWithIdentifier:identifier
+                                          title:SCIActionButtonTitleForIdentifier(
+                                                    identifier)
+                                       iconName:SCIActionDescriptorIconName(
+                                                    identifier)]];
+  }
+
+  NSMutableArray<SCIBulkSelectionItem *> *selectionItems =
+      [NSMutableArray array];
+  for (SCIDownloadItemRequest *req in bulkItems) {
+    BOOL isVideo = (req.mediaKind == SCIDownloadMediaKindVideo);
+    SCIMediaItem *mediaItem =
+        (req.index >= 0 && req.index < (NSInteger)self.items.count)
+            ? self.items[(NSUInteger)req.index]
+            : nil;
+    UIImage *thumb = mediaItem.thumbnail ?: mediaItem.image;
+    if (thumb) {
+      [selectionItems
+          addObject:[SCIBulkSelectionItem itemWithThumbnailImage:thumb
+                                                         isVideo:isVideo]];
+    } else {
+      NSURL *thumbURL = mediaItem.resolvedFileURL ?: mediaItem.fileURL;
+      [selectionItems
+          addObject:[SCIBulkSelectionItem itemWithThumbnailURL:thumbURL
+                                                       isVideo:isVideo]];
+    }
+  }
+
+  __weak typeof(self) weakSelf = self;
+  [SCIBulkMediaSelectionViewController
+      presentFromViewController:self
+                          items:selectionItems
+                   destinations:destinations
+                     completion:^(NSIndexSet *selectedIndexes,
+                                  NSString *destinationIdentifier) {
+                       typeof(self) strongSelf = weakSelf;
+                       if (!strongSelf || selectedIndexes.count == 0)
+                         return;
+                       NSArray<SCIDownloadItemRequest *> *selected =
+                           [bulkItems objectsAtIndexes:selectedIndexes];
+                       if ([SCIDownloadHelpers
+                               performBulkDownloadIdentifier:destinationIdentifier
+                                                       items:selected
+                                                   presenter:strongSelf
+                                                  anchorView:
+                                                      [strongSelf
+                                                          bottomBarAnchorView]
+                                               sourceSurface:surface]) {
+                         return;
+                       }
+                       if ([destinationIdentifier
+                               isEqualToString:kSCIActionDownloadAllLinks]) {
+                         [strongSelf copyDownloadLinksForItems:selected];
+                       }
+                     }];
 }
 
 - (void)saveToPhotos {

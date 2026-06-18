@@ -1,7 +1,6 @@
 #import "SCIActionSectionEditViewController.h"
 #import "SCIActionSectionIconPickerViewController.h"
 #import "SCIInstagramIconCatalog.h"
-#import "SCIBulkActionMenuEditViewController.h"
 #import "SCITopicSettingsSupport.h"
 #import "../Shared/UI/SCISwitch.h"
 
@@ -73,43 +72,6 @@ static char kSCISectionEditSwitchAssocKey;
     return [self.configuration sectionWithIdentifier:self.sectionIdentifier];
 }
 
-- (NSString *)bulkEditorKindForCurrentSection {
-    SCIActionMenuSection *section = [self currentSection];
-    if ([section.identifier isEqualToString:@"download"] &&
-        SCIActionButtonBulkDownloadSupportedActionsForSource(self.configuration.source).count > 0) {
-        return @"download";
-    }
-    if ([section.identifier isEqualToString:@"copy"] &&
-        SCIActionButtonBulkCopySupportedActionsForSource(self.configuration.source).count > 0) {
-        return @"copy";
-    }
-    return nil;
-}
-
-- (SCIBulkActionMenuEditViewController *)bulkEditorControllerForKind:(NSString *)kind {
-    if ([kind isEqualToString:@"download"]) {
-        return [[SCIBulkActionMenuEditViewController alloc] initWithTitle:@"Download All Menu"
-                                                                   source:self.configuration.source
-                                                         supportedActions:SCIActionButtonBulkDownloadSupportedActionsForSource(self.configuration.source)
-                                                        configuredActions:SCIActionButtonConfiguredBulkDownloadActionsForSource(self.configuration.source)
-                                                                   onSave:^(NSArray<NSString *> *actions) {
-            SCIActionButtonSetConfiguredBulkDownloadActionsForSource(self.configuration.source, actions);
-            if (self.onChange) self.onChange();
-        }];
-    }
-    if ([kind isEqualToString:@"copy"]) {
-        return [[SCIBulkActionMenuEditViewController alloc] initWithTitle:@"Copy All Menu"
-                                                                   source:self.configuration.source
-                                                         supportedActions:SCIActionButtonBulkCopySupportedActionsForSource(self.configuration.source)
-                                                        configuredActions:SCIActionButtonConfiguredBulkCopyActionsForSource(self.configuration.source)
-                                                                   onSave:^(NSArray<NSString *> *actions) {
-            SCIActionButtonSetConfiguredBulkCopyActionsForSource(self.configuration.source, actions);
-            if (self.onChange) self.onChange();
-        }];
-    }
-    return nil;
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.navigationController.navigationBar.prefersLargeTitles = NO;
@@ -127,12 +89,19 @@ static char kSCISectionEditSwitchAssocKey;
     [self.view addSubview:self.tableView];
 }
 
+- (BOOL)isBulkSection {
+    return [[self currentSection].identifier isEqualToString:@"bulk"];
+}
+
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 3;
+    // The Bulk section's contents are derived from the single-item actions, so it
+    // only exposes the Section header (title/icon/collapsible) — no assignable
+    // action lists.
+    return [self isBulkSection] ? 1 : 3;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) return [self bulkEditorKindForCurrentSection] ? 4 : 3;
+    if (section == 0) return 3;
     if (section == 1) return [self currentSection].actions.count;
     return self.configuration.supportedActions.count;
 }
@@ -144,6 +113,9 @@ static char kSCISectionEditSwitchAssocKey;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if ([self isBulkSection]) {
+        return section == 0 ? @"Bulk shows Download All / Copy All / Select Media on carousels. Its actions and order are derived from your single-item Download and Copy actions — reorder or rename this section to control where Bulk appears in the menu." : nil;
+    }
     if (section == 1) return @"Drag to reorder actions in this section. Remove an action to send it to the unassigned bucket.";
     if (section == 2) return @"Tap an action to assign it here. If it is already in another section, it will move.";
     return nil;
@@ -192,11 +164,6 @@ static char kSCISectionEditSwitchAssocKey;
             [toggle addTarget:self action:@selector(collapsibleSwitchChanged:) forControlEvents:UIControlEventValueChanged];
             cell.accessoryView = toggle;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
-        } else {
-            NSString *kind = [self bulkEditorKindForCurrentSection];
-            config.text = [kind isEqualToString:@"copy"] ? @"Configure Copy All Menu" : @"Configure Download All Menu";
-            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-            cell.selectionStyle = UITableViewCellSelectionStyleDefault;
         }
     } else if (indexPath.section == 1) {
         NSString *identifier = section.actions[indexPath.row];
@@ -295,11 +262,6 @@ static char kSCISectionEditSwitchAssocKey;
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     if (indexPath.section == 0 && indexPath.row == 1) {
         [self showIconPicker];
-    } else if (indexPath.section == 0 && indexPath.row == 3) {
-        SCIBulkActionMenuEditViewController *controller = [self bulkEditorControllerForKind:[self bulkEditorKindForCurrentSection]];
-        if (controller) {
-            [self.navigationController pushViewController:controller animated:YES];
-        }
     } else if (indexPath.section == 1) {
         NSString *identifier = [self currentSection].actions[indexPath.row];
         [self.configuration setAction:identifier assignedToSectionIdentifier:nil];

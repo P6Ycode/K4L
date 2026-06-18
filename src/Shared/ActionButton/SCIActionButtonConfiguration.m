@@ -2,14 +2,6 @@
 #import "SCIActionDescriptor.h"
 #import "../../Settings/SCIPreferences.h"
 
-static NSString *SCIBulkDownloadDefaultsKeyForSource(SCIActionButtonSource source) {
-    return SCIPrefActionButtonBulkDownloadKey(SCIActionButtonTopicKeyForSource(source));
-}
-
-static NSString *SCIBulkCopyDefaultsKeyForSource(SCIActionButtonSource source) {
-    return SCIPrefActionButtonBulkCopyKey(SCIActionButtonTopicKeyForSource(source));
-}
-
 static NSArray<NSString *> *SCIFilteredActionArray(NSArray *values, NSArray<NSString *> *supported) {
     NSMutableOrderedSet<NSString *> *filtered = [NSMutableOrderedSet orderedSet];
     for (id value in values) {
@@ -130,12 +122,12 @@ NSArray<NSString *> *SCIActionButtonBulkDownloadSupportedActionsForSource(SCIAct
         case SCIActionButtonSourceReels:
         case SCIActionButtonSourceStories:
         case SCIActionButtonSourceInstants:
+        case SCIActionButtonSourceDirect:
             return @[
                 kSCIActionDownloadAllLibrary,
                 kSCIActionDownloadAllShare,
                 kSCIActionDownloadAllGallery
             ];
-        case SCIActionButtonSourceDirect:
         case SCIActionButtonSourceProfile:
             return @[];
     }
@@ -147,38 +139,56 @@ NSArray<NSString *> *SCIActionButtonBulkCopySupportedActionsForSource(SCIActionB
         case SCIActionButtonSourceReels:
         case SCIActionButtonSourceStories:
         case SCIActionButtonSourceInstants:
+        case SCIActionButtonSourceDirect:
             return @[
                 kSCIActionDownloadAllClipboard,
                 kSCIActionDownloadAllLinks
             ];
-        case SCIActionButtonSourceDirect:
         case SCIActionButtonSourceProfile:
             return @[];
     }
 }
 
+// Maps a single-item action identifier to its bulk "all" counterpart, or nil
+// when the action has no bulk equivalent.
+static NSString *SCIBulkAllIdentifierForBaseAction(NSString *identifier) {
+    if ([identifier isEqualToString:kSCIActionDownloadLibrary]) return kSCIActionDownloadAllLibrary;
+    if ([identifier isEqualToString:kSCIActionDownloadShare]) return kSCIActionDownloadAllShare;
+    if ([identifier isEqualToString:kSCIActionDownloadGallery]) return kSCIActionDownloadAllGallery;
+    if ([identifier isEqualToString:kSCIActionCopyMedia]) return kSCIActionDownloadAllClipboard;
+    if ([identifier isEqualToString:kSCIActionCopyDownloadLink]) return kSCIActionDownloadAllLinks;
+    return nil;
+}
+
+// Bulk destinations are derived from the user's single-item action config:
+// every enabled single-item download/copy action contributes its bulk-all
+// counterpart, in the same order. This keeps the "Bulk" menu in lockstep with
+// the rest of the action button (no separate bulk store / editor).
+static NSArray<NSString *> *SCIDerivedBulkActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *supportedBulk) {
+    if (supportedBulk.count == 0) return @[];
+    SCIActionButtonConfiguration *configuration =
+        [SCIActionButtonConfiguration configurationForSource:source
+                                                  topicTitle:SCIActionButtonTopicTitleForSource(source)
+                                            supportedActions:SCIActionButtonSupportedActionsForSource(source)
+                                             defaultSections:SCIActionButtonDefaultSectionsForSource(source)];
+    NSMutableOrderedSet<NSString *> *result = [NSMutableOrderedSet orderedSet];
+    for (SCIActionMenuSection *section in [configuration visibleSections]) {
+        for (NSString *identifier in section.actions) {
+            NSString *bulk = SCIBulkAllIdentifierForBaseAction(identifier);
+            if (bulk && [supportedBulk containsObject:bulk]) {
+                [result addObject:bulk];
+            }
+        }
+    }
+    return result.array;
+}
+
 NSArray<NSString *> *SCIActionButtonConfiguredBulkDownloadActionsForSource(SCIActionButtonSource source) {
-    NSArray<NSString *> *supported = SCIActionButtonBulkDownloadSupportedActionsForSource(source);
-    NSArray *stored = [[NSUserDefaults standardUserDefaults] arrayForKey:SCIBulkDownloadDefaultsKeyForSource(source)];
-    NSArray<NSString *> *filtered = SCIFilteredUniqueActionArray(stored, supported);
-    return filtered.count > 0 ? filtered : supported;
+    return SCIDerivedBulkActionsForSource(source, SCIActionButtonBulkDownloadSupportedActionsForSource(source));
 }
 
 NSArray<NSString *> *SCIActionButtonConfiguredBulkCopyActionsForSource(SCIActionButtonSource source) {
-    NSArray<NSString *> *supported = SCIActionButtonBulkCopySupportedActionsForSource(source);
-    NSArray *stored = [[NSUserDefaults standardUserDefaults] arrayForKey:SCIBulkCopyDefaultsKeyForSource(source)];
-    NSArray<NSString *> *filtered = SCIFilteredUniqueActionArray(stored, supported);
-    return filtered.count > 0 ? filtered : supported;
-}
-
-void SCIActionButtonSetConfiguredBulkDownloadActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *actions) {
-    [[NSUserDefaults standardUserDefaults] setObject:SCIFilteredUniqueActionArray(actions, SCIActionButtonBulkDownloadSupportedActionsForSource(source))
-                                              forKey:SCIBulkDownloadDefaultsKeyForSource(source)];
-}
-
-void SCIActionButtonSetConfiguredBulkCopyActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *actions) {
-    [[NSUserDefaults standardUserDefaults] setObject:SCIFilteredUniqueActionArray(actions, SCIActionButtonBulkCopySupportedActionsForSource(source))
-                                              forKey:SCIBulkCopyDefaultsKeyForSource(source)];
+    return SCIDerivedBulkActionsForSource(source, SCIActionButtonBulkCopySupportedActionsForSource(source));
 }
 
 NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActionButtonSource source) {
@@ -274,6 +284,30 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
     if (configuration.sections.count == 0) {
         for (SCIActionMenuSection *section in (defaultSections.count > 0 ? defaultSections : SCIActionButtonDefaultSectionsForSource(source))) {
             [configuration.sections addObject:[section copy]];
+        }
+    }
+
+    // Ensure a reorderable "Bulk" section exists on sources that support bulk
+    // downloads. Its contents are derived from the single-item actions, so it has
+    // no stored actions of its own; users reorder/rename it like any section.
+    // Injected here (not only in the defaults) so existing persisted configs pick
+    // it up too. Profile has no bulk support, so it is skipped there.
+    if (SCIActionButtonBulkDownloadSupportedActionsForSource(source).count > 0 ||
+        SCIActionButtonBulkCopySupportedActionsForSource(source).count > 0) {
+        BOOL hasBulkSection = NO;
+        NSUInteger afterCopyIndex = configuration.sections.count;
+        for (NSUInteger i = 0; i < configuration.sections.count; i++) {
+            NSString *sid = configuration.sections[i].identifier;
+            if ([sid isEqualToString:@"bulk"]) { hasBulkSection = YES; break; }
+            if ([sid isEqualToString:@"copy"]) afterCopyIndex = i + 1;
+        }
+        if (!hasBulkSection) {
+            SCIActionMenuSection *bulkSection = [SCIActionMenuSection sectionWithIdentifier:@"bulk"
+                                                                                     title:@"Bulk"
+                                                                                  iconName:@"carousel"
+                                                                               collapsible:YES
+                                                                                   actions:@[]];
+            [configuration.sections insertObject:bulkSection atIndex:MIN(afterCopyIndex, configuration.sections.count)];
         }
     }
 

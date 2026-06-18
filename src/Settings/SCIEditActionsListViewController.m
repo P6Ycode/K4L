@@ -60,13 +60,10 @@ static char kSCIActionsListSwitchAssocKey;
 }
 
 - (NSArray<NSString *> *)bulkEditorKinds {
+    // Download All / Copy All are derived from the single-item action config and
+    // are no longer separately configurable. Only the profile Copy Info submenu
+    // remains editable here.
     NSMutableArray<NSString *> *kinds = [NSMutableArray array];
-    if (SCIActionButtonBulkDownloadSupportedActionsForSource(self.source).count > 0) {
-        [kinds addObject:@"download"];
-    }
-    if (SCIActionButtonBulkCopySupportedActionsForSource(self.source).count > 0) {
-        [kinds addObject:@"copy"];
-    }
     if (self.source == SCIActionButtonSourceProfile) {
         [kinds addObject:@"copy_info"];
     }
@@ -98,12 +95,6 @@ static char kSCIActionsListSwitchAssocKey;
 }
 
 - (NSString *)bulkEditorTitleForKind:(NSString *)kind {
-    if ([kind isEqualToString:@"download"]) {
-        return @"Configure Download All Menu";
-    }
-    if ([kind isEqualToString:@"copy"]) {
-        return @"Configure Copy All Menu";
-    }
     if ([kind isEqualToString:@"copy_info"]) {
         return @"Configure Copy Info Menu";
     }
@@ -116,26 +107,6 @@ static char kSCIActionsListSwitchAssocKey;
 }
 
 - (SCIBulkActionMenuEditViewController *)bulkEditorControllerForKind:(NSString *)kind {
-    if ([kind isEqualToString:@"download"]) {
-        return [[SCIBulkActionMenuEditViewController alloc] initWithTitle:@"Download All Menu"
-                                                                   source:self.source
-                                                         supportedActions:SCIActionButtonBulkDownloadSupportedActionsForSource(self.source)
-                                                        configuredActions:SCIActionButtonConfiguredBulkDownloadActionsForSource(self.source)
-                                                                   onSave:^(NSArray<NSString *> *actions) {
-            SCIActionButtonSetConfiguredBulkDownloadActionsForSource(self.source, actions);
-        }];
-    }
-
-    if ([kind isEqualToString:@"copy"]) {
-        return [[SCIBulkActionMenuEditViewController alloc] initWithTitle:@"Copy All Menu"
-                                                                   source:self.source
-                                                         supportedActions:SCIActionButtonBulkCopySupportedActionsForSource(self.source)
-                                                        configuredActions:SCIActionButtonConfiguredBulkCopyActionsForSource(self.source)
-                                                                   onSave:^(NSArray<NSString *> *actions) {
-            SCIActionButtonSetConfiguredBulkCopyActionsForSource(self.source, actions);
-        }];
-    }
-
     if ([kind isEqualToString:@"copy_info"]) {
         return [[SCIBulkActionMenuEditViewController alloc] initWithTitle:@"Copy Info Menu"
                                                                    source:self.source

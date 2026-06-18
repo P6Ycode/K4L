@@ -40,10 +40,10 @@ FOUNDATION_EXPORT NSArray<NSString *> *SCIActionButtonSupportedActionsForSource(
 FOUNDATION_EXPORT NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActionButtonSource source);
 FOUNDATION_EXPORT NSArray<NSString *> *SCIActionButtonBulkDownloadSupportedActionsForSource(SCIActionButtonSource source);
 FOUNDATION_EXPORT NSArray<NSString *> *SCIActionButtonBulkCopySupportedActionsForSource(SCIActionButtonSource source);
+// Bulk destinations are derived from the configured single-item actions (see
+// implementation); there is no separate bulk store to set.
 FOUNDATION_EXPORT NSArray<NSString *> *SCIActionButtonConfiguredBulkDownloadActionsForSource(SCIActionButtonSource source);
 FOUNDATION_EXPORT NSArray<NSString *> *SCIActionButtonConfiguredBulkCopyActionsForSource(SCIActionButtonSource source);
-FOUNDATION_EXPORT void SCIActionButtonSetConfiguredBulkDownloadActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *actions);
-FOUNDATION_EXPORT void SCIActionButtonSetConfiguredBulkCopyActionsForSource(SCIActionButtonSource source, NSArray<NSString *> *actions);
 
 FOUNDATION_EXPORT NSArray<NSString *> *SCIProfileCopyInfoSupportedActions(void);
 FOUNDATION_EXPORT NSArray<NSString *> *SCIProfileConfiguredCopyInfoActions(void);

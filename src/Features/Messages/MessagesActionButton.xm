@@ -38,6 +38,43 @@ static CGFloat SCIDirectBottomOffset(UIViewController *controller) {
 	return offset;
 }
 
+static NSArray *SCIDirectVisualMessageItemsFromController(UIViewController *controller) {
+	if (!controller) return nil;
+	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	if (!dataSource) return nil;
+
+	for (NSString *key in @[@"visualMessages", @"messages", @"items", @"visualMessageItems", @"viewerItems"]) {
+		id value = SCIObjectForSelector(dataSource, key) ?: SCIKVCObject(dataSource, key);
+		if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
+			NSArray *arr = SCIArrayFromCollection(value);
+			if (arr.count > 0) return arr;
+		}
+	}
+
+	for (Class cls = [dataSource class]; cls && cls != [NSObject class]; cls = class_getSuperclass(cls)) {
+		unsigned int ivarCount = 0;
+		Ivar *ivars = class_copyIvarList(cls, &ivarCount);
+		for (unsigned int i = 0; i < ivarCount; i++) {
+			const char *typeEncoding = ivar_getTypeEncoding(ivars[i]);
+			if (typeEncoding && typeEncoding[0] == '@') {
+				const char *name = ivar_getName(ivars[i]);
+				id value = [SCIUtils getIvarForObj:dataSource name:name];
+				if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
+					NSArray *arr = SCIArrayFromCollection(value);
+					if (arr.count > 1) {
+						free(ivars);
+						return arr;
+					}
+				}
+			}
+		}
+		free(ivars);
+	}
+
+	return nil;
+}
+
 static SCIActionButtonContext *SCIMessagesActionContext(UIViewController *controller) {
 	SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
 	context.source = SCIActionButtonSourceDirect;
@@ -46,6 +83,9 @@ static SCIActionButtonContext *SCIMessagesActionContext(UIViewController *contro
 	context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceDirect);
 	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
 		return SCIDirectResolvedMediaFromController(resolvedContext.controller);
+	};
+	context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
+		return SCIDirectVisualMessageItemsFromController(resolvedContext.controller) ?: SCIDirectResolvedMediaFromController(resolvedContext.controller);
 	};
 	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
 		return SCIDirectCurrentIndexFromController(resolvedContext.controller);

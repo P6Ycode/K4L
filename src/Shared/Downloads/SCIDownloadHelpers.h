@@ -58,6 +58,18 @@ NS_ASSUME_NONNULL_BEGIN
         finalizeBatchShare:(BOOL)batchShare
     finalizeBatchClipboard:(BOOL)batchClipboard;
 
+/// Routes a bulk-download action identifier (Library / Share / Gallery /
+/// Clipboard) to `performBulkItems:` with the correct destination and finalize
+/// flags. Shared by the action-button menu and the media-preview toolbar so the
+/// destination mapping lives in one place. Returns NO when `identifier` is not a
+/// recognized bulk download/clipboard action (e.g. Copy Links), letting the
+/// caller handle that case itself.
++ (BOOL)performBulkDownloadIdentifier:(NSString *)identifier
+                                items:(NSArray<SCIDownloadItemRequest *> *)items
+                            presenter:(nullable UIViewController *)presenter
+                           anchorView:(nullable UIView *)anchorView
+                        sourceSurface:(SCIDownloadSourceSurface)sourceSurface;
+
 + (void)
     submitDashDownloadWithPrimaryURL:(NSURL *)primaryURL
                         secondaryURL:(nullable NSURL *)secondaryURL

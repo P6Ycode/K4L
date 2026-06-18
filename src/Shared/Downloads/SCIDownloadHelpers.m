@@ -237,6 +237,40 @@ static NSString *SCIDownloadDisplayUsername(NSString *username) {
   [[SCIDownloadService shared] submitRequest:request completion:nil];
 }
 
++ (BOOL)performBulkDownloadIdentifier:(NSString *)identifier
+                                items:(NSArray<SCIDownloadItemRequest *> *)items
+                            presenter:(UIViewController *)presenter
+                           anchorView:(UIView *)anchorView
+                        sourceSurface:(SCIDownloadSourceSurface)sourceSurface {
+  SCIDownloadDestination destination;
+  BOOL batchShare = NO;
+  BOOL batchClipboard = NO;
+
+  if ([identifier isEqualToString:kSCIActionDownloadAllLibrary]) {
+    destination = SCIDownloadDestinationPhotos;
+  } else if ([identifier isEqualToString:kSCIActionDownloadAllShare]) {
+    destination = SCIDownloadDestinationCacheOnly;
+    batchShare = YES;
+  } else if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) {
+    destination = SCIDownloadDestinationGallery;
+  } else if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) {
+    destination = SCIDownloadDestinationCacheOnly;
+    batchClipboard = YES;
+  } else {
+    return NO;
+  }
+
+  [self performBulkItems:items
+                 destination:destination
+            actionIdentifier:identifier
+                   presenter:presenter
+                  anchorView:anchorView
+               sourceSurface:sourceSurface
+          finalizeBatchShare:batchShare
+      finalizeBatchClipboard:batchClipboard];
+  return YES;
+}
+
 + (void)submitDashDownloadWithPrimaryURL:(NSURL *)primaryURL
                             secondaryURL:(NSURL *)secondaryURL
                               optionKind:(NSInteger)optionKind

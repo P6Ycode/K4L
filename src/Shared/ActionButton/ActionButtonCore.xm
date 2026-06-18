@@ -25,6 +25,7 @@
 #import "../UI/SCIChrome.h"
 #import "../../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesViewController.h"
 #import "../../Networking/SCIInstagramAPI.h"
+#import "SCIBulkMediaSelectionViewController.h"
 
 NSString * const kSCIActionNone = @"none";
 NSString * const kSCIActionDownloadLibrary = @"download_library";
@@ -1855,6 +1856,20 @@ static void SCIPresentBulkActionChooser(SCIActionButtonContext *context,
     }
 }
 
+// Renders `children` as a labeled, collapsible submenu — but when there is only
+// one child, returns that child inline instead, so single-element submenus never
+// add a redundant nesting level. Used everywhere a submenu/section is built so
+// the behavior is uniform across built-in and custom sections.
+static UIMenuElement *SCISubmenuOrSingleElement(NSString *title, UIImage *image, NSArray<UIMenuElement *> *children) {
+    if (children.count == 0) return nil;
+    if (children.count == 1) return children.firstObject;
+    return [UIMenu menuWithTitle:title ?: @""
+                           image:image
+                      identifier:nil
+                         options:0
+                        children:children];
+}
+
 static UIMenuElement *SCIBulkActionMenuElementForContext(SCIActionButtonContext *context,
                                                          NSArray<SCIResolvedMediaEntry *> *entries,
                                                          NSString *username,
@@ -1864,11 +1879,9 @@ static UIMenuElement *SCIBulkActionMenuElementForContext(SCIActionButtonContext 
                                                          NSString *iconIdentifier) {
     UIMenu *menu = SCIBulkActionMenuForContext(context, entries, username, media, configuredIdentifiers);
     if (!menu) return nil;
-    return [UIMenu menuWithTitle:title ?: @""
-                           image:SCIActionButtonMenuIconForContext(iconIdentifier ?: kSCIActionDownloadAll, context, 22.0)
-                      identifier:nil
-                         options:0
-                        children:menu.children];
+    return SCISubmenuOrSingleElement(title,
+                                     SCIActionButtonMenuIconForContext(iconIdentifier ?: kSCIActionDownloadAll, context, 22.0),
+                                     menu.children);
 }
 
 static NSString *SCIResolvedBulkUsernameForContext(SCIActionButtonContext *context, NSArray<SCIResolvedMediaEntry *> *entries, id media) {
@@ -2048,7 +2061,9 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 		return context.repostHandler != nil;
     }
     if (SCIIsBulkChildActionIdentifier(identifier)) {
-        if (SCIDownloadableEntries(entries).count <= 1) return NO;
+        id bulkMedia = SCIResolveBulkMediaForContext(context);
+        NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
+        if (bulkEntries.count <= 1) return NO;
         if (SCIIsBulkDownloadActionIdentifier(identifier)) {
             return ![configuration.disabledActions containsObject:kSCIActionDownloadLibrary] ||
                    ![configuration.disabledActions containsObject:kSCIActionDownloadShare] ||
@@ -2124,7 +2139,9 @@ static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
     NSString *profileInfoSignature = (context.source == SCIActionButtonSourceProfile)
         ? SCIProfileInfoSignature(SCIResolveMediaForContext(context))
         : @"";
-	return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@|%@|%@",
+    id media = SCIResolveMediaForContext(context);
+    NSInteger currentIndex = SCIResolveCurrentIndexForContext(context);
+	return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@|%@|%@|%p|idx:%ld",
 			SCIActionButtonTopicKeyForSource(context.source),
 			defaultIdentifier ?: @"",
 			[visibleActions componentsJoinedByString:@","],
@@ -2133,7 +2150,9 @@ static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
             dynamicProfileStoryRuleTitle ?: @"",
             dynamicProfileMessagesRuleTitle ?: @"",
             profileInfoSignature ?: @"",
-			configuration.dictionaryRepresentation.description ?: @""];
+			configuration.dictionaryRepresentation.description ?: @"",
+            media,
+            (long)currentIndex];
 }
 
 void SCIArmPendingRepostFeedback(SCIActionButtonContext *context) {
@@ -2208,48 +2227,11 @@ static BOOL SCIExecuteBulkChildAction(NSString *identifier,
     UIView *anchorView = SCIActionContextAnchorView(context);
     SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
 
-    if ([identifier isEqualToString:kSCIActionDownloadAllLibrary]) {
-        [SCIDownloadHelpers performBulkItems:bulkItems
-                                       destination:SCIDownloadDestinationPhotos
-                                  actionIdentifier:identifier
-                                         presenter:presenter
-                                        anchorView:anchorView
-                                     sourceSurface:surface
-                                finalizeBatchShare:NO
-                            finalizeBatchClipboard:NO];
-        return YES;
-    }
-    if ([identifier isEqualToString:kSCIActionDownloadAllShare]) {
-        [SCIDownloadHelpers performBulkItems:bulkItems
-                                       destination:SCIDownloadDestinationCacheOnly
-                                  actionIdentifier:identifier
-                                         presenter:presenter
-                                        anchorView:anchorView
-                                     sourceSurface:surface
-                                finalizeBatchShare:YES
-                            finalizeBatchClipboard:NO];
-        return YES;
-    }
-    if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) {
-        [SCIDownloadHelpers performBulkItems:bulkItems
-                                       destination:SCIDownloadDestinationGallery
-                                  actionIdentifier:identifier
-                                         presenter:presenter
-                                        anchorView:anchorView
-                                     sourceSurface:surface
-                                finalizeBatchShare:NO
-                            finalizeBatchClipboard:NO];
-        return YES;
-    }
-    if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) {
-        [SCIDownloadHelpers performBulkItems:bulkItems
-                                       destination:SCIDownloadDestinationCacheOnly
-                                  actionIdentifier:identifier
-                                         presenter:presenter
-                                        anchorView:anchorView
-                                     sourceSurface:surface
-                                finalizeBatchShare:NO
-                            finalizeBatchClipboard:YES];
+    if ([SCIDownloadHelpers performBulkDownloadIdentifier:identifier
+                                                    items:bulkItems
+                                                presenter:presenter
+                                               anchorView:anchorView
+                                            sourceSurface:surface]) {
         return YES;
     }
     if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) {
@@ -2875,6 +2857,103 @@ SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button) {
 	return [context isKindOfClass:[SCIActionButtonContext class]] ? context : nil;
 }
 
+// Builds the "Bulk" section (Download All / Copy All / Select Media) for a
+// carousel, titled "<sectionTitle> · N" with N the carousel item count.
+// `sectionTitle`/`sectionIconName`/`collapsible` come from the user-orderable
+// Bulk section so it behaves like any other section. Resolved lazily from a
+// UIDeferredMenuElement so it reflects the fully-loaded carousel at the moment
+// the menu opens, not whatever was available when the button was first
+// configured (which is stale on the first story of a reel, etc.). Returns an
+// empty array when there is no bulk media.
+static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfiguration *configuration,
+                                                          SCIActionButtonContext *context,
+                                                          NSString *sectionTitle,
+                                                          NSString *sectionIconName,
+                                                          BOOL collapsible) {
+    id bulkMedia = SCIResolveBulkMediaForContext(context);
+    NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
+    if (bulkEntries.count <= 1) return @[];
+
+    NSString *bulkUsername = SCIResolvedBulkUsernameForContext(context, bulkEntries, bulkMedia);
+    NSArray<NSString *> *configuredBulkDownloadIdentifiers = SCIActionButtonConfiguredBulkDownloadActionsForSource(context.source);
+    NSArray<NSString *> *configuredBulkCopyIdentifiers = SCIActionButtonConfiguredBulkCopyActionsForSource(context.source);
+
+    NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
+    UIMenuElement *downloadAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
+    if (downloadAll) [children addObject:downloadAll];
+    UIMenuElement *copyAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
+    if (copyAll) [children addObject:copyAll];
+
+    // "Select Media" picker — destinations are the configured bulk actions.
+    id media = SCIResolveMediaForContext(context);
+    NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);
+    NSInteger currentIndex = SCIResolveCurrentIndexForContext(context);
+    NSMutableArray<SCIBulkSelectionDestination *> *destinations = [NSMutableArray array];
+    for (NSString *identifier in SCIConfiguredBulkActionIdentifiersForSource(context.source)) {
+        if (SCIIsActionVisible(context, configuration, identifier, media, entries, currentIndex)) {
+            [destinations addObject:[SCIBulkSelectionDestination destinationWithIdentifier:identifier
+                                                                                     title:SCIActionButtonTitleForIdentifier(identifier)
+                                                                                  iconName:SCIActionDescriptorIconName(identifier)]];
+        }
+    }
+    if (destinations.count > 0) {
+        UIAction *selectMediaAction = [UIAction actionWithTitle:@"Select Media"
+                                                          image:[SCIAssetUtils instagramIconNamed:@"circle_check" pointSize:22.0]
+                                                     identifier:nil
+                                                        handler:^(__unused UIAction *action) {
+            // Re-resolve at tap time as well, in case the carousel changed.
+            id tapBulkMedia = SCIResolveBulkMediaForContext(context);
+            NSArray<SCIResolvedMediaEntry *> *tapBulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(tapBulkMedia));
+            if (tapBulkEntries.count == 0) return;
+            NSString *tapBulkUsername = SCIResolvedBulkUsernameForContext(context, tapBulkEntries, tapBulkMedia);
+            NSMutableArray<SCIBulkSelectionItem *> *selectionItems = [NSMutableArray array];
+            for (SCIResolvedMediaEntry *entry in tapBulkEntries) {
+                [selectionItems addObject:[SCIBulkSelectionItem itemWithThumbnailURL:entry.photoURL ?: entry.videoURL
+                                                                             isVideo:(entry.videoURL != nil)]];
+            }
+            [SCIBulkMediaSelectionViewController presentFromViewController:SCIActionContextPresenter(context)
+                                                                    items:selectionItems
+                                                             destinations:destinations
+                                                               completion:^(NSIndexSet *selectedIndexes, NSString *destinationIdentifier) {
+                NSArray<SCIResolvedMediaEntry *> *selectedEntries = [tapBulkEntries objectsAtIndexes:selectedIndexes];
+                if (selectedEntries.count == 0) return;
+                NSArray<SCIDownloadItemRequest *> *selectedItems = SCIBulkDownloadItemsFromEntries(selectedEntries, context.source, tapBulkUsername, tapBulkMedia);
+                UIViewController *presenter = SCIActionContextPresenter(context);
+                UIView *anchorView = SCIActionContextAnchorView(context);
+                SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+                if ([SCIDownloadHelpers performBulkDownloadIdentifier:destinationIdentifier
+                                                                items:selectedItems
+                                                            presenter:presenter
+                                                           anchorView:anchorView
+                                                        sourceSurface:surface]) {
+                    return;
+                }
+                if ([destinationIdentifier isEqualToString:kSCIActionDownloadAllLinks]) {
+                    NSArray<NSString *> *links = SCIBulkDownloadLinksFromEntries(selectedEntries, tapBulkMedia);
+                    if (links.count == 0) {
+                        SCINotify(destinationIdentifier, @"No links available", nil, @"error_filled", SCINotificationToneError);
+                        return;
+                    }
+                    [UIPasteboard generalPasteboard].string = [links componentsJoinedByString:@"\n"];
+                    SCINotify(destinationIdentifier, SCICopiedDownloadURLTitleForSource(context.source, YES), [NSString stringWithFormat:@"%lu item%@", (unsigned long)links.count, links.count == 1 ? @"" : @"s"], @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+                }
+            }];
+        }];
+        [children addObject:selectMediaAction];
+    }
+
+    if (children.count == 0) return @[];
+    // Present the bulk actions as their own section, styled like the other
+    // collapsible sections. Title carries the carousel item count.
+    NSString *baseTitle = sectionTitle.length > 0 ? sectionTitle : @"Bulk";
+    NSString *title = [NSString stringWithFormat:@"%@ · %lu", baseTitle, (unsigned long)bulkEntries.count];
+    UIImage *bulkIcon = [[[SCIAssetUtils instagramIconNamed:(sectionIconName.length > 0 ? sectionIconName : @"carousel") pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIMenuElement *section = collapsible
+        ? SCISubmenuOrSingleElement(title, bulkIcon, children)
+        : [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:children];
+    return section ? @[ section ] : @[];
+}
+
 void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context) {
 	if (!button || !context) return;
 	BOOL legacyDiagnostics = SCIActionButtonLegacyDiagnosticsEnabled(context.source);
@@ -2984,14 +3063,33 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		objc_setAssociatedObject(button, kSCIActionButtonTapActionAssocKey, newTapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
-    NSArray<NSString *> *configuredBulkDownloadIdentifiers = SCIActionButtonConfiguredBulkDownloadActionsForSource(context.source);
-    NSArray<NSString *> *configuredBulkCopyIdentifiers = SCIActionButtonConfiguredBulkCopyActionsForSource(context.source);
-    BOOL hasBulkMedia = (bulkEntries.count > 1);
-    NSString *bulkUsername = hasBulkMedia ? SCIResolvedBulkUsernameForContext(context, bulkEntries, bulkMedia) : nil;
 	NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray array];
-	NSArray<SCIActionMenuSection *> *menuSections = [configuration visibleSections];
+	// Iterate the configured section order. Non-bulk sections render from their
+	// visible (enabled) actions; the "bulk" section renders the derived carousel
+	// actions lazily so it tracks the live carousel — both honor the user's order.
+	NSArray<SCIActionMenuSection *> *visibleSectionsList = [configuration visibleSections];
+	NSMutableDictionary<NSString *, SCIActionMenuSection *> *visibleSectionsByID = [NSMutableDictionary dictionary];
+	for (SCIActionMenuSection *visibleSection in visibleSectionsList) {
+		if (visibleSection.identifier) visibleSectionsByID[visibleSection.identifier] = visibleSection;
+	}
 	BOOL firstGroup = YES;
-	for (SCIActionMenuSection *group in menuSections) {
+	for (SCIActionMenuSection *orderedSection in configuration.sections) {
+		if ([orderedSection.identifier isEqualToString:@"bulk"]) {
+			NSString *bulkTitle = orderedSection.title;
+			NSString *bulkIconName = orderedSection.iconName;
+			BOOL bulkCollapsible = orderedSection.collapsible;
+			UIDeferredMenuElement *bulkDeferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+				completion(SCIBuildBulkMenuChildren(configuration, context, bulkTitle, bulkIconName, bulkCollapsible));
+			}];
+			if (!firstGroup) {
+				[menuElements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[]]];
+			}
+			[menuElements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[ bulkDeferred ]]];
+			firstGroup = NO;
+			continue;
+		}
+		SCIActionMenuSection *group = visibleSectionsByID[orderedSection.identifier];
+		if (!group) continue;
 		NSString *title = group.title;
 		NSArray<NSString *> *identifiers = group.actions;
 		if (![identifiers isKindOfClass:[NSArray class]] || identifiers.count == 0) continue;
@@ -3014,11 +3112,10 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
                         SCIExecuteActionIdentifier(copyIdentifier, context, NO);
                     }]];
                 }
-                [groupElements addObject:[UIMenu menuWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
-                                                         image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
-                                                    identifier:nil
-                                                       options:0
-                                                      children:copyChildren]];
+                UIMenuElement *copyInfoElement = SCISubmenuOrSingleElement(SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry),
+                                                                          SCIActionButtonMenuIconForContext(identifier, context, 22.0),
+                                                                          copyChildren);
+                if (copyInfoElement) [groupElements addObject:copyInfoElement];
             } else {
                 UIAction *menuAction = [UIAction actionWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
                                                            image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
@@ -3035,35 +3132,6 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		}
 
         if (groupElements.count == 0) continue;
-        if (hasBulkMedia && [group.identifier isEqualToString:@"download"]) {
-            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
-            if (bulkElement) {
-                NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
-                [groupElements removeAllObjects];
-
-                UIMenu *nonBulkInlineGroup = [UIMenu menuWithTitle:@""
-                                                            image:nil
-                                                       identifier:nil
-                                                          options:UIMenuOptionsDisplayInline
-                                                         children:nonBulkElements];
-                [groupElements addObject:nonBulkInlineGroup];
-                [groupElements addObject:bulkElement];
-            }
-        } else if (hasBulkMedia && [group.identifier isEqualToString:@"copy"]) {
-            UIMenuElement *bulkElement = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
-            if (bulkElement) {
-                NSArray<UIMenuElement *> *nonBulkElements = [groupElements copy];
-                [groupElements removeAllObjects];
-
-                UIMenu *nonBulkInlineGroup = [UIMenu menuWithTitle:@""
-                                                            image:nil
-                                                       identifier:nil
-                                                          options:UIMenuOptionsDisplayInline
-                                                         children:nonBulkElements];
-                [groupElements addObject:nonBulkInlineGroup];
-                [groupElements addObject:bulkElement];
-            }
-        }
 		if (!firstGroup) {
 			[menuElements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[]]];
 		}

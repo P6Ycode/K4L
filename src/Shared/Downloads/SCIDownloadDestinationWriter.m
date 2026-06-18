@@ -229,6 +229,10 @@
     uti = UTTypeJPEG.identifier;
   else if ([ext isEqualToString:@"png"])
     uti = UTTypePNG.identifier;
+  else if ([ext isEqualToString:@"gif"])
+    uti = UTTypeGIF.identifier;
+  else if ([ext isEqualToString:@"webp"])
+    uti = UTTypeWebP.identifier;
   else if ([ext isEqualToString:@"mp4"] || [ext isEqualToString:@"mov"])
     uti = UTTypeMovie.identifier;
   else if ([ext isEqualToString:@"m4a"] || [ext isEqualToString:@"mp3"])

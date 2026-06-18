@@ -175,7 +175,7 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
             SCINotificationItem(kSCINotificationProfileMessagesSeenUserRule, @"Chat Seen List Changes", @"eye"),
         ]},
         @{@"title": @"Comments", @"items": @[
-            SCINotificationItem(kSCINotificationCopyComment, @"Copy Comment Text", @"copy"),
+            SCINotificationItem(kSCINotificationCopyComment, @"Copy Comment", @"copy"),
             SCINotificationItem(kSCINotificationCopyGIFLink, @"Copy GIF Link", @"link"),
         ]},
         @{@"title": @"Media", @"items": @[
