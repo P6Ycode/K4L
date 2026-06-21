@@ -9,6 +9,7 @@ static const void *kSCIDirectActionBottomConstraintAssocKey = &kSCIDirectActionB
 static const void *kSCIDirectActionTrailingConstraintAssocKey = &kSCIDirectActionTrailingConstraintAssocKey;
 static const void *kSCIDirectActionWidthConstraintAssocKey = &kSCIDirectActionWidthConstraintAssocKey;
 static const void *kSCIDirectActionHeightConstraintAssocKey = &kSCIDirectActionHeightConstraintAssocKey;
+static const void *kSCIDirectActionButtonMediaKey = &kSCIDirectActionButtonMediaKey;
 
 static UIView *SCIDirectOverlayView(UIViewController *controller) {
 	if (!controller) return nil;
@@ -122,10 +123,20 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 	}
 
 	CGFloat bottomOffset = SCIDirectBottomOffset(controller);
-	if (SCIDirectActionButtonLayoutIsCurrent(button, bottomOffset)) return;
+
+	// Layer 1 fix: detect media change to force reconfiguration even when layout is unchanged
+	id currentMedia = SCIDirectResolvedMediaFromController(controller);
+	id lastMedia = button ? objc_getAssociatedObject(button, kSCIDirectActionButtonMediaKey) : nil;
+	BOOL mediaChanged = (lastMedia != currentMedia);
+
+	if (SCIDirectActionButtonLayoutIsCurrent(button, bottomOffset) && !mediaChanged) return;
 
 	button = SCIActionButtonWithTag(overlay, kSCIDirectActionButtonTag);
 	SCIConfigureActionButton(button, SCIMessagesActionContext(controller));
+
+	// Store the resolved media pointer for change detection on next call
+	objc_setAssociatedObject(button, kSCIDirectActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
 	if (button.hidden) return;
 
 	CGFloat size = 44.0;
@@ -158,19 +169,37 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 	[overlay bringSubviewToFront:button];
 }
 
+// Reinstall now and once more on the next runloop, so the action button picks up
+// the new item after `_currentVisualMessageIndex` has settled.
+static void SCIDirectReinstallActionButtonSoon(UIViewController *controller) {
+	if (!controller) return;
+	SCIInstallDirectActionButton(controller);
+	__weak UIViewController *weakController = controller;
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIViewController *strongController = weakController;
+		if (strongController) SCIInstallDirectActionButton(strongController);
+	});
+}
+
 %group SCIMessagesActionButtonHooks
 
 %hook IGDirectVisualMessageViewerController
 - (void)viewDidLayoutSubviews {
 	%orig;
+	SCIDirectReinstallActionButtonSoon((UIViewController *)self);
+}
 
-	SCIInstallDirectActionButton((UIViewController *)self);
-	__weak UIViewController *weakController = (UIViewController *)self;
-	dispatch_async(dispatch_get_main_queue(), ^{
-		UIViewController *strongController = weakController;
-		if (!strongController) return;
-		SCIInstallDirectActionButton(strongController);
-	});
+// Swiping between visual messages doesn't relayout the controller's view, so the
+// layout hook above won't fire. The controller is the story-player media delegate,
+// so these callbacks fire on every item change — reconfigure for the new item.
+- (void)storyPlayerMediaViewDidLoad:(id)load loadSource:(id)source networkRequestSummary:(id)summary {
+	%orig;
+	SCIDirectReinstallActionButtonSoon((UIViewController *)self);
+}
+
+- (void)storyPlayerMediaViewDidBeginPlayback:(id)playback {
+	%orig;
+	SCIDirectReinstallActionButtonSoon((UIViewController *)self);
 }
 %end
 

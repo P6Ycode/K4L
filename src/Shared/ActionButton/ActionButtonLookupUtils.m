@@ -780,8 +780,51 @@ NSString *SCIUsernameFromMediaObject(id media) {
 	return nil;
 }
 
+// The inbox visual-message viewer (IGDirectVisualMessageViewerController) tracks the
+// current item as `_currentVisualMessageIndex` ON THE CONTROLLER, with the ordered
+// item list on `_dataSource.visualMessages`. The generic data-source paths used for
+// the thread viewer don't apply, so resolve this viewer explicitly — otherwise the
+// current item stays frozen at index 0 as the user swipes.
+static BOOL SCIIsDirectVisualMessageViewer(UIViewController *controller) {
+	Class cls = NSClassFromString(@"IGDirectVisualMessageViewerController");
+	return cls && [controller isKindOfClass:cls];
+}
+
+static NSArray *SCIDirectVisualViewerMessages(UIViewController *controller) {
+	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id value = SCIObjectForSelector(dataSource, @"visualMessages");
+	if (!value) value = SCIKVCObject(dataSource, @"visualMessages");
+	NSArray *messages = SCIArrayFromCollection(value);
+	return messages.count > 0 ? messages : nil;
+}
+
+// Returns the `_currentVisualMessageIndex` (a primitive long long ivar), or -1 when
+// unset. The controller uses a max-value "not set" sentinel during transitions;
+// treat that (and negatives) as unknown so callers don't index past the end.
+static NSInteger SCIDirectVisualViewerIndex(UIViewController *controller) {
+	Ivar idxIvar = class_getInstanceVariable([controller class], "_currentVisualMessageIndex");
+	if (!idxIvar) return -1;
+	ptrdiff_t offset = ivar_getOffset(idxIvar);
+	long long idx = *(long long *)((char *)(__bridge void *)controller + offset);
+	if (idx < 0 || idx == (long long)NSIntegerMax) return -1;
+	return (NSInteger)idx;
+}
+
 id SCIDirectCurrentMessageFromController(UIViewController *controller) {
 	if (!controller) return nil;
+
+	if (SCIIsDirectVisualMessageViewer(controller)) {
+		NSArray *messages = SCIDirectVisualViewerMessages(controller);
+		if (messages.count > 0) {
+			NSInteger idx = SCIDirectVisualViewerIndex(controller);
+			if (idx < 0) idx = 0;
+			if ((NSUInteger)idx >= messages.count) idx = (NSInteger)messages.count - 1;
+			id current = messages[idx];
+			SCIDMTrace(@"visual viewer current message idx=%ld/%lu class=%@", (long)idx, (unsigned long)messages.count, SCIClassName(current));
+			return current;
+		}
+	}
 
 	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
 	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
@@ -829,6 +872,14 @@ id SCIDirectResolvedMediaFromController(UIViewController *controller) {
 
 NSInteger SCIDirectCurrentIndexFromController(UIViewController *controller) {
 	if (!controller) return 0;
+
+	if (SCIIsDirectVisualMessageViewer(controller)) {
+		NSInteger idx = SCIDirectVisualViewerIndex(controller);
+		if (idx >= 0) {
+			SCIDMTrace(@"visual viewer current index = %ld", (long)idx);
+			return idx;
+		}
+	}
 
 	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
 	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");

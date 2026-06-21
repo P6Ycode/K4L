@@ -11,8 +11,12 @@ static const void *kSCIReelsActionBottomConstraintAssocKey = &kSCIReelsActionBot
 static const void *kSCIReelsActionCenterXConstraintAssocKey = &kSCIReelsActionCenterXConstraintAssocKey;
 static const void *kSCIReelsActionWidthConstraintAssocKey = &kSCIReelsActionWidthConstraintAssocKey;
 static const void *kSCIReelsActionHeightConstraintAssocKey = &kSCIReelsActionHeightConstraintAssocKey;
+static const void *kSCIReelsActionButtonMediaKey = &kSCIReelsActionButtonMediaKey;
+static const void *kSCIReelsActionButtonCarouselIndexKey = &kSCIReelsActionButtonCarouselIndexKey;
 static CGFloat const kSCIReelsActionButtonSize = 44.0;
 static CGFloat const kSCIReelsActionButtonBottomOffset = -5.0;
+
+// MARK: - View hierarchy helpers
 
 static UIView *SCIReelsFindSuperviewOfClass(UIView *view, NSString *className) {
 	Class cls = NSClassFromString(className);
@@ -25,18 +29,80 @@ static UIView *SCIReelsFindSuperviewOfClass(UIView *view, NSString *className) {
 	return nil;
 }
 
-static id SCIReelsFindMediaIvar(UIView *view) {
+// MARK: - Deterministic resolution from IGUnifiedVideoCollectionView (Layer 2)
+
+/// Walk up from `view` to find the paging collection view that holds all reel cells.
+static UICollectionView *SCIReelsFindPagingCollectionView(UIView *view) {
+	Class pagingClass = NSClassFromString(@"IGUnifiedVideoCollectionView");
+	if (!pagingClass) return nil;
+	UIView *current = view.superview;
+	for (NSInteger depth = 0; current && depth < 30; depth++) {
+		if ([current isKindOfClass:pagingClass]) return (UICollectionView *)current;
+		current = current.superview;
+	}
+	return nil;
+}
+
+/// Given the paging collection view, find the currently visible reel cell
+/// using contentOffset + cell height. Returns a UICollectionViewCell that is
+/// an IGSundialViewerVideoCell, CarouselCell, or PhotoCell.
+static UICollectionViewCell *SCIReelsCurrentCellFromPagingView(UICollectionView *pagingView) {
+	if (!pagingView) return nil;
+
+	CGFloat pageHeight = pagingView.bounds.size.height;
+	if (pageHeight <= 0) return nil;
+
+	// Center-point heuristic: find the cell whose center is closest to the
+	// collection view's visible center.
+	CGFloat centerY = pagingView.contentOffset.y + pageHeight / 2.0;
+
+	NSArray<UICollectionViewCell *> *visibleCells = pagingView.visibleCells;
+	UICollectionViewCell *bestCell = nil;
+	CGFloat bestDistance = CGFLOAT_MAX;
+
+	for (UICollectionViewCell *cell in visibleCells) {
+		CGFloat cellCenterY = CGRectGetMidY(cell.frame);
+		CGFloat distance = ABS(cellCenterY - centerY);
+		if (distance < bestDistance) {
+			bestDistance = distance;
+			bestCell = cell;
+		}
+	}
+
+	return bestCell;
+}
+
+/// Read the media ivar (_mediaPassthrough) from a known cell type.
+/// Falls back to scanning all object-typed ivars for IGMedia.
+static id SCIReelsMediaFromCell(UICollectionViewCell *cell) {
+	if (!cell) return nil;
+
+	// Fast path: read _mediaPassthrough directly (present on both VideoCell and CarouselCell)
+	Ivar mediaPTIvar = class_getInstanceVariable([cell class], "_mediaPassthrough");
+	if (mediaPTIvar) {
+		const char *type = ivar_getTypeEncoding(mediaPTIvar);
+		if (type && type[0] == '@') {
+			@try {
+				id media = object_getIvar(cell, mediaPTIvar);
+				if (media) {
+					return media;
+				}
+			} @catch (__unused NSException *exception) {}
+		}
+	}
+
+	// Fallback: scan ivars for IGMedia
 	Class mediaClass = NSClassFromString(@"IGMedia");
-	if (!view || !mediaClass) return nil;
+	if (!mediaClass) return nil;
 
 	unsigned int count = 0;
-	Ivar *ivars = class_copyIvarList([view class], &count);
+	Ivar *ivars = class_copyIvarList([cell class], &count);
 	id found = nil;
 	for (unsigned int i = 0; i < count; i++) {
 		const char *type = ivar_getTypeEncoding(ivars[i]);
 		if (!type || type[0] != '@') continue;
 		@try {
-			id value = object_getIvar(view, ivars[i]);
+			id value = object_getIvar(cell, ivars[i]);
 			if (value && [value isKindOfClass:mediaClass]) {
 				found = value;
 				break;
@@ -48,11 +114,15 @@ static id SCIReelsFindMediaIvar(UIView *view) {
 	return found;
 }
 
+// MARK: - Carousel helpers
+
 static NSArray *SCIReelsCarouselChildren(id parentMedia) {
 	return SCIActionButtonCarouselChildren(parentMedia);
 }
 
-static NSInteger SCIReelsCarouselCurrentIndex(UIView *carouselCell, id parentMedia) {
+/// Read the carousel's current page index from a **specific** carousel cell.
+/// Only reads ivars from the cell we deterministically found — never from a BFS result.
+static NSInteger SCIReelsCarouselCurrentIndex(UICollectionViewCell *carouselCell, id parentMedia) {
 	if (!carouselCell || !parentMedia) return -1;
 
 	NSArray *children = SCIReelsCarouselChildren(parentMedia);
@@ -90,10 +160,11 @@ static NSInteger SCIReelsCarouselCurrentIndex(UIView *carouselCell, id parentMed
 
 	if (currentIdx < 0) return 0;
 	if ((NSUInteger)currentIdx >= children.count) return (NSInteger)children.count - 1;
+
 	return currentIdx;
 }
 
-static id SCIReelsCurrentCarouselChildMedia(UIView *carouselCell, id parentMedia) {
+static id SCIReelsCurrentCarouselChildMedia(UICollectionViewCell *carouselCell, id parentMedia) {
 	if (!carouselCell || !parentMedia) return parentMedia;
 
 	NSArray *children = SCIReelsCarouselChildren(parentMedia);
@@ -102,54 +173,52 @@ static id SCIReelsCurrentCarouselChildMedia(UIView *carouselCell, id parentMedia
 	return (children.count > 0 && (NSUInteger)currentIdx < children.count) ? children[currentIdx] : parentMedia;
 }
 
-static UIView *SCIReelsCarouselCellFromView(UIView *view) {
-	UIView *carouselCell = SCIReelsFindSuperviewOfClass(view, @"IGSundialViewerCarouselCell");
-	if (carouselCell) return carouselCell;
+// MARK: - Media resolution (deterministic, with BFS fallback)
 
+/// Walk UP the superview chain to find the cell that actually CONTAINS this UFI/button.
+/// This is the cell the button belongs to — independent of which cell is currently
+/// centered, so it doesn't drift with scroll timing.
+static UICollectionViewCell *SCIReelsOwnEnclosingCell(UIView *view) {
 	Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
-	if (!carouselClass) return nil;
-
-	NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:view ?: (id)NSNull.null];
-	NSMutableSet<UIView *> *visited = [NSMutableSet set];
-	while (queue.count > 0) {
-		UIView *candidate = queue.firstObject;
-		[queue removeObjectAtIndex:0];
-		if (candidate == (id)NSNull.null || !candidate || [visited containsObject:candidate]) continue;
-		[visited addObject:candidate];
-
-		if ([candidate isKindOfClass:carouselClass]) return candidate;
-
-		for (UIView *subview in candidate.subviews) [queue addObject:subview];
-		UIView *superview = candidate.superview;
-		if (superview && ![visited containsObject:superview]) [queue addObject:superview];
+	Class videoCellClass = NSClassFromString(@"IGSundialViewerVideoCell");
+	Class photoCellClass = NSClassFromString(@"IGSundialViewerPhotoCell");
+	UIView *current = view;
+	for (NSInteger depth = 0; current && depth < 25; depth++) {
+		if ((carouselClass && [current isKindOfClass:carouselClass]) ||
+		    (videoCellClass && [current isKindOfClass:videoCellClass]) ||
+		    (photoCellClass && [current isKindOfClass:photoCellClass])) {
+			return (UICollectionViewCell *)current;
+		}
+		current = current.superview;
 	}
 	return nil;
 }
 
+/// Primary resolution: the UFI's OWN enclosing cell (per-button correct, timing-independent).
+/// Fallback: globally-centered cell via the paging collection view, then the delegate chain.
 static id SCIReelsMediaProvider(UIView *sourceView) {
-	UIView *carouselCell = SCIReelsCarouselCellFromView(sourceView);
-	if (carouselCell) {
-		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
-		if (SCIReelsCarouselChildren(parentMedia).count > 0) return parentMedia;
+	// --- PRIMARY: resolve THIS UFI's own enclosing cell ---
+	UICollectionViewCell *ownCell = SCIReelsOwnEnclosingCell(sourceView);
+	if (ownCell) {
+		id media = SCIReelsMediaFromCell(ownCell);
+		if (media) {
+			return media; // carousel parent returned as-is; currentIndexResolver picks the child
+		}
 	}
 
-	UIView *videoCell = SCIReelsFindSuperviewOfClass(sourceView, @"IGSundialViewerVideoCell");
-	if (videoCell) {
-		id media = SCIReelsFindMediaIvar(videoCell);
-		if (media) return media;
+	// --- FALLBACK: globally-centered cell via IGUnifiedVideoCollectionView ---
+	UICollectionView *pagingView = SCIReelsFindPagingCollectionView(sourceView);
+	if (pagingView) {
+		UICollectionViewCell *currentCell = SCIReelsCurrentCellFromPagingView(pagingView);
+		if (currentCell) {
+			id media = SCIReelsMediaFromCell(currentCell);
+			if (media) {
+				return media;
+			}
+		}
 	}
 
-	UIView *photoCell = SCIReelsFindSuperviewOfClass(sourceView, @"IGSundialViewerPhotoCell");
-	if (photoCell) {
-		id media = SCIReelsFindMediaIvar(photoCell);
-		if (media) return media;
-	}
-
-	if (carouselCell) {
-		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
-		if (parentMedia) return SCIReelsCurrentCarouselChildMedia(carouselCell, parentMedia);
-	}
-
+	// Last resort: delegate chain
 	id delegate = SCIObjectForSelector(sourceView, @"delegate");
 	id media = SCIObjectForSelector(delegate, @"media");
 	if (!media) media = SCIKVCObject(delegate, @"media");
@@ -157,15 +226,19 @@ static id SCIReelsMediaProvider(UIView *sourceView) {
 }
 
 static id SCIReelsBulkMediaProvider(UIView *sourceView) {
-	UIView *carouselCell = SCIReelsCarouselCellFromView(sourceView);
-	if (carouselCell) {
-		id parentMedia = SCIReelsFindMediaIvar(carouselCell);
-		if (parentMedia && SCIReelsCarouselChildren(parentMedia).count > 1) {
-			return parentMedia;
+	UICollectionViewCell *ownCell = SCIReelsOwnEnclosingCell(sourceView);
+	if (ownCell) {
+		id media = SCIReelsMediaFromCell(ownCell);
+		Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
+		if (media && carouselClass && [ownCell isKindOfClass:carouselClass]) {
+			NSArray *children = SCIReelsCarouselChildren(media);
+			if (children.count > 1) return media;
 		}
 	}
 	return SCIReelsMediaProvider(sourceView);
 }
+
+// MARK: - Current index resolution
 
 static NSInteger SCIReelsCurrentIndexFromVerticalUFI(UIView *verticalUFIView) {
 	if (!verticalUFIView) return -1;
@@ -187,6 +260,25 @@ static NSInteger SCIReelsCurrentIndexFromVerticalUFI(UIView *verticalUFIView) {
 
 	return -1;
 }
+
+static NSInteger SCIReelsCurrentIndexForContext(UIView *sourceView) {
+	// PRIMARY: this UFI's own enclosing carousel cell.
+	UICollectionViewCell *ownCell = SCIReelsOwnEnclosingCell(sourceView);
+	if (ownCell) {
+		id parentMedia = SCIReelsMediaFromCell(ownCell);
+		Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
+		if (carouselClass && [ownCell isKindOfClass:carouselClass] && parentMedia) {
+			NSInteger carouselIndex = SCIReelsCarouselCurrentIndex(ownCell, parentMedia);
+			if (carouselIndex >= 0) return carouselIndex;
+		}
+	}
+
+	// Fallback: UFI page indicator
+	NSInteger ufiIndex = SCIReelsCurrentIndexFromVerticalUFI(sourceView);
+	return ufiIndex >= 0 ? ufiIndex : 0;
+}
+
+// MARK: - Caption & repost
 
 static NSString *SCIReelsCaptionForContext(SCIActionButtonContext *context, id media, NSArray *entries, NSInteger currentIndex) {
 	NSString *caption = SCICaptionFromMediaObject(media);
@@ -217,6 +309,8 @@ static BOOL SCIReelsTriggerRepost(SCIActionButtonContext *context) {
 	return NO;
 }
 
+// MARK: - Action context
+
 static SCIActionButtonContext *SCIReelsActionContext(UIView *verticalUFIView) {
 	SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
 	context.source = SCIActionButtonSourceReels;
@@ -230,14 +324,7 @@ static SCIActionButtonContext *SCIReelsActionContext(UIView *verticalUFIView) {
 		return SCIReelsBulkMediaProvider(resolvedContext.view);
 	};
 	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
-		UIView *carouselCell = SCIReelsCarouselCellFromView(resolvedContext.view);
-		if (carouselCell) {
-			id parentMedia = SCIReelsFindMediaIvar(carouselCell);
-			NSInteger carouselIndex = SCIReelsCarouselCurrentIndex(carouselCell, parentMedia);
-			if (carouselIndex >= 0) return carouselIndex;
-		}
-		NSInteger ufiIndex = SCIReelsCurrentIndexFromVerticalUFI(resolvedContext.view);
-		return ufiIndex >= 0 ? ufiIndex : 0;
+		return SCIReelsCurrentIndexForContext(resolvedContext.view);
 	};
 	context.captionResolver = ^NSString * (SCIActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
 		return SCIReelsCaptionForContext(resolvedContext, media, entries, currentIndex);
@@ -247,6 +334,8 @@ static SCIActionButtonContext *SCIReelsActionContext(UIView *verticalUFIView) {
 	};
 	return context;
 }
+
+// MARK: - Layout check
 
 static BOOL SCIReelsConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
 	return constraint && constraint.active && ABS(constraint.constant - constant) < 0.5;
@@ -266,6 +355,8 @@ static BOOL SCIReelsActionButtonLayoutIsCurrent(UIButton *button) {
 	       SCIReelsConstraintMatches(heightConstraint, kSCIReelsActionButtonSize);
 }
 
+// MARK: - Installer (with media-change gate — Layer 1)
+
 void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 	if (!verticalUFIView) return;
 
@@ -275,12 +366,26 @@ void SCIInstallReelsActionButton(UIView *verticalUFIView) {
 		return;
 	}
 
-	if (SCIReelsActionButtonLayoutIsCurrent(button)) {
+	// Resolve current media to detect whether we need to reconfigure
+	id currentMedia = SCIReelsMediaProvider(verticalUFIView);
+	NSInteger currentCarouselIdx = SCIReelsCurrentIndexForContext(verticalUFIView);
+	id lastMedia = button ? objc_getAssociatedObject(button, kSCIReelsActionButtonMediaKey) : nil;
+	NSNumber *lastCarouselIdx = button ? objc_getAssociatedObject(button, kSCIReelsActionButtonCarouselIndexKey) : nil;
+
+	BOOL mediaChanged = (lastMedia != currentMedia) ||
+	                     (lastCarouselIdx && lastCarouselIdx.integerValue != currentCarouselIdx);
+
+	if (SCIReelsActionButtonLayoutIsCurrent(button) && !mediaChanged) {
 		return;
 	}
 
 	button = SCIActionButtonWithTag(verticalUFIView, kSCIReelsActionButtonTag);
 	SCIConfigureActionButton(button, SCIReelsActionContext(verticalUFIView));
+
+	// Store the resolved media + carousel index for change detection on next call
+	objc_setAssociatedObject(button, kSCIReelsActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSCIReelsActionButtonCarouselIndexKey, @(currentCarouselIdx), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
 	if (button.hidden) return;
 
 	button.translatesAutoresizingMaskIntoConstraints = NO;

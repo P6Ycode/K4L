@@ -324,7 +324,7 @@
 - (void)setPlaceholderText:(id)arg1;
 @end
 
-@interface IGUnifiedVideoCollectionView : UIScrollView
+@interface IGUnifiedVideoCollectionView : UICollectionView
 @end
 
 @interface IGBadgedNavigationButton : UIView
