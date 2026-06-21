@@ -4,10 +4,29 @@
 #import "../Downloads/SCIDownloadTypes.h"
 
 @class SCIGallerySaveMetadata;
+@class SCITrimSourcePlan;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface SCIMediaQualityManager : NSObject
+
+/// Resolves how to source a trim for `mediaObject`. When `qualityOverride` is
+/// nil the user's `downloads_video_quality` setting is used (with `always_ask`
+/// treated as best); pass `high` / `high_ignore_dash` / `medium` / `low` to
+/// force a tier (used by the "Trim & Save…" quality prompt). Returns nil when
+/// the media isn't a video.
++ (nullable SCITrimSourcePlan *)trimSourcePlanForMediaObject:(nullable id)mediaObject
+                                                   photoURL:(nullable NSURL *)photoURL
+                                                   videoURL:(nullable NSURL *)videoURL
+                                            qualityOverride:(nullable NSString *)qualityOverride;
+
+/// Presents the same quality picker the download flow uses (audio-only rows
+/// excluded), reporting the chosen option as a trim plan, or nil if dismissed.
++ (void)presentTrimQualityPickerForMediaObject:(nullable id)mediaObject
+                                      photoURL:(nullable NSURL *)photoURL
+                                      videoURL:(nullable NSURL *)videoURL
+                                          from:(UIViewController *)presenter
+                                    completion:(void (^)(SCITrimSourcePlan *_Nullable plan))completion;
 
 + (BOOL)handleDownloadDestination:(SCIDownloadDestination)destination
                        identifier:(NSString *)identifier
@@ -31,6 +50,12 @@ NS_ASSUME_NONNULL_BEGIN
                            (nullable SCIGallerySaveMetadata *)galleryMetadata
                           showProgress:(BOOL)showProgress
                          sourceSurface:(NSInteger)sourceSurface;
+
+/// Cheap, context-agnostic "is this a video?" check (selector-probes the media
+/// for a video duration / resolvable video URL — no DASH parse, no network).
+/// Reliable where a resolved videoURL isn't available (feed-inline reels, DM
+/// viewers) and correctly false for photos.
++ (BOOL)mediaObjectIsVideo:(nullable id)mediaObject;
 
 + (UIViewController *)encodingSettingsViewController;
 + (NSArray *)encodingSettingsSearchSections;

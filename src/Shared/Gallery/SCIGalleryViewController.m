@@ -15,6 +15,10 @@
 #import "SCIGalleryOriginController.h"
 #import "SCIGalleryHiddenSources.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
+#import "../MediaTrim/SCITrimConfiguration.h"
+#import "../MediaTrim/SCITrimResult.h"
+#import "../MediaTrim/SCITrimEditorViewController.h"
+#import "../MediaTrim/SCITrimSaveCoordinator.h"
 #import "../UI/SCIMediaChrome.h"
 #import "../UI/SCIIGAlertPresenter.h"
 #import "../../InstagramHeaders.h"
@@ -1231,6 +1235,14 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                           identifier:nil
                                              handler:^(UIAction *a) { [weakSelf moveFile:file]; }];
 
+    UIAction *trimAction = nil;
+    if (file.mediaType == SCIGalleryMediaTypeVideo) {
+        trimAction = [UIAction actionWithTitle:@"Trim"
+                                         image:SCIGalleryMenuActionIcon(@"trim")
+                                    identifier:nil
+                                       handler:^(__unused UIAction *a) { [weakSelf trimFile:file]; }];
+    }
+
      UIImage *shareImg = SCIGalleryMenuActionIcon(@"share");
     UIAction *shareAction = [UIAction actionWithTitle:@"Share"
                                                 image:shareImg
@@ -1302,7 +1314,9 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         }];
         [children addObject:usernameAction];
     }
-    [children addObjectsFromArray:@[favoriteAction, renameAction, moveAction, shareAction, deleteAction]];
+    [children addObjectsFromArray:@[favoriteAction, renameAction, moveAction]];
+    if (trimAction) [children addObject:trimAction];
+    [children addObjectsFromArray:@[shareAction, deleteAction]];
     return [UIMenu menuWithTitle:@"" children:children];
 }
 
@@ -1534,6 +1548,36 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         [self.collectionView reloadData];
     }
                                                      cancelBlock:nil];
+}
+
+- (void)trimFile:(SCIGalleryFile *)file {
+    NSURL *url = [file fileURL];
+    if (!url || ![[NSFileManager defaultManager] fileExistsAtPath:url.path]) {
+        SCINotify(@"sci.trim.gallery", @"Cannot trim", @"The original file is missing.", @"error_filled", SCINotificationToneError);
+        return;
+    }
+    SCITrimConfiguration *config = [SCITrimConfiguration configurationWithVideoURL:url];
+    __weak typeof(self) weakSelf = self;
+    [SCITrimEditorViewController presentWithConfiguration:config
+                                                    from:self
+                                              completion:^(SCITrimResult *result) {
+        if (!result) return; // Cancelled.
+        [weakSelf saveTrimResult:result fromFile:file];
+    }];
+}
+
+- (void)saveTrimResult:(SCITrimResult *)result fromFile:(SCIGalleryFile *)sourceFile {
+    __weak typeof(self) weakSelf = self;
+    [SCITrimSaveCoordinator saveResult:result
+                            originFile:sourceFile
+                        fallbackSource:(SCIGallerySource)sourceFile.source
+                            folderPath:sourceFile.folderPath
+                             presenter:self
+                            completion:^(BOOL didChange) {
+        if (didChange) {
+            [weakSelf refetch];
+        }
+    }];
 }
 
 - (void)assignFolderPath:(nullable NSString *)folderPath toFiles:(NSArray<SCIGalleryFile *> *)files {

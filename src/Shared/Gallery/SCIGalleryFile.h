@@ -75,6 +75,22 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
 
 - (BOOL)removeWithError:(NSError *_Nullable *_Nullable)error;
 
+/// Replaces this file's media in place with `newURL` (e.g. a trimmed clip or an
+/// extracted frame), updating mediaType/dimensions/duration/fileSize/thumbnail
+/// while preserving the file's identity (identifier, dateAdded, origin, folder,
+/// custom name, favorite). Copies before deleting the original, so a failed
+/// replace leaves the original intact.
+- (BOOL)replaceMediaWithFileURL:(NSURL *)newURL
+                      mediaType:(SCIGalleryMediaType)mediaType
+                          error:(NSError *_Nullable *_Nullable)error;
+
+/// Builds save metadata mirroring this file's source attribution (username,
+/// user/media IDs, profile/permalink URLs, source, dates). Used to carry origin
+/// info onto a derived copy (e.g. a trimmed clip) so its filename and Open
+/// Profile/Post links match the original. Dimensions/duration are intentionally
+/// omitted so the derived file is probed fresh.
+- (SCIGallerySaveMetadata *)saveMetadata;
+
 - (NSString *)filePath;
 - (NSURL *)fileURL;
 - (BOOL)fileExists;

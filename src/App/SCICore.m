@@ -217,6 +217,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"stories_poll_vote_counts": @(NO),
         @"gallery_show_favorites_top": @(NO),
         @"gallery_hidden_sources": @[],
+        @"trim_gallery_prompt_replace": @(YES),
         @"general_strip_share_link_tracking": @(YES),
         @"general_hide_create_group": @(NO),
         @"interface_hide_ui_on_capture": @(NO),

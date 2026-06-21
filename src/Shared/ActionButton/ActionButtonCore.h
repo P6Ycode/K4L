@@ -19,6 +19,7 @@ FOUNDATION_EXPORT NSString * const kSCIActionDownloadShare;
 FOUNDATION_EXPORT NSString * const kSCIActionCopyDownloadLink;
 FOUNDATION_EXPORT NSString * const kSCIActionCopyMedia;
 FOUNDATION_EXPORT NSString * const kSCIActionDownloadGallery;
+FOUNDATION_EXPORT NSString * const kSCIActionTrimSave;
 FOUNDATION_EXPORT NSString * const kSCIActionDownloadAudio;
 FOUNDATION_EXPORT NSString * const kSCIActionDownloadAudioShare;
 FOUNDATION_EXPORT NSString * const kSCIActionDownloadAudioGallery;

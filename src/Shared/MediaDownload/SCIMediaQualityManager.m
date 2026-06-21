@@ -17,6 +17,7 @@
 #import "../UI/SCISwitch.h"
 #import "SCIDashParser.h"
 #import "SCIMediaFFmpeg.h"
+#import "../MediaTrim/SCITrimSourcePlan.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <AVKit/AVKit.h>
@@ -995,6 +996,30 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
   return SCIMediaTieredOption(preferred, quality) ?: analysis.progressiveVideoOptions.firstObject ?: analysis.mergedDashOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
 }
 
+// Builds a trim plan from a specific chosen option (used by both the
+// settings-driven resolver and the "always ask" picker). The editor always
+// scrubs a small muxed progressive; the final renders from `chosen`.
+static SCITrimSourcePlan *SCIMediaTrimPlanFromOption(SCIMediaOption *chosen,
+                                                     SCIMediaAnalysis *analysis,
+                                                     NSURL *videoURL) {
+  NSURL *finalVideoURL = chosen.primaryURL ?: videoURL;
+  if (!finalVideoURL) {
+    return nil;
+  }
+  SCITrimSourcePlan *plan = [[SCITrimSourcePlan alloc] init];
+  plan.editURL = analysis.progressiveVideoOptions.lastObject.primaryURL
+              ?: analysis.progressiveVideoOptions.firstObject.primaryURL
+              ?: videoURL
+              ?: finalVideoURL;
+  plan.finalVideoURL = finalVideoURL;
+  plan.finalAudioURL = chosen.secondaryURL;
+  plan.needsMerge = (chosen.secondaryURL != nil);
+  plan.width = chosen.width;
+  plan.height = chosen.height;
+  plan.duration = analysis.duration;
+  return plan;
+}
+
 @interface SCIMediaSingleDownloadJob : NSObject <NSURLSessionDownloadDelegate>
 @property(nonatomic, strong) NSURLSession *session;
 @property(nonatomic, strong) NSURLSessionDownloadTask *task;
@@ -1644,11 +1669,16 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 @end
 
 @interface SCIMediaOptionsSheetViewController
-    : UIViewController <UITableViewDataSource, UITableViewDelegate>
+    : UIViewController <UITableViewDataSource, UITableViewDelegate,
+                        UIAdaptivePresentationControllerDelegate>
 @property(nonatomic, strong) UITableView *tableView;
 @property(nonatomic, strong) SCIMediaAnalysis *analysis;
 @property(nonatomic) SCIDownloadDestination destination;
 @property(nonatomic, copy) void (^selectionHandler)(SCIMediaOption *option);
+/// Called when the sheet is dismissed (close button or swipe) WITHOUT a
+/// selection. Lets callers (e.g. the trim flow) release their state.
+@property(nonatomic, copy) void (^dismissHandler)(void);
+@property(nonatomic, assign) BOOL sciDidSelect;
 @end
 
 @implementation SCIMediaOptionsSheetViewController
@@ -1935,6 +1965,7 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
   if (!option.selectable) {
     return;
   }
+  self.sciDidSelect = YES;
   [self dismissViewControllerAnimated:YES
                            completion:^{
                              if (self.selectionHandler) {
@@ -1944,7 +1975,19 @@ SCIMediaResolveDefaultOption(SCIMediaAnalysis *analysis) {
 }
 
 - (void)closeTapped {
-  [self dismissViewControllerAnimated:YES completion:nil];
+  [self dismissViewControllerAnimated:YES
+                           completion:^{
+                             if (!self.sciDidSelect && self.dismissHandler) {
+                               self.dismissHandler();
+                             }
+                           }];
+}
+
+- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController {
+  // Interactive swipe-to-dismiss.
+  if (!self.sciDidSelect && self.dismissHandler) {
+    self.dismissHandler();
+  }
 }
 
 @end
@@ -1953,12 +1996,14 @@ static void
 SCIMediaPresentOptionsSheet(UIViewController *presenter, UIView *sourceView,
                             SCIMediaAnalysis *analysis,
                             SCIDownloadDestination destination,
-                            void (^selectionHandler)(SCIMediaOption *option)) {
+                            void (^selectionHandler)(SCIMediaOption *option),
+                            void (^dismissHandler)(void)) {
   SCIMediaOptionsSheetViewController *controller =
       [[SCIMediaOptionsSheetViewController alloc]
           initWithAnalysis:analysis
                destination:destination
           selectionHandler:selectionHandler];
+  controller.dismissHandler = dismissHandler;
   UINavigationController *nav =
       [[UINavigationController alloc] initWithRootViewController:controller];
   nav.modalPresentationStyle = UIModalPresentationPageSheet;
@@ -1969,6 +2014,8 @@ SCIMediaPresentOptionsSheet(UIViewController *presenter, UIView *sourceView,
     sheet.selectedDetentIdentifier =
         UISheetPresentationControllerDetentIdentifierMedium;
   }
+  // Route swipe-to-dismiss through the controller so `dismissHandler` fires.
+  nav.presentationController.delegate = controller;
   if (nav.popoverPresentationController && sourceView) {
     nav.popoverPresentationController.sourceView = sourceView;
     nav.popoverPresentationController.sourceRect = sourceView.bounds;
@@ -2157,6 +2204,70 @@ static void SCIMediaPerformOptionDownload(
 }
 
 @implementation SCIMediaQualityManager
+
++ (SCITrimSourcePlan *)trimSourcePlanForMediaObject:(id)mediaObject
+                                           photoURL:(NSURL *)photoURL
+                                           videoURL:(NSURL *)videoURL
+                                    qualityOverride:(NSString *)qualityOverride {
+    // Trim never wants a standalone-audio option, so exclude those rows.
+    SCIMediaAnalysis *analysis = SCIMediaAnalyze(mediaObject, photoURL, videoURL,
+                                                 SCIDownloadDestinationGallery, NO);
+    if (!analysis.isVideo) {
+        return nil;
+    }
+
+    NSString *quality = qualityOverride.length > 0
+        ? qualityOverride
+        : [SCIUtils getStringPref:@"downloads_video_quality"];
+    // Trim can't surface the full picker mid-flow, so treat an unset/"always_ask"
+    // preference as best quality here (the caller prompts separately when set to
+    // always_ask).
+    if (quality.length == 0 || [quality isEqualToString:@"always_ask"]) {
+        quality = @"high";
+    }
+    if (!analysis.ffmpegAvailable) {
+        quality = @"high_ignore_dash";
+    }
+
+    SCIMediaOption *chosen;
+    if ([quality isEqualToString:@"high_ignore_dash"]) {
+        chosen = analysis.progressiveVideoOptions.firstObject ?: analysis.mergedDashOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
+    } else if ([quality isEqualToString:@"high"]) {
+        chosen = analysis.mergedDashOptions.firstObject ?: analysis.progressiveVideoOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
+    } else {
+        NSArray<SCIMediaOption *> *preferred = analysis.mergedDashOptions.count > 0
+            ? analysis.mergedDashOptions
+            : analysis.progressiveVideoOptions;
+        chosen = SCIMediaTieredOption(preferred, quality)
+            ?: analysis.progressiveVideoOptions.firstObject
+            ?: analysis.mergedDashOptions.firstObject
+            ?: analysis.videoDashOnlyOptions.firstObject;
+    }
+    if (!chosen) {
+        chosen = SCIMediaFFmpegFreeHighOption(analysis);
+    }
+    return SCIMediaTrimPlanFromOption(chosen, analysis, videoURL);
+}
+
++ (void)presentTrimQualityPickerForMediaObject:(id)mediaObject
+                                      photoURL:(NSURL *)photoURL
+                                      videoURL:(NSURL *)videoURL
+                                          from:(UIViewController *)presenter
+                                    completion:(void (^)(SCITrimSourcePlan *_Nullable))completion {
+    SCIMediaAnalysis *analysis = SCIMediaAnalyze(mediaObject, photoURL, videoURL,
+                                                 SCIDownloadDestinationGallery, NO);
+    if (!analysis.isVideo || !presenter) {
+        if (completion) completion(nil);
+        return;
+    }
+    SCIMediaPresentOptionsSheet(presenter, nil, analysis, SCIDownloadDestinationGallery,
+                                ^(SCIMediaOption *option) {
+        if (completion) completion(SCIMediaTrimPlanFromOption(option, analysis, videoURL));
+    },
+                                ^{
+        if (completion) completion(nil);  // dismissed without choosing
+    });
+}
 
 + (void)runDashDownloadWithPrimaryURL:(NSURL *)primaryURL
                          secondaryURL:(NSURL *)secondaryURL
@@ -2360,7 +2471,8 @@ static void SCIMediaPerformOptionDownload(
                                     destination, NO, identifier, showProgress,
                                     resolvedPresenter,
                                     (SCIDownloadSourceSurface)sourceSurface);
-                              });
+                              },
+                              nil);
   return YES;
 }
 
@@ -2404,8 +2516,22 @@ static void SCIMediaPerformOptionDownload(
             option, mediaObject, galleryMetadata,
             SCIDownloadDestinationClipboard, YES, identifier, showProgress,
             resolvedPresenter, (SCIDownloadSourceSurface)sourceSurface);
-      });
+      },
+      nil);
   return YES;
+}
+
++ (BOOL)mediaObjectIsVideo:(id)mediaObject {
+  if (!mediaObject) {
+    return NO;
+  }
+  // A non-zero video duration is the most reliable signal across surfaces
+  // (IGMedia exposes a non-nil `video` even for photos, so that alone over-
+  // matches). Fall back to resolving an actual video URL.
+  if (SCIMediaDurationForObject(mediaObject) > 0.0) {
+    return YES;
+  }
+  return [SCIUtils getVideoUrlForMedia:mediaObject] != nil;
 }
 
 + (UIViewController *)encodingSettingsViewController {

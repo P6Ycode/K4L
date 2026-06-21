@@ -554,6 +554,164 @@ static NSArray<NSString *> *SCIFFmpegAudioReencodeArguments(NSURL *sourceURL, NS
     return args;
 }
 
+typedef NS_ENUM(NSInteger, SCIFFmpegTrimAudioMode) {
+    SCIFFmpegTrimAudioAAC = 0,   // re-encode to AAC (normal case)
+    SCIFFmpegTrimAudioCopy = 1,  // stream-copy (xHE-AAC / undecodable sources)
+    SCIFFmpegTrimAudioNone = 2,  // drop audio (last-resort fallback)
+};
+
+// Appends the audio encoder options for a trim attempt, honoring the configured
+// bitrate and channel layout in AAC mode.
+static void SCIFFmpegAppendTrimAudioOptions(NSMutableArray<NSString *> *args, SCIFFmpegTrimAudioMode audioMode) {
+    if (audioMode == SCIFFmpegTrimAudioCopy) {
+        [args addObjectsFromArray:@[@"-c:a", @"copy"]];
+        return;
+    }
+    if (audioMode != SCIFFmpegTrimAudioAAC) {
+        return;  // None: video-only, no audio options.
+    }
+    [args addObjectsFromArray:@[@"-c:a", @"aac"]];
+    NSInteger audioBitrate = SCIFFmpegIntegerPref(@"downloads_encoding_audio_bitrate_kbps", 128);
+    if (audioBitrate > 0) {
+        [args addObjectsFromArray:@[@"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate]]];
+    }
+    NSString *channels = SCIFFmpegStringPref(@"downloads_encoding_audio_channels", @"original").lowercaseString;
+    if ([channels isEqualToString:@"mono"]) {
+        [args addObjectsFromArray:@[@"-ac", @"1"]];
+    } else if ([channels isEqualToString:@"stereo"]) {
+        [args addObjectsFromArray:@[@"-ac", @"2"]];
+    }
+}
+
+// Appends the video encoder options honoring the user's encoding settings: the
+// default path mirrors the default merge (libx264 + speed preset); advanced mode
+// mirrors the advanced merge's codec/CRF/bitrate/profile/level/pixel-format/
+// max-resolution options. Shared by the single-input trim and the DASH
+// trim+merge so both respect the same settings.
+static void SCIFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
+                                              NSInteger width,
+                                              NSInteger height,
+                                              NSInteger sourceBitrate) {
+    BOOL useAdvanced = [SCIUtils getBoolPref:@"downloads_adv_encoding"];
+
+    if (!useAdvanced) {
+        NSString *preset = SCIFFmpegPresetForSpeed(SCIFFmpegStringPref(@"downloads_encoding_speed", @"medium"));
+        [args addObjectsFromArray:@[
+            @"-c:v",       @"libx264",
+            @"-preset",    preset,
+            @"-pix_fmt",   @"yuv420p",
+            @"-profile:v", @"main",
+            @"-level",     @"4.0",
+        ]];
+        return;
+    }
+
+    NSString *maxResolution = SCIFFmpegStringPref(@"downloads_encoding_max_resolution", @"original");
+    NSInteger targetMaxResolution = [maxResolution isEqualToString:@"original"] ? 0 : MAX(maxResolution.integerValue, 0);
+    if (targetMaxResolution > 0 && width > 0 && height > 0) {
+        NSString *scaleFilter = width >= height
+            ? [NSString stringWithFormat:@"scale=%ld:-2", (long)targetMaxResolution]
+            : [NSString stringWithFormat:@"scale=-2:%ld", (long)targetMaxResolution];
+        [args addObjectsFromArray:@[@"-vf", scaleFilter]];
+    }
+
+    NSString *selectedCodec = SCIFFmpegStringPref(@"downloads_encoding_vid_codec", @"videotoolbox");
+    NSInteger configuredBitrate = SCIFFmpegConfiguredVideoBitrateKbpsOrZero();
+    NSInteger targetBitrate = configuredBitrate > 0 ? configuredBitrate : SCIFFmpegAdvancedDefaultBitrateKbps(sourceBitrate);
+
+    if ([selectedCodec isEqualToString:@"libx264"]) {
+        NSString *preset = SCIFFmpegStringPref(@"downloads_encoding_preset", @"medium");
+        NSString *profile = SCIFFmpegStringPref(@"downloads_encoding_h264_profile", @"main");
+        NSString *level = SCIFFmpegStringPref(@"downloads_encoding_h264_level", @"auto");
+        NSString *crf = SCIFFmpegStringPref(@"downloads_encoding_crf", @"");
+
+        [args addObjectsFromArray:@[@"-c:v", @"libx264", @"-preset", SCIFFmpegPresetForSpeed(preset)]];
+        if (crf.length > 0 && crf.integerValue > 0) {
+            [args addObjectsFromArray:@[@"-crf", crf]];
+        } else {
+            [args addObjectsFromArray:@[@"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate]]];
+        }
+        if (profile.length > 0 && ![profile isEqualToString:@"auto"]) {
+            [args addObjectsFromArray:@[@"-profile:v", profile]];
+        }
+        if (level.length > 0 && ![level isEqualToString:@"auto"]) {
+            [args addObjectsFromArray:@[@"-level", level]];
+        }
+    } else {
+        [args addObjectsFromArray:@[@"-c:v", @"h264_videotoolbox", @"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate]]];
+        if (SCIFFmpegDashSpeedTierUsesRealtime()) {
+            [args addObjectsFromArray:@[@"-realtime", @"1"]];
+        }
+        if (SCIFFmpegDashSpeedTierIsMaxQuality()) {
+            [args addObjectsFromArray:@[@"-profile:v", @"high", @"-level", @"5.1"]];
+        }
+    }
+
+    NSString *pixelFormat = SCIFFmpegStringPref(@"downloads_encoding_pixel_format", @"yuv420p");
+    if (pixelFormat.length > 0 && ![pixelFormat isEqualToString:@"default"]) {
+        [args addObjectsFromArray:@[@"-pix_fmt", pixelFormat]];
+    }
+}
+
+// Frame-accurate trim encode of a single (already-muxed) input. `-ss` before
+// `-i` is fast (input seek) yet exact when re-encoding, because FFmpeg's
+// accurate_seek (default) decodes from the preceding keyframe and discards
+// frames before `startSeconds`. `-t` bounds the output length.
+static NSArray<NSString *> *SCIFFmpegTrimArguments(NSURL *videoFileURL,
+                                                   NSURL *outputURL,
+                                                   NSTimeInterval startSeconds,
+                                                   NSTimeInterval durationSeconds,
+                                                   NSInteger width,
+                                                   NSInteger height,
+                                                   NSInteger sourceBitrate,
+                                                   SCIFFmpegTrimAudioMode audioMode) {
+    NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
+        @"-y",
+        @"-hide_banner",
+        @"-ss", [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
+        @"-i", videoFileURL.path,
+        @"-t", [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
+    ]];
+
+    if (audioMode == SCIFFmpegTrimAudioNone) {
+        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-an"]];
+    } else {
+        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-map", @"0:a:0"]];
+    }
+
+    SCIFFmpegAppendVideoEncodeOptions(args, width, height, sourceBitrate);
+    SCIFFmpegAppendTrimAudioOptions(args, audioMode);
+    [args addObjectsFromArray:@[@"-avoid_negative_ts", @"make_zero"]];
+    [args addObject:outputURL.path];
+    return args;
+}
+
+// Single-pass trim + merge of a separate DASH video and audio stream. Both
+// inputs are range-seeked (`-ss` before each `-i`) so over HTTP only the
+// selected window is fetched; audio is always re-encoded to AAC.
+static NSArray<NSString *> *SCIFFmpegTrimMergeArguments(NSString *videoSource,
+                                                        NSString *audioSource,
+                                                        NSURL *outputURL,
+                                                        NSTimeInterval startSeconds,
+                                                        NSTimeInterval durationSeconds,
+                                                        NSInteger width,
+                                                        NSInteger height) {
+    NSString *startStr = [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)];
+    NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
+        @"-y",
+        @"-hide_banner",
+        @"-ss", startStr, @"-i", videoSource,
+        @"-ss", startStr, @"-i", audioSource,
+        @"-t", [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
+        @"-map", @"0:v:0", @"-map", @"1:a:0",
+    ]];
+    SCIFFmpegAppendVideoEncodeOptions(args, width, height, 0);
+    SCIFFmpegAppendTrimAudioOptions(args, SCIFFmpegTrimAudioAAC);
+    [args addObjectsFromArray:@[@"-avoid_negative_ts", @"make_zero"]];
+    [args addObject:outputURL.path];
+    return args;
+}
+
 static NSURL *SCIFFmpegPreFaststartURL(NSString *basename, NSString *suffix) {
     NSString *safeBasename = basename.length > 0 ? basename : NSUUID.UUID.UUIDString;
     NSString *safeSuffix = suffix.length > 0 ? suffix : @"pre-faststart";
@@ -1527,6 +1685,149 @@ static void SCIFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         if (cancelOut) cancelOut(cancelBlock);
     },
                               nil);
+}
+
++ (void)trimVideoFileURL:(NSURL *)videoFileURL
+            startSeconds:(NSTimeInterval)startSeconds
+         durationSeconds:(NSTimeInterval)durationSeconds
+       preferredBasename:(NSString *)preferredBasename
+                progress:(SCIMediaFFmpegProgressBlock)progress
+              completion:(SCIMediaFFmpegCompletionBlock)completion
+               cancelOut:(SCIMediaFFmpegCancelBlockPublisher)cancelOut {
+    NSString *basename = preferredBasename.length > 0 ? preferredBasename : NSUUID.UUID.UUIDString;
+    NSURL *outputURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-trimmed.mp4", basename]]];
+    [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
+
+    // Don't demand an audio track on silent clips, and capture the source
+    // dimensions so advanced encoding (max-resolution scaling) can use them.
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:videoFileURL
+                                            options:@{ AVURLAssetPreferPreciseDurationAndTimingKey: @NO }];
+    BOOL hasAudio = [asset tracksWithMediaType:AVMediaTypeAudio].count > 0;
+
+    NSInteger width = 0;
+    NSInteger height = 0;
+    AVAssetTrack *videoTrack = [asset tracksWithMediaType:AVMediaTypeVideo].firstObject;
+    if (videoTrack) {
+        CGSize rendered = CGSizeApplyAffineTransform(videoTrack.naturalSize, videoTrack.preferredTransform);
+        width = (NSInteger)lround(fabs(rendered.width));
+        height = (NSInteger)lround(fabs(rendered.height));
+    }
+
+    NSArray<NSNumber *> *audioModes = hasAudio
+        ? @[ @(SCIFFmpegTrimAudioAAC), @(SCIFFmpegTrimAudioCopy), @(SCIFFmpegTrimAudioNone) ]
+        : @[ @(SCIFFmpegTrimAudioNone) ];
+
+    NSMutableArray<NSDictionary<NSString *, id> *> *attempts = [NSMutableArray array];
+    for (NSNumber *modeValue in audioModes) {
+        SCIFFmpegTrimAudioMode mode = (SCIFFmpegTrimAudioMode)modeValue.integerValue;
+        NSString *suffix = [NSString stringWithFormat:@"trim-%ld", (long)mode];
+        NSURL *encodeURL = SCIFFmpegPreFaststartURL(basename, [suffix stringByAppendingString:@"-pre-faststart"]);
+        [[NSFileManager defaultManager] removeItemAtURL:encodeURL error:nil];
+
+        [attempts addObject:@{
+            @"identifier": [NSString stringWithFormat:@"trim-%ld", (long)mode],
+            @"stage": @"Trimming video",
+            @"arguments": SCIFFmpegTrimArguments(videoFileURL, encodeURL, startSeconds, durationSeconds, width, height, 0, mode),
+            @"mainOutputURL": encodeURL,
+            @"postProcessArguments": SCIFFmpegFaststartArguments(encodeURL, outputURL),
+            @"cleanupPaths": @[ encodeURL.path ?: @"" ]
+        }];
+    }
+
+    __block dispatch_block_t currentCancel = nil;
+    if (cancelOut) {
+        cancelOut(^{
+            if (currentCancel) currentCancel();
+        });
+    }
+    SCIFFmpegRunMergeAttempts(attempts,
+                              0,
+                              outputURL,
+                              durationSeconds,
+                              YES,
+                              NO,
+                              progress,
+                              completion,
+                              ^(dispatch_block_t cancelBlock) {
+        currentCancel = [cancelBlock copy];
+    },
+                              nil);
+}
+
++ (void)trimMergeVideoURL:(NSURL *)videoURL
+                 audioURL:(NSURL *)audioURL
+             startSeconds:(NSTimeInterval)startSeconds
+          durationSeconds:(NSTimeInterval)durationSeconds
+        preferredBasename:(NSString *)preferredBasename
+                    width:(NSInteger)width
+                   height:(NSInteger)height
+                 progress:(SCIMediaFFmpegProgressBlock)progress
+               completion:(SCIMediaFFmpegCompletionBlock)completion
+                cancelOut:(SCIMediaFFmpegCancelBlockPublisher)cancelOut {
+    if (!videoURL || !audioURL) {
+        if (completion) completion(nil, SCIFFmpegError(@"Missing video or audio source for trim merge", 20));
+        return;
+    }
+
+    NSString *basename = preferredBasename.length > 0 ? preferredBasename : NSUUID.UUID.UUIDString;
+    NSURL *outputURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-trimmed.mp4", basename]]];
+    [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
+
+    NSString *videoSource = videoURL.isFileURL ? videoURL.path : videoURL.absoluteString;
+
+    void (^runWithAudioSource)(NSString *, dispatch_block_t) = ^(NSString *audioSource, dispatch_block_t cleanup) {
+        NSURL *encodeURL = SCIFFmpegPreFaststartURL(basename, @"trim-merge-pre-faststart");
+        [[NSFileManager defaultManager] removeItemAtURL:encodeURL error:nil];
+
+        NSArray<NSDictionary<NSString *, id> *> *attempts = @[ @{
+            @"identifier": @"trim-merge",
+            @"stage": @"Trimming video",
+            @"arguments": SCIFFmpegTrimMergeArguments(videoSource, audioSource, encodeURL, startSeconds, durationSeconds, width, height),
+            @"mainOutputURL": encodeURL,
+            @"postProcessArguments": SCIFFmpegFaststartArguments(encodeURL, outputURL),
+            @"cleanupPaths": @[ encodeURL.path ?: @"" ]
+        } ];
+
+        SCIMediaFFmpegCompletionBlock wrapped = ^(NSURL * _Nullable url, NSError * _Nullable err) {
+            if (cleanup) cleanup();
+            if (completion) completion(url, err);
+        };
+
+        __block dispatch_block_t currentCancel = nil;
+        if (cancelOut) {
+            cancelOut(^{
+                if (currentCancel) currentCancel();
+            });
+        }
+        SCIFFmpegRunMergeAttempts(attempts,
+                                  0,
+                                  outputURL,
+                                  durationSeconds,
+                                  YES,
+                                  YES,
+                                  progress,
+                                  wrapped,
+                                  ^(dispatch_block_t cancelBlock) {
+            currentCancel = [cancelBlock copy];
+        },
+                                  nil);
+    };
+
+    // Pre-convert the DASH audio to AAC-LC via AVFoundation first. IG's DASH
+    // audio is often xHE-AAC, which the bundled FFmpeg can't decode; iOS's audio
+    // stack can, so this makes the merge succeed. Falls back to the original
+    // audio if conversion fails (works for plain AAC-LC sources).
+    NSURL *convertedAudioURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-audio-aaclc.m4a", basename]]];
+    if (progress) progress(0.0, @"Converting audio");
+    SCIFFmpegConvertAudioToAACLCAsync(audioURL, convertedAudioURL, ^(NSURL * _Nullable preparedAudioURL, NSError * _Nullable convertError) {
+        if (preparedAudioURL && !convertError) {
+            runWithAudioSource(preparedAudioURL.path, ^{
+                [[NSFileManager defaultManager] removeItemAtURL:preparedAudioURL error:nil];
+            });
+        } else {
+            runWithAudioSource(audioURL.isFileURL ? audioURL.path : audioURL.absoluteString, nil);
+        }
+    });
 }
 
 @end

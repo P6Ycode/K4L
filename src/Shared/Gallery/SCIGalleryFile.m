@@ -633,6 +633,101 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     return YES;
 }
 
+- (BOOL)replaceMediaWithFileURL:(NSURL *)newURL
+                      mediaType:(SCIGalleryMediaType)mediaType
+                          error:(NSError **)error {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (!newURL || ![fm fileExistsAtPath:newURL.path]) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"SCIGallery" code:2
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Replacement file does not exist"}];
+        }
+        return NO;
+    }
+
+    NSString *dir = [SCIGalleryPaths galleryMediaDirectory];
+    NSString *oldMediaPath = [self filePath];
+    NSString *thumbPath = [self thumbnailPath];
+
+    NSString *stem = [self.relativePath stringByDeletingPathExtension];
+    if (stem.length == 0) {
+        stem = [NSUUID UUID].UUIDString;
+    }
+    NSString *newExt = SCIGalleryNormalizedExtension(newURL.pathExtension, mediaType);
+    NSString *newName = [stem stringByAppendingPathExtension:newExt];
+    NSString *newPath = [dir stringByAppendingPathComponent:newName];
+
+    // Land on a path distinct from the existing media file so the copy can be
+    // verified before the original is removed (a failed copy never destroys it).
+    if ([newPath isEqualToString:oldMediaPath] || [fm fileExistsAtPath:newPath]) {
+        for (int n = 1; n < 1000; n++) {
+            NSString *candidate = [NSString stringWithFormat:@"%@-%d.%@", stem, n, newExt];
+            NSString *candidatePath = [dir stringByAppendingPathComponent:candidate];
+            if (![candidatePath isEqualToString:oldMediaPath] && ![fm fileExistsAtPath:candidatePath]) {
+                newName = candidate;
+                newPath = candidatePath;
+                break;
+            }
+        }
+    }
+
+    NSError *copyError = nil;
+    if (![fm copyItemAtPath:newURL.path toPath:newPath error:&copyError]) {
+        SCILog(@"General", @"[SCInsta Gallery] Failed to copy replacement file: %@", copyError);
+        if (error) *error = copyError;
+        return NO;
+    }
+
+    if (![oldMediaPath isEqualToString:newPath]) {
+        [fm removeItemAtPath:oldMediaPath error:nil];
+    }
+
+    self.relativePath = newName;
+    self.mediaType = mediaType;
+
+    NSDictionary *attrs = [fm attributesOfItemAtPath:newPath error:nil];
+    self.fileSize = [attrs[NSFileSize] longLongValue];
+    // Reset so probeMediaAtPath (which only fills when <= 0) repopulates them.
+    self.pixelWidth = 0;
+    self.pixelHeight = 0;
+    self.durationSeconds = 0;
+    [[self class] probeMediaAtPath:newPath mediaType:mediaType file:self];
+
+    // Thumbnail path is keyed by identifier (unchanged), so drop the stale
+    // on-disk thumbnail and its cache entry before regenerating.
+    [fm removeItemAtPath:thumbPath error:nil];
+    [SCIGalleryThumbnailCache() removeObjectForKey:thumbPath];
+
+    NSManagedObjectContext *ctx = self.managedObjectContext ?: [SCIGalleryCoreDataStack shared].viewContext;
+    NSError *saveError = nil;
+    if (![ctx save:&saveError]) {
+        SCILog(@"General", @"[SCInsta Gallery] Failed to save replaced entity: %@", saveError);
+        if (error) *error = saveError;
+        return NO;
+    }
+
+    [[self class] generateThumbnailForFile:self completion:nil];
+    return YES;
+}
+
+- (SCIGallerySaveMetadata *)saveMetadata {
+    SCIGallerySaveMetadata *metadata = [[SCIGallerySaveMetadata alloc] init];
+    metadata.source = self.source;
+    metadata.sourceUsername = self.sourceUsername;
+    metadata.sourceUserPK = self.sourceUserPK;
+    metadata.sourceProfileURLString = self.sourceProfileURLString;
+    metadata.sourceMediaPK = self.sourceMediaPK;
+    metadata.sourceMediaCode = self.sourceMediaCode;
+    metadata.sourceMediaURLString = self.sourceMediaURLString;
+    metadata.customName = self.customName;
+    // Keep the derived copy's date/filename aligned with the original.
+    metadata.importCapturedDate = self.dateAdded;
+    metadata.importPostedDate = self.dateAdded;
+    // Dimensions/duration deliberately left unset — the trimmed file differs and
+    // is probed fresh.
+    return metadata;
+}
+
 #pragma mark - Paths
 
 - (NSString *)filePath {

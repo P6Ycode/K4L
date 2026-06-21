@@ -15,6 +15,10 @@
 #import "../Gallery/SCIGallerySaveMetadata.h"
 #import "../Gallery/SCIGalleryViewController.h"
 #import "../MediaDownload/SCIMediaQualityManager.h"
+#import "../MediaTrim/SCITrimConfiguration.h"
+#import "../MediaTrim/SCITrimResult.h"
+#import "../MediaTrim/SCITrimEditorViewController.h"
+#import "../MediaTrim/SCITrimSaveCoordinator.h"
 #import "../UI/SCIIGAlertPresenter.h"
 #import "../UI/SCIMediaChrome.h"
 #import "SCIFullScreenImageViewController.h"
@@ -162,6 +166,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 @property(nonatomic, strong) UIBarButtonItem *clipboardItem;
 @property(nonatomic, strong) UIBarButtonItem *bulkActionsItem;
 @property(nonatomic, strong) UIBarButtonItem *galleryOriginItem;
+@property(nonatomic, strong) UIBarButtonItem *trimItem;
 @property(nonatomic, assign) BOOL bulkActionsItemVisible;
 @property(nonatomic, assign) BOOL galleryOriginItemVisible;
 
@@ -561,6 +566,8 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
                                                  @selector(shareMedia));
   _clipboardItem = SCIMediaChromeBottomBarButtonItem(@"copy", @"Copy", self,
                                                      @selector(copyMedia));
+  _trimItem = SCIMediaChromeBottomBarButtonItem(@"trim", @"Trim", self,
+                                                @selector(trimCurrentItem));
 
   if (!_isFromGallery && _items.count > 1) {
     _bulkActionsItem =
@@ -593,6 +600,12 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   [primary addObject:_savePhotosItem];
   [primary addObject:_shareItem];
   [primary addObject:_clipboardItem];
+
+  // Trim is video-only and breaks out into its own trailing capsule so it reads
+  // as a distinct action rather than crowding the save/share group.
+  if (_trimItem && [self currentItem].mediaType == SCIMediaItemTypeVideo) {
+    [trailing addObject:_trimItem];
+  }
 
   if (_isFromGallery) {
     // Delete stays in the primary group; "more" breaks out into its own
@@ -1057,6 +1070,48 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   if (file.hasOpenableOriginalMedia && !file.hasOpenableProfile) {
     [self openOriginalPostForCurrentGalleryItem];
   }
+}
+
+#pragma mark - Trim
+
+- (void)trimCurrentItem {
+  SCIMediaItem *item = [self currentItem];
+  if (!item || item.mediaType != SCIMediaItemTypeVideo) {
+    return;
+  }
+  NSURL *url = item.resolvedFileURL ?: item.fileURL;
+  if (!url || ![[NSFileManager defaultManager] fileExistsAtPath:url.path]) {
+    SCINotify(@"sci.trim.preview", @"Cannot trim",
+              @"The video file is unavailable.", @"error_filled",
+              SCINotificationToneError);
+    return;
+  }
+  // Pause the preview's playback so its audio stops while the editor is open.
+  [[self currentVideoViewController] pause];
+
+  SCITrimConfiguration *config =
+      [SCITrimConfiguration configurationWithVideoURL:url];
+  __weak typeof(self) weakSelf = self;
+  [SCITrimEditorViewController presentWithConfiguration:config
+                                                  from:self
+                                            completion:^(SCITrimResult *result) {
+    if (!result) {
+      return;  // Cancelled.
+    }
+    [weakSelf saveTrimResultToGallery:result fromItem:item];
+  }];
+}
+
+- (void)saveTrimResultToGallery:(SCITrimResult *)result
+                       fromItem:(SCIMediaItem *)item {
+  // When the trimmed video came from the Gallery, the coordinator may offer to
+  // replace the original in place; otherwise it saves a new copy.
+  [SCITrimSaveCoordinator saveResult:result
+                          originFile:item.galleryFile
+                      fallbackSource:(SCIGallerySource)item.gallerySaveSource
+                          folderPath:nil
+                           presenter:self
+                          completion:nil];
 }
 
 - (void)updateGalleryOriginButton {

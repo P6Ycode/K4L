@@ -13,6 +13,7 @@
 #import "../MediaDownload/SCIMediaQualityManager.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../MediaPreview/SCIMediaItem.h"
+#import "../MediaTrim/SCITrimEntry.h"
 #import "../Gallery/SCIGalleryFile.h"
 #import "../Gallery/SCIGalleryOriginController.h"
 #import "../Gallery/SCIGallerySaveMetadata.h"
@@ -33,6 +34,7 @@ NSString * const kSCIActionDownloadShare = @"download_share";
 NSString * const kSCIActionCopyDownloadLink = @"copy_download_link";
 NSString * const kSCIActionCopyMedia = @"copy_media";
 NSString * const kSCIActionDownloadGallery = @"download_gallery";
+NSString * const kSCIActionTrimSave = @"trim_save";
 NSString * const kSCIActionDownloadAudio = @"download_audio";
 NSString * const kSCIActionDownloadAudioShare = @"download_audio_share";
 NSString * const kSCIActionDownloadAudioGallery = @"download_audio_gallery";
@@ -2027,6 +2029,19 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 		}
 		return YES;
 	}
+	if ([identifier isEqualToString:kSCIActionTrimSave]) {
+		// Video-only, but unlike thumbnail/download we can't rely on a resolved
+		// videoURL — feed-inline reels resolve it lazily. Fall back to a cheap
+		// media-object video check (duration / resolvable URL).
+		if (currentEntry.videoURL) {
+			if (context.source == SCIActionButtonSourceStories && currentEntry.photoURL) {
+				return ![currentEntry.videoURL isEqual:currentEntry.photoURL];
+			}
+			return YES;
+		}
+		id mediaObj = currentEntry.mediaObject ?: media;
+		return [SCIMediaQualityManager mediaObjectIsVideo:mediaObj];
+	}
 	if ([identifier isEqualToString:kSCIActionDownloadLibrary] ||
 		[identifier isEqualToString:kSCIActionDownloadShare] ||
 		[identifier isEqualToString:kSCIActionCopyDownloadLink] ||
@@ -2332,6 +2347,16 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
                                  resumePlayback:SCIResumePlaybackBlockForContext(context)];
         return YES;
     }
+
+	if ([identifier isEqualToString:kSCIActionTrimSave]) {
+		id mediaForTrim = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+		[SCITrimEntry beginTrimAndSaveForMediaObject:mediaForTrim
+		                                    photoURL:currentEntry.photoURL
+		                                    videoURL:currentEntry.videoURL
+		                                    metadata:meta
+		                                   presenter:SCIActionContextPresenter(context)];
+		return YES;
+	}
 
 	if ([identifier isEqualToString:kSCIActionDownloadLibrary] ||
 		[identifier isEqualToString:kSCIActionDownloadShare] ||
