@@ -138,6 +138,7 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"call": @{@"candidates": @[@"ig_icon_call_outline_24"]},
             @"caption": @{@"candidates": @[@"ig_icon_community_notes_outline_24"]},
             @"carousel": @{@"candidates": @[@"ig_icon_carousel_prism_outline_24", @"ig_icon_carousel_outline_24"]},
+            @"carousel_filled": @{@"candidates": @[@"ig_icon_carousel_prism_filled_12", @"ig_icon_carousel_filled_12"]},
             @"check": @{@"candidates": @[@"ig_icon_check_outline_24"]},
             @"chevron_right": @{@"candidates": @[@"ig_icon_chevron_right_filled_16", @"ig_icon_chevron_right_outline_16", @"ig_icon_chevron_right_filled_12", @"ig_icon_chevron_right_outline_12", @"ig_icon_chevron_right_filled_24", @"ig_icon_chevron_right_outline_24", @"ig_icon_chevron_right_filled_8", @"ig_icon_chevron_right_outline_8", @"ig_icon_chevron_right_filled_6", @"ig_icon_chevron_right_outline_6", @"ig_icon_chevron_right_filled_2", @"ig_icon_chevron_right_outline_2", @"ig_icon_chevron_right_filled_44", @"ig_icon_chevron_right_outline_44"]},
             @"chest": @{@"candidates": @[@"ig_icon_chest_outline_24"]},
@@ -235,9 +236,11 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             },
             @"reply": @{@"candidates": @[@"ig_icon_reply_outline_24"]},
             @"repost": @{@"candidates": @[@"ig_icon_reshare_pano_outline_24", @"ig_icon_reshare_outline_24"]},
+            @"repost_reels": @{@"candidates": @[@"reshare-unshadowed_outline_44"]},
             @"save": @{@"candidates": @[@"ig_icon_save_pano_outline_24", @"ig_icon_save_outline_24"]},
             @"search": @{@"candidates": @[@"ig_icon_search_pano_outline_24", @"ig_icon_search_outline_24"]},
             @"settings": @{@"candidates": @[@"ig_icon_settings_pano_outline_24", @"ig_icon_settings_outline_24"]},
+            @"settings_reels": @{@"candidates": @[@"ig_icon_settings_outline_44"]},
             @"share": @{@"candidates": @[@"ig_icon_share_pano_outline_24"]},
             @"share_reels": @{@"candidates": @[@"ig_icon_share_outline_44"]},
             @"shopping_bag": @{@"candidates": @[@"ig_icon_shopping_bag_pano_outline_24", @"ig_icon_shopping_bag_outline_24"]},
@@ -282,7 +285,8 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"volume_off": @{@"candidates": @[@"ig_icon_volume_off_pano_outline_24", @"ig_icon_volume_off_outline_24"]},
             @"warning": @{@"candidates": @[@"ig_icon_warning_pano_outline_24", @"ig_icon_warning_outline_24"]},
             @"warning_filled": @{@"candidates": @[@"ig_icon_warning_pano_filled_24", @"ig_icon_warning_filled_24"]},
-            @"xmark": @{@"candidates": @[@"ig_icon_x_pano_outline_24"]}
+            @"xmark": @{@"candidates": @[@"ig_icon_x_pano_outline_24"]},
+            @"zoom": @{@"candidates": @[@"ig_icon_fullscreen_outline_24"]}
         };
     });
     return overrides;

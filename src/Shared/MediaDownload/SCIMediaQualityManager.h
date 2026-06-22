@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Resolves how to source a trim for `mediaObject`. When `qualityOverride` is
 /// nil the user's `downloads_video_quality` setting is used (with `always_ask`
 /// treated as best); pass `high` / `high_ignore_dash` / `medium` / `low` to
-/// force a tier (used by the "Trim & Save…" quality prompt). Returns nil when
+/// force a tier (used by the "Trim & Save" quality prompt). Returns nil when
 /// the media isn't a video.
 + (nullable SCITrimSourcePlan *)trimSourcePlanForMediaObject:(nullable id)mediaObject
                                                    photoURL:(nullable NSURL *)photoURL

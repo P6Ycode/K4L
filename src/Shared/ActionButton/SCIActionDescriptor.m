@@ -24,7 +24,7 @@
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionCopyDownloadLink title:@"Copy Download URL" iconName:@"link"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionCopyMedia title:@"Copy Media" iconName:@"copy"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadGallery title:@"Save to Gallery" iconName:@"media"],
-            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionTrimSave title:@"Trim & Save…" iconName:@"trim"],
+            [SCIActionDescriptor descriptorWithIdentifier:kSCIActionTrimSave title:@"Trim & Save" iconName:@"trim"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAudio title:@"Save to Files" iconName:@"audio_download"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAudioShare title:@"Share" iconName:@"share"],
             [SCIActionDescriptor descriptorWithIdentifier:kSCIActionDownloadAudioGallery title:@"Save to Gallery" iconName:@"media"],

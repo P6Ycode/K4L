@@ -1904,10 +1904,7 @@ static SCITrimSourcePlan *SCIMediaTrimPlanFromOption(SCIMediaOption *chosen,
         addObject:[UIAction
                       actionWithTitle:playTitle
                                 image:SCIMediaIcon(
-                                          option.kind ==
-                                                  SCIMediaOptionKindAudioDash
-                                              ? @"audio"
-                                              : @"video",
+                                          @"play",
                                           kSCIMediaOptionIconPointSize)
                            identifier:nil
                               handler:^(__unused UIAction *action) {
@@ -1917,7 +1914,7 @@ static SCITrimSourcePlan *SCIMediaTrimPlanFromOption(SCIMediaOption *chosen,
     if (option.kind != SCIMediaOptionKindAudioDash) {
       [children
           addObject:[UIAction
-                        actionWithTitle:@"Extract Thumbnail"
+                        actionWithTitle:@"View Thumbnail"
                                   image:SCIMediaIcon(
                                             @"photo_gallery",
                                             kSCIMediaOptionIconPointSize)

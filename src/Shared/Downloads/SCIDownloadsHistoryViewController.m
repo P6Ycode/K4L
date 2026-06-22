@@ -773,7 +773,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
     cell.rowTypeIcon.hidden = NO;
     cell.rowTypeIconWidth.constant = 14;
     if (job.items.count > 1) {
-        cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:@"carousel" pointSize:12];
+        cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:@"carousel_filled" pointSize:12];
     } else {
         SCIDownloadItem *first = job.items.firstObject;
         cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:SCIMediaIconName(first.mediaKind) pointSize:12];

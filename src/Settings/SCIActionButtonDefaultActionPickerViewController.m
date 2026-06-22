@@ -52,9 +52,9 @@ static NSArray<NSDictionary *> *SCIActionButtonDefaultActionSections(SCIActionBu
     NSArray<NSString *> *supportedActions = SCIActionButtonSupportedActionsForSource(source);
     NSArray<NSDictionary *> *groups = @[
         @{@"title": @"Downloads", @"actions": @[kSCIActionDownloadLibrary, kSCIActionDownloadShare, kSCIActionDownloadGallery]},
-        @{@"title": @"Audio", @"actions": @[kSCIActionDownloadAudio, kSCIActionDownloadAudioShare, kSCIActionDownloadAudioGallery, kSCIActionPlayAudio, kSCIActionCopyAudioURL]},
-        @{@"title": @"Media", @"actions": @[kSCIActionExpand, kSCIActionViewThumbnail]},
+        @{@"title": @"Media", @"actions": @[kSCIActionExpand, kSCIActionViewThumbnail, kSCIActionTrimSave]},
         @{@"title": @"Copy", @"actions": @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionCopyCaption, kSCIActionProfileCopyInfo]},
+        @{@"title": @"Audio", @"actions": @[kSCIActionDownloadAudio, kSCIActionDownloadAudioShare, kSCIActionDownloadAudioGallery, kSCIActionPlayAudio, kSCIActionCopyAudioURL]},
         @{@"title": @"Other", @"actions": @[kSCIActionOpenTopicSettings, kSCIActionRepost, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionDeletedMessagesLog, kSCIActionNone]}
     ];
 

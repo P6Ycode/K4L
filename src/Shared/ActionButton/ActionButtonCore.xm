@@ -1607,12 +1607,19 @@ static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButt
     CGFloat height = image.size.height;
 
     if (source == SCIActionButtonSourceReels) {
-        if ([identifier isEqualToString:kSCIActionDownloadShare]) {
+        if ([identifier isEqualToString:kSCIActionDownloadShare] ||
+            [identifier isEqualToString:kSCIActionDownloadAudioShare]) {
             width = height = 38.0;
         } else if ([identifier isEqualToString:kSCIActionNone] ||
                    [identifier isEqualToString:kSCIActionViewThumbnail] ||
                    [identifier isEqualToString:kSCIActionDownloadGallery] ||
-                   [identifier isEqualToString:kSCIActionCopyMedia]) {
+                   [identifier isEqualToString:kSCIActionCopyMedia] ||
+                   [identifier isEqualToString:kSCIActionTrimSave] ||
+                   [identifier isEqualToString:kSCIActionDownloadAudio] ||
+                   [identifier isEqualToString:kSCIActionDownloadAudioGallery] ||
+                   [identifier isEqualToString:kSCIActionPlayAudio] ||
+                   [identifier isEqualToString:kSCIActionCopyCaption]) {
+            // Actions without a dedicated 44pt _reels asset render at 28pt.
             width = height = 28.0;
         }
     }
@@ -2904,10 +2911,13 @@ static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfigu
     NSArray<NSString *> *configuredBulkCopyIdentifiers = SCIActionButtonConfiguredBulkCopyActionsForSource(context.source);
 
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
-    UIMenuElement *downloadAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAll);
-    if (downloadAll) [children addObject:downloadAll];
-    UIMenuElement *copyAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAll);
-    if (copyAll) [children addObject:copyAll];
+    // Each bulk entry sits in its own inline group so they read as separate rows
+    // divided by separator lines. Download All / Copy All carry the download / copy
+    // icons (not the generic "more" icon).
+    UIMenuElement *downloadAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAllLibrary);
+    if (downloadAll) [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[downloadAll]]];
+    UIMenuElement *copyAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAllClipboard);
+    if (copyAll) [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[copyAll]]];
 
     // "Select Media" picker — destinations are the configured bulk actions.
     id media = SCIResolveMediaForContext(context);
@@ -2964,7 +2974,7 @@ static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfigu
                 }
             }];
         }];
-        [children addObject:selectMediaAction];
+        [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[selectMediaAction]]];
     }
 
     if (children.count == 0) return @[];
@@ -3120,6 +3130,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		if (![identifiers isKindOfClass:[NSArray class]] || identifiers.count == 0) continue;
 
 		NSMutableArray<UIMenuElement *> *groupElements = [NSMutableArray array];
+		UIMenuElement *profileCopyInfoElement = nil; // divided from the rest of Copy by a separator line
 		for (NSString *identifier in identifiers) {
 			if (![visibleActions containsObject:identifier]) continue;
 
@@ -3137,10 +3148,9 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
                         SCIExecuteActionIdentifier(copyIdentifier, context, NO);
                     }]];
                 }
-                UIMenuElement *copyInfoElement = SCISubmenuOrSingleElement(SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry),
-                                                                          SCIActionButtonMenuIconForContext(identifier, context, 22.0),
-                                                                          copyChildren);
-                if (copyInfoElement) [groupElements addObject:copyInfoElement];
+                profileCopyInfoElement = SCISubmenuOrSingleElement(SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry),
+                                                                   SCIActionButtonMenuIconForContext(identifier, context, 22.0),
+                                                                   copyChildren);
             } else {
                 UIAction *menuAction = [UIAction actionWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
                                                            image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
@@ -3155,6 +3165,20 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
                 [groupElements addObject:menuAction];
             }
 		}
+
+        // On profile, divide the "Copy Info" submenu from the rest of the Copy
+        // section with a separator line (two inline groups).
+        if (profileCopyInfoElement) {
+            if (groupElements.count > 0) {
+                UIMenu *restGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:[groupElements copy]];
+                UIMenu *infoGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[profileCopyInfoElement]];
+                [groupElements removeAllObjects];
+                [groupElements addObject:restGroup];
+                [groupElements addObject:infoGroup];
+            } else {
+                [groupElements addObject:profileCopyInfoElement];
+            }
+        }
 
         if (groupElements.count == 0) continue;
 		if (!firstGroup) {

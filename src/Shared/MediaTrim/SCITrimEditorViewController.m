@@ -176,7 +176,7 @@ static NSString *SCITrimFormatTime(NSTimeInterval seconds) {
     _playPauseButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _playPauseButton.translatesAutoresizingMaskIntoConstraints = NO;
     _playPauseButton.tintColor = [SCIUtils SCIColor_InstagramPrimaryText] ?: [UIColor whiteColor];
-    [_playPauseButton setImage:SCITrimPlayerIcon(@"video_play", 28.0) forState:UIControlStateNormal];
+    [_playPauseButton setImage:SCITrimPlayerIcon(@"video_play", 36.0) forState:UIControlStateNormal];
     [_playPauseButton addTarget:self action:@selector(togglePlayback) forControlEvents:UIControlEventTouchUpInside];
     _playPauseButton.accessibilityLabel = @"Play";
     [_bottomContent addSubview:_playPauseButton];
@@ -298,7 +298,7 @@ static NSString *SCITrimFormatTime(NSTimeInterval seconds) {
 // (which has no playback).
 - (void)updatePlaybackControls {
     BOOL canPlay = self.playerReady && !self.scrubber.isSingleFrameMode;
-    [self.playPauseButton setImage:SCITrimPlayerIcon(self.isPlaying ? @"video_pause" : @"video_play", 28.0)
+    [self.playPauseButton setImage:SCITrimPlayerIcon(self.isPlaying ? @"video_pause" : @"video_play", 36.0)
                           forState:UIControlStateNormal];
     self.playPauseButton.accessibilityLabel = self.isPlaying ? @"Pause" : @"Play";
     self.playPauseButton.enabled = canPlay;

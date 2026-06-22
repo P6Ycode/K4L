@@ -198,14 +198,12 @@ NSArray<NSString *> *SCIActionButtonConfiguredBulkCopyActionsForSource(SCIAction
 
 NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActionButtonSource source) {
     NSMutableArray<SCIActionMenuSection *> *sections = [NSMutableArray array];
-    NSArray<NSString *> *downloadActions = (source == SCIActionButtonSourceProfile)
-        ? @[kSCIActionDownloadLibrary, kSCIActionDownloadShare, kSCIActionDownloadGallery]
-        : @[
-            kSCIActionDownloadLibrary,
-            kSCIActionDownloadShare,
-            kSCIActionDownloadGallery,
-            kSCIActionViewThumbnail
-        ];
+    NSArray<NSString *> *downloadActions = @[
+        kSCIActionDownloadLibrary,
+        kSCIActionDownloadShare,
+        kSCIActionDownloadGallery,
+        kSCIActionTrimSave
+    ];
     NSArray<NSString *> *audioActions = (source == SCIActionButtonSourceFeed ||
                                          source == SCIActionButtonSourceReels ||
                                          source == SCIActionButtonSourceStories)
@@ -217,6 +215,10 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
             kSCIActionCopyAudioURL
         ]
         : @[];
+    // Zoom: expand + view thumbnail (profile has no thumbnail).
+    NSArray<NSString *> *zoomActions = (source == SCIActionButtonSourceProfile)
+        ? @[kSCIActionExpand]
+        : @[kSCIActionExpand, kSCIActionViewThumbnail];
     NSArray<NSString *> *copyActions = (source == SCIActionButtonSourceProfile)
             ? @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia, kSCIActionProfileCopyInfo]
         : ((source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels)
@@ -224,22 +226,24 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
             : @[kSCIActionCopyDownloadLink, kSCIActionCopyMedia]);
     NSArray<NSString *> *moreActions;
     if (source == SCIActionButtonSourceFeed || source == SCIActionButtonSourceReels) {
-        moreActions = @[kSCIActionExpand, kSCIActionRepost, kSCIActionOpenTopicSettings];
+        moreActions = @[kSCIActionRepost, kSCIActionOpenTopicSettings];
     } else if (source == SCIActionButtonSourceStories) {
-        moreActions = @[kSCIActionExpand, kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings];
+        moreActions = @[kSCIActionStoryMentionsSheet, kSCIActionToggleStorySeenUserRule, kSCIActionOpenTopicSettings];
     } else if (source == SCIActionButtonSourceDirect) {
-        moreActions = @[kSCIActionExpand, kSCIActionDeletedMessagesLog, kSCIActionOpenTopicSettings];
+        moreActions = @[kSCIActionDeletedMessagesLog, kSCIActionOpenTopicSettings];
     } else if (source == SCIActionButtonSourceProfile) {
-        moreActions = @[kSCIActionExpand, kSCIActionToggleProfileStorySeenUserRule, kSCIActionToggleProfileMessagesSeenUserRule, kSCIActionOpenTopicSettings];
+        moreActions = @[kSCIActionToggleProfileStorySeenUserRule, kSCIActionToggleProfileMessagesSeenUserRule, kSCIActionOpenTopicSettings];
     } else {
-        moreActions = @[kSCIActionExpand, kSCIActionOpenTopicSettings];
+        moreActions = @[kSCIActionOpenTopicSettings];
     }
 
-    [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"download"
-                                                              title:@"Download"
-                                                           iconName:@"download"
-                                                        collapsible:YES
-                                                            actions:downloadActions]];
+    if (moreActions.count > 0) {
+        [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"more"
+                                                                  title:@"More"
+                                                               iconName:@"more"
+                                                            collapsible:YES
+                                                                actions:moreActions]];
+    }
     if (audioActions.count > 0) {
         [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"audio"
                                                                   title:@"Audio"
@@ -247,16 +251,23 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
                                                             collapsible:YES
                                                                 actions:audioActions]];
     }
+    if (zoomActions.count > 0) {
+        [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"zoom"
+                                                                  title:@"Zoom"
+                                                               iconName:@"zoom"
+                                                            collapsible:YES
+                                                                actions:zoomActions]];
+    }
     [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"copy"
                                                               title:@"Copy"
                                                            iconName:@"copy"
                                                         collapsible:YES
                                                             actions:copyActions]];
-    [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"more"
-                                                              title:@"More"
-                                                           iconName:@"more"
+    [sections addObject:[SCIActionMenuSection sectionWithIdentifier:@"download"
+                                                              title:@"Download"
+                                                           iconName:@"download"
                                                         collapsible:YES
-                                                            actions:moreActions]];
+                                                            actions:downloadActions]];
     return sections;
 }
 
@@ -300,11 +311,8 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
     if (SCIActionButtonBulkDownloadSupportedActionsForSource(source).count > 0 ||
         SCIActionButtonBulkCopySupportedActionsForSource(source).count > 0) {
         BOOL hasBulkSection = NO;
-        NSUInteger afterCopyIndex = configuration.sections.count;
-        for (NSUInteger i = 0; i < configuration.sections.count; i++) {
-            NSString *sid = configuration.sections[i].identifier;
-            if ([sid isEqualToString:@"bulk"]) { hasBulkSection = YES; break; }
-            if ([sid isEqualToString:@"copy"]) afterCopyIndex = i + 1;
+        for (SCIActionMenuSection *section in configuration.sections) {
+            if ([section.identifier isEqualToString:@"bulk"]) { hasBulkSection = YES; break; }
         }
         if (!hasBulkSection) {
             SCIActionMenuSection *bulkSection = [SCIActionMenuSection sectionWithIdentifier:@"bulk"
@@ -312,7 +320,8 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
                                                                                   iconName:@"carousel"
                                                                                collapsible:YES
                                                                                    actions:@[]];
-            [configuration.sections insertObject:bulkSection atIndex:MIN(afterCopyIndex, configuration.sections.count)];
+            // Appended last so the Bulk section is the bottom-most when available.
+            [configuration.sections addObject:bulkSection];
         }
     }
 
