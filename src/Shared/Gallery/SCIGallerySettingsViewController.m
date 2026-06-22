@@ -151,7 +151,16 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
     favoritesRow.action = ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIGalleryFavoritesSortPreferenceChanged" object:nil];
     };
-    [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow], @"Pin favorites above other files inside the current sort and folder context.")];
+    // Defaults ON; the backing pref stores the *disabled* state, so the switch inverts.
+    SCISetting *pinFolderRow = [SCISetting switchCellWithTitle:@"Pin Folder Bar" icon:SCISettingsIcon(@"folder") defaultsKey:@""];
+    pinFolderRow.switchValueProvider = ^BOOL{
+        return ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryFolderBarPinDisabledKey];
+    };
+    pinFolderRow.switchChangeHandler = ^(BOOL isOn) {
+        [[NSUserDefaults standardUserDefaults] setBool:!isOn forKey:kSCIGalleryFolderBarPinDisabledKey];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kSCIGalleryGridControlsChangedNotification object:nil];
+    };
+    [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow, pinFolderRow], @"Pin favorites above other files inside the current sort and folder context. Keep the subfolder bar pinned to the top while scrolling.")];
     [sections addObject:SCITopicSection(@"Visibility", @[
         [SCISetting navigationCellWithTitle:@"Hidden Sources"
                                    subtitle:@""

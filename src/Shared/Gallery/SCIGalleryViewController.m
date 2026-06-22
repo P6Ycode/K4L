@@ -1,5 +1,6 @@
 #import "SCIGalleryViewController.h"
 #import "SCIGalleryFile.h"
+#import "SCIGalleryFileDetailsViewController.h"
 #import "SCIGalleryGridCell.h"
 #import "SCIGalleryGridDensity.h"
 #import "SCIGalleryFolderChipBar.h"
@@ -128,6 +129,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 @property (nonatomic, strong) UIBarButtonItem *cachedSearchToolbarItem;
 @property (nonatomic, copy) NSString *searchQuery;
 @property (nonatomic, assign) BOOL preservingSearchQuery;
+// When YES (and a query is active), search ignores the folder scope and matches
+// across all folders; the search bar scope buttons toggle it.
+@property (nonatomic, assign) BOOL searchAllFolders;
 
 @end
 
@@ -311,6 +315,10 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
                          forSearchBarIcon:UISearchBarIconSearch 
                                     state:UIControlStateNormal];
     controller.searchBar.placeholder = @"Search...";
+    // Scope toggle: search the current folder, or across all folders. Let the
+    // search controller manage the scope bar's visibility (shown while searching).
+    controller.searchBar.scopeButtonTitles = @[@"This Folder", @"All Folders"];
+    controller.automaticallyShowsScopeBar = YES;
     self.searchController = controller;
     self.navigationItem.searchController = controller;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
@@ -515,6 +523,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         layout.minimumInteritemSpacing = 0;
         layout.minimumLineSpacing = 0;
     }
+    layout.sectionHeadersPinToVisibleBounds = SCIGalleryFolderBarPinned();
     return layout;
 }
 
@@ -699,18 +708,22 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         [sortDescriptors insertObject:[NSSortDescriptor sortDescriptorWithKey:@"isFavorite" ascending:NO] atIndex:0];
     }
     request.sortDescriptors = sortDescriptors;
+    NSString *query = [self.searchQuery stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    // "Search all folders" only applies while actually searching; otherwise stay
+    // scoped to the current folder.
+    BOOL searchingAllFolders = self.searchAllFolders && query.length > 0;
     NSPredicate *basePredicate = [SCIGalleryFilterViewController predicateForTypes:self.filterTypes
                                                                          sources:self.filterSources
                                                                    favoritesOnly:self.filterFavoritesOnly
                                                                        usernames:self.filterUsernames
-                                                                      folderPath:self.currentFolderPath];
+                                                                      folderPath:self.currentFolderPath
+                                                                   scopeToFolder:!searchingAllFolders];
     NSPredicate *visibleSources = SCIGalleryVisibleSourcesPredicate();
     if (visibleSources) {
         basePredicate = basePredicate
             ? [NSCompoundPredicate andPredicateWithSubpredicates:@[basePredicate, visibleSources]]
             : visibleSources;
     }
-    NSString *query = [self.searchQuery stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (query.length == 0) {
         request.predicate = basePredicate;
         return request;
@@ -718,7 +731,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
     NSPredicate *searchPredicate = [NSPredicate predicateWithFormat:@"(sourceUsername CONTAINS[cd] %@) OR (customName CONTAINS[cd] %@) OR (relativePath CONTAINS[cd] %@)",
                                     query, query, query];
-    request.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[basePredicate, searchPredicate]];
+    // basePredicate can be nil when searching all folders with no other filters
+    // active (no folder scope, no filters) — don't put nil into the AND array.
+    request.predicate = basePredicate
+        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[basePredicate, searchPredicate]]
+        : searchPredicate;
     return request;
 }
 
@@ -856,8 +873,25 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [cell configureWithGalleryFile:file
                    selectionMode:self.selectionMode
                         selected:[self.selectedFileIDs containsObject:file.identifier]];
+    [cell setFolderContextName:[self searchResultFolderNameForFile:file]];
     [cell setMoreActionsMenu:self.selectionMode ? nil : [self fileActionsMenuForFile:file]];
     return cell;
+}
+
+// The folder a search result lives in, shown on the cell only while searching
+// across all folders and when the file is in a different, non-root folder.
+- (NSString *)searchResultFolderNameForFile:(SCIGalleryFile *)file {
+    if (!self.searchAllFolders || self.searchQuery.length == 0) {
+        return nil;
+    }
+    NSString *folderPath = file.folderPath;
+    if (folderPath.length == 0) {
+        return nil; // root
+    }
+    if ([folderPath isEqualToString:self.currentFolderPath ?: @""]) {
+        return nil; // already the folder we're in
+    }
+    return [folderPath lastPathComponent];
 }
 
 - (UICollectionReusableView *)collectionView:(UICollectionView *)cv
@@ -986,6 +1020,8 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     }
     self.searchQuery = nil;
     self.searchController.searchBar.text = nil;
+    self.searchAllFolders = NO;
+    self.searchController.searchBar.selectedScopeButtonIndex = 0;
 }
 
 - (void)scrollGridToTop {
@@ -1292,6 +1328,15 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     [self refetch];
 }
 
+- (void)searchBar:(UISearchBar *)searchBar selectedScopeButtonIndexDidChange:(NSInteger)selectedScope {
+    BOOL allFolders = (selectedScope == 1);
+    if (allFolders == self.searchAllFolders) {
+        return;
+    }
+    self.searchAllFolders = allFolders;
+    [self refetch];
+}
+
 - (void)willDismissSearchController:(UISearchController *)searchController {
     if (self.selectionMode) {
         self.preservingSearchQuery = YES;
@@ -1423,11 +1468,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         [weakSelf refetch];
     }];
 
-     UIImage *renameImg = SCIGalleryMenuActionIcon(@"edit");
-    UIAction *renameAction = [UIAction actionWithTitle:@"Rename"
-                                                 image:renameImg
+     UIImage *editImg = SCIGalleryMenuActionIcon(@"edit");
+    UIAction *renameAction = [UIAction actionWithTitle:@"Edit Details"
+                                                 image:editImg
                                             identifier:nil
-                                               handler:^(UIAction *a) { [weakSelf renameFile:file]; }];
+                                               handler:^(UIAction *a) { [weakSelf editDetailsForFile:file]; }];
 
      UIImage *moveImg = SCIGalleryMenuActionIcon(@"folder_move");
     UIAction *moveAction = [UIAction actionWithTitle:@"Move to Folder"
@@ -1497,27 +1542,39 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     deleteAction.attributes = UIMenuElementAttributesDestructive;
 
-    NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
-    if (openOriginalAction) [children addObject:openOriginalAction];
-    if (openProfileAction) [children addObject:openProfileAction];
-    if (children.count > 0) {
-        [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[]]];
-    }
+    UIAction *usernameAction = nil;
     if (file.sourceUsername.length > 0) {
         NSString *username = [file.sourceUsername copy];
         BOOL isCurrentUsernameFilter = [self usernameFilterContainsUsername:username];
-        UIAction *usernameAction = [UIAction actionWithTitle:[NSString stringWithFormat:@"%@ %@", (isCurrentUsernameFilter ? @"Undo View All from" : @"View All from"), username]
-                                                       image:SCIGalleryMenuActionIcon(@"mention")
-                                                  identifier:nil
-                                                     handler:^(__unused UIAction *a) {
+        usernameAction = [UIAction actionWithTitle:[NSString stringWithFormat:@"%@ %@", (isCurrentUsernameFilter ? @"Undo View All from" : @"View All from"), username]
+                                             image:SCIGalleryMenuActionIcon(@"mention")
+                                        identifier:nil
+                                           handler:^(__unused UIAction *a) {
             [weakSelf toggleUsernameFilter:username];
         }];
-        [children addObject:usernameAction];
     }
-    [children addObjectsFromArray:@[favoriteAction, renameAction, moveAction]];
-    if (trimAction) [children addObject:trimAction];
-    [children addObjectsFromArray:@[shareAction, deleteAction]];
-    return [UIMenu menuWithTitle:@"" children:children];
+
+    // Grouped into inline sections so related actions read together and the
+    // destructive delete is isolated at the bottom: open/navigate · edit · share ·
+    // delete.
+    NSMutableArray<UIMenuElement *> *openSection = [NSMutableArray array];
+    if (openOriginalAction) [openSection addObject:openOriginalAction];
+    if (openProfileAction) [openSection addObject:openProfileAction];
+    if (usernameAction) [openSection addObject:usernameAction];
+
+    NSMutableArray<UIMenuElement *> *editSection = [NSMutableArray arrayWithObject:favoriteAction];
+    [editSection addObject:renameAction];
+    [editSection addObject:moveAction];
+    if (trimAction) [editSection addObject:trimAction];
+
+    NSMutableArray<UIMenu *> *sections = [NSMutableArray array];
+    if (openSection.count > 0) {
+        [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:openSection]];
+    }
+    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:editSection]];
+    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[shareAction]]];
+    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[deleteAction]]];
+    return [UIMenu menuWithTitle:@"" children:sections];
 }
 
 - (UIContextMenuConfiguration *)contextMenuForFile:(SCIGalleryFile *)file {
@@ -1730,24 +1787,20 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 #pragma mark - File rename / move
 
-- (void)renameFile:(SCIGalleryFile *)file {
-    [SCIIGAlertPresenter presentTextInputAlertFromViewController:self
-                                                           title:@"Rename"
-                                                         message:@"Enter a custom display name for this file."
-                                                     placeholder:nil
-                                                     initialText:[file displayName]
-                                                autocapitalized:NO
-                                                    confirmTitle:@"Save"
-                                                     cancelTitle:@"Cancel"
-                                                    confirmStyle:SCIIGAlertActionStyleDefault
-                                                    confirmBlock:^(NSString *text) {
-        NSString *newName = [text stringByTrimmingCharactersInSet:
-                             [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        file.customName = newName.length > 0 ? newName : nil;
-        [[SCIGalleryCoreDataStack shared] saveContext];
-        [self.collectionView reloadData];
+- (void)editDetailsForFile:(SCIGalleryFile *)file {
+    SCIGalleryFileDetailsViewController *vc = [[SCIGalleryFileDetailsViewController alloc] initWithFile:file];
+    __weak typeof(self) weakSelf = self;
+    vc.onSaved = ^{ [weakSelf refetch]; };
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    if (@available(iOS 16.0, *)) {
+        nav.sheetPresentationController.detents = @[
+            UISheetPresentationControllerDetent.mediumDetent,
+            UISheetPresentationControllerDetent.largeDetent,
+        ];
+        nav.sheetPresentationController.prefersGrabberVisible = YES;
     }
-                                                     cancelBlock:nil];
+    [self presentViewController:nav animated:YES completion:nil];
 }
 
 - (void)trimFile:(SCIGalleryFile *)file {
@@ -2097,6 +2150,14 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     (void)note;
     [self refreshBottomToolbarItems];
     [self reconfigureVisibleGridCells];
+    if ([self.collectionView.collectionViewLayout isKindOfClass:[UICollectionViewFlowLayout class]]) {
+        UICollectionViewFlowLayout *flow = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
+        BOOL pinned = SCIGalleryFolderBarPinned();
+        if (flow.sectionHeadersPinToVisibleBounds != pinned) {
+            flow.sectionHeadersPinToVisibleBounds = pinned;
+            [flow invalidateLayout];
+        }
+    }
 }
 
 #pragma mark - Settings

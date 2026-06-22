@@ -72,6 +72,15 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
                      favoritesOnly:(BOOL)favoritesOnly
                            usernames:(NSSet<NSString *> *)usernames
                         folderPath:(NSString *)folderPath {
+    return [self predicateForTypes:types sources:sources favoritesOnly:favoritesOnly usernames:usernames folderPath:folderPath scopeToFolder:YES];
+}
+
++ (NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
+                           sources:(NSSet<NSNumber *> *)sources
+                     favoritesOnly:(BOOL)favoritesOnly
+                           usernames:(NSSet<NSString *> *)usernames
+                        folderPath:(NSString *)folderPath
+                     scopeToFolder:(BOOL)scopeToFolder {
     NSMutableArray<NSPredicate *> *parts = [NSMutableArray new];
     if (types.count > 0) {
         NSArray *typeList = [types.allObjects sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES]]];
@@ -94,11 +103,13 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
             [parts addObject:[NSCompoundPredicate orPredicateWithSubpredicates:usernameParts]];
         }
     }
-    if (folderPath.length > 0) {
-        [parts addObject:[NSPredicate predicateWithFormat:@"folderPath == %@", folderPath]];
-    } else {
-        // Root: only items not stored inside a folder (nil or empty string).
-        [parts addObject:[NSPredicate predicateWithFormat:@"(folderPath == nil) OR (folderPath == %@)", @""]];
+    if (scopeToFolder) {
+        if (folderPath.length > 0) {
+            [parts addObject:[NSPredicate predicateWithFormat:@"folderPath == %@", folderPath]];
+        } else {
+            // Root: only items not stored inside a folder (nil or empty string).
+            [parts addObject:[NSPredicate predicateWithFormat:@"(folderPath == nil) OR (folderPath == %@)", @""]];
+        }
     }
     if (parts.count == 0) return nil;
     return [NSCompoundPredicate andPredicateWithSubpredicates:parts];

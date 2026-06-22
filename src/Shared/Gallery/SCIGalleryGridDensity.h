@@ -11,7 +11,12 @@ NS_ASSUME_NONNULL_BEGIN
 FOUNDATION_EXPORT NSString * const kSCIGalleryGridColumnsKey;          // NSInteger, persisted column count
 FOUNDATION_EXPORT NSString * const kSCIGalleryGridPinchDisabledKey;    // BOOL, YES disables pinch-to-zoom
 FOUNDATION_EXPORT NSString * const kSCIGalleryGridShowSourceUsernameDisabledKey; // BOOL, YES hides source icon + username overlays
+FOUNDATION_EXPORT NSString * const kSCIGalleryFolderBarPinDisabledKey; // BOOL, YES unpins the folder bar (lets it scroll away)
 FOUNDATION_EXPORT NSString * const kSCIGalleryGridControlsChangedNotification;
+
+/// Whether the folder bar (subfolder chips) stays pinned to the top while
+/// scrolling. Defaults to YES; the backing pref stores the disabled state.
+FOUNDATION_EXPORT BOOL SCIGalleryFolderBarPinned(void);
 
 // Allowed densities and bounds.
 FOUNDATION_EXPORT NSInteger const kSCIGalleryGridColumnsDefault;

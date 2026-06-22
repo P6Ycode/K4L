@@ -212,6 +212,20 @@
     return [SCIAssetUtils instagramIconNamed:resourceName pointSize:20.0];
 }
 
+- (void)setFolderContextName:(NSString *)folderName {
+    NSString *base = [self.file listTechnicalLine] ?: @"";
+    // Prepend the folder so it stays visible — the technical detail truncates at
+    // the tail instead of hiding the folder when the line is long.
+    if (folderName.length == 0) {
+        self.technicalLabel.text = base;
+        return;
+    }
+    NSString *folderPart = [NSString stringWithFormat:@"· in \"%@\"", folderName];
+    self.technicalLabel.text = base.length > 0
+        ? [NSString stringWithFormat:@"%@ · %@", folderPart, base]
+        : folderPart;
+}
+
 - (void)configureWithGalleryFile:(SCIGalleryFile *)file
                  selectionMode:(BOOL)selectionMode
                       selected:(BOOL)selected {
@@ -219,6 +233,7 @@
     self.titleLabel.text = [file listPrimaryTitle];
     self.technicalLabel.text = [file listTechnicalLine];
     self.pillLabel.text = [file shortSourceLabel];
+    [self setFolderContextName:nil];
     self.dateLabel.text = [file listDownloadDateString];
 
     BOOL isVideo = (file.mediaType == SCIGalleryMediaTypeVideo);

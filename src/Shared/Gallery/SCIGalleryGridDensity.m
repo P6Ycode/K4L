@@ -3,7 +3,12 @@
 NSString * const kSCIGalleryGridColumnsKey = @"gallery_grid_columns";
 NSString * const kSCIGalleryGridPinchDisabledKey = @"gallery_grid_pinch_disabled";
 NSString * const kSCIGalleryGridShowSourceUsernameDisabledKey = @"gallery_grid_show_source_username_disabled";
+NSString * const kSCIGalleryFolderBarPinDisabledKey = @"gallery_folder_bar_pin_disabled";
 NSString * const kSCIGalleryGridControlsChangedNotification = @"SCIGalleryGridControlsPreferenceChanged";
+
+BOOL SCIGalleryFolderBarPinned(void) {
+    return ![[NSUserDefaults standardUserDefaults] boolForKey:kSCIGalleryFolderBarPinDisabledKey];
+}
 
 NSInteger const kSCIGalleryGridColumnsDefault = 3;
 NSInteger const kSCIGalleryGridColumnsMin = 2;

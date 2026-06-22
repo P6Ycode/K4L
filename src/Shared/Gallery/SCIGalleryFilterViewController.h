@@ -40,6 +40,15 @@ NS_ASSUME_NONNULL_BEGIN
                                    usernames:(NSSet<NSString *> *)usernames
                                  folderPath:(nullable NSString *)folderPath;
 
+/// When `scopeToFolder` is NO, no folder constraint is applied (search/browse
+/// across all folders); otherwise behaves like the method above.
++ (nullable NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
+                                    sources:(NSSet<NSNumber *> *)sources
+                              favoritesOnly:(BOOL)favoritesOnly
+                                   usernames:(NSSet<NSString *> *)usernames
+                                 folderPath:(nullable NSString *)folderPath
+                              scopeToFolder:(BOOL)scopeToFolder;
+
 @end
 
 NS_ASSUME_NONNULL_END
