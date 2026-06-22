@@ -87,8 +87,15 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 // Bottom toolbar is the hosting navigation controller's native UIToolbar.
 // iOS 26 renders it as a Liquid Glass pill; earlier systems show a standard bar.
 
-// Folder navigation
+// Folder navigation. Folders are browsed in place (one shared-chrome view
+// controller) rather than by pushing a new view controller per folder, so the
+// nav bar / search / toolbar are never recreated or cross-faded — which is what
+// produced the Liquid Glass transition flashes. `folderTrail` is the stack of
+// folder paths from root to the current folder (empty at root); `folderScrollOffsets`
+// holds the parallel grid scroll position to restore when navigating back.
 @property (nonatomic, copy, nullable) NSString *currentFolderPath;
+@property (nonatomic, strong) NSMutableArray<NSString *> *folderTrail;
+@property (nonatomic, strong) NSMutableArray<NSValue *> *folderScrollOffsets;
 @property (nonatomic, strong) NSArray<NSString *> *subfolders;
 
 // View mode
@@ -107,7 +114,18 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 @property (nonatomic, strong) NSMutableSet<NSString *> *filterUsernames;
 @property (nonatomic, assign) BOOL selectionMode;
 @property (nonatomic, strong) NSMutableSet<NSString *> *selectedFileIDs;
+// Signatures of the last-applied nav bar items, tracked separately for the
+// leading and trailing groups. The leading button changes as you browse folders
+// (close ⇄ back), but the trailing group does not — so reassigning trailing on
+// every folder change just re-lays-out its Liquid Glass pill (a visible jump).
+@property (nonatomic, copy) NSString *lastLeadingNavSignature;
+@property (nonatomic, copy) NSString *lastTrailingNavSignature;
 @property (nonatomic, strong) UISearchController *searchController;
+// The iOS 26 integrated search button, vended and cached once at load so the
+// bottom toolbar always installs the same fully-materialized instance. If we let
+// each refresh re-vend it lazily, the nav bar wins the first transition layout
+// and briefly renders it in its top-right home (the flash) before we relocate it.
+@property (nonatomic, strong) UIBarButtonItem *cachedSearchToolbarItem;
 @property (nonatomic, copy) NSString *searchQuery;
 @property (nonatomic, assign) BOOL preservingSearchQuery;
 
@@ -150,6 +168,12 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 - (instancetype)initWithFolderPath:(NSString *)folderPath {
     if ((self = [super init])) {
         _currentFolderPath = [folderPath copy];
+        _folderTrail = [NSMutableArray array];
+        _folderScrollOffsets = [NSMutableArray array];
+        // Seed the trail if we were opened directly inside a folder (root is empty).
+        if (_currentFolderPath.length > 0) {
+            [_folderTrail addObject:_currentFolderPath];
+        }
         _filterTypes = [NSMutableSet set];
         _filterSources = [NSMutableSet set];
         _filterUsernames = [NSMutableSet set];
@@ -196,6 +220,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     [self setupBottomToolbar];
     [self setupCollectionView];
     [self setupEmptyState];
+    [self setupFolderBackGesture];
     [self setupFetchedResultsController];
     [self reloadSubfolders];
     [self updateEmptyState];
@@ -289,9 +314,24 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     self.searchController = controller;
     self.navigationItem.searchController = controller;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
+    // iOS 26 integrated search button: collapses search into a single button (the
+    // vended `searchBarPlacementBarButtonItem`) instead of an always-visible bar.
+    // That item is toolbar-only, so it lives in the bottom toolbar.
     if (@available(iOS 26.0, *)) {
         @try {
             [self.navigationItem setValue:@(kSCIUINavigationItemSearchBarPlacementIntegratedButton) forKey:@"preferredSearchBarPlacement"];
+            // Force the integrated button to fully materialize now (and cache it), so
+            // the bottom toolbar claims a ready instance on its very first build. If
+            // it's vended lazily later, the nav bar renders it in its top-right home
+            // for a frame during the first transition — the flash the user sees, which
+            // only stops once search has been activated (which forces this same
+            // materialization). Loading the controller's view commits that state up
+            // front, the way a real activation does.
+            [self.searchController loadViewIfNeeded];
+            UIBarButtonItem *vended = [self.navigationItem valueForKey:@"searchBarPlacementBarButtonItem"];
+            if ([vended isKindOfClass:[UIBarButtonItem class]]) {
+                self.cachedSearchToolbarItem = vended;
+            }
         } @catch (__unused NSException *exception) {
         }
     }
@@ -299,12 +339,12 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 }
 
 - (void)refreshNavigationItems {
+    // Selection-mode select-all icon reflects current selection.
+    NSString *selectionIcon = @"circle";
+    NSString *selectionAccessibilityLabel = @"Select all";
     if (self.selectionMode) {
         NSArray<SCIGalleryFile *> *files = [self visibleGalleryFiles];
         BOOL allSelected = files.count > 0 && self.selectedFileIDs.count == files.count;
-        UIBarButtonItem *cancelItem = SCIGalleryTextBarButtonItem(@"Cancel", self, @selector(exitSelectionMode));
-        NSString *selectionIcon = @"circle";
-        NSString *selectionAccessibilityLabel = @"Select all";
         if (allSelected) {
             selectionIcon = @"circle_check_filled";
             selectionAccessibilityLabel = @"Deselect all";
@@ -312,26 +352,47 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
             selectionIcon = @"circle_check";
             selectionAccessibilityLabel = @"Select all";
         }
-        UIBarButtonItem *selectAllItem = SCIMediaChromeTopBarButtonItem(selectionIcon, self, @selector(selectAllVisibleFiles));
-        selectAllItem.accessibilityLabel = selectionAccessibilityLabel;
-        SCIMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ cancelItem ]);
-        SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ selectAllItem ]);
-        return;
     }
 
-    if (self.navigationController.viewControllers.firstObject == self) {
-        SCIMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ SCIMediaChromeTopBarButtonItem(@"xmark", self, @selector(dismissSelf)) ]);
-    } else {
-        SCIMediaChromeSetLeadingTopBarItems(self.navigationItem, @[]);
+    // Leading group changes as you browse (close ⇄ back) or enter selection
+    // (Cancel). Apply only when it actually changes.
+    NSString *leadingSignature = self.selectionMode ? @"cancel"
+        : ([self canNavigateBackInFolders] ? @"back" : @"close");
+    if (![leadingSignature isEqualToString:self.lastLeadingNavSignature]) {
+        self.lastLeadingNavSignature = leadingSignature;
+        UIBarButtonItem *leadingItem;
+        if (self.selectionMode) {
+            leadingItem = SCIMediaChromeTopBarButtonItem(@"circle_xmark", self, @selector(exitSelectionMode));
+            leadingItem.accessibilityLabel = @"Cancel";
+        } else if ([self canNavigateBackInFolders]) {
+            leadingItem = SCIMediaChromeTopBarButtonItem(@"chevron_left", self, @selector(navigateBackInFolders));
+        } else {
+            leadingItem = SCIMediaChromeTopBarButtonItem(@"xmark", self, @selector(dismissSelf));
+        }
+        SCIMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ leadingItem ]);
     }
 
-    NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
-    UIBarButtonItem *selectItem = SCIMediaChromeTopBarButtonItem(@"circle_check", self, @selector(enterSelectionMode));
-    [items addObject:selectItem];
-    if (self.navigationController.viewControllers.firstObject == self) {
-        [items addObject:SCIMediaChromeTopBarButtonItem(@"settings", self, @selector(pushSettings))];
+    // Trailing group only changes between browse (Select + Settings) and selection
+    // (Select-all, whose icon tracks the count) — never on folder navigation. Apply
+    // only on change so the Liquid Glass pill doesn't re-lay-out (a visible jump).
+    NSString *trailingSignature = self.selectionMode
+        ? [@"selectAll:" stringByAppendingString:selectionIcon]
+        : @"browse";
+    if (![trailingSignature isEqualToString:self.lastTrailingNavSignature]) {
+        self.lastTrailingNavSignature = trailingSignature;
+        if (self.selectionMode) {
+            UIBarButtonItem *selectAllItem = SCIMediaChromeTopBarButtonItem(selectionIcon, self, @selector(selectAllVisibleFiles));
+            selectAllItem.accessibilityLabel = selectionAccessibilityLabel;
+            SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ selectAllItem ]);
+        } else {
+            // Search is the native iOS 26 integrated button (toolbar-only), so it
+            // lives in the bottom toolbar, not here.
+            NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
+            [items addObject:SCIMediaChromeTopBarButtonItem(@"circle_check", self, @selector(enterSelectionMode))];
+            [items addObject:SCIMediaChromeTopBarButtonItem(@"settings", self, @selector(pushSettings))];
+            SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, items);
+        }
     }
-    SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, items);
 }
 
 - (void)setupBottomToolbar {
@@ -344,17 +405,6 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
 - (void)refreshBottomToolbarItems {
     SCIMediaChromeConfigureBottomToolbar(self.navigationController.toolbar);
-
-    UIBarButtonItem *searchItem = nil;
-    if (@available(iOS 26.0, *)) {
-        @try {
-            searchItem = [self.navigationItem valueForKey:@"searchBarPlacementBarButtonItem"];
-        } @catch (__unused NSException *exception) {
-        }
-    }
-    if (!searchItem) {
-        searchItem = [self galleryBottomBarItemWithResource:@"search" accessibility:@"Search" action:@selector(activateSearch)];
-    }
 
     NSArray<UIBarButtonItem *> *primary;
     if (self.selectionMode) {
@@ -378,8 +428,32 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         primary = @[toggleItem, sortItem, filterItem, folderItem];
     }
 
-    // Search lives in its own trailing capsule (iOS 26 Liquid Glass).
-    self.toolbarItems = SCIMediaChromeBottomToolbarItemsWithTrailingGroup(primary, @[searchItem]);
+    // Search lives in its own trailing capsule in both browse and selection modes
+    // (you can search to find more items to select).
+    self.toolbarItems = SCIMediaChromeBottomToolbarItemsWithTrailingGroup(primary, @[ [self bottomToolbarSearchItem] ]);
+}
+
+// The bottom toolbar's search item: the native iOS 26 integrated search button
+// (toolbar-only, materialized + cached at load), falling back to a custom button
+// that reveals the nav bar search on older systems.
+- (UIBarButtonItem *)bottomToolbarSearchItem {
+    UIBarButtonItem *searchItem = self.cachedSearchToolbarItem;
+    if (!searchItem) {
+        if (@available(iOS 26.0, *)) {
+            @try {
+                UIBarButtonItem *vended = [self.navigationItem valueForKey:@"searchBarPlacementBarButtonItem"];
+                if ([vended isKindOfClass:[UIBarButtonItem class]]) {
+                    searchItem = vended;
+                    self.cachedSearchToolbarItem = vended;
+                }
+            } @catch (__unused NSException *exception) {
+            }
+        }
+    }
+    if (!searchItem) {
+        searchItem = [self galleryBottomBarItemWithResource:@"search" accessibility:@"Search" action:@selector(activateSearch)];
+    }
+    return searchItem;
 }
 
 #pragma mark - Collection View
@@ -823,13 +897,114 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
     return header;
 }
 
-/// Opens the subfolder at `index` as a pushed child gallery.
+/// Opens the subfolder at `index` in place (no pushed view controller).
 - (void)openSubfolderAtIndex:(NSInteger)index {
     if (self.selectionMode) return;
     if (index < 0 || index >= (NSInteger)self.subfolders.count) return;
-    NSString *subfolderPath = self.subfolders[index];
-    SCIGalleryViewController *child = [[SCIGalleryViewController alloc] initWithFolderPath:subfolderPath];
-    [self.navigationController pushViewController:child animated:YES];
+    [self navigateIntoFolder:self.subfolders[index]];
+}
+
+#pragma mark - In-place folder navigation
+
+// Left-edge swipe to go up a folder, mirroring the native pop gesture (we no
+// longer push view controllers, so the system one doesn't apply).
+- (void)setupFolderBackGesture {
+    UIScreenEdgePanGestureRecognizer *edgePan = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(handleFolderBackEdgePan:)];
+    edgePan.edges = UIRectEdgeLeft;
+    [self.view addGestureRecognizer:edgePan];
+}
+
+- (void)handleFolderBackEdgePan:(UIScreenEdgePanGestureRecognizer *)gesture {
+    if (gesture.state == UIGestureRecognizerStateBegan && [self canNavigateBackInFolders]) {
+        [self navigateBackInFolders];
+    }
+}
+
+- (BOOL)canNavigateBackInFolders {
+    return self.folderTrail.count > 0;
+}
+
+/// Descends into `subfolderPath` by re-scoping the current screen's data, instead
+/// of pushing a new view controller — keeping the shared chrome intact.
+- (void)navigateIntoFolder:(NSString *)subfolderPath {
+    if (subfolderPath.length == 0) {
+        return;
+    }
+    // Remember where we were so returning restores the grid position.
+    [self.folderScrollOffsets addObject:[NSValue valueWithCGPoint:self.collectionView.contentOffset]];
+    [self.folderTrail addObject:subfolderPath];
+    self.currentFolderPath = subfolderPath;
+
+    [self prepareForFolderChange];
+    __weak typeof(self) weakSelf = self;
+    [self replaceGridContentWithCrossfade:^{
+        [weakSelf refetch];
+        [weakSelf scrollGridToTop];
+    }];
+    [self setupCenteredTitle];
+    [self refreshNavigationItems];
+}
+
+/// Returns to the parent folder, restoring its previous scroll position.
+- (void)navigateBackInFolders {
+    if (![self canNavigateBackInFolders]) {
+        return;
+    }
+    [self.folderTrail removeLastObject];
+    self.currentFolderPath = self.folderTrail.lastObject; // nil at root
+
+    CGPoint restoreOffset = CGPointZero;
+    BOOL hasRestoreOffset = NO;
+    if (self.folderScrollOffsets.count > 0) {
+        restoreOffset = [self.folderScrollOffsets.lastObject CGPointValue];
+        [self.folderScrollOffsets removeLastObject];
+        hasRestoreOffset = YES;
+    }
+
+    [self prepareForFolderChange];
+    __weak typeof(self) weakSelf = self;
+    [self replaceGridContentWithCrossfade:^{
+        [weakSelf refetch];
+        if (hasRestoreOffset) {
+            [weakSelf.collectionView setContentOffset:restoreOffset animated:NO];
+        } else {
+            [weakSelf scrollGridToTop];
+        }
+    }];
+    [self setupCenteredTitle];
+    [self refreshNavigationItems];
+}
+
+/// Shared cleanup when changing folders: exit selection and clear any active search
+/// so each folder opens in a clean browse state.
+- (void)prepareForFolderChange {
+    if (self.selectionMode) {
+        [self exitSelectionMode];
+    }
+    if (self.searchController.active) {
+        self.searchController.active = NO;
+    }
+    self.searchQuery = nil;
+    self.searchController.searchBar.text = nil;
+}
+
+- (void)scrollGridToTop {
+    CGFloat topY = -self.collectionView.adjustedContentInset.top;
+    [self.collectionView setContentOffset:CGPointMake(0.0, topY) animated:NO];
+}
+
+/// Smoothly swaps the grid's contents with a cross-dissolve (no positional slide,
+/// so no layout jank). `contentUpdate` should apply the new data/scroll; the
+/// transition dissolves the old contents into the new.
+- (void)replaceGridContentWithCrossfade:(void (^)(void))contentUpdate {
+    if (!contentUpdate) {
+        return;
+    }
+    [UIView transitionWithView:self.collectionView
+                      duration:0.22
+                       options:(UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction)
+                    animations:contentUpdate
+                    completion:nil];
 }
 
 /// Context menu (rename/delete/etc.) for the folder chip at `index`, reusing the
@@ -903,9 +1078,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         if (self.selectionMode) {
             return;
         }
-        NSString *subfolderPath = self.subfolders[indexPath.item];
-        SCIGalleryViewController *child = [[SCIGalleryViewController alloc] initWithFolderPath:subfolderPath];
-        [self.navigationController pushViewController:child animated:YES];
+        [self navigateIntoFolder:self.subfolders[indexPath.item]];
         return;
     }
 
@@ -1045,14 +1218,36 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     if (file.identifier.length == 0) {
         return;
     }
+    BOOL nowSelected;
     if ([self.selectedFileIDs containsObject:file.identifier]) {
         [self.selectedFileIDs removeObject:file.identifier];
+        nowSelected = NO;
     } else {
         [self.selectedFileIDs addObject:file.identifier];
+        nowSelected = YES;
     }
     [self setupCenteredTitle];
     [self refreshNavigationItems];
-    [self.collectionView reloadData];
+    // Update just the tapped cell's selection badge. A full reloadData here
+    // reconfigures every visible cell, which re-toggles their gradient scrims and
+    // makes them flash.
+    [self updateSelectionBadgeForFile:file selected:nowSelected];
+}
+
+- (void)updateSelectionBadgeForFile:(SCIGalleryFile *)file selected:(BOOL)selected {
+    for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
+        SCIGalleryFile *visibleFile = [self galleryFileForCollectionIndexPath:indexPath];
+        if (![visibleFile.identifier isEqualToString:file.identifier]) {
+            continue;
+        }
+        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+        if ([cell isKindOfClass:[SCIGalleryGridCell class]]) {
+            [(SCIGalleryGridCell *)cell setSelectionMode:self.selectionMode selected:selected animated:YES];
+        } else if ([cell isKindOfClass:[SCIGalleryListCollectionCell class]]) {
+            [(SCIGalleryListCollectionCell *)cell setSelectionMode:self.selectionMode selected:selected animated:YES];
+        }
+        break;
+    }
 }
 
 - (void)selectAllVisibleFiles {
@@ -1221,6 +1416,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                  handler:^(UIAction *a) {
         file.isFavorite = !file.isFavorite;
         [[SCIGalleryCoreDataStack shared] saveContext];
+        // Re-sort/reload so the item visibly moves (e.g. up to the top when
+        // "favorites at top" is on) and its badge updates — the FRC's implicit
+        // re-sort on an in-place property change isn't reliable. Matches the bulk
+        // favorite path.
+        [weakSelf refetch];
     }];
 
      UIImage *renameImg = SCIGalleryMenuActionIcon(@"edit");

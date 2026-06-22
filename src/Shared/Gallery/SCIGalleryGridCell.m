@@ -274,10 +274,15 @@ static NSString *SCIGalleryGridFormatDuration(double seconds) {
         self.usernameLabel.hidden = YES;
     }
 
-    // Scrims only when there is overlay content to keep legible.
+    // Scrims only when there is overlay content to keep legible. Toggle their
+    // hidden state with implicit layer animations disabled, otherwise the scrim
+    // fades in/out when the cell is reconfigured and reads as a flash.
     BOOL hasBottomOverlay = hasTypeBadge || (showsUsername && username != nil);
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     self.bottomScrim.hidden = !hasBottomOverlay;
     self.topScrim.hidden = !(showsSource && !self.sourceBadgeBackground.hidden);
+    [CATransaction commit];
 
     self.favoriteBadge.hidden = !file.isFavorite;
 
