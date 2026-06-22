@@ -362,7 +362,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
         self.lastLeadingNavSignature = leadingSignature;
         UIBarButtonItem *leadingItem;
         if (self.selectionMode) {
-            leadingItem = SCIMediaChromeTopBarButtonItem(@"circle_xmark", self, @selector(exitSelectionMode));
+            leadingItem = SCIMediaChromeTopBarButtonItem(@"xmark", self, @selector(exitSelectionMode));
             leadingItem.accessibilityLabel = @"Cancel";
         } else if ([self canNavigateBackInFolders]) {
             leadingItem = SCIMediaChromeTopBarButtonItem(@"chevron_left", self, @selector(navigateBackInFolders));
@@ -1996,14 +1996,14 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     UISheetPresentationController *sheet = nav.sheetPresentationController;
     if (sheet) {
         if (@available(iOS 16.0, *)) {
-            UISheetPresentationControllerDetent *compact = [UISheetPresentationControllerDetent
-                customDetentWithIdentifier:@"scinsta.gallery.sort.compact"
+            CGFloat fitHeight = [self sheetFitHeightForContentHeight:[vc sciContentHeightForWidth:[self sheetContentWidth]]];
+            UISheetPresentationControllerDetent *fit = [UISheetPresentationControllerDetent
+                customDetentWithIdentifier:@"scinsta.gallery.sort.fit"
                                    resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                CGFloat target = MIN(385.0, context.maximumDetentValue * 0.54);
-                return MAX(355.0, target);
+                return MIN(context.maximumDetentValue, fitHeight);
             }];
-            sheet.detents = @[compact];
-            sheet.selectedDetentIdentifier = compact.identifier;
+            sheet.detents = @[fit];
+            sheet.selectedDetentIdentifier = fit.identifier;
         } else {
             sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent];
         }
@@ -2011,6 +2011,20 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     }
 
     [self presentViewController:nav animated:YES completion:nil];
+}
+
+// Single fixed sheet height for the sort/filter sheets: the controller's content
+// height plus the sheet nav bar and the device's bottom safe area. Computed once
+// at present time so there's no layout-time detent invalidation (which deadlocks
+// iOS 26 via an observation feedback loop).
+- (CGFloat)sheetFitHeightForContentHeight:(CGFloat)contentHeight {
+    CGFloat bottomSafe = self.view.window.safeAreaInsets.bottom;
+    CGFloat navBar = 56.0; // grabber + nav bar in a sheet
+    return navBar + contentHeight + bottomSafe + 8.0;
+}
+
+- (CGFloat)sheetContentWidth {
+    return CGRectGetWidth(self.view.bounds);
 }
 
 - (void)presentFilter {
@@ -2029,17 +2043,14 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     UISheetPresentationController *sheet = nav.sheetPresentationController;
     if (sheet) {
         if (@available(iOS 16.0, *)) {
-            UISheetPresentationControllerDetent *expanded = [UISheetPresentationControllerDetent
-                customDetentWithIdentifier:@"scinsta.gallery.filter.expanded"
+            CGFloat fitHeight = [self sheetFitHeightForContentHeight:[vc sciContentHeightForWidth:[self sheetContentWidth]]];
+            UISheetPresentationControllerDetent *fit = [UISheetPresentationControllerDetent
+                customDetentWithIdentifier:@"scinsta.gallery.filter.fit"
                                    resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                CGFloat maximum = showsUsernameSection ? 575.0 : 495.0;
-                CGFloat minimum = showsUsernameSection ? 510.0 : 445.0;
-                CGFloat fraction = showsUsernameSection ? 0.84 : 0.78;
-                CGFloat target = MIN(maximum, context.maximumDetentValue * fraction);
-                return MIN(context.maximumDetentValue, MAX(minimum, target));
+                return MIN(context.maximumDetentValue, fitHeight);
             }];
-            sheet.detents = @[expanded];
-            sheet.selectedDetentIdentifier = expanded.identifier;
+            sheet.detents = @[fit];
+            sheet.selectedDetentIdentifier = fit.identifier;
         } else {
             sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent];
         }

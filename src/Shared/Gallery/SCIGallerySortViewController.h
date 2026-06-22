@@ -25,6 +25,11 @@ typedef NS_ENUM(NSInteger, SCIGallerySortMode) {
 @property (nonatomic, assign) SCIGallerySortMode currentSortMode;
 @property (nonatomic, assign) BOOL currentGroupByMediaType;
 
+/// The height the content needs at the given width (excluding the nav bar and
+/// bottom safe area), so the presenter can size a single fixed sheet detent to it
+/// once — no layout-time detent invalidation (which deadlocks iOS 26).
+- (CGFloat)sciContentHeightForWidth:(CGFloat)width;
+
 + (NSArray<NSSortDescriptor *> *)sortDescriptorsForMode:(SCIGallerySortMode)mode;
 + (NSArray<NSSortDescriptor *> *)sortDescriptorsForMode:(SCIGallerySortMode)mode groupByMediaType:(BOOL)groupByMediaType;
 + (NSString *)labelForMode:(SCIGallerySortMode)mode;

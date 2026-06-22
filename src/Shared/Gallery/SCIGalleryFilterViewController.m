@@ -2,6 +2,7 @@
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 #import "SCIGalleryHiddenSources.h"
+#import "SCIGalleryUserPickerViewController.h"
 
 static CGFloat const kSCIGalleryFilterChipLabelPointSize = 16.0;
 static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
@@ -53,7 +54,6 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
 
 @property (nonatomic, strong) NSMutableArray<SCIGalleryFilterChip *> *typeChips;
 @property (nonatomic, strong) NSMutableArray<SCIGalleryFilterChip *> *sourceChips;
-@property (nonatomic, strong) NSMutableArray<SCIGalleryFilterChip *> *usernameChips;
 @property (nonatomic, strong) UILabel *usernameSectionTitle;
 @property (nonatomic, strong) UIControl *favoritesRow;
 @property (nonatomic, strong) UIImageView *favoritesLeadingIcon;
@@ -61,6 +61,7 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
 @property (nonatomic, strong) UIControl *clearRow;
 @property (nonatomic, strong) UIImageView *clearLeadingIcon;
 @property (nonatomic, strong) UILabel *clearLabel;
+@property (nonatomic, strong) UILabel *usernameRowLabel;
 
 @end
 
@@ -109,7 +110,6 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
         _filterSources = [NSMutableSet new];
         _typeChips = [NSMutableArray new];
         _sourceChips = [NSMutableArray new];
-        _usernameChips = [NSMutableArray new];
         _filterUsernames = [NSMutableSet new];
         _availableUsernames = @[];
     }
@@ -127,6 +127,18 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self updateScrollAvailability];
+}
+
+// Height the content needs at `width`: the content stack's fitting height plus
+// its 12pt top/bottom insets. Excludes the nav bar and bottom safe area, which
+// the presenter adds.
+- (CGFloat)sciContentHeightForWidth:(CGFloat)width {
+    [self loadViewIfNeeded];
+    CGFloat innerWidth = MAX(0.0, width - 32.0); // 16pt leading + 16pt trailing
+    CGFloat stackHeight = [self.contentStack systemLayoutSizeFittingSize:CGSizeMake(innerWidth, 0.0)
+                                          withHorizontalFittingPriority:UILayoutPriorityRequired
+                                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
+    return 12.0 + stackHeight + 12.0;
 }
 
 - (void)setupNavigationBar {
@@ -280,42 +292,82 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     return grid;
 }
 
+// A disclosure row that pushes a full-screen searchable multi-select picker —
+// scales to hundreds of users, unlike the old horizontal chip strip.
 - (UIView *)createUsernameRow {
-    UIScrollView *scrollView = [[UIScrollView alloc] init];
-    scrollView.showsHorizontalScrollIndicator = NO;
-    scrollView.delaysContentTouches = YES;
-    scrollView.canCancelContentTouches = YES;
-    scrollView.directionalLockEnabled = YES;
-    scrollView.alwaysBounceHorizontal = YES;
-    [scrollView.heightAnchor constraintEqualToConstant:44].active = YES;
+    UIControl *row = [[UIControl alloc] init];
+    row.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
+    row.layer.cornerRadius = 12;
+    [row.heightAnchor constraintEqualToConstant:50].active = YES;
+    [row addTarget:self action:@selector(usernameRowTapped) forControlEvents:UIControlEventTouchUpInside];
 
-    UIStackView *row = [[UIStackView alloc] init];
-    row.axis = UILayoutConstraintAxisHorizontal;
-    row.spacing = 8;
-    row.translatesAutoresizingMaskIntoConstraints = NO;
-    [scrollView addSubview:row];
+    UIImage *rowIcon = [SCIAssetUtils instagramIconNamed:@"mention" pointSize:18.0];
+    UIImageView *icon = [[UIImageView alloc] initWithImage:rowIcon];
+    icon.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:icon];
+
+    UILabel *label = [[UILabel alloc] init];
+    label.font = [UIFont systemFontOfSize:kSCIGalleryFilterChipLabelPointSize weight:UIFontWeightMedium];
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.78;
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:label];
+    self.usernameRowLabel = label;
+
+    UIImage *chevronImg = [SCIAssetUtils instagramIconNamed:@"chevron_right" pointSize:14.0];
+    UIImageView *chevron = [[UIImageView alloc] initWithImage:chevronImg];
+    chevron.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    chevron.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:chevron];
 
     [NSLayoutConstraint activateConstraints:@[
-        [row.leadingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.leadingAnchor],
-        [row.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor],
-        [row.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor],
-        [row.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor],
-        [row.heightAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.heightAnchor],
+        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12],
+        [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [icon.widthAnchor constraintEqualToConstant:18],
+        [icon.heightAnchor constraintEqualToConstant:18],
+        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10],
+        [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [chevron.leadingAnchor constraintGreaterThanOrEqualToAnchor:label.trailingAnchor constant:8],
+        [chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
+        [chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [chevron.widthAnchor constraintEqualToConstant:14],
+        [chevron.heightAnchor constraintEqualToConstant:14],
     ]];
+    [self updateUsernameRowLabel];
+    return row;
+}
 
-    for (NSString *username in self.availableUsernames) {
-        SCIGalleryFilterChip *chip = [[SCIGalleryFilterChip alloc] initWithTag:self.usernameChips.count];
-        [chip setTitle:username forState:UIControlStateNormal];
-        UIImage *icon = [SCIAssetUtils instagramIconNamed:@"mention" pointSize:kSCIGalleryFilterChipIconPointSize];
-        [chip setImage:icon forState:UIControlStateNormal];
-        chip.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
-        chip.selectedChip = [self usernameFilterContainsUsername:username];
-        [chip addTarget:self action:@selector(usernameChipTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [chip.heightAnchor constraintEqualToConstant:44].active = YES;
-        [row addArrangedSubview:chip];
-        [self.usernameChips addObject:chip];
+- (void)updateUsernameRowLabel {
+    NSUInteger count = self.filterUsernames.count;
+    self.usernameRowLabel.text = count > 0
+        ? [NSString stringWithFormat:@"%lu user%@ selected", (unsigned long)count, count == 1 ? @"" : @"s"]
+        : @"All users";
+    self.usernameRowLabel.textColor = count > 0
+        ? [SCIUtils SCIColor_InstagramPrimaryText]
+        : [SCIUtils SCIColor_InstagramSecondaryText];
+}
+
+- (void)usernameRowTapped {
+    SCIGalleryUserPickerViewController *picker = [[SCIGalleryUserPickerViewController alloc]
+        initWithUsernames:self.availableUsernames selected:self.filterUsernames];
+    __weak typeof(self) weakSelf = self;
+    picker.selectionChanged = ^(NSSet<NSString *> *selected) {
+        weakSelf.filterUsernames = [selected mutableCopy];
+        [weakSelf updateUsernameRowLabel];
+        [weakSelf updateUsernameSectionTitle];
+        [weakSelf notifyFilterStateChanged];
+    };
+    // Present as its own full-height sheet rather than pushing into the filter's
+    // single-size sheet, so the searchable list gets full height and the filter
+    // sheet keeps one fixed size.
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
+    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    if (@available(iOS 16.0, *)) {
+        nav.sheetPresentationController.detents = @[UISheetPresentationControllerDetent.largeDetent];
+        nav.sheetPresentationController.prefersGrabberVisible = YES;
     }
-    return scrollView;
+    [self presentViewController:nav animated:YES completion:nil];
 }
 
 - (UIView *)createFavoritesRow {
@@ -430,41 +482,11 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     [self notifyFilterStateChanged];
 }
 
-- (void)usernameChipTapped:(SCIGalleryFilterChip *)chip {
-    NSInteger index = chip.itemTag;
-    if (index < 0 || index >= (NSInteger)self.availableUsernames.count) return;
-    NSString *username = self.availableUsernames[index];
-    NSString *existing = [self matchingSelectedUsernameForUsername:username];
-    if (existing.length > 0) {
-        [self.filterUsernames removeObject:existing];
-    } else {
-        [self.filterUsernames addObject:username];
-    }
-    for (SCIGalleryFilterChip *candidate in self.usernameChips) {
-        NSInteger candidateIndex = candidate.itemTag;
-        NSString *candidateUsername = candidateIndex >= 0 && candidateIndex < (NSInteger)self.availableUsernames.count ? self.availableUsernames[candidateIndex] : nil;
-        candidate.selectedChip = [self usernameFilterContainsUsername:candidateUsername];
-    }
-    [self updateUsernameSectionTitle];
-    [self notifyFilterStateChanged];
-}
-
-- (NSString *)matchingSelectedUsernameForUsername:(NSString *)username {
-    if (username.length == 0) return nil;
-    for (NSString *selectedUsername in self.filterUsernames) {
-        if ([selectedUsername caseInsensitiveCompare:username] == NSOrderedSame) return selectedUsername;
-    }
-    return nil;
-}
-
-- (BOOL)usernameFilterContainsUsername:(NSString *)username {
-    return [self matchingSelectedUsernameForUsername:username].length > 0;
-}
-
 - (void)updateUsernameSectionTitle {
+    // Static header like the other sections; the selection count lives on the row
+    // itself, so don't duplicate it here.
     if (!self.usernameSectionTitle) return;
-    NSUInteger count = self.filterUsernames.count;
-    self.usernameSectionTitle.text = count > 0 ? [NSString stringWithFormat:@"Username (%lu selected)", (unsigned long)count] : @"Username";
+    self.usernameSectionTitle.text = @"Username";
 }
 
 - (void)favoritesRowTapped {
@@ -526,8 +548,8 @@ static CGFloat const kSCIGalleryFilterChipIconPointSize = 14.0;
     [self updateFavoritesRowAppearance];
     for (SCIGalleryFilterChip *c in self.typeChips) c.selectedChip = NO;
     for (SCIGalleryFilterChip *c in self.sourceChips) c.selectedChip = NO;
-    for (SCIGalleryFilterChip *c in self.usernameChips) c.selectedChip = NO;
     [self updateUsernameSectionTitle];
+    [self updateUsernameRowLabel];
     if ([self.delegate respondsToSelector:@selector(filterControllerDidClear:)]) {
         [self.delegate filterControllerDidClear:self];
     } else {

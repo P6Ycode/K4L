@@ -62,6 +62,7 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
 @interface SCIGallerySortViewController ()
 @property (nonatomic, strong) NSMutableArray<SCIGallerySortChip *> *sortChips;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *groupChips;
+@property (nonatomic, strong) UIStackView *contentStack;
 @end
 
 @implementation SCIGallerySortViewController
@@ -135,12 +136,27 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
     self.title = @"Sort";
 }
 
+// Height the content needs at `width`: the stack's fitting height plus its top
+// (14) and bottom (12) margins. Excludes the nav bar and bottom safe area, which
+// the presenter adds.
+- (CGFloat)sciContentHeightForWidth:(CGFloat)width {
+    if (!self.contentStack) {
+        [self loadViewIfNeeded];
+    }
+    CGFloat innerWidth = MAX(0.0, width - 40.0); // 20pt leading + 20pt trailing
+    CGFloat stackHeight = [self.contentStack systemLayoutSizeFittingSize:CGSizeMake(innerWidth, 0.0)
+                                          withHorizontalFittingPriority:UILayoutPriorityRequired
+                                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
+    return 14.0 + stackHeight + 12.0;
+}
+
 - (void)setupContent {
     UIStackView *stack = [[UIStackView alloc] init];
     stack.axis = UILayoutConstraintAxisVertical;
     stack.spacing = 10;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:stack];
+    self.contentStack = stack;
 
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[

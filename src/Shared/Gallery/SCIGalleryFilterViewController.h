@@ -28,6 +28,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSMutableSet<NSString *> *filterUsernames;
 @property (nonatomic, copy) NSArray<NSString *> *availableUsernames;
 
+/// The height the content needs at the given width (excluding the nav bar and
+/// bottom safe area), so the presenter can size a single fixed sheet detent to it
+/// once — no layout-time detent invalidation (which deadlocks iOS 26).
+- (CGFloat)sciContentHeightForWidth:(CGFloat)width;
+
 /// Composes an NSPredicate from the given filters, or nil if no filters are active.
 + (nullable NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
                                     sources:(NSSet<NSNumber *> *)sources
