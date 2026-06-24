@@ -19,9 +19,10 @@ NSPredicate *SCIGalleryAccountScopePredicate(void) {
     if (![SCIUtils getBoolPref:@"gallery_filter_current_account"]) return nil;  // "All accounts"
     NSString *pk = [SCIAccountManager currentAccountPK];
     if (pk.length == 0) return nil;  // logged out / unresolved — don't hide anything
-    // Current account's files, plus legacy/unassigned files (so enabling the
-    // filter never makes pre-existing media vanish; reassign via edit details).
-    return [NSPredicate predicateWithFormat:@"ownerAccountPK == %@ OR ownerAccountPK == nil OR ownerAccountPK == ''", pk];
+    // Strictly the current account's files. Pre-existing/unassigned files are
+    // not shown here; the settings toggle offers to claim them on enable, and
+    // any file can be (re)assigned from its edit-details sheet.
+    return [NSPredicate predicateWithFormat:@"ownerAccountPK == %@", pk];
 }
 
 NSPredicate *SCIGalleryVisibleSourcesPredicate(void) {

@@ -4,6 +4,7 @@
 #import "SCIGalleryLockViewController.h"
 #import "SCIGalleryImportViewController.h"
 #import "SCIGalleryFile.h"
+#import "../Account/SCIAccountManager.h"
 #import "SCIGalleryCoreDataStack.h"
 #import "../UI/SCIIGAlertPresenter.h"
 #import "../../Utils.h"
@@ -162,8 +163,12 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
     };
     [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow, pinFolderRow], @"Pin favorites above other files inside the current sort and folder context. Keep the subfolder bar pinned to the top while scrolling.")];
     SCISetting *accountFilterRow = [SCISetting switchCellWithTitle:@"This Account Only" icon:SCISettingsIcon(@"user_circle") defaultsKey:@"gallery_filter_current_account"];
+    __weak typeof(self) weakAccountSelf = self;
     accountFilterRow.action = ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:SCIGalleryHiddenSourcesDidChangeNotification object:nil];
+        if ([SCIUtils getBoolPref:@"gallery_filter_current_account"]) {
+            [weakAccountSelf promptClaimUnassignedFiles];
+        }
     };
     [sections addObject:SCITopicSection(@"Visibility", @[
         accountFilterRow,
@@ -246,6 +251,33 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
     [sections addObject:SCITopicSection(@"Delete", @[deleteRow], nil)];
 
     [self replaceSections:sections];
+}
+
+- (void)promptClaimUnassignedFiles {
+    NSString *pk = [SCIAccountManager currentAccountPK];
+    if (pk.length == 0) return;
+    NSUInteger count = [SCIGalleryFile unassignedFileCount];
+    if (count == 0) return;
+
+    NSString *username = [SCIAccountManager currentAccountUsername];
+    NSString *who = username.length > 0 ? [@"@" stringByAppendingString:username] : @"this account";
+    NSString *message = [NSString stringWithFormat:@"%lu existing file%@ %@ no account and won't show under This Account Only. Assign %@ to %@?",
+                         (unsigned long)count,
+                         count == 1 ? @"" : @"s",
+                         count == 1 ? @"has" : @"have",
+                         count == 1 ? @"it" : @"them",
+                         who];
+
+    [SCIIGAlertPresenter presentAlertFromViewController:self
+                                                 title:@"Claim Existing Files?"
+                                               message:message
+                                               actions:@[
+        [SCIIGAlertAction actionWithTitle:@"Not Now" style:SCIIGAlertActionStyleCancel handler:nil],
+        [SCIIGAlertAction actionWithTitle:@"Assign" style:SCIIGAlertActionStyleDefault handler:^{
+            [SCIGalleryFile claimUnassignedFilesForAccountPK:pk username:username];
+            [[NSNotificationCenter defaultCenter] postNotificationName:SCIGalleryHiddenSourcesDidChangeNotification object:nil];
+        }]
+    ]];
 }
 
 - (void)handleLockToggleEnabled:(BOOL)enabled {

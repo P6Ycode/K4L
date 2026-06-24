@@ -466,6 +466,30 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     }
 }
 
++ (NSFetchRequest *)unassignedFetchRequest {
+    NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:@"SCIGalleryFile"];
+    request.predicate = [NSPredicate predicateWithFormat:@"ownerAccountPK == nil OR ownerAccountPK == ''"];
+    return request;
+}
+
++ (NSUInteger)unassignedFileCount {
+    NSManagedObjectContext *ctx = [SCIGalleryCoreDataStack shared].viewContext;
+    NSUInteger count = [ctx countForFetchRequest:[self unassignedFetchRequest] error:nil];
+    return count == NSNotFound ? 0 : count;
+}
+
++ (NSUInteger)claimUnassignedFilesForAccountPK:(NSString *)pk username:(NSString *)username {
+    if (pk.length == 0) return 0;
+    NSManagedObjectContext *ctx = [SCIGalleryCoreDataStack shared].viewContext;
+    NSArray<SCIGalleryFile *> *files = [ctx executeFetchRequest:[self unassignedFetchRequest] error:nil];
+    for (SCIGalleryFile *file in files) {
+        file.ownerAccountPK = pk;
+        file.ownerUsername = username.length > 0 ? username : nil;
+    }
+    if (files.count > 0) [[SCIGalleryCoreDataStack shared] saveContext];
+    return files.count;
+}
+
 + (SCIGalleryMediaType)inferMediaTypeFromFileURL:(NSURL *)fileURL {
     NSString *e = fileURL.pathExtension.lowercaseString;
     static NSSet<NSString *> *videoExts;

@@ -94,6 +94,11 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
 /// omitted so the derived file is probed fresh.
 - (SCIGallerySaveMetadata *)saveMetadata;
 
+/// Number of files with no owning account (legacy / pre-feature saves).
++ (NSUInteger)unassignedFileCount;
+/// Assigns every unassigned file to the given account. Returns the count moved.
++ (NSUInteger)claimUnassignedFilesForAccountPK:(NSString *)pk username:(nullable NSString *)username;
+
 - (NSString *)filePath;
 - (NSURL *)fileURL;
 - (BOOL)fileExists;
