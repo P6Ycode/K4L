@@ -15,6 +15,7 @@
 #import "SCIGalleryDeleteViewController.h"
 #import "SCIGalleryOriginController.h"
 #import "SCIGalleryHiddenSources.h"
+#import "../Account/SCIAccountManager.h"
 #import "../MediaPreview/SCIFullScreenMediaPlayer.h"
 #import "../MediaTrim/SCITrimConfiguration.h"
 #import "../MediaTrim/SCITrimResult.h"
@@ -217,6 +218,11 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
                                              selector:@selector(handleGalleryPreferencesChanged:)
                                                  name:SCIGalleryHiddenSourcesDidChangeNotification
                                                object:nil];
+    // Re-scope when the active account changes (per-account filter).
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleGalleryPreferencesChanged:)
+                                                 name:SCIAccountDidChangeNotification
+                                               object:nil];
 
     [self setupCenteredTitle];
     [self setupNavigationItems];
@@ -240,6 +246,9 @@ typedef NS_ENUM(NSInteger, SCIGalleryViewMode) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    // Pick up an in-app account switch that didn't round-trip through the
+    // background; posts SCIAccountDidChangeNotification (→ refetch) if it moved.
+    [[SCIAccountManager shared] refreshCurrentAccount];
     [self applyGalleryNavigationChrome];
     [self refreshNavigationItems];
     [self refreshBottomToolbarItems];

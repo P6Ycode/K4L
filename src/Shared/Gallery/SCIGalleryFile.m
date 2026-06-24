@@ -7,6 +7,7 @@
 #import "SCIGalleryPaths.h"
 #import "SCIGalleryCoreDataStack.h"
 #import "SCIGalleryOriginController.h"
+#import "../Account/SCIAccountManager.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 
@@ -417,6 +418,8 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
 @dynamic pixelWidth;
 @dynamic pixelHeight;
 @dynamic durationSeconds;
+@dynamic ownerAccountPK;
+@dynamic ownerUsername;
 
 #pragma mark - Save to Gallery
 
@@ -590,6 +593,13 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
     file.folderPath = folderPath;
 
     [self applyMetadata:metadata toFile:file fallbackSource:source];
+    // Tag with the saving account so the per-account gallery filter can scope it.
+    // Editable afterwards via the file's edit-details sheet.
+    NSString *ownerPK = [SCIAccountManager currentAccountPK];
+    if (ownerPK.length > 0) {
+        file.ownerAccountPK = ownerPK;
+        file.ownerUsername = [SCIAccountManager currentAccountUsername];
+    }
     [self probeMediaAtPath:destPath mediaType:mediaType file:file];
 
     NSError *saveError;

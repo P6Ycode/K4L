@@ -1,5 +1,8 @@
 #import "SCIGalleryHiddenSources.h"
 
+#import "../Account/SCIAccountManager.h"
+#import "../../Utils.h"
+
 NSString * const kSCIGalleryHiddenSourcesKey = @"gallery_hidden_sources";
 NSNotificationName const SCIGalleryHiddenSourcesDidChangeNotification = @"SCIGalleryHiddenSourcesDidChangeNotification";
 
@@ -12,9 +15,27 @@ NSArray<NSNumber *> *SCIGalleryHiddenSources(void) {
     return [sources copy];
 }
 
+NSPredicate *SCIGalleryAccountScopePredicate(void) {
+    if (![SCIUtils getBoolPref:@"gallery_filter_current_account"]) return nil;  // "All accounts"
+    NSString *pk = [SCIAccountManager currentAccountPK];
+    if (pk.length == 0) return nil;  // logged out / unresolved — don't hide anything
+    // Current account's files, plus legacy/unassigned files (so enabling the
+    // filter never makes pre-existing media vanish; reassign via edit details).
+    return [NSPredicate predicateWithFormat:@"ownerAccountPK == %@ OR ownerAccountPK == nil OR ownerAccountPK == ''", pk];
+}
+
 NSPredicate *SCIGalleryVisibleSourcesPredicate(void) {
+    NSMutableArray<NSPredicate *> *parts = [NSMutableArray array];
+
     NSArray<NSNumber *> *hidden = SCIGalleryHiddenSources();
-    return hidden.count > 0 ? [NSPredicate predicateWithFormat:@"NOT (source IN %@)", hidden] : nil;
+    if (hidden.count > 0) [parts addObject:[NSPredicate predicateWithFormat:@"NOT (source IN %@)", hidden]];
+
+    NSPredicate *accountScope = SCIGalleryAccountScopePredicate();
+    if (accountScope) [parts addObject:accountScope];
+
+    if (parts.count == 0) return nil;
+    if (parts.count == 1) return parts.firstObject;
+    return [NSCompoundPredicate andPredicateWithSubpredicates:parts];
 }
 
 BOOL SCIGallerySourceIsHidden(NSInteger source) {

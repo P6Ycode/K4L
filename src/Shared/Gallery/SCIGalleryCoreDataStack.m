@@ -131,10 +131,23 @@ static NSString * const kSCIGalleryEntityName = @"SCIGalleryFile";
     durationSeconds.optional = NO;
     durationSeconds.defaultValue = @0.0;
 
+    // Per-account ownership: the logged-in account this file belongs to. Optional
+    // so legacy files (saved before the feature) migrate as nil = "unassigned".
+    NSAttributeDescription *ownerAccountPK = [[NSAttributeDescription alloc] init];
+    ownerAccountPK.name = @"ownerAccountPK";
+    ownerAccountPK.attributeType = NSStringAttributeType;
+    ownerAccountPK.optional = YES;
+
+    NSAttributeDescription *ownerUsername = [[NSAttributeDescription alloc] init];
+    ownerUsername.name = @"ownerUsername";
+    ownerUsername.attributeType = NSStringAttributeType;
+    ownerUsername.optional = YES;
+
     entity.properties = @[
         identifier, relativePath, mediaType, source, dateAdded, fileSize, isFavorite, folderPath, customName,
         sourceUsername, sourceUserPK, sourceProfileURLString, sourceMediaPK, sourceMediaCode, sourceMediaURLString,
-        pixelWidth, pixelHeight, durationSeconds
+        pixelWidth, pixelHeight, durationSeconds,
+        ownerAccountPK, ownerUsername
     ];
     model.entities = @[entity];
 

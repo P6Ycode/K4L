@@ -161,12 +161,17 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
         [[NSNotificationCenter defaultCenter] postNotificationName:kSCIGalleryGridControlsChangedNotification object:nil];
     };
     [sections addObject:SCITopicSection(@"Browsing", @[favoritesRow, pinFolderRow], @"Pin favorites above other files inside the current sort and folder context. Keep the subfolder bar pinned to the top while scrolling.")];
+    SCISetting *accountFilterRow = [SCISetting switchCellWithTitle:@"This Account Only" icon:SCISettingsIcon(@"user_circle") defaultsKey:@"gallery_filter_current_account"];
+    accountFilterRow.action = ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:SCIGalleryHiddenSourcesDidChangeNotification object:nil];
+    };
     [sections addObject:SCITopicSection(@"Visibility", @[
+        accountFilterRow,
         [SCISetting navigationCellWithTitle:@"Hidden Sources"
                                    subtitle:@""
                                        icon:SCISettingsIcon(@"eye_off")
                              viewController:[SCIGalleryHiddenSourcesViewController new]]
-    ], @"Hide selected sources from Gallery browsing and upload picker sheets without deleting files.")];
+    ], @"This Account Only shows media saved while logged into the current account (plus older unassigned files); reassign a file's account from its details sheet. Hidden Sources hides selected sources from Gallery browsing and upload picker sheets without deleting files.")];
 
     // Grid section: pinch-to-zoom toggle. Defaults ON; the backing pref stores
     // the *disabled* state, so the switch inverts.

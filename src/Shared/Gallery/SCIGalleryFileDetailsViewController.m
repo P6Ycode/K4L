@@ -1,11 +1,13 @@
 #import "SCIGalleryFileDetailsViewController.h"
 #import "SCIGalleryFile.h"
 #import "SCIGalleryCoreDataStack.h"
+#import "../Account/SCIAccountManager.h"
 #import "../../Utils.h"
 
 typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
     SCIDetailsEditRowName = 0,
     SCIDetailsEditRowUsername,
+    SCIDetailsEditRowAccount,
     SCIDetailsEditRowDate,
     SCIDetailsEditRowCount,
 };
@@ -15,6 +17,9 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
 @property (nonatomic, strong) UITextField *nameField;
 @property (nonatomic, strong) UITextField *usernameField;
 @property (nonatomic, strong) UIDatePicker *datePicker;
+// Pending owner-account selection (applied on save). nil PK = unassigned.
+@property (nonatomic, copy, nullable) NSString *selectedOwnerPK;
+@property (nonatomic, copy, nullable) NSString *selectedOwnerUsername;
 // Read-only (label, value) info pairs.
 @property (nonatomic, copy) NSArray<NSArray<NSString *> *> *infoRows;
 @end
@@ -24,6 +29,8 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
 - (instancetype)initWithFile:(SCIGalleryFile *)file {
     if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) {
         _file = file;
+        _selectedOwnerPK = file.ownerAccountPK.length > 0 ? file.ownerAccountPK : nil;
+        _selectedOwnerUsername = file.ownerUsername.length > 0 ? file.ownerUsername : nil;
         [self buildControls];
         [self buildInfoRows];
     }
@@ -106,6 +113,8 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
     self.file.customName = name.length > 0 ? name : nil;
     self.file.sourceUsername = username.length > 0 ? username : nil;
     self.file.dateAdded = self.datePicker.date;
+    self.file.ownerAccountPK = self.selectedOwnerPK.length > 0 ? self.selectedOwnerPK : nil;
+    self.file.ownerUsername = self.selectedOwnerPK.length > 0 ? self.selectedOwnerUsername : nil;
     [[SCIGalleryCoreDataStack shared] saveContext];
     if (self.onSaved) {
         self.onSaved();
@@ -144,6 +153,12 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
                 cell.textLabel.text = @"Username";
                 [self embedAccessory:self.usernameField inCell:cell];
                 break;
+            case SCIDetailsEditRowAccount:
+                cell.textLabel.text = @"Account";
+                cell.detailTextLabel.text = [self ownerDisplayText];
+                cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+                cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+                break;
             case SCIDetailsEditRowDate:
                 cell.textLabel.text = @"Date";
                 [self embedAccessory:self.datePicker inCell:cell];
@@ -157,6 +172,65 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
         cell.detailTextLabel.text = row.lastObject;
     }
     return cell;
+}
+
+- (NSString *)ownerDisplayText {
+    if (self.selectedOwnerPK.length == 0) return @"Unassigned";
+    NSString *username = self.selectedOwnerUsername.length > 0
+        ? self.selectedOwnerUsername
+        : [SCIAccountManager usernameForPK:self.selectedOwnerPK];
+    return username.length > 0 ? [@"@" stringByAppendingString:username] : self.selectedOwnerPK;
+}
+
+// Accounts offered in the picker: the roster of seen accounts, plus the file's
+// current owner if it isn't in the roster (so an external/edited owner stays
+// selectable).
+- (NSArray<NSDictionary *> *)pickerAccounts {
+    NSMutableArray<NSDictionary *> *accounts = [[SCIAccountManager knownAccounts] mutableCopy];
+    BOOL hasSelected = NO;
+    for (NSDictionary *account in accounts) {
+        if ([account[@"pk"] isEqualToString:self.selectedOwnerPK]) { hasSelected = YES; break; }
+    }
+    if (self.selectedOwnerPK.length > 0 && !hasSelected) {
+        [accounts addObject:@{ @"pk": self.selectedOwnerPK, @"username": self.selectedOwnerUsername ?: @"" }];
+    }
+    return accounts;
+}
+
+- (void)presentAccountPickerFromCell:(UITableViewCell *)cell {
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Account"
+                                                                  message:@"Which account does this file belong to?"
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    for (NSDictionary *account in [self pickerAccounts]) {
+        NSString *pk = account[@"pk"];
+        NSString *username = account[@"username"];
+        if (![pk isKindOfClass:[NSString class]] || pk.length == 0) continue;
+        NSString *title = username.length > 0 ? [@"@" stringByAppendingString:username] : pk;
+        [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            weakSelf.selectedOwnerPK = pk;
+            weakSelf.selectedOwnerUsername = username.length > 0 ? username : nil;
+            [weakSelf.tableView reloadData];
+        }]];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Unassigned" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        weakSelf.selectedOwnerPK = nil;
+        weakSelf.selectedOwnerUsername = nil;
+        [weakSelf.tableView reloadData];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+
+    sheet.popoverPresentationController.sourceView = cell;
+    sheet.popoverPresentationController.sourceRect = cell.bounds;
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.section == 0 && (SCIDetailsEditRow)indexPath.row == SCIDetailsEditRowAccount) {
+        [self.view endEditing:YES];
+        [self presentAccountPickerFromCell:[tableView cellForRowAtIndexPath:indexPath]];
+    }
 }
 
 - (void)embedAccessory:(UIView *)view inCell:(UITableViewCell *)cell {

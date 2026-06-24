@@ -49,6 +49,9 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
 @property (nonatomic) int32_t pixelWidth;
 @property (nonatomic) int32_t pixelHeight;
 @property (nonatomic) double durationSeconds;
+/// Per-account ownership. nil/empty = unassigned (legacy files).
+@property (nonatomic, copy, nullable) NSString *ownerAccountPK;
+@property (nonatomic, copy, nullable) NSString *ownerUsername;
 
 /// Classifies by path extension; unknown extensions default to image.
 + (SCIGalleryMediaType)inferMediaTypeFromFileURL:(NSURL *)fileURL;
