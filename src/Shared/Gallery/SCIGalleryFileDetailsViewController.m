@@ -2,6 +2,7 @@
 #import "SCIGalleryFile.h"
 #import "SCIGalleryCoreDataStack.h"
 #import "../Account/SCIAccountManager.h"
+#import "../UI/SCIIGAlertPresenter.h"
 #import "../../Utils.h"
 
 typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
@@ -153,12 +154,16 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
                 cell.textLabel.text = @"Username";
                 [self embedAccessory:self.usernameField inCell:cell];
                 break;
-            case SCIDetailsEditRowAccount:
+            case SCIDetailsEditRowAccount: {
                 cell.textLabel.text = @"Account";
                 cell.detailTextLabel.text = [self ownerDisplayText];
                 cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
                 cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+                UIView *selectedBackground = [[UIView alloc] init];
+                selectedBackground.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
+                cell.selectedBackgroundView = selectedBackground;
                 break;
+            }
             case SCIDetailsEditRowDate:
                 cell.textLabel.text = @"Date";
                 [self embedAccessory:self.datePicker inCell:cell];
@@ -197,39 +202,38 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
     return accounts;
 }
 
-- (void)presentAccountPickerFromCell:(UITableViewCell *)cell {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Account"
-                                                                  message:@"Which account does this file belong to?"
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+- (void)presentAccountPicker {
     __weak typeof(self) weakSelf = self;
+    NSMutableArray<SCIIGAlertAction *> *actions = [NSMutableArray array];
     for (NSDictionary *account in [self pickerAccounts]) {
         NSString *pk = account[@"pk"];
         NSString *username = account[@"username"];
         if (![pk isKindOfClass:[NSString class]] || pk.length == 0) continue;
         NSString *title = username.length > 0 ? [@"@" stringByAppendingString:username] : pk;
-        [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [actions addObject:[SCIIGAlertAction actionWithTitle:title style:SCIIGAlertActionStyleDefault handler:^{
             weakSelf.selectedOwnerPK = pk;
             weakSelf.selectedOwnerUsername = username.length > 0 ? username : nil;
             [weakSelf.tableView reloadData];
         }]];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Unassigned" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Unassigned" style:SCIIGAlertActionStyleDestructive handler:^{
         weakSelf.selectedOwnerPK = nil;
         weakSelf.selectedOwnerUsername = nil;
         [weakSelf.tableView reloadData];
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]];
 
-    sheet.popoverPresentationController.sourceView = cell;
-    sheet.popoverPresentationController.sourceRect = cell.bounds;
-    [self presentViewController:sheet animated:YES completion:nil];
+    [SCIIGAlertPresenter presentActionSheetFromViewController:self
+                                                       title:@"Account"
+                                                     message:@"Which account does this file belong to?"
+                                                     actions:actions];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == 0 && (SCIDetailsEditRow)indexPath.row == SCIDetailsEditRowAccount) {
         [self.view endEditing:YES];
-        [self presentAccountPickerFromCell:[tableView cellForRowAtIndexPath:indexPath]];
+        [self presentAccountPicker];
     }
 }
 
