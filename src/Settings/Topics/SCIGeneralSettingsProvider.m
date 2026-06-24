@@ -95,8 +95,9 @@
             [SCISetting switchCellWithTitle:@"Copy Comment" icon:SCISettingsIcon(@"copy") defaultsKey:@"general_comments_copy_text"],
             [SCISetting switchCellWithTitle:@"GIF Comment Actions" icon:SCISettingsIcon(@"gif") defaultsKey:@"general_comments_gif_actions"],
             [SCISetting switchCellWithTitle:@"Confirm Comment Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"general_comments_confirm_like"],
-            [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"general_comments_hide_shopping"]
-        ], @"Copy Comment adds a copy action to comment menus. GIF Comment Actions adds Photos, Share, Gallery, and link actions for GIF comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads."),
+            [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"general_comments_hide_shopping"],
+            [SCISetting switchCellWithTitle:@"Hide Gifts Button" icon:SCISettingsIcon(@"gift") defaultsKey:@"general_comments_hide_gifts_button"]
+        ], @"Copy Comment adds a copy action to comment menus. GIF Comment Actions adds Photos, Share, Gallery, and link actions for GIF comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads. Hide Gifts Button removes the gift shortcut from the comment composer."),
         SCITopicSection(@"Storage", @[
             clearCacheSetting,
             [SCISetting menuCellWithTitle:@"Auto Clear Cache" icon:SCISettingsIcon(@"clock") menu:SCICacheAutoClearMenu()]

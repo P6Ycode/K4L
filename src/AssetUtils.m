@@ -176,6 +176,7 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"folder_move": @{@"candidates": @[@"ig_icon_folder_arrow_right_prism_outline_24", @"ig_icon_folder_arrow_right_outline_24"]},
             @"gif": @{@"candidates": @[@"ig_icon_gif_outline_24"]},
             @"gif_filled": @{@"candidates": @[@"ig_icon_gif_filled_24"]},
+            @"gift": @{@"candidates": @[@"ig_icon_gift_box_prism_outline_24", @"ig_icon_gift_box_outline_24"]},
             @"grid": @{@"candidates": @[@"ig_icon_collections_outline_24"]},
             @"group": @{@"candidates": @[@"ig_icon_group_outline_24"]},
             @"haptics": @{@"candidates": @[@"ig_icon_audio_crunchy_outline_24"]},

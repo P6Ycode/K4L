@@ -162,6 +162,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"general_comments_copy_text": @(NO),
         @"general_comments_gif_actions": @(NO),
         @"general_comments_hide_shopping": @(NO),
+        @"general_comments_hide_gifts_button": @(NO),
         @"general_hide_reels_shopping_cta": @(NO),
         @"general_hide_meta_ai_msgs": @(NO),
         @"general_hide_meta_ai_explore": @(NO),
