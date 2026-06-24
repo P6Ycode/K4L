@@ -2919,12 +2919,22 @@ static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfigu
     UIMenuElement *copyAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAllClipboard);
     if (copyAll) [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[copyAll]]];
 
-    // "Select Media" picker — destinations are the configured bulk actions.
+    // "Select Media" picker — destinations are the configured bulk actions, in a
+    // fixed order: Save to Photos, Share, Copy, Save to Gallery, Copy URLs.
     id media = SCIResolveMediaForContext(context);
     NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);
     NSInteger currentIndex = SCIResolveCurrentIndexForContext(context);
+    NSArray<NSString *> *configuredBulkIdentifiers = SCIConfiguredBulkActionIdentifiersForSource(context.source);
+    NSArray<NSString *> *selectMediaOrder = @[
+        kSCIActionDownloadAllLibrary,
+        kSCIActionDownloadAllShare,
+        kSCIActionDownloadAllClipboard,
+        kSCIActionDownloadAllGallery,
+        kSCIActionDownloadAllLinks
+    ];
     NSMutableArray<SCIBulkSelectionDestination *> *destinations = [NSMutableArray array];
-    for (NSString *identifier in SCIConfiguredBulkActionIdentifiersForSource(context.source)) {
+    for (NSString *identifier in selectMediaOrder) {
+        if (![configuredBulkIdentifiers containsObject:identifier]) continue;
         if (SCIIsActionVisible(context, configuration, identifier, media, entries, currentIndex)) {
             [destinations addObject:[SCIBulkSelectionDestination destinationWithIdentifier:identifier
                                                                                      title:SCIActionButtonTitleForIdentifier(identifier)

@@ -164,6 +164,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 @property(nonatomic, strong) UIBarButtonItem *deleteGalleryItem;
 @property(nonatomic, strong) UIBarButtonItem *shareItem;
 @property(nonatomic, strong) UIBarButtonItem *clipboardItem;
+@property(nonatomic, strong) UIBarButtonItem *downloadURLItem;
 @property(nonatomic, strong) UIBarButtonItem *bulkActionsItem;
 @property(nonatomic, strong) UIBarButtonItem *galleryOriginItem;
 @property(nonatomic, strong) UIBarButtonItem *trimItem;
@@ -584,6 +585,9 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   } else {
     _saveGalleryItem = SCIMediaChromeBottomBarButtonItem(
         @"media", @"Save to Gallery", self, @selector(saveToGallery));
+    _downloadURLItem = SCIMediaChromeBottomBarButtonItem(
+        @"link", @"Copy Download URL", self,
+        @selector(copyDownloadURLForCurrentItem));
   }
 
   [self rebuildBottomToolbarItems];
@@ -619,6 +623,10 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   } else {
     if (_saveGalleryItem) {
       [primary addObject:_saveGalleryItem];
+    }
+    // Copy Download URL is the last action in the primary (first) group.
+    if (_downloadURLItem) {
+      [primary addObject:_downloadURLItem];
     }
     // "Download all" / bulk actions overflow gets its own trailing capsule.
     if (_bulkActionsItem && _bulkActionsItemVisible) {
@@ -1513,6 +1521,17 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
       @"circle_check_filled", SCINotificationToneSuccess);
 }
 
+- (void)copyDownloadURLForCurrentItem {
+  SCIMediaItem *item = [self currentItem];
+  NSString *linkString = item.fileURL.absoluteString;
+  if (linkString.length == 0) {
+    NSURL *resolvedURL = [[SCIMediaCacheManager sharedManager]
+        bestAvailableFileURLForItem:item];
+    linkString = resolvedURL.absoluteString;
+  }
+  [self copyDownloadLinks:linkString.length > 0 ? @[ linkString ] : @[]];
+}
+
 - (UIMenu *)bulkActionsMenu {
   NSArray<SCIDownloadItemRequest *> *bulkItems =
       [self bulkDownloadItemsForPreview];
@@ -1588,9 +1607,19 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
                          identifiers:(NSArray<NSString *> *)identifiers
                        sourceSurface:(SCIDownloadSourceSurface)surface {
   // Build the destination buttons and selection thumbnails 1:1 with bulkItems.
+  // The picker's bottom toolbar uses a fixed order matching the preview screen's
+  // own toolbar (download, share, copy, gallery, url), independent of the user's
+  // configured bulk-action order; only the actually-available destinations show.
+  NSArray<NSString *> *selectMediaOrder = @[
+    kSCIActionDownloadAllLibrary, kSCIActionDownloadAllShare,
+    kSCIActionDownloadAllClipboard, kSCIActionDownloadAllGallery,
+    kSCIActionDownloadAllLinks
+  ];
   NSMutableArray<SCIBulkSelectionDestination *> *destinations =
       [NSMutableArray array];
-  for (NSString *identifier in identifiers) {
+  for (NSString *identifier in selectMediaOrder) {
+    if (![identifiers containsObject:identifier])
+      continue;
     [destinations
         addObject:[SCIBulkSelectionDestination
                       destinationWithIdentifier:identifier
