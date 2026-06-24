@@ -22,6 +22,16 @@
     return setting;
 }
 
++ (SCISetting *)perAccountSetting {
+    SCISetting *setting = [SCISetting switchCellWithTitle:@"Per-Account Settings"
+                                                    icon:SCISettingsIcon(@"user_circle")
+                                             defaultsKey:kSCIPrefPerAccountSettings];
+    // Changes which key namespace every feature reads, and most enabled-state is
+    // captured at hook install, so a restart applies it cleanly.
+    setting.requiresRestart = YES;
+    return setting;
+}
+
 + (SCISetting *)rootSetting {
     SCISetting *clearCacheSetting = [SCISetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SCISettingsIcon(@"trash") action:^(void) {
         [SCIUtils cleanCache];
@@ -93,11 +103,14 @@
             [SCISetting switchCellWithTitle:@"Swipe to Close Comments" icon:SCISettingsIcon(@"left_right") defaultsKey:@"general_comments_swipe_close"],
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Swipe Direction" icon:SCISettingsIcon(@"left_right") menu:SCISwipeCloseCommentsDirectionMenu()], SCISettingsIcon(@"left_right")),
             [SCISetting switchCellWithTitle:@"Copy Comment" icon:SCISettingsIcon(@"copy") defaultsKey:@"general_comments_copy_text"],
-            [SCISetting switchCellWithTitle:@"GIF Comment Actions" icon:SCISettingsIcon(@"gif") defaultsKey:@"general_comments_gif_actions"],
+            [SCISetting switchCellWithTitle:@"Comment Media Actions" icon:SCISettingsIcon(@"media") defaultsKey:@"general_comments_media_actions"],
             [SCISetting switchCellWithTitle:@"Confirm Comment Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"general_comments_confirm_like"],
             [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"general_comments_hide_shopping"],
             [SCISetting switchCellWithTitle:@"Hide Gifts Button" icon:SCISettingsIcon(@"gift") defaultsKey:@"general_comments_hide_gifts_button"]
-        ], @"Copy Comment adds a copy action to comment menus. GIF Comment Actions adds Photos, Share, Gallery, and link actions for GIF comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads. Hide Gifts Button removes the gift shortcut from the comment composer."),
+        ], @"Copy Comment adds a copy action to comment menus. Comment Media Actions adds Photos, Share, Gallery, and link actions for GIF and photo comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads. Hide Gifts Button removes the gift shortcut from the comment composer."),
+        SCITopicSection(@"Accounts", @[
+            [self perAccountSetting]
+        ], @"Per-Account Settings gives each logged-in account its own preferences. A new account inherits your current settings until you change something. App-wide options stay shared: app icon, appearance, the master kill switch, download encoding, and Gallery view/lock settings. Gallery media ownership is separate (see Gallery settings)."),
         SCITopicSection(@"Storage", @[
             clearCacheSetting,
             [SCISetting menuCellWithTitle:@"Auto Clear Cache" icon:SCISettingsIcon(@"clock") menu:SCICacheAutoClearMenu()]

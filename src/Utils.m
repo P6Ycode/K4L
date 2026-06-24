@@ -11,6 +11,9 @@
 #import "Settings/SCIPreferenceAvailability.h"
 #import "Settings/SCIPreferences.h"
 #import "App/SCIStabilityGuard.h"
+#import "Shared/Account/SCIAccountManager.h"
+
+NSString * const kSCIPrefPerAccountSettings = @"general_per_account_settings";
 
 static NSString *SCITrimmedLogBody(NSString *body) {
     return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -532,11 +535,61 @@ static BOOL SCIMasterDisableActive(void) {
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"tools_disable_all"];
 }
 
+#pragma mark - Per-account preference namespacing
+
+// Read directly (never through the namespacing accessors) to avoid recursion;
+// the toggle itself is global.
+static BOOL SCIPrefPerAccountEnabled(void) {
+    return [[NSUserDefaults standardUserDefaults] boolForKey:kSCIPrefPerAccountSettings];
+}
+
+// Keys that must never be per-account: physically single (app icon), device/app
+// wide (master kill switch, safe mode), appearance/Liquid Glass, download
+// encoding params, and all gallery view/lock/folder prefs.
+static BOOL SCIPrefIsGlobalKey(NSString *key) {
+    static NSSet<NSString *> *globalExact;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        globalExact = [NSSet setWithArray:@[
+            kSCIPrefPerAccountSettings,
+            @"general_app_icon_identifier",
+            @"tools_disable_all",
+            @"app_first_run",
+            @"app_safe_startup",
+            @"app_startup_profiling",
+            @"interface_liquid_glass",
+            @"interface_liquid_glass_tabbar_mode",
+            @"interface_progressive_blur",
+            @"downloads_adv_encoding",
+        ]];
+    });
+    if ([globalExact containsObject:key]) return YES;
+    if ([key hasPrefix:@"downloads_encoding_"]) return YES;
+    if ([key hasPrefix:@"gallery_"]) return YES;
+    return NO;
+}
+
+NSString *SCIEffectivePreferenceKey(NSString *key) {
+    if (key.length == 0) return key;
+    if (!SCIPrefPerAccountEnabled()) return key;
+    if (SCIPrefIsGlobalKey(key)) return key;
+    NSString *pk = [SCIAccountManager currentAccountPK];
+    if (pk.length == 0) return key;  // logged out / unresolved → use global
+    return [NSString stringWithFormat:@"u_%@_%@", pk, key];
+}
+
 static id SCIPrefValueWithMasterOverlay(NSString *key) {
     if (key.length == 0) return nil;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (SCIMasterDisableActive() && ![SCIMasterDisableBypassKeys() containsObject:key]) {
         return SCICoreRegisteredDefaults()[key];
+    }
+    NSString *effectiveKey = SCIEffectivePreferenceKey(key);
+    if (![effectiveKey isEqualToString:key]) {
+        id perAccountValue = [defaults objectForKey:effectiveKey];
+        // Inherit the global value (and its registered default) until this
+        // account overrides the key.
+        if (perAccountValue != nil) return perAccountValue;
     }
     return [defaults objectForKey:key];
 }

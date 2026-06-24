@@ -460,9 +460,10 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
             } else if (!SCIPrefIsAvailable(row.defaultsKey)) {
                 toggle.on = NO;
             } else {
-                id storedValue = [defaults objectForKey:row.defaultsKey];
+                NSString *effectiveKey = SCIEffectivePreferenceKey(row.defaultsKey);
+                id storedValue = [defaults objectForKey:effectiveKey] ?: [defaults objectForKey:row.defaultsKey];
                 NSNumber *defaultValue = row.userInfo[@"defaultValue"];
-                toggle.on = storedValue ? [defaults boolForKey:row.defaultsKey] : defaultValue.boolValue;
+                toggle.on = storedValue ? [storedValue boolValue] : defaultValue.boolValue;
             }
             if (!row.switchValueProvider && row.mutuallyExclusiveDefaultsKey.length) {
                 BOOL otherOn = [SCIUtils getBoolPref:row.mutuallyExclusiveDefaultsKey];
@@ -489,7 +490,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
             stepper.minimumValue = row.min;
             stepper.maximumValue = row.max;
             stepper.stepValue = row.step;
-            stepper.value = SCINormalizedStepperValue(row, [[NSUserDefaults standardUserDefaults] doubleForKey:row.defaultsKey]);
+            stepper.value = SCINormalizedStepperValue(row, [SCIUtils getDoublePref:row.defaultsKey]);
 
             objc_setAssociatedObject(stepper, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
@@ -585,7 +586,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
             textField.textColor = rowEnabled ? [SCIUtils SCIColor_InstagramPrimaryText] : [SCIUtils SCIColor_InstagramTertiaryText];
             textField.placeholder = row.placeholder;
             textField.keyboardType = row.keyboardType;
-            textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:row.defaultsKey];
+            textField.text = [SCIUtils getStringPref:row.defaultsKey];
             textField.enabled = rowEnabled;
 
             if (!rowEnabled) {
@@ -756,7 +757,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
             NSString *identifier = candidate.userInfo[@"actionIdentifier"];
             if (identifier.length > 0) [order addObject:identifier];
         }
-        [[NSUserDefaults standardUserDefaults] setObject:[order copy] forKey:reorderDefaultsKey];
+        [[NSUserDefaults standardUserDefaults] setObject:[order copy] forKey:SCIEffectivePreferenceKey(reorderDefaultsKey)];
     }
     self.originalSections = [self.sections copy];
 }
@@ -955,9 +956,9 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
         return;
     }
 
-    [[NSUserDefaults standardUserDefaults] setBool:sender.isOn forKey:row.defaultsKey];
+    [[NSUserDefaults standardUserDefaults] setBool:sender.isOn forKey:SCIEffectivePreferenceKey(row.defaultsKey)];
     if (sender.isOn && row.mutuallyExclusiveDefaultsKey.length) {
-        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:row.mutuallyExclusiveDefaultsKey];
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:SCIEffectivePreferenceKey(row.mutuallyExclusiveDefaultsKey)];
     }
 
     SCILog(@"General", @"Switch changed: %@", sender.isOn ? @"ON" : @"OFF");
@@ -988,7 +989,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     if (!row) return;
 
     NSString *value = [sender.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    [[NSUserDefaults standardUserDefaults] setObject:value ?: @"" forKey:row.defaultsKey];
+    [[NSUserDefaults standardUserDefaults] setObject:value ?: @"" forKey:SCIEffectivePreferenceKey(row.defaultsKey)];
 }
 
 - (void)applyRestartChanges {
@@ -999,7 +1000,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     SCISetting *row = objc_getAssociatedObject(sender, rowStaticRef);
     double normalizedValue = SCINormalizedStepperValue(row, sender.value);
     sender.value = normalizedValue;
-    [[NSUserDefaults standardUserDefaults] setDouble:normalizedValue forKey:row.defaultsKey];
+    [[NSUserDefaults standardUserDefaults] setDouble:normalizedValue forKey:SCIEffectivePreferenceKey(row.defaultsKey)];
 
     SCILog(@"General", @"Stepper changed: %f", normalizedValue);
 
@@ -1009,7 +1010,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
 - (void)menuChanged:(UICommand *)command {
     NSDictionary *properties = command.propertyList;
 
-    [[NSUserDefaults standardUserDefaults] setValue:properties[@"value"] forKey:properties[@"defaultsKey"]];
+    [[NSUserDefaults standardUserDefaults] setValue:properties[@"value"] forKey:SCIEffectivePreferenceKey(properties[@"defaultsKey"])];
     NSString *defaultsKey = properties[@"defaultsKey"];
     if ([defaultsKey containsString:@"_action_btn"]) {
         [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];

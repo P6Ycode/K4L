@@ -1,4 +1,5 @@
 #import "SCISetting.h"
+#import "../Utils.h"
 
 @interface SCISetting ()
 
@@ -346,7 +347,12 @@
 
         UICommand *child = obj;
 
-        NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:child.propertyList[@"defaultsKey"]];
+        NSString *defaultsKey = child.propertyList[@"defaultsKey"];
+        NSString *effectiveKey = SCIEffectivePreferenceKey(defaultsKey);
+        NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:effectiveKey];
+        if (saved == nil && ![effectiveKey isEqualToString:defaultsKey]) {
+            saved = [[NSUserDefaults standardUserDefaults] stringForKey:defaultsKey];  // inherit global
+        }
 
         UICommand *command = [UICommand commandWithTitle:child.title
                                                    image:child.image

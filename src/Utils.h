@@ -13,6 +13,15 @@ FOUNDATION_EXPORT void SCILogMessage(NSString *category,
                                      os_log_type_t type,
                                      NSString *format, ...) NS_FORMAT_FUNCTION(3, 4);
 
+/// Master toggle for per-account preferences (global, default off).
+FOUNDATION_EXPORT NSString * const kSCIPrefPerAccountSettings;
+
+/// Maps a preference key to the key actually stored/read. When per-account mode
+/// is on and the key isn't forced-global, returns a `u_<accountPK>_<key>`
+/// namespaced key; otherwise returns `key` unchanged. Writers MUST route through
+/// this so reads and writes stay in sync.
+FOUNDATION_EXPORT NSString *SCIEffectivePreferenceKey(NSString *key);
+
 #define SCILog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
 #define SCIWarnLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
 #define SCIErrorLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)

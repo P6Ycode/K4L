@@ -219,6 +219,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"gallery_show_favorites_top": @(NO),
         @"gallery_hidden_sources": @[],
         @"gallery_filter_current_account": @(NO),
+        @"general_per_account_settings": @(NO),
         @"trim_gallery_prompt_replace": @(YES),
         @"general_strip_share_link_tracking": @(YES),
         @"general_hide_create_group": @(NO),
