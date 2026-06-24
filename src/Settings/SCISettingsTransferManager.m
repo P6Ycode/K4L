@@ -5,6 +5,7 @@
 
 #import "TweakSettings.h"
 #import "SCIPreferenceAvailability.h"
+#import "SCIAppIconCatalog.h"
 #import "../Utils.h"
 #import "../App/SCICore.h"
 #import "../Shared/UI/SCIIGAlertPresenter.h"
@@ -93,12 +94,31 @@ static BOOL SCIIsSCIPreferenceKey(NSString *key) {
     return NO;
 }
 
+// Transient / device-local state that must never travel between installs:
+// crash-recovery safe mode and the startup profiling flag. Exporting these
+// could, e.g., drop a fresh install straight into safe mode.
+static NSSet<NSString *> *SCITransferExcludedKeys(void) {
+    static NSSet<NSString *> *excluded;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        excluded = [NSSet setWithArray:@[
+            @"app_safe_startup",
+            @"app_startup_profiling"
+        ]];
+    });
+    return excluded;
+}
+
 static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
     NSMutableSet<NSString *> *keys = [NSMutableSet set];
+
+    // Every key registered as an SCInsta default is, by construction, one of
+    // ours — include them all rather than prefix-filtering. The old prefix
+    // allowlist silently dropped whole feature groups whose keys don't start
+    // with a "surface" prefix (downloads_, instants_, trim_, main_feed_mode, …),
+    // which is why those settings were lost across export/import.
     for (NSString *key in SCICoreRegisteredDefaults()) {
-        if (SCIIsSCIPreferenceKey(key)) {
-            [keys addObject:key];
-        }
+        [keys addObject:key];
     }
 
     for (SCISetting *row in SCIFlattenSettingsRowsFromSections([SCITweakSettings sections])) {
@@ -113,7 +133,11 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
         @"gallery_sort_mode",
         @"gallery_view_mode",
         @"general_cache_auto_clear",
-        @"general_cache_last_cleared_at"
+        @"general_cache_last_cleared_at",
+        // Runtime-only prefs whose keys use a non-surface prefix, so they are
+        // neither registered as defaults nor caught by the prefix scan below.
+        @"enable_hidden_texteffectsstyles",
+        @"dm_log_date_format"
     ]];
 
     NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
@@ -123,6 +147,7 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
         }
     }
 
+    [keys minusSet:SCITransferExcludedKeys()];
     return keys;
 }
 
@@ -932,6 +957,10 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
             if (!SCIPrefIsAvailable(key)) return;
             [defaults setObject:value forKey:key];
         }];
+        // The app icon is a pref but also live UIApplication state — apply the
+        // imported selection so it changes immediately instead of requiring the
+        // user to re-pick it.
+        [SCIAppIconCatalog applyStoredIconIfNeeded];
     }
 
     if (importGallery) {

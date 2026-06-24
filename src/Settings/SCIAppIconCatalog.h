@@ -26,6 +26,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// UIApplication.alternateIconName reads nil on re-signed/injected builds.
 + (void)setStoredSelectedIdentifier:(nullable NSString *)identifier;
 
+/// Applies the persisted icon selection to the live app icon when it differs
+/// from what's currently active. Used after a settings import, where the pref
+/// is restored but UIApplication still shows the old icon (otherwise the user
+/// would have to re-pick the icon to actually apply it).
++ (void)applyStoredIconIfNeeded;
+
 @end
 
 NS_ASSUME_NONNULL_END

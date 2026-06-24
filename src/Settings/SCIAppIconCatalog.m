@@ -160,6 +160,33 @@ static UIImage *SCIAppIconImageNamed(NSString *name) {
     return [self appIconWithIdentifier:[self currentAppIconIdentifier]];
 }
 
++ (void)applyStoredIconIfNeeded {
+    if (!UIApplication.sharedApplication.supportsAlternateIcons) return;
+
+    NSString *stored = [self storedSelectedIdentifier];
+    if (stored == nil) return;  // nothing imported / never chosen
+
+    // Resolve whether the stored identifier is the primary icon (which maps to
+    // a nil alternate name). Fall back to the primary-identifier constant if the
+    // icon isn't in the catalog.
+    SCIAppIconItem *item = [self appIconWithIdentifier:stored];
+    BOOL isPrimary = item ? item.isPrimary : (stored.length == 0 || [stored isEqualToString:kSCIAppIconPrimaryIdentifier]);
+    NSString *desiredAlternateName = isPrimary ? nil : stored;
+
+    NSString *currentAlternateName = UIApplication.sharedApplication.alternateIconName;
+    BOOL alreadyApplied = (desiredAlternateName == nil)
+        ? (currentAlternateName.length == 0)
+        : [desiredAlternateName isEqualToString:currentAlternateName];
+    if (alreadyApplied) return;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Best-effort: if the alternate icon can't be applied (e.g. the icon
+        // asset isn't in this build) the stored pref still reflects the import.
+        [UIApplication.sharedApplication setAlternateIconName:desiredAlternateName
+                                            completionHandler:nil];
+    });
+}
+
 + (SCIAppIconItem *)appIconWithIdentifier:(NSString *)identifier {
     NSString *resolvedIdentifier = identifier.length > 0 ? identifier : kSCIAppIconPrimaryIdentifier;
     for (SCIAppIconItem *item in [self availableAppIcons]) {
