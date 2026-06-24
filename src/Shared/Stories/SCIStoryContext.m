@@ -152,6 +152,17 @@ static NSURL *SCIStoryURLForMedia(id media) {
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/stories/%@/%@/", encodedUsername, encodedIdentifier]];
 }
 
+// Cache the last fully-built context on the overlay, keyed by the resolved
+// media object. `IGStoryFullscreenOverlayView -layoutSubviews` fires many
+// times per displayed item (and repeatedly during user-to-user transitions),
+// but the cheap responder/selector probes below resolve the same `media`
+// pointer each time. The expensive part — the O(items) allMedia loop plus
+// username/full-name/URL resolution — only needs to run once per item, so we
+// memoize it and reuse it while the displayed media is unchanged.
+// SCIStoryContext.overlayView is weak, so retaining the context as an
+// associated object on the overlay does not create a retain cycle.
+static const void *kSCIStoryContextCacheKey = &kSCIStoryContextCacheKey;
+
 SCIStoryContext *SCIStoryContextFromOverlay(UIView *overlayView) {
     if (!overlayView) return nil;
     SCIStoryContext *context = [[SCIStoryContext alloc] init];
@@ -178,6 +189,23 @@ SCIStoryContext *SCIStoryContextFromOverlay(UIView *overlayView) {
     if (!media) media = SCIStoryFirstObjectForSelectors(context.markSeenTarget, @[@"currentStoryItem", @"currentItem", @"item"]);
     if (!media) media = SCIStoryFirstObjectForSelectors(context.viewerController, @[@"currentStoryItem", @"currentItem", @"item"]);
     context.media = SCIStoryMediaFromAnyObject(media);
+
+    if (!context.media) {
+        objc_setAssociatedObject(overlayView, kSCIStoryContextCacheKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        return nil;
+    }
+
+    // Fast path: same media as last build → reuse the expensive fields and skip
+    // the allMedia item loop and username/full-name/URL resolution entirely.
+    SCIStoryContext *cached = objc_getAssociatedObject(overlayView, kSCIStoryContextCacheKey);
+    if (cached && cached.media == context.media) {
+        context.allMedia = cached.allMedia;
+        context.currentIndex = cached.currentIndex;
+        context.username = cached.username;
+        context.fullName = cached.fullName;
+        context.storyURL = cached.storyURL;
+        return context;
+    }
 
     id currentViewModel = SCIStoryFirstObjectForSelectors(context.viewerController, @[@"currentViewModel"]);
     NSMutableArray *resolved = [NSMutableArray array];
@@ -206,7 +234,8 @@ SCIStoryContext *SCIStoryContextFromOverlay(UIView *overlayView) {
     context.username = SCIUsernameFromMediaObject(context.media);
     context.fullName = SCIStoryFullNameFromMediaObject(context.media);
     context.storyURL = SCIStoryURLForMedia(context.media);
-    return context.media ? context : nil;
+    objc_setAssociatedObject(overlayView, kSCIStoryContextCacheKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    return context;
 }
 
 SCIStoryContext *SCIStoryContextFromView(UIView *view) {

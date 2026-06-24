@@ -2880,8 +2880,14 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 }
 
 BOOL SCIIsDirectVisualViewerAncestor(UIView *view) {
+	static Class directViewerClass;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		directViewerClass = NSClassFromString(@"IGDirectVisualMessageViewerController");
+	});
+	if (!directViewerClass) return NO;
 	UIViewController *ancestorController = SCIViewControllerForAncestorView(view);
-	return [ancestorController isKindOfClass:NSClassFromString(@"IGDirectVisualMessageViewerController")];
+	return [ancestorController isKindOfClass:directViewerClass];
 }
 
 SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button) {

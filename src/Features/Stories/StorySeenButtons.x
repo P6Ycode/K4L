@@ -85,9 +85,14 @@ static void SCIPlayButtonTappedHaptic(void) {
     [feedback selectionChanged];
 }
 static BOOL SCIOverlayIsDirectVisualOverlay(UIView *overlayView) {
+    static Class directViewerClass;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        directViewerClass = NSClassFromString(@"IGDirectVisualMessageViewerController");
+    });
+    if (!directViewerClass) return NO;
     UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:overlayView];
-    Class directViewerClass = NSClassFromString(@"IGDirectVisualMessageViewerController");
-    return (directViewerClass && [nearestVC isKindOfClass:directViewerClass]);
+    return [nearestVC isKindOfClass:directViewerClass];
 }
 static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     UIView *existing = [container viewWithTag:tag];
@@ -147,19 +152,15 @@ static UIView *SCIStoryFooterContainerFromOverlay(UIView *overlayView) {
 static void SCIUpdateStoryButtonsAlpha(UIView *overlayView, CGFloat alpha) {
     if (!overlayView) return;
 
-    UIButton *actionButton = (UIButton *)[overlayView viewWithTag:kSCIStoriesActionButtonTag];
-    if ([actionButton isKindOfClass:[UIButton class]]) {
-        actionButton.alpha = alpha;
-    }
-
-    UIButton *seenButton = (UIButton *)[overlayView viewWithTag:kSCIStorySeenButtonTag];
-    if ([seenButton isKindOfClass:[UIButton class]]) {
-        seenButton.alpha = alpha;
-    }
-
-    UIButton *mentionsButton = (UIButton *)[overlayView viewWithTag:kSCIStoryMentionsButtonTag];
-    if ([mentionsButton isKindOfClass:[UIButton class]]) {
-        mentionsButton.alpha = alpha;
+    // Our buttons are added directly to the overlay, so a single non-recursive
+    // pass over the immediate subviews avoids three full-subtree -viewWithTag:
+    // searches. This runs on every cross-fade frame via the footer alpha KVO,
+    // so keeping it cheap matters during story-to-story transitions.
+    for (UIView *subview in overlayView.subviews) {
+        NSInteger tag = subview.tag;
+        if (tag == kSCIStoriesActionButtonTag || tag == kSCIStorySeenButtonTag || tag == kSCIStoryMentionsButtonTag) {
+            subview.alpha = alpha;
+        }
     }
 }
 
