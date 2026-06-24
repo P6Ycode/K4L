@@ -5,6 +5,7 @@
 
 @class SCITrimResult;
 @class SCINotificationPillView;
+@class SCIGallerySaveMetadata;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -42,6 +43,19 @@ typedef void (^SCITrimStoreBlock)(NSURL *renderedURL, SCITrimStoreCompletion don
                store:(SCITrimStoreBlock)store
          onSuccessTap:(nullable void (^)(void))onSuccessTap
           completion:(nullable void (^)(BOOL ok))completion;
+
+/// Renders `result` and routes the output to one of the save-flow destinations
+/// ("photos", "gallery", "share", "clipboard"), carrying `metadata` onto Gallery
+/// copies so filenames/attribution match the source (instead of falling back to
+/// `media_other_…`). This is the shared routing used by every "pick a
+/// destination" trim entry point. `presenter` is required for "share". Pass
+/// `existingPill` to continue an in-flight progress pill.
++ (void)routeResult:(SCITrimResult *)result
+      toDestination:(NSString *)destination
+           metadata:(nullable SCIGallerySaveMetadata *)metadata
+          presenter:(nullable UIViewController *)presenter
+       existingPill:(nullable SCINotificationPillView *)existingPill
+         completion:(nullable void (^)(BOOL ok))completion;
 
 /// Presents a "Cancel Trim?" confirmation (mirrors the download cancel) and runs
 /// `onConfirm` only if the user confirms. Runs `onConfirm` directly if no

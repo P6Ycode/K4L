@@ -10,6 +10,14 @@ static NSError *SCITrimRendererError(NSString *description) {
                            userInfo:@{ NSLocalizedDescriptionKey: description ?: @"Render failed" }];
 }
 
+@interface SCITrimRenderer ()
++ (void)generateFrameForAsset:(AVAsset *)asset
+                    atSeconds:(NSTimeInterval)seconds
+                     basename:(NSString *)basename
+                allowTolerance:(BOOL)allowTolerance
+                   completion:(SCITrimRenderCompletionBlock)completion;
+@end
+
 // Encodes a CGImage to a temp file. Prefers HEIC (much smaller — the whole
 // point of reducing a "song over a photo" video to one frame), falls back to
 // JPEG if the HEIC encoder is unavailable.
@@ -150,10 +158,43 @@ static NSURL *SCITrimWriteCGImage(CGImageRef image, NSString *basename) {
                   atSeconds:(NSTimeInterval)seconds
                    basename:(NSString *)basename
                  completion:(SCITrimRenderCompletionBlock)completion {
+    // Load tracks + duration up front. DASH video representations downloaded as
+    // standalone fragmented MP4s expose unreliable timing until their metadata
+    // is loaded, which is a common cause of AVAssetImageGenerator failing on
+    // them. With the duration known we can also clamp the requested time so a
+    // playhead parked at the very end doesn't ask for a frame past EOF.
+    [asset loadValuesAsynchronouslyForKeys:@[ @"tracks", @"duration" ] completionHandler:^{
+        NSTimeInterval clamped = seconds;
+        NSError *durationError = nil;
+        if ([asset statusOfValueForKey:@"duration" error:&durationError] == AVKeyValueStatusLoaded) {
+            NSTimeInterval duration = CMTimeGetSeconds(asset.duration);
+            if (duration > 0 && clamped > duration - 0.05) {
+                clamped = MAX(0.0, duration - 0.05);
+            }
+        }
+        if (clamped < 0) clamped = 0;
+        [self generateFrameForAsset:asset
+                          atSeconds:clamped
+                           basename:basename
+                      allowTolerance:NO
+                         completion:completion];
+    }];
+}
+
+// Single frame attempt. We first try an exact (zero-tolerance) extraction; on
+// failure we retry once with a generous tolerance so AVFoundation can settle on
+// the nearest decodable frame instead of giving up — exactness is irrelevant for
+// a still, and zero tolerance is the usual reason DASH-derived clips fail here.
++ (void)generateFrameForAsset:(AVAsset *)asset
+                    atSeconds:(NSTimeInterval)seconds
+                     basename:(NSString *)basename
+                allowTolerance:(BOOL)allowTolerance
+                   completion:(SCITrimRenderCompletionBlock)completion {
     AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
     generator.appliesPreferredTrackTransform = YES;
-    generator.requestedTimeToleranceBefore = kCMTimeZero;
-    generator.requestedTimeToleranceAfter = kCMTimeZero;
+    CMTime tolerance = allowTolerance ? CMTimeMakeWithSeconds(0.5, 600) : kCMTimeZero;
+    generator.requestedTimeToleranceBefore = tolerance;
+    generator.requestedTimeToleranceAfter = tolerance;
 
     CMTime cm = CMTimeMakeWithSeconds(seconds, 600);
     [generator generateCGImagesAsynchronouslyForTimes:@[[NSValue valueWithCMTime:cm]]
@@ -161,6 +202,15 @@ static NSURL *SCITrimWriteCGImage(CGImageRef image, NSString *basename) {
                                                         CMTime actualTime, AVAssetImageGeneratorResult result,
                                                         NSError *_Nullable error) {
         NSURL *output = (result == AVAssetImageGeneratorSucceeded) ? SCITrimWriteCGImage(image, basename) : nil;
+        if (!output && result != AVAssetImageGeneratorCancelled && !allowTolerance) {
+            // Exact extraction failed — retry once at the nearest decodable frame.
+            [self generateFrameForAsset:asset
+                              atSeconds:seconds
+                               basename:basename
+                          allowTolerance:YES
+                             completion:completion];
+            return;
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             if (output) {
                 if (completion) completion(output, nil);

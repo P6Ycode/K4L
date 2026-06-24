@@ -1099,6 +1099,22 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 
   SCITrimConfiguration *config =
       [SCITrimConfiguration configurationWithVideoURL:url];
+
+  // Gallery-origin files keep the Replace / Save-as-Copy flow (handled after
+  // dismiss). Expanded Instagram media (stories, feed, reels, DMs) instead pick
+  // a destination in-editor — Photos / Gallery / Share / Copy — exactly like the
+  // "Trim & Save" action button, so it no longer silently dumps a copy into the
+  // Gallery (and carries source attribution so the filename isn't media_other_…).
+  BOOL fromGallery = (item.galleryFile != nil);
+  if (!fromGallery) {
+    config.doneOptions = @[
+      [SCITrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
+      [SCITrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
+      [SCITrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
+      [SCITrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
+    ];
+  }
+
   __weak typeof(self) weakSelf = self;
   [SCITrimEditorViewController presentWithConfiguration:config
                                                   from:self
@@ -1106,7 +1122,16 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
     if (!result) {
       return;  // Cancelled.
     }
-    [weakSelf saveTrimResultToGallery:result fromItem:item];
+    if (fromGallery) {
+      [weakSelf saveTrimResultToGallery:result fromItem:item];
+    } else {
+      [SCITrimSaveCoordinator routeResult:result
+                            toDestination:(result.destinationTag ?: @"gallery")
+                                 metadata:item.galleryMetadata
+                                presenter:weakSelf
+                             existingPill:nil
+                               completion:nil];
+    }
   }];
 }
 

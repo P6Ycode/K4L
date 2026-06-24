@@ -270,92 +270,13 @@ didCompleteWithError:(NSError *)error {
 }
 
 - (void)performRenderResult:(SCITrimResult *)result toDestination:(NSString *)destination pill:(SCINotificationPillView *)pill {
-    SCIGalleryMediaType mediaType = (result.mode == SCITrimResultModeSingleFrame)
-                                        ? SCIGalleryMediaTypeImage
-                                        : SCIGalleryMediaTypeVideo;
-    SCIGallerySaveMetadata *metadata = self.metadata;
-    UIViewController *presenter = self.presenter;
     __weak typeof(self) weakSelf = self;
-
-    SCITrimStoreBlock store;
-    if ([destination isEqualToString:@"photos"]) {
-        store = ^(NSURL *rendered, SCITrimStoreCompletion done) {
-            [SCIDownloadDestinationWriter saveFileURLToPhotos:rendered
-                                                     metadata:metadata
-                                                   completion:^(BOOL ok, NSError *error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    done(ok, ok ? @"Saved to Photos" : (error.localizedDescription ?: @"Could not save to Photos."));
-                });
-            }];
-        };
-    } else if ([destination isEqualToString:@"clipboard"]) {
-        store = ^(NSURL *rendered, SCITrimStoreCompletion done) {
-            NSString *ext = rendered.pathExtension.lowercaseString;
-            BOOL isVideo = [ext isEqualToString:@"mp4"] || [ext isEqualToString:@"mov"];
-            if (isVideo) {
-                NSData *data = [NSData dataWithContentsOfURL:rendered options:NSDataReadingMappedIfSafe error:nil];
-                if (data) {
-                    [UIPasteboard generalPasteboard].items = @[ @{ UTTypeMovie.identifier: data } ];
-                    done(YES, @"Copied clip to clipboard");
-                } else {
-                    done(NO, @"Could not copy the clip.");
-                }
-            } else {
-                UIImage *image = [UIImage imageWithContentsOfFile:rendered.path];
-                if (image) {
-                    [[UIPasteboard generalPasteboard] setImage:image];
-                    done(YES, @"Copied frame to clipboard");
-                } else {
-                    done(NO, @"Could not copy the frame.");
-                }
-            }
-        };
-    } else if ([destination isEqualToString:@"share"]) {
-        store = ^(NSURL *rendered, SCITrimStoreCompletion done) {
-            UIViewController *host = presenter;
-            if (!host) { done(NO, @"Could not present share sheet."); return; }
-            UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[ rendered ]
-                                                                            applicationActivities:nil];
-            vc.completionWithItemsHandler = ^(UIActivityType _Nullable type, BOOL completed,
-                                              NSArray *_Nullable items, NSError *_Nullable err) {
-                done(YES, completed ? @"Shared" : nil);
-            };
-            if (vc.popoverPresentationController) {
-                vc.popoverPresentationController.sourceView = host.view;
-                vc.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(host.view.bounds),
-                                                                         CGRectGetMidY(host.view.bounds), 1, 1);
-                vc.popoverPresentationController.permittedArrowDirections = 0;
-            }
-            [host presentViewController:vc animated:YES completion:nil];
-        };
-    } else {
-        store = ^(NSURL *rendered, SCITrimStoreCompletion done) {
-            SCIGallerySource source = metadata ? (SCIGallerySource)metadata.source : SCIGallerySourceOther;
-            NSError *error = nil;
-            SCIGalleryFile *saved = [SCIGalleryFile saveFileToGallery:rendered
-                                                               source:source
-                                                            mediaType:mediaType
-                                                           folderPath:nil
-                                                             metadata:metadata
-                                                                error:&error];
-            if (saved) done(YES, (mediaType == SCIGalleryMediaTypeImage) ? @"Frame saved to Gallery" : @"Trimmed clip saved to Gallery");
-            else done(NO, error.localizedDescription ?: @"Could not save to Gallery.");
-        };
-    }
-
-    void (^onSuccessTap)(void) = nil;
-    if ([destination isEqualToString:@"gallery"]) {
-        onSuccessTap = ^{ [SCIGalleryViewController presentGallery]; };
-    } else if ([destination isEqualToString:@"photos"]) {
-        onSuccessTap = ^{ [SCIUtils openPhotosApp]; };
-    }
-
-    [SCITrimSaveCoordinator renderResult:result
-                           progressTitle:nil
-                            existingPill:pill
-                                   store:store
-                            onSuccessTap:onSuccessTap
-                              completion:^(BOOL ok) {
+    [SCITrimSaveCoordinator routeResult:result
+                          toDestination:destination
+                               metadata:self.metadata
+                              presenter:self.presenter
+                           existingPill:pill
+                             completion:^(BOOL ok) {
         [weakSelf cleanupAndFinish];
     }];
 }
