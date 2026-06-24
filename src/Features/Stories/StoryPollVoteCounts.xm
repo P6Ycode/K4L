@@ -7,6 +7,26 @@
 // ─── Constants & Types ──────────────────────────────────────────────
 
 static const char kSCICellSectionControllerAssocKey = 0;
+static const char kSCIOverlayPollViewsAssocKey = 0;
+
+// Register a poll sticker against its enclosing overlay so the overlay's
+// layoutSubviews can re-apply vote badges to just that view, instead of
+// walking the entire overlay subtree on every layout pass (the overwhelmingly
+// common case is a story with no poll at all).
+static void SCIRegisterPollViewWithOverlay(UIView *pollView) {
+    Class overlayClass = NSClassFromString(@"IGStoryFullscreenOverlayView");
+    if (!overlayClass) return;
+    for (UIView *view = pollView.superview; view; view = view.superview) {
+        if (![view isKindOfClass:overlayClass]) continue;
+        NSHashTable *pollViews = objc_getAssociatedObject(view, &kSCIOverlayPollViewsAssocKey);
+        if (!pollViews) {
+            pollViews = [NSHashTable weakObjectsHashTable];
+            objc_setAssociatedObject(view, &kSCIOverlayPollViewsAssocKey, pollViews, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        if (![pollViews containsObject:pollView]) [pollViews addObject:pollView];
+        return;
+    }
+}
 
 // ─── Customization ──────────────────────────────────────────────────
 // Adjust these values to customize the badge position and size.
@@ -201,7 +221,24 @@ static void SCIApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
         
         badge.frame = CGRectMake(badgeX, badgeY, badgeSize.width, badgeSize.height);
         badge.layer.cornerRadius = badgeSize.height / 2.0;
-        
+
+        // Poll stickers are displayed with an upscaling transform, so a label
+        // rasterized at the screen scale gets magnified by the parent and looks
+        // blurry. Re-rasterize the text at the badge's true on-screen scale
+        // (measured through the live transform chain) so it stays crisp.
+        UIWindow *window = pollView.window;
+        CGFloat onScreenScale = 1.0;
+        if (window) {
+            CGPoint origin = [pollView convertPoint:CGPointZero toView:window];
+            CGPoint unit = [pollView convertPoint:CGPointMake(1.0, 0.0) toView:window];
+            onScreenScale = hypot(unit.x - origin.x, unit.y - origin.y);
+        }
+        CGFloat targetContentsScale = UIScreen.mainScreen.scale * MAX(1.0, onScreenScale);
+        if (fabs(badge.layer.contentsScale - targetContentsScale) > 0.01) {
+            badge.layer.contentsScale = targetContentsScale;
+            [badge setNeedsDisplay];
+        }
+
         [pollView bringSubviewToFront:badge];
     }
     
@@ -239,7 +276,10 @@ static void SCIApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 - (void)layoutSubviews {
     %orig;
     NSArray *options = SCIArrayIvar(self, "_optionViews");
-    if (options.count > 0) SCIApplyStoryPollVoteCounts((UIView *)self, options);
+    if (options.count > 0) {
+        SCIApplyStoryPollVoteCounts((UIView *)self, options);
+        SCIRegisterPollViewWithOverlay((UIView *)self);
+    }
 }
 %end
 
@@ -248,33 +288,28 @@ static void SCIApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 - (void)layoutSubviews {
     %orig;
     NSArray *options = SCIArrayIvar(self, "_optionViews") ?: SCIArrayIvar(self, "_voteOptionViews") ?: SCIArrayIvar(self, "_options");
-    if (options.count > 0) SCIApplyStoryPollVoteCounts((UIView *)self, options);
+    if (options.count > 0) {
+        SCIApplyStoryPollVoteCounts((UIView *)self, options);
+        SCIRegisterPollViewWithOverlay((UIView *)self);
+    }
 }
 %end
 
-// Overlay view constantly lays out (e.g. progress bar), so hooking it guarantees
-// our text isn't overwritten by Instagram's asynchronous poll result fetches.
+// Overlay view constantly lays out (e.g. progress bar), so re-applying here
+// guarantees our text isn't overwritten by Instagram's asynchronous poll result
+// fetches. We only touch poll stickers the sticker hooks above have registered,
+// so a story with no poll (the common case) costs a single associated-object
+// lookup rather than a full subtree walk on every layout pass.
 %hook IGStoryFullscreenOverlayView
 - (void)layoutSubviews {
     %orig;
-    Class pollV2Class = NSClassFromString(@"IGPollStickerV2View");
-    Class pollClass = NSClassFromString(@"IGPollStickerView");
-    if (!pollV2Class && !pollClass) return;
-    
-    NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:(UIView *)self];
-    while (stack.count > 0) {
-        UIView *view = stack.lastObject;
-        [stack removeLastObject];
-        
-        if ((pollV2Class && [view isKindOfClass:pollV2Class]) ||
-            (pollClass && [view isKindOfClass:pollClass])) {
-            NSArray *options = SCIArrayIvar(view, "_optionViews") ?: SCIArrayIvar(view, "_voteOptionViews") ?: SCIArrayIvar(view, "_options");
-            if (options.count > 0) SCIApplyStoryPollVoteCounts(view, options);
-        }
-        
-        for (UIView *subview in view.subviews) {
-            [stack addObject:subview];
-        }
+    NSHashTable *pollViews = objc_getAssociatedObject(self, &kSCIOverlayPollViewsAssocKey);
+    if (pollViews.count == 0) return;
+
+    for (UIView *pollView in pollViews.allObjects) {
+        if (!pollView.superview) continue;
+        NSArray *options = SCIArrayIvar(pollView, "_optionViews") ?: SCIArrayIvar(pollView, "_voteOptionViews") ?: SCIArrayIvar(pollView, "_options");
+        if (options.count > 0) SCIApplyStoryPollVoteCounts(pollView, options);
     }
 }
 %end
