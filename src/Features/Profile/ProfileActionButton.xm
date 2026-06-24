@@ -26,7 +26,7 @@ static NSString * const kSCIProfileCopyInfoUsername = @"username";
 static NSString * const kSCIProfileCopyInfoName = @"name";
 static NSString * const kSCIProfileCopyInfoBio = @"bio";
 static NSString * const kSCIProfileCopyInfoLink = @"link";
-static CGFloat const kSCIProfileActionButtonWidth = 24.0;
+static CGFloat const kSCIProfileActionButtonWidth = 44.0;
 static CGFloat const kSCIProfileActionButtonHeight = 44.0;
 static CGFloat const kSCIProfileActionIconPointSize = 24.0;
 static CGFloat const kSCIProfileActionMenuIconPointSize = 22.0;
@@ -161,9 +161,13 @@ static UIViewController *SCIProfileSourceController(id sourceObject, UIView *sou
 @property (nonatomic, weak) id sourceObject;
 @property (nonatomic, assign) BOOL sciDidConfigure;
 @property (nonatomic, assign) BOOL fallbackToCurrentUser;
+@property (nonatomic, strong) UIVisualEffectView *sciGlassView;
+@property (nonatomic, assign) BOOL sciGlassUnavailable;
+@property (nonatomic, strong) CADisplayLink *sciGlassSyncLink;
 @end
 
 static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button);
+static void SCIProfileUpdateGlass(SCIProfileHeaderActionButton *button, UIView *headerView);
 
 @implementation SCIProfileHeaderActionButton
 
@@ -196,6 +200,44 @@ static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button
             SCIConfigureProfileActionButton(self);
         });
     }
+    // The Liquid Glass bubble fades with scroll offset, which doesn't always
+    // re-run the header's layoutSubviews (e.g. scrolling back up to the top). A
+    // display link keeps our bubble's alpha tracking IG's continuously while the
+    // button is on screen; it's paused as soon as we leave the window.
+    if (self.window) {
+        [self sciStartGlassSync];
+    } else {
+        [self sciStopGlassSync];
+    }
+}
+
+- (void)sciStartGlassSync {
+    if (self.sciGlassUnavailable || self.sciGlassSyncLink) return;
+    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(sciGlassSyncTick:)];
+    [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    self.sciGlassSyncLink = link;
+}
+
+- (void)sciStopGlassSync {
+    [self.sciGlassSyncLink invalidate];
+    self.sciGlassSyncLink = nil;
+}
+
+- (void)sciGlassSyncTick:(CADisplayLink *)link {
+    UIView *header = self.superview;
+    if (!self.window || ![header isKindOfClass:[UIView class]]) {
+        [self sciStopGlassSync];
+        return;
+    }
+    if (self.sciGlassUnavailable) {
+        [self sciStopGlassSync];
+        return;
+    }
+    SCIProfileUpdateGlass(self, header);
+}
+
+- (void)dealloc {
+    [_sciGlassSyncLink invalidate];
 }
 
 - (void)setSourceObject:(id)sourceObject {
@@ -292,38 +334,88 @@ static SCIProfileHeaderActionButton *SCIProfileGetOrCreateActionButton(UIView *h
     return button;
 }
 
-static CGRect SCIProfileGetLeftmostRightButtonFrame(UIView *view, UIView *headerView, CGRect currentFrame) {
-    if (!view || !headerView) return currentFrame;
-    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return currentFrame;
-    if (view.hidden || view.alpha <= 0.01) return currentFrame;
+static void SCIProfileCollectTrailingControls(UIView *view, UIView *headerView, NSMutableArray<NSValue *> *out) {
+    if (!view || !headerView) return;
+    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return;
+    if (view.hidden) return;
 
     UIView *titleView = objc_getAssociatedObject(headerView, kSCIProfileHeaderTitleViewKey);
     if (titleView && (view == titleView || [view isDescendantOfView:titleView])) {
-        return currentFrame;
+        return;
     }
 
-    BOOL isLeafOrControl = (view.subviews.count == 0) ||
-                           [view isKindOfClass:[UIControl class]] ||
-                           [view isKindOfClass:[UIButton class]] ||
-                           [view isKindOfClass:[UILabel class]] ||
-                           [view isKindOfClass:[UIImageView class]];
+    // We anchor only to real controls (the More / Follow / bell buttons). Bare
+    // labels (the username) and image views (the verified badge) are intentionally
+    // ignored so they can never become the anchor.
+    BOOL isControl = ([view isKindOfClass:[UIControl class]] ||
+                      [view isKindOfClass:[UIButton class]]) &&
+                     ![view isKindOfClass:[UILabel class]];
 
-    if (isLeafOrControl && view != headerView) {
-        CGRect rect = [view convertRect:view.bounds toView:headerView];
+    if (isControl && view != headerView) {
         CGFloat w = CGRectGetWidth(headerView.bounds);
+
+        // Prefer the control's tight wrapper (its superview) as the slot. On iOS 26
+        // the More and Follow buttons live as alpha-crossfaded siblings inside an
+        // IGNavigationBarButtonView wrapper, and IG animates THAT wrapper's frame to
+        // match whichever button is active. The buttons' own alpha is unreliable
+        // mid-crossfade, so anchoring to the wrapper avoids the dead-zone where no
+        // button reads as visible and the action button freezes / overlaps Follow.
+        UIView *slot = view;
+        UIView *superview = view.superview;
+        if (superview && superview != headerView) {
+            CGRect superRect = [superview convertRect:superview.bounds toView:headerView];
+            if (superRect.size.width > 2.0 && superRect.size.width < w * 0.40) {
+                slot = superview; // tight per-button wrapper
+            }
+        }
+
+        // If we couldn't fall back to a stable wrapper, ignore a control that is
+        // currently invisible (the inactive crossfade button in an un-wrapped layout).
+        if (slot == view && view.alpha <= 0.01) {
+            return;
+        }
+
+        CGRect rect = [slot convertRect:slot.bounds toView:headerView];
         if (rect.size.width > 2.0 && rect.size.height > 2.0 &&
             CGRectIntersectsRect(headerView.bounds, rect) &&
             rect.origin.x >= (w * 0.5 + 10.0)) {
-            if (CGRectIsEmpty(currentFrame) || rect.origin.x < currentFrame.origin.x) {
-                currentFrame = rect;
-            }
+            [out addObject:[NSValue valueWithCGRect:rect]];
         }
+        return; // don't descend into a control's internals
     }
 
     for (UIView *subview in view.subviews) {
-        currentFrame = SCIProfileGetLeftmostRightButtonFrame(subview, headerView, currentFrame);
+        SCIProfileCollectTrailingControls(subview, headerView, out);
     }
-    return currentFrame;
+}
+
+// Resolve the anchor we place the action button to the left of: the leftmost
+// control belonging to the far-right nav cluster. Controls far to the left of
+// the rightmost edge (the verified badge sitting next to the username, a
+// re-centered title, etc.) are rejected so the button always tracks the real
+// "..." / bell trailing buttons.
+static CGRect SCIProfileGetTrailingAnchorFrame(UIView *headerView) {
+    if (!headerView) return CGRectZero;
+
+    NSMutableArray<NSValue *> *frames = [NSMutableArray array];
+    SCIProfileCollectTrailingControls(headerView, headerView, frames);
+    if (frames.count == 0) return CGRectZero;
+
+    CGFloat trailingEdge = -CGFLOAT_MAX;
+    for (NSValue *value in frames) {
+        trailingEdge = MAX(trailingEdge, CGRectGetMaxX(value.CGRectValue));
+    }
+
+    CGFloat const clusterWidth = 140.0; // room for ~3 icon buttons next to "..."
+    CGRect anchor = CGRectZero;
+    for (NSValue *value in frames) {
+        CGRect rect = value.CGRectValue;
+        if (CGRectGetMaxX(rect) < trailingEdge - clusterWidth) continue;
+        if (CGRectIsEmpty(anchor) || rect.origin.x < anchor.origin.x) {
+            anchor = rect;
+        }
+    }
+    return anchor;
 }
 
 static CGRect SCIProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRect currentFrame) {
@@ -367,7 +459,159 @@ static BOOL SCIProfileIsOwnProfile(id headerView) {
     return NO;
 }
 
-static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered) {
+// MARK: - Liquid glass background (iOS 26)
+
+// IG's nav buttons render a Liquid Glass "bubble" behind the icon that fades in
+// with scroll (alpha 0 flush -> 1 collapsed). That fade lives on the private
+// IGLiquidGlass *TouchForwardingVisualEffectView*. We mirror its alpha so our
+// overlay button matches. Returns < 0 when no glass exists (iOS < 26 / flush).
+static void SCIProfileAccumulateGlassAlpha(UIView *view, CGFloat *maxAlpha) {
+    if (!view) return;
+    if ([NSStringFromClass([view class]) containsString:@"TouchForwardingVisualEffectView"]) {
+        CGFloat alpha = view.alpha;
+        if (alpha > *maxAlpha) *maxAlpha = alpha;
+    }
+    for (UIView *subview in view.subviews) {
+        SCIProfileAccumulateGlassAlpha(subview, maxAlpha);
+    }
+}
+
+static CGFloat SCIProfileHeaderGlassProgress(UIView *headerView) {
+    CGFloat maxAlpha = -1.0;
+    SCIProfileAccumulateGlassAlpha(headerView, &maxAlpha);
+    return maxAlpha;
+}
+
+// A UIGlassEffect-backed circle. UIGlassEffect ships in the iOS 26 SDK only, so
+// we instantiate it at runtime; on older systems the class is absent and we
+// return nil (the button stays a bare icon, which already matches pre-26 IG).
+static UIVisualEffectView *SCIProfileMakeGlassBackground(void) {
+    Class glassEffectClass = NSClassFromString(@"UIGlassEffect");
+    if (!glassEffectClass) return nil;
+
+    UIVisualEffect *effect = nil;
+    @try {
+        effect = [[glassEffectClass alloc] init];
+        // Reactive glass: stretches / highlights on touch like IG's own buttons.
+        [effect setValue:@YES forKey:@"interactive"];
+        // Default glass reads as clear. Tint it with IG's primary text colour
+        // inverted: that's light in light mode / dark in dark mode (so it reads like
+        // IG's fill) and is the exact opposite of the icon colour, keeping the glyph
+        // legible. Opacity is easy to tune if it reads too strong/weak on device.
+        UIColor *tint = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
+            UIColor *primary = [[SCIUtils SCIColor_InstagramPrimaryText] resolvedColorWithTraitCollection:traits];
+            // Take only IG's hue; the primary text colour is fully opaque, so its
+            // own alpha is ignored (NULL) in favour of our own light tint strength.
+            CGFloat r = 0.0, g = 0.0, b = 0.0;
+            [primary getRed:&r green:&g blue:&b alpha:NULL];
+            return [UIColor colorWithRed:(1.0 - r) green:(1.0 - g) blue:(1.0 - b) alpha:0.5];
+        }];
+        [effect setValue:tint forKey:@"tintColor"];
+    } @catch (__unused NSException *exception) {
+    }
+    if (![effect isKindOfClass:[UIVisualEffect class]]) return nil;
+
+    UIVisualEffectView *glassView = [[UIVisualEffectView alloc] initWithEffect:effect];
+    glassView.userInteractionEnabled = NO;
+    glassView.clipsToBounds = YES;
+    glassView.layer.cornerCurve = kCACornerCurveContinuous;
+    glassView.accessibilityIdentifier = @"scinsta-profile-action-glass";
+    return glassView;
+}
+
+static void SCIProfileUpdateGlass(SCIProfileHeaderActionButton *button, UIView *headerView) {
+    if (!button || button.sciGlassUnavailable) return;
+
+    UIVisualEffectView *glassView = button.sciGlassView;
+    if (!glassView) {
+        glassView = SCIProfileMakeGlassBackground();
+        if (!glassView) {
+            button.sciGlassUnavailable = YES; // iOS < 26: don't retry every layout
+            return;
+        }
+        button.sciGlassView = glassView;
+    }
+
+    // Host the glass INSIDE the chrome canvas (the same secure CanvasView the icon
+    // lives in) so "hide UI on capture" redacts the bubble too. iconView.superview
+    // is that content container; fall back to the button before the canvas attaches.
+    UIView *host = button.iconView.superview ?: button;
+    if (glassView.superview != host) {
+        [host insertSubview:glassView atIndex:0];
+    }
+    [host sendSubviewToBack:glassView]; // stay behind the icon (and bubble)
+
+    CGRect bounds = host.bounds;
+    glassView.frame = bounds;
+    glassView.layer.cornerRadius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+
+    CGFloat progress = SCIProfileHeaderGlassProgress(headerView);
+    glassView.alpha = progress > 0.0 ? MIN(progress, 1.0) : 0.0;
+}
+
+// MARK: - Long-username overlap
+
+static UIView *SCIProfileFindTitleView(UIView *view) {
+    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return nil;
+    if ([NSStringFromClass([view class]) containsString:@"TitleView"]) {
+        return view;
+    }
+    for (UIView *subview in view.subviews) {
+        UIView *found = SCIProfileFindTitleView(subview);
+        if (found) return found;
+    }
+    return nil;
+}
+
+static UILabel *SCIProfileFindUsernameLabel(UIView *view) {
+    if ([view isKindOfClass:[UILabel class]] && [(UILabel *)view text].length > 0) {
+        return (UILabel *)view;
+    }
+    for (UIView *subview in view.subviews) {
+        UILabel *found = SCIProfileFindUsernameLabel(subview);
+        if (found) return found;
+    }
+    return nil;
+}
+
+// Because our button is an overlay (not in IG's rightButtons array), IG sizes the
+// username with no knowledge of it, so a long name runs under the button. We clamp
+// the title view (and its label) so it ends before us and truncates with "…",
+// mirroring IG's native behaviour when a trailing button is present. Runs after
+// IG's own layout each pass, so short names are left untouched / auto-reset.
+static void SCIProfileClampTitleToButton(UIView *headerView, SCIProfileHeaderActionButton *button) {
+    if (!headerView || !button || button.hidden) return;
+
+    CGRect buttonInHeader = [button convertRect:button.bounds toView:headerView];
+    if (CGRectGetMinX(buttonInHeader) <= 1.0) return; // not positioned yet
+    CGFloat limitX = CGRectGetMinX(buttonInHeader) - 8.0; // clean gap before our button
+
+    UIView *titleView = SCIProfileFindTitleView(headerView);
+    if (!titleView) return;
+
+    CGRect titleInHeader = [titleView convertRect:titleView.bounds toView:headerView];
+    CGFloat titleOverflow = CGRectGetMaxX(titleInHeader) - limitX;
+    if (titleOverflow > 0.0) {
+        CGRect frame = titleView.frame;
+        frame.size.width = MAX(0.0, frame.size.width - titleOverflow);
+        titleView.frame = frame;
+        titleView.clipsToBounds = YES;
+    }
+
+    UILabel *label = SCIProfileFindUsernameLabel(titleView);
+    if (label) {
+        CGRect labelInHeader = [label convertRect:label.bounds toView:headerView];
+        CGFloat labelOverflow = CGRectGetMaxX(labelInHeader) - limitX;
+        if (labelOverflow > 0.0) {
+            CGRect frame = label.frame;
+            frame.size.width = MAX(0.0, frame.size.width - labelOverflow);
+            label.frame = frame;
+            label.lineBreakMode = NSLineBreakByTruncatingTail;
+        }
+    }
+}
+
+static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered, BOOL reconfigure) {
     if (![SCIUtils getBoolPref:@"profile_action_btn"]) {
         SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
         if (button) {
@@ -395,7 +639,12 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
     SCIProfileHeaderActionButton *button = SCIProfileGetOrCreateActionButton(headerView);
     button.fallbackToCurrentUser = NO;
 
-    SCIConfigureProfileActionButton(button);
+    // Rebuilding the menu/context is expensive; only do it when explicitly asked
+    // (initial configure / source change) or before the button has ever been set
+    // up. High-frequency triggers (layout, scroll-collapse) just reposition.
+    if (reconfigure || !button.sciDidConfigure) {
+        SCIConfigureProfileActionButton(button);
+    }
 
     if (button.hidden) {
         [button removeFromSuperview];
@@ -406,6 +655,15 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
     if (button.superview != headerView) {
         [headerView addSubview:button];
     }
+
+    // Keep the Liquid Glass bubble in sync with IG's buttons every layout pass.
+    // Done before any early-return below so the bubble still fades while our
+    // position is stable (the glass alpha changes with scroll, our frame may not).
+    SCIProfileUpdateGlass(button, headerView);
+
+    // Stop long usernames from running under the button (IG can't reserve space
+    // for an overlay). Runs every pass since IG re-expands the title each layout.
+    SCIProfileClampTitleToButton(headerView, button);
 
     CGFloat w = CGRectGetWidth(headerView.bounds);
     CGFloat h = CGRectGetHeight(headerView.bounds);
@@ -418,22 +676,38 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
     CGFloat centerY;
 
     // Other profiles: place on RIGHT side relative to existing buttons
-    CGRect anchorFrame = SCIProfileGetLeftmostRightButtonFrame(headerView, headerView, CGRectZero);
+    CGRect anchorFrame = SCIProfileGetTrailingAnchorFrame(headerView);
+    BOOL placedFromAnchor = NO;
 
     if (!CGRectIsEmpty(anchorFrame)) {
-        if (anchorFrame.size.width <= 30.0) {
-            // Icon buttons (like Bell, More, Share) - space using center-to-center distance (44pt)
-            CGFloat centerSpacing = 44.0;
-            x = CGRectGetMidX(anchorFrame) - centerSpacing - (btnW * 0.5);
-        } else {
-            // Text buttons (like Follow) - space relative to the visual left edge with a clean gap
-            CGFloat spacing = 10.0;
-            x = anchorFrame.origin.x - spacing - btnW;
-        }
+        // Sit a clean 10pt gap to the left of the anchor's visual left edge. This
+        // gives the same edge-to-edge spacing IG uses between its own 44pt nav
+        // buttons, for both icon anchors (More/bell) and wide text anchors (Follow).
+        CGFloat spacing = 10.0;
+        x = anchorFrame.origin.x - spacing - btnW;
         centerY = CGRectGetMidY(anchorFrame);
-    } else {
+
+        // Guard: a non-own profile's action button always belongs on the right side.
+        // If the resolved anchor would drag the button into the left/center half
+        // (e.g. the username re-centered in the nav bar during a scroll), reject it
+        // and fall back to a clean right-edge placement instead of jumping to center.
+        placedFromAnchor = (x >= w * 0.5);
+    }
+
+    NSValue *lastVal = objc_getAssociatedObject(button, kSCIProfileLastExpectedFrameKey);
+    CGRect lastFrame = lastVal ? [lastVal CGRectValue] : CGRectZero;
+
+    if (!placedFromAnchor) {
+        // No trailing control resolved on the right this pass. This happens during
+        // the scroll/collapse animation where the "..." button momentarily leaves
+        // the header's bounds. If we've already placed the button against a real
+        // anchor, keep that good frame — otherwise a transient miss would snap it
+        // to the top-right fallback and stick there once layout stops firing.
+        if (lastVal) {
+            return;
+        }
         CGRect anyBtnFrame = SCIProfileGetAnyButtonFrame(headerView, headerView, CGRectZero);
-        if (!CGRectIsEmpty(anyBtnFrame)) {
+        if (!CGRectIsEmpty(anyBtnFrame) && CGRectGetMidX(anyBtnFrame) >= w * 0.5) {
             centerY = CGRectGetMidY(anyBtnFrame);
         } else {
             centerY = h - 22.0;
@@ -443,9 +717,6 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
 
     CGFloat y = centerY - btnH * 0.5;
     CGRect expectedFrame = CGRectMake(floor(x), floor(y), btnW, btnH);
-
-    NSValue *lastVal = objc_getAssociatedObject(button, kSCIProfileLastExpectedFrameKey);
-    CGRect lastFrame = lastVal ? [lastVal CGRectValue] : CGRectZero;
 
     if (button.superview == headerView && CGRectEqualToRect(expectedFrame, lastFrame)) {
         return; // Avoid layout churn and layout resetting mid-animation
@@ -490,20 +761,23 @@ static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, i
 
     UIView *header = (UIView *)self;
     dispatch_async(dispatch_get_main_queue(), ^{
-        SCIProfilePlaceActionButton(header, titleIsCentered);
+        SCIProfilePlaceActionButton(header, titleIsCentered, YES);
     });
+}
+
+static void SCIProfileReplaceActionButtonFromHeader(id headerSelf) {
+    if (![headerSelf isKindOfClass:[UIView class]]) return;
+    // Use saved titleIsCentered state from configure hook
+    NSNumber *savedTitleIsCentered = objc_getAssociatedObject(headerSelf, kSCIProfileTitleIsCenteredKey);
+    BOOL titleIsCentered = savedTitleIsCentered ? savedTitleIsCentered.boolValue : NO;
+    SCIProfilePlaceActionButton((UIView *)headerSelf, titleIsCentered, NO);
 }
 
 static void (*orig_profileHeaderLayoutSubviews)(id, SEL);
 
 static void hooked_profileHeaderLayoutSubviews(id self, SEL _cmd) {
     if (orig_profileHeaderLayoutSubviews) orig_profileHeaderLayoutSubviews(self, _cmd);
-    if ([self isKindOfClass:[UIView class]]) {
-        // Use saved titleIsCentered state from configure hook
-        NSNumber *savedTitleIsCentered = objc_getAssociatedObject(self, kSCIProfileTitleIsCenteredKey);
-        BOOL titleIsCentered = savedTitleIsCentered ? savedTitleIsCentered.boolValue : NO;
-        SCIProfilePlaceActionButton((UIView *)self, titleIsCentered);
-    }
+    SCIProfileReplaceActionButtonFromHeader(self);
 }
 
 static BOOL hooksInstalled = NO;
