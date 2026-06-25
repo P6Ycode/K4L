@@ -13,8 +13,6 @@
 #import "../../Utils.h"
 #import "SCIDirectUserResolver.h"
 
-static NSString * const kSCIDirectManualSeenThreadsKey = @"msgs_manual_seen_threads";
-
 @implementation SCIDirectThreadContext
 - (instancetype)init {
     if ((self = [super init])) {
@@ -27,6 +25,9 @@ static NSString * const kSCIDirectManualSeenThreadsKey = @"msgs_manual_seen_thre
 static SCIDirectThreadContext *SCIDirectActiveContext;
 static NSArray<NSDictionary *> *SCIDirectManualSeenThreadsCache;
 static NSSet<NSString *> *SCIDirectManualSeenThreadIdsCache;
+// Effective defaults key the caches were built from; when the current mode or
+// account produces a different key, the caches are rebuilt.
+static NSString *SCIDirectManualSeenCachedKey;
 BOOL SCIDirectSeenDebugPrintEnabled = NO;
 
 static id SCIDirectKVCObject(id target, NSString *key) {
@@ -568,26 +569,37 @@ static void SCIDirectUpdateManualSeenThreadCaches(NSArray<NSDictionary *> *threa
     SCIDirectManualSeenThreadIdsCache = threadIds.copy;
 }
 
+static NSString *SCIDirectManualSeenThreadsKeyForMode(BOOL manualSeenEnabled) {
+    // Separate lists per mode: ON → Excluded (chats using default seen),
+    // OFF → Included (chats requiring manual seen).
+    return manualSeenEnabled ? @"msgs_manual_seen_excluded" : @"msgs_manual_seen_included";
+}
+
 NSArray<NSDictionary *> *SCIDirectManualSeenThreadList(BOOL manualSeenEnabled) {
-    (void)manualSeenEnabled;
-    if (!SCIDirectManualSeenThreadsCache) {
-        SCIDirectUpdateManualSeenThreadCaches(SCIDirectManualSeenThreadListFromRawValue([[NSUserDefaults standardUserDefaults] objectForKey:kSCIDirectManualSeenThreadsKey]));
+    NSString *baseKey = SCIDirectManualSeenThreadsKeyForMode(manualSeenEnabled);
+    NSString *effectiveKey = SCIEffectivePreferenceKey(baseKey);
+    // Rebuild when the mode or account changes (effective key differs).
+    if (!SCIDirectManualSeenThreadsCache || ![effectiveKey isEqualToString:SCIDirectManualSeenCachedKey]) {
+        SCIDirectManualSeenCachedKey = effectiveKey;
+        SCIDirectUpdateManualSeenThreadCaches(SCIDirectManualSeenThreadListFromRawValue(SCIPreferenceObjectForKey(baseKey)));
     }
     return SCIDirectManualSeenThreadsCache;
 }
 
 void SCIDirectSetManualSeenThreadList(NSArray<NSDictionary *> *threads, BOOL manualSeenEnabled) {
-    (void)manualSeenEnabled;
+    NSString *baseKey = SCIDirectManualSeenThreadsKeyForMode(manualSeenEnabled);
     NSArray *normalized = SCIDirectManualSeenThreadListFromRawValue(threads);
-    [[NSUserDefaults standardUserDefaults] setObject:normalized forKey:kSCIDirectManualSeenThreadsKey];
+    SCIPreferenceSetObject(normalized, baseKey);
+    SCIDirectManualSeenCachedKey = SCIEffectivePreferenceKey(baseKey);
     SCIDirectUpdateManualSeenThreadCaches(normalized);
 }
 
 BOOL SCIDirectManualSeenListContainsThreadId(NSString *threadId, BOOL manualSeenEnabled) {
-    (void)manualSeenEnabled;
     NSString *normalizedThreadId = SCIDirectStringFromValue(threadId);
     if (normalizedThreadId.length == 0) return NO;
-    if (!SCIDirectManualSeenThreadIdsCache) (void)SCIDirectManualSeenThreadList(manualSeenEnabled);
+    // Always go through the list (cheap when cached) so the membership set
+    // matches the current mode/account, not a stale one.
+    (void)SCIDirectManualSeenThreadList(manualSeenEnabled);
     return [SCIDirectManualSeenThreadIdsCache containsObject:normalizedThreadId];
 }
 

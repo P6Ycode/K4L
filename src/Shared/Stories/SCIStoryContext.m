@@ -308,8 +308,9 @@ NSString *SCIStoryMediaIdentifierForContext(SCIStoryContext *context) {
 }
 
 static NSString *SCIStoryManualSeenListKey(BOOL manualSeenEnabled) {
-    (void)manualSeenEnabled;
-    return @"stories_manual_seen_users";
+    // Separate lists per mode: ON → Excluded (users using default seen),
+    // OFF → Included (users requiring manual seen).
+    return manualSeenEnabled ? @"stories_manual_seen_excluded" : @"stories_manual_seen_included";
 }
 
 static NSString *SCIStoryNormalizeUsername(NSString *username);
@@ -324,7 +325,8 @@ static NSString *SCIStoryCleanDisplayName(NSString *name, NSString *username) {
 }
 
 static NSDictionary<NSString *, NSString *> *SCIStoryManualSeenUserNameCache(void) {
-    NSDictionary *stored = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kSCIStoryManualSeenUserNamesKey];
+    id storedValue = SCIPreferenceObjectForKey(kSCIStoryManualSeenUserNamesKey);
+    NSDictionary *stored = [storedValue isKindOfClass:[NSDictionary class]] ? storedValue : nil;
     return [stored isKindOfClass:[NSDictionary class]] ? stored : @{};
 }
 
@@ -341,7 +343,7 @@ static void SCIStoryRememberManualSeenUserName(NSString *username, NSString *ful
 
     NSMutableDictionary *names = [SCIStoryManualSeenUserNameCache() mutableCopy];
     names[normalized] = cleanName;
-    [[NSUserDefaults standardUserDefaults] setObject:names.copy forKey:kSCIStoryManualSeenUserNamesKey];
+    SCIPreferenceSetObject(names.copy, kSCIStoryManualSeenUserNamesKey);
 }
 
 static void SCIStoryResolveAndRememberManualSeenUserName(NSString *username, void (^completion)(void)) {
@@ -468,16 +470,15 @@ static NSArray<NSDictionary *> *SCIStoryManualSeenUserListFromRawValue(id rawSto
 }
 
 NSArray *SCIStoryManualSeenUserList(BOOL manualSeenEnabled) {
-    (void)manualSeenEnabled;
     NSString *key = SCIStoryManualSeenListKey(manualSeenEnabled);
-    id rawStored = [[NSUserDefaults standardUserDefaults] objectForKey:key];
+    id rawStored = SCIPreferenceObjectForKey(key);
     return SCIStoryManualSeenUserListFromRawValue(rawStored);
 }
 
 void SCIStorySetManualSeenUserList(NSArray *users, BOOL manualSeenEnabled) {
     (void)manualSeenEnabled;
     NSArray *normalized = SCIStoryManualSeenUserListFromRawValue(users);
-    [[NSUserDefaults standardUserDefaults] setObject:normalized forKey:SCIStoryManualSeenListKey(manualSeenEnabled)];
+    SCIPreferenceSetObject(normalized, SCIStoryManualSeenListKey(manualSeenEnabled));
 }
 
 BOOL SCIStoryManualSeenListContainsUser(NSString *pk, BOOL manualSeenEnabled) {
