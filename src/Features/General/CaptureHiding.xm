@@ -3,10 +3,13 @@
 
 #import "../../Utils.h"
 #import "../../Shared/UI/SCIChrome.h"
+#import "CaptureHiding.h"
 
 
 static const void *kSCICaptureFieldKey  = &kSCICaptureFieldKey;
 static const void *kSCICaptureCanvasKey = &kSCICaptureCanvasKey;
+
+const NSInteger kSCICaptureFollowIndicatorTag = 926003;
 
 static NSSet<NSNumber *> *SCICaptureHiddenTags(void) {
     static NSSet<NSNumber *> *tags;
@@ -14,7 +17,8 @@ static NSSet<NSNumber *> *SCICaptureHiddenTags(void) {
     dispatch_once(&onceToken, ^{
         tags = [NSSet setWithArray:@[
             @921341, @921342, @921343, @921344, @921345,
-            @926001, @926002
+            @926001, @926002,
+            @(kSCICaptureFollowIndicatorTag)
         ]];
     });
     return tags;

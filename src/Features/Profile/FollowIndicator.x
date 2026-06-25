@@ -3,6 +3,7 @@
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
 #import "../../Networking/SCIInstagramAPI.h"
+#import "../General/CaptureHiding.h"
 #import <objc/runtime.h>
 
 static NSInteger const kSCIFollowBadgeTag = 99788;
@@ -69,8 +70,11 @@ static void SCIRenderFollowBadge(UIViewController *controller) {
     UIView *container = SCIProfileStatContainer(controller);
     if (!container) return;
 
-    UIView *existing = [container viewWithTag:kSCIFollowBadgeTag];
-    [existing removeFromSuperview];
+    // Remove our previous wrapper (direct child only; the capture canvas may
+    // have re-parented the inner label, so match on the wrapper's tag).
+    for (UIView *sub in [container.subviews copy]) {
+        if (sub.tag == kSCICaptureFollowIndicatorTag) [sub removeFromSuperview];
+    }
 
     BOOL followsYou = status.boolValue;
     UILabel *badge = [[UILabel alloc] init];
@@ -90,11 +94,22 @@ static void SCIRenderFollowBadge(UIViewController *controller) {
         }
     }
 
-    badge.frame = CGRectMake(xOrigin,
-                             CGRectGetHeight(container.bounds) - CGRectGetHeight(badge.bounds) - 2.0,
-                             CGRectGetWidth(badge.bounds),
-                             CGRectGetHeight(badge.bounds));
-    [container addSubview:badge];
+    CGFloat badgeWidth = CGRectGetWidth(badge.bounds);
+    CGFloat badgeHeight = CGRectGetHeight(badge.bounds);
+    badge.frame = CGRectMake(0.0, 0.0, badgeWidth, badgeHeight);
+
+    // Wrap the label in a capture-hidden container so it disappears from
+    // screenshots/recordings when "Hide UI on Capture" is enabled. The capture
+    // hooks redirect the wrapper's subviews into a secure canvas; a bare
+    // UILabel's own text can't be hidden that way. When the pref is off the
+    // wrapper is a plain passthrough.
+    UIView *wrapper = [[UIView alloc] initWithFrame:CGRectMake(xOrigin,
+                             CGRectGetHeight(container.bounds) - badgeHeight - 2.0,
+                             badgeWidth,
+                             badgeHeight)];
+    wrapper.tag = kSCICaptureFollowIndicatorTag;
+    [wrapper addSubview:badge];
+    [container addSubview:wrapper];
 }
 
 %group SCIFollowIndicatorHooks
