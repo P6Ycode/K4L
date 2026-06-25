@@ -22,6 +22,12 @@ FOUNDATION_EXPORT NSString * const kSCIPrefPerAccountSettings;
 /// this so reads and writes stay in sync.
 FOUNDATION_EXPORT NSString *SCIEffectivePreferenceKey(NSString *key);
 
+/// Namespaced NSUserDefaults access for code that reads/writes preferences
+/// directly (not via getBoolPref:/getStringPref:/...). Applies the same
+/// per-account → global inheritance as the accessors.
+FOUNDATION_EXPORT id SCIPreferenceObjectForKey(NSString *key);
+FOUNDATION_EXPORT void SCIPreferenceSetObject(id _Nullable value, NSString *key);
+
 #define SCILog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
 #define SCIWarnLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
 #define SCIErrorLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)

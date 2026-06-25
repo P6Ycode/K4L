@@ -712,7 +712,7 @@ typedef NS_ENUM(NSInteger, SCIPASectionKind) {
 #pragma mark - Options actions
 
 - (void)trackVisitsToggled:(SCISwitch *)toggle {
-    [[NSUserDefaults standardUserDefaults] setBool:toggle.isOn forKey:@"profile_analyzer_track_visits"];
+    SCIPreferenceSetObject(@(toggle.isOn), @"profile_analyzer_track_visits");
     self.trackVisits = toggle.isOn;
     NSInteger optionsIndex = [[self activeSections] indexOfObject:@(SCIPASectionOptions)];
     if (optionsIndex != NSNotFound) {

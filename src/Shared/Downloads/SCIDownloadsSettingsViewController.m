@@ -32,6 +32,8 @@
 + (NSArray *)contentSections {
     BOOL ffmpegAvailable = [SCIMediaFFmpeg isAvailable];
     if (!ffmpegAvailable) {
+        // No FFmpeg = no DASH merge for ANY account, so this is a hard global
+        // constraint, not a per-account choice. Write it globally (direct).
         [[NSUserDefaults standardUserDefaults] setObject:@"high_ignore_dash" forKey:@"downloads_video_quality"];
     }
 

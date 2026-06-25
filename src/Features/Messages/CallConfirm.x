@@ -4,7 +4,7 @@ static NSString * const kSCIAudioCallConfirmKey = @"msgs_confirm_audio_call";
 static NSString * const kSCIVideoCallConfirmKey = @"msgs_confirm_video_call";
 
 static BOOL SCIShouldConfirmCall(NSString *key) {
-    return [[NSUserDefaults standardUserDefaults] boolForKey:key];
+    return [SCIUtils getBoolPref:key];
 }
 
 %group SCICallConfirmHooks

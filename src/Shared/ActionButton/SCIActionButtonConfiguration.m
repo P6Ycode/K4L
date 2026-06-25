@@ -1,6 +1,7 @@
 #import "SCIActionButtonConfiguration.h"
 #import "SCIActionDescriptor.h"
 #import "../../Settings/SCIPreferences.h"
+#import "../../Utils.h"
 
 static NSArray<NSString *> *SCIFilteredActionArray(NSArray *values, NSArray<NSString *> *supported) {
     NSMutableOrderedSet<NSString *> *filtered = [NSMutableOrderedSet orderedSet];
@@ -286,7 +287,8 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
     configuration.disabledActions = [NSMutableArray array];
     configuration.unassignedActions = [NSMutableArray array];
 
-    NSDictionary *stored = [[NSUserDefaults standardUserDefaults] dictionaryForKey:[configuration configDefaultsKey]];
+    id storedValue = SCIPreferenceObjectForKey([configuration configDefaultsKey]);
+    NSDictionary *stored = [storedValue isKindOfClass:[NSDictionary class]] ? storedValue : nil;
     if ([stored isKindOfClass:[NSDictionary class]]) {
         NSArray *storedSections = [stored[@"sections"] isKindOfClass:[NSArray class]] ? stored[@"sections"] : @[];
         for (NSDictionary *dictionary in storedSections) {
@@ -347,7 +349,7 @@ NSArray<SCIActionMenuSection *> *SCIActionButtonDefaultSectionsForSource(SCIActi
 
 - (void)save {
     [self normalize];
-    [[NSUserDefaults standardUserDefaults] setObject:[self dictionaryRepresentation] forKey:[self configDefaultsKey]];
+    SCIPreferenceSetObject([self dictionaryRepresentation], [self configDefaultsKey]);
     [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
 }
 
@@ -483,13 +485,14 @@ NSArray<NSString *> *SCIProfileCopyInfoSupportedActions(void) {
 
 NSArray<NSString *> *SCIProfileConfiguredCopyInfoActions(void) {
     NSArray<NSString *> *supported = SCIProfileCopyInfoSupportedActions();
-    NSArray *stored = [[NSUserDefaults standardUserDefaults] arrayForKey:@"profile_action_btn_copy_info_submenu_actions"];
+    id storedValue = SCIPreferenceObjectForKey(@"profile_action_btn_copy_info_submenu_actions");
+    NSArray *stored = [storedValue isKindOfClass:[NSArray class]] ? storedValue : nil;
     NSArray<NSString *> *filtered = SCIFilteredUniqueActionArray(stored, supported);
     return filtered.count > 0 ? filtered : supported;
 }
 
 void SCIProfileSetConfiguredCopyInfoActions(NSArray<NSString *> *actions) {
-    [[NSUserDefaults standardUserDefaults] setObject:SCIFilteredUniqueActionArray(actions, SCIProfileCopyInfoSupportedActions())
-                                              forKey:@"profile_action_btn_copy_info_submenu_actions"];
+    SCIPreferenceSetObject(SCIFilteredUniqueActionArray(actions, SCIProfileCopyInfoSupportedActions()),
+                           @"profile_action_btn_copy_info_submenu_actions");
     [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
 }

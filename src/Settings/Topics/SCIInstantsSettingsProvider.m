@@ -38,7 +38,7 @@ static NSArray *SCIInstantsSettingsSections(void) {
         SCITopicSection(@"Creation", @[
             ({  SCISetting *s = [SCISetting switchCellWithTitle:@"Disable Instants Creation" icon:SCISettingsIcon(@"instants") defaultsKey:@"instants_disable_creation"];
                 s.switchChangeHandler = ^(BOOL isOn) {
-                    [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"instants_disable_creation"];
+                    SCIPreferenceSetObject(@(isOn), @"instants_disable_creation");
                     [[NSNotificationCenter defaultCenter] postNotificationName:@"SCIQuickSnapCreationPrefChangedNotification" object:nil];
                 };
                 s;

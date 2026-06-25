@@ -25,7 +25,8 @@ static NSDictionary<NSString *, NSString *> *SCIProfileLegacyDefaultActionMap(vo
 
 NSString *SCIActionButtonDefaultActionIdentifierForSource(SCIActionButtonSource source) {
     NSArray<NSString *> *supportedActions = SCIActionButtonSupportedActionsForSource(source);
-    NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:SCIActionButtonDefaultActionKeyForSource(source)];
+    id savedValue = SCIPreferenceObjectForKey(SCIActionButtonDefaultActionKeyForSource(source));
+    NSString *saved = [savedValue isKindOfClass:[NSString class]] ? savedValue : nil;
     if (source == SCIActionButtonSourceProfile && saved.length > 0) {
         saved = SCIProfileLegacyDefaultActionMap()[saved] ?: saved;
     }
@@ -159,7 +160,7 @@ static NSArray<NSDictionary *> *SCIActionButtonDefaultActionSections(SCIActionBu
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     NSString *identifier = [self identifierAtIndexPath:indexPath];
-    [[NSUserDefaults standardUserDefaults] setObject:identifier forKey:SCIActionButtonDefaultActionKeyForSource(self.source)];
+    SCIPreferenceSetObject(identifier, SCIActionButtonDefaultActionKeyForSource(self.source));
     [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     [self.navigationController popViewControllerAnimated:YES];

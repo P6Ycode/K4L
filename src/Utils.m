@@ -561,11 +561,18 @@ static BOOL SCIPrefIsGlobalKey(NSString *key) {
             @"interface_liquid_glass_tabbar_mode",
             @"interface_progressive_blur",
             @"downloads_adv_encoding",
+            // Tab/launch layout is configured once at launch and can't re-apply
+            // on a live account switch, so it stays global (maintainer's call).
+            @"interface_nav_order",
+            @"interface_swipe_tabs",
+            @"interface_launch_tab",
         ]];
     });
     if ([globalExact containsObject:key]) return YES;
     if ([key hasPrefix:@"downloads_encoding_"]) return YES;
     if ([key hasPrefix:@"gallery_"]) return YES;
+    // interface_hide_*_tab (tab layout) + interface_hide_ui_on_capture.
+    if ([key hasPrefix:@"interface_hide_"]) return YES;
     return NO;
 }
 
@@ -576,6 +583,25 @@ NSString *SCIEffectivePreferenceKey(NSString *key) {
     NSString *pk = [SCIAccountManager currentAccountPK];
     if (pk.length == 0) return key;  // logged out / unresolved → use global
     return [NSString stringWithFormat:@"u_%@_%@", pk, key];
+}
+
+// Namespaced direct-defaults access for callers that read/write NSUserDefaults
+// outside the SCIUtils getXPref accessors (action-button config, manual-seen
+// list, etc.). Mirrors the accessor's per-account → global inheritance.
+id SCIPreferenceObjectForKey(NSString *key) {
+    if (key.length == 0) return nil;
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *effectiveKey = SCIEffectivePreferenceKey(key);
+    if (![effectiveKey isEqualToString:key]) {
+        id perAccountValue = [defaults objectForKey:effectiveKey];
+        if (perAccountValue != nil) return perAccountValue;
+    }
+    return [defaults objectForKey:key];
+}
+
+void SCIPreferenceSetObject(id value, NSString *key) {
+    if (key.length == 0) return;
+    [[NSUserDefaults standardUserDefaults] setObject:value forKey:SCIEffectivePreferenceKey(key)];
 }
 
 static id SCIPrefValueWithMasterOverlay(NSString *key) {
