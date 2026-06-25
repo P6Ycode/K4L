@@ -4,6 +4,7 @@
 #import "../SCIAppIconPickerViewController.h"
 #import "../SCITopicSettingsSupport.h"
 #import "../../Utils.h"
+#import "../../Shared/Account/SCIAccountManager.h"
 #import "../../AssetUtils.h"
 
 @implementation SCIGeneralSettingsProvider
@@ -29,6 +30,24 @@
     // Changes which key namespace every feature reads, and most enabled-state is
     // captured at hook install, so a restart applies it cleanly.
     setting.requiresRestart = YES;
+    return setting;
+}
+
+// Diagnostic: shows the account SCInsta currently resolves. If this reads the
+// same value (or "Not detected") on two different logged-in accounts, the
+// per-account namespacing can't separate them.
++ (SCISetting *)activeAccountDiagnosticSetting {
+    [[SCIAccountManager shared] refreshCurrentAccount];
+    SCISetting *setting = [SCISetting valueCellWithTitle:@"Active Account"
+                                                subtitle:@""
+                                                    icon:SCISettingsIcon(@"info")];
+    setting.accessoryTextProvider = ^NSString *{
+        [[SCIAccountManager shared] refreshCurrentAccount];
+        NSString *pk = [SCIAccountManager currentAccountPK];
+        if (pk.length == 0) return @"Not detected";
+        NSString *username = [SCIAccountManager currentAccountUsername];
+        return username.length > 0 ? [NSString stringWithFormat:@"@%@ · %@", username, pk] : pk;
+    };
     return setting;
 }
 
@@ -109,8 +128,9 @@
             [SCISetting switchCellWithTitle:@"Hide Gifts Button" icon:SCISettingsIcon(@"gift") defaultsKey:@"general_comments_hide_gifts_button"]
         ], @"Copy Comment adds a copy action to comment menus. Comment Media Actions adds Photos, Share, Gallery, and link actions for GIF and photo comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads. Hide Gifts Button removes the gift shortcut from the comment composer."),
         SCITopicSection(@"Accounts", @[
-            [self perAccountSetting]
-        ], @"Per-Account Settings gives each logged-in account its own preferences. A new account inherits your current settings until you change something. App-wide options stay shared: app icon, appearance, the master kill switch, download encoding, and Gallery view/lock settings. Gallery media ownership is separate (see Gallery settings)."),
+            [self perAccountSetting],
+            [self activeAccountDiagnosticSetting]
+        ], @"Per-Account Settings gives each logged-in account its own preferences. A new account inherits your current settings until you change something. App-wide options stay shared: app icon, appearance, the master kill switch, download encoding, and Gallery view/lock settings. Gallery media ownership is separate (see Gallery settings). Active Account shows which account SCInsta detects — if it reads the same on two accounts, namespacing can't separate them."),
         SCITopicSection(@"Storage", @[
             clearCacheSetting,
             [SCISetting menuCellWithTitle:@"Auto Clear Cache" icon:SCISettingsIcon(@"clock") menu:SCICacheAutoClearMenu()]

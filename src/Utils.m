@@ -667,6 +667,25 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 + (NSString *)pkFromIGUser:(id)user {
     if (!user) return nil;
+    // Prefer the public accessor — robust even when the backing ivar is renamed
+    // or absent (Swift-bridged classes). IGUser exposes `pk` as a readonly
+    // property; the raw `_pk` ivar isn't reliable across IG versions.
+    @try {
+        if ([user respondsToSelector:@selector(pk)]) {
+            id pk = ((id (*)(id, SEL))objc_msgSend)(user, @selector(pk));
+            if ([pk isKindOfClass:[NSString class]] && [(NSString *)pk length]) return pk;
+            if ([pk respondsToSelector:@selector(stringValue)]) {
+                NSString *s = [pk stringValue];
+                if (s.length) return s;
+            }
+            if (pk) {
+                NSString *d = [pk description];
+                if (d.length) return d;
+            }
+        }
+    } @catch (__unused NSException *e) {}
+
+    // Fallback: read the _pk ivar directly.
     Ivar pkIvar = NULL;
     for (Class cls = [user class]; cls && !pkIvar; cls = class_getSuperclass(cls)) {
         pkIvar = class_getInstanceVariable(cls, "_pk");
