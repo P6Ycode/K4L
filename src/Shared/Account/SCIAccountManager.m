@@ -87,13 +87,44 @@ static BOOL SCIStringsEqual(NSString *a, NSString *b) {
     // the first resolve).
     if (!hadResolved || SCIStringsEqual(previousPK, pk)) return;
 
+    [self postAccountChanged];
+}
+
+- (void)postAccountChanged {
     NSMutableDictionary *info = [NSMutableDictionary dictionary];
-    if (pk.length > 0) info[@"pk"] = pk;
+    if (self.cachedPK.length > 0) info[@"pk"] = self.cachedPK;
     if (self.cachedUsername.length > 0) info[@"username"] = self.cachedUsername;
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:SCIAccountDidChangeNotification
                                                             object:[self class]
                                                           userInfo:info];
+    });
+}
+
+- (void)noteSwitchedToAccountPK:(NSString *)pk {
+    if (pk.length == 0) return;
+
+    NSString *previous = self.cachedPK;
+    self.cachedPK = pk;
+    // The live session hasn't swapped yet at switch time, so fill the username
+    // from the roster now and refine it from the session once it settles.
+    NSString *rosterUsername = [[self class] usernameForPK:pk];
+    self.cachedUsername = rosterUsername.length > 0 ? rosterUsername : nil;
+    self.hasResolvedOnce = YES;
+    [[self class] recordAccountPK:pk username:self.cachedUsername];
+
+    if (!SCIStringsEqual(previous, pk)) {
+        [self postAccountChanged];
+    }
+
+    // Refine the username from the swapped-in session without overriding the PK.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (![self.cachedPK isEqualToString:pk]) return;  // switched again meanwhile
+        NSString *liveUsername = SCIAccountUsernameFromSession([SCIUtils activeUserSession]);
+        if (liveUsername.length > 0 && ![liveUsername isEqualToString:self.cachedUsername]) {
+            self.cachedUsername = liveUsername;
+            [[self class] recordAccountPK:pk username:liveUsername];
+        }
     });
 }
 

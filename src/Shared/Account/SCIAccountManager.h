@@ -31,6 +31,12 @@ FOUNDATION_EXPORT NSNotificationName const SCIAccountDidChangeNotification;
 /// SCIAccountDidChangeNotification if it changed. Cheap to over-call.
 - (void)refreshCurrentAccount;
 
+/// Authoritatively sets the active account from an in-app account switch (the
+/// switch target PK is known before the session finishes swapping). Updates the
+/// cache immediately, posts SCIAccountDidChangeNotification, and fills the
+/// username from the live session once it settles.
+- (void)noteSwitchedToAccountPK:(nullable NSString *)pk;
+
 /// Every account SCInsta has seen logged-in, newest-seen first.
 /// Each entry: @{ @"pk": NSString, @"username": NSString (may be empty),
 /// @"lastSeen": NSNumber }.
