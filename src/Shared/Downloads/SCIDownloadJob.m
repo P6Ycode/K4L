@@ -1,4 +1,5 @@
 #import "SCIDownloadJob.h"
+#import "../Account/SCIAccountManager.h"
 
 @interface SCIDownloadJob ()
 @property (nonatomic, strong, readwrite) SCIDownloadRequest *request;
@@ -23,6 +24,8 @@
     }];
     _mutableItems = items;
     _title = request.titleOverride;
+    // Stamp the initiating account (overridden by fromDictionary for stored jobs).
+    _ownerAccountPK = [SCIAccountManager currentAccountPK];
     [self recomputeDerivedState];
     return self;
 }
@@ -84,6 +87,7 @@
     c.title = [_title copy];
     c.detail = [_detail copy];
     c.completionAction = [_completionAction copy];
+    c.ownerAccountPK = [_ownerAccountPK copy];  // preserve owner (init re-stamped it)
     NSMutableArray *items = [NSMutableArray array];
     for (SCIDownloadItem *item in self.items) {
         [items addObject:[item copy]];
@@ -102,6 +106,7 @@
     if (self.title) d[@"title"] = self.title;
     if (self.detail) d[@"detail"] = self.detail;
     if (self.completionAction) d[@"completionAction"] = self.completionAction;
+    if (self.ownerAccountPK) d[@"ownerAccountPK"] = self.ownerAccountPK;
     d[@"request"] = [self.request dictionaryRepresentation];
     NSMutableArray *items = [NSMutableArray array];
     for (SCIDownloadItem *item in self.items) {
@@ -121,6 +126,7 @@
     job.title = dict[@"title"];
     job.detail = dict[@"detail"];
     job.completionAction = dict[@"completionAction"];
+    job.ownerAccountPK = dict[@"ownerAccountPK"];  // nil for legacy/pre-feature jobs (overrides init stamp)
     NSMutableArray *items = [NSMutableArray array];
     NSArray *storedItems = dict[@"items"] ?: @[];
     [storedItems enumerateObjectsUsingBlock:^(NSDictionary *entry, NSUInteger idx, BOOL *stop) {

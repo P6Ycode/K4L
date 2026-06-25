@@ -10,6 +10,7 @@
 #import "../MediaPreview/SCIMediaItem.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../Account/SCIAccountManager.h"
 #import "../UI/SCIChipBar.h"
 #import "../UI/SCIMediaChrome.h"
 #import <AVFoundation/AVFoundation.h>
@@ -378,6 +379,7 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
     ]];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(serviceDidChange) name:SCIDownloadServiceDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reload) name:SCIAccountDidChangeNotification object:nil];
     [self reload];
 }
 
@@ -387,6 +389,8 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
         self.navigationController.navigationBar.prefersLargeTitles = NO;
         SCIApplyMediaChromeNavigationBar(self.navigationController.navigationBar);
     }
+    // Catch an in-app account switch that didn't fire while this view was up.
+    [[SCIAccountManager shared] refreshCurrentAccount];
     [self reload];
 }
 
@@ -410,6 +414,19 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
 - (void)reload {
     SCIDownloadHistoryFilter filter = [self currentFilter];
     NSArray<SCIDownloadJob *> *jobs = [[SCIDownloadService shared] jobsMatchingFilter:filter];
+
+    // Per-account scope: when per-account settings are on, show only the current
+    // account's downloads (plus legacy/unstamped jobs so existing history isn't
+    // hidden). A job keeps the account that started it, regardless of switches.
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSCIPrefPerAccountSettings]) {
+        NSString *pk = [SCIAccountManager currentAccountPK];
+        if (pk.length > 0) {
+            jobs = [jobs filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(SCIDownloadJob *job, NSDictionary *bindings) {
+                return job.ownerAccountPK.length == 0 || [job.ownerAccountPK isEqualToString:pk];
+            }]];
+        }
+    }
+
     NSMutableArray *rows = [NSMutableArray array];
     for (SCIDownloadJob *job in jobs) {
         SCIDownloadsHistoryRow *parent = [SCIDownloadsHistoryRow new];

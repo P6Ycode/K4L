@@ -19,6 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Mutable backing store; scheduler/store use this for in-place updates.
 @property (nonatomic, strong, readonly) NSMutableArray<SCIDownloadItem *> *mutableItems;
 @property (nonatomic, copy, nullable) NSString *completionAction;
+/// Account that initiated the download (stamped at creation). nil = legacy /
+/// pre-feature. Drives the per-account Download History filter.
+@property (nonatomic, copy, nullable) NSString *ownerAccountPK;
 
 - (instancetype)initWithRequest:(SCIDownloadRequest *)request jobID:(NSString *)jobID;
 - (void)recomputeDerivedState;
