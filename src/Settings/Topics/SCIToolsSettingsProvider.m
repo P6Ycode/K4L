@@ -85,7 +85,7 @@
     profileAnalyzerRow.userInfo = @{@"checkmarked": @(self.includeProfileAnalyzer)};
 
     NSString *footer = self.importMode
-        ? @"Preferences are restored, replacing your current values for the imported scope. Gallery items are merged in and never deleted. A restart prompt appears after a successful import."
+        ? @"Preferences are restored, replacing your current values for the imported scope. Gallery, messages and analyzer data are merged in — existing items are never deleted. A restart prompt appears only when preferences change."
         : nil;
     NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow, deletedMessagesRow, profileAnalyzerRow], footer)];
     [self replaceSections:sections];

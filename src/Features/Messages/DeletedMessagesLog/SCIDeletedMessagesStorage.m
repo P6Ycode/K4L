@@ -812,4 +812,63 @@ static NSString *sciGeneratedGroupTitle(NSArray<SCIDeletedMessage *> *msgs, NSSt
     return copied;
 }
 
++ (NSInteger)mergeFromStorageDirectory:(NSString *)sourcePath
+                         ownerFilterPK:(NSString *)ownerFilterPK
+                                 error:(NSError **)error {
+    if (sourcePath.length == 0) return 0;
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:sourcePath error:error];
+    if (!entries) return -1;
+
+    NSInteger added = 0;
+    for (NSString *entry in entries) {
+        if (![entry.pathExtension isEqualToString:@"json"]) continue;
+        if ([entry isEqualToString:kSCIDMSenderFlagsFile]) continue;
+        NSString *ownerPK = [entry stringByDeletingPathExtension];   // "<pk>.json"
+        if (ownerFilterPK.length > 0 && ![ownerPK isEqualToString:sciSafePK(ownerFilterPK)]) continue;
+
+        NSArray<SCIDeletedMessage *> *incoming = sciDecode(sciReadArray([sourcePath stringByAppendingPathComponent:entry]));
+        if (incoming.count == 0) continue;
+
+        // Count genuinely-new messages (saveMessages: replaces by id, so existing ones don't grow the log).
+        NSMutableSet<NSString *> *existingIds = [NSMutableSet set];
+        for (SCIDeletedMessage *m in [self allMessagesForOwnerPK:ownerPK]) {
+            if (m.messageId.length) [existingIds addObject:m.messageId];
+        }
+        for (SCIDeletedMessage *m in incoming) {
+            if (m.messageId.length && ![existingIds containsObject:m.messageId]) added++;
+        }
+
+        // Copy this owner's media before saving the records that reference it.
+        NSString *srcMediaDir = [[sourcePath stringByAppendingPathComponent:kSCIDMMediaDir] stringByAppendingPathComponent:ownerPK];
+        NSString *dstMediaDir = sciMediaDirForOwner(ownerPK);
+        for (NSString *file in [fm contentsOfDirectoryAtPath:srcMediaDir error:nil]) {
+            NSString *dst = [dstMediaDir stringByAppendingPathComponent:file];
+            if (![fm fileExistsAtPath:dst]) {
+                [fm copyItemAtPath:[srcMediaDir stringByAppendingPathComponent:file] toPath:dst error:nil];
+            }
+        }
+
+        [self saveMessages:incoming forOwnerPK:ownerPK];   // merges by messageId
+    }
+
+    // Sender flags: fill in entries we don't already have (never overwrite local).
+    NSString *srcFlags = [sourcePath stringByAppendingPathComponent:kSCIDMSenderFlagsFile];
+    if ([fm fileExistsAtPath:srcFlags]) {
+        dispatch_sync(sciDMQueue(), ^{
+            NSMutableDictionary *live = sciReadDictionary(sciFlagsPath());
+            NSDictionary *incoming = sciReadDictionary(srcFlags);
+            BOOL changed = NO;
+            for (NSString *key in incoming) {
+                if (ownerFilterPK.length > 0 && ![key isEqualToString:sciSafePK(ownerFilterPK)]) continue;
+                if (!live[key]) { live[key] = incoming[key]; changed = YES; }
+            }
+            if (changed) sciWriteDictionary(sciFlagsPath(), live);
+        });
+    }
+
+    sciPostChanged(nil);
+    return added;
+}
+
 @end

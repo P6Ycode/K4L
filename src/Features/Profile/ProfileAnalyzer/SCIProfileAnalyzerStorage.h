@@ -56,6 +56,15 @@ extern NSNotificationName const SCIProfileAnalyzerDataDidChangeNotification;
 // Replace the entire store directory with the contents at sourcePath (import).
 + (BOOL)replaceStorageWithDirectoryAtPath:(NSString *)sourcePath error:(NSError **)error;
 
+// Non-destructive import: per account, the visited-profiles log is unioned (dedup by
+// visited pk, existing entries kept), and the snapshots (current/previous/baseline/
+// header) are adopted ONLY for accounts with no local snapshot — never overwriting
+// existing analysis or a pinned baseline. When `ownerFilterPK` is non-nil, only that
+// account is merged. Returns the number of visits added, or -1 on a hard failure.
++ (NSInteger)mergeFromStorageDirectory:(NSString *)sourcePath
+                         ownerFilterPK:(nullable NSString *)ownerFilterPK
+                                 error:(NSError **)error;
+
 @end
 
 NS_ASSUME_NONNULL_END

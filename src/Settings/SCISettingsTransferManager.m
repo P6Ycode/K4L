@@ -1153,20 +1153,26 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     // gallery merge — which may be deferred behind a conflict prompt — so it lives in a
     // block invoked from every path.
     void (^finishImport)(NSInteger) = ^(NSInteger galleryAddedCount) {
+        NSInteger messagesAdded = 0;
         if (importDeletedMessages) {
+            // Non-destructive merge (dedup by messageId); never wipes existing logs.
             NSError *deletedMessagesError = nil;
-            if (![SCIDeletedMessagesStorage replaceStorageWithDirectoryAtPath:deletedMessagesPath error:&deletedMessagesError]) {
+            messagesAdded = [SCIDeletedMessagesStorage mergeFromStorageDirectory:deletedMessagesPath ownerFilterPK:nil error:&deletedMessagesError];
+            if (messagesAdded < 0) {
                 if (scoped) [url stopAccessingSecurityScopedResource];
-                SCINotify(kSCINotificationSettingsImport, @"Import failed", deletedMessagesError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                SCINotify(kSCINotificationSettingsImport, @"Import failed", deletedMessagesError.localizedDescription ?: @"Messages import failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
                 return;
             }
         }
 
+        NSInteger visitsAdded = 0;
         if (importProfileAnalyzer) {
+            // Visits union + snapshots fill-only; never overwrites local analysis.
             NSError *profileAnalyzerError = nil;
-            if (![SCIProfileAnalyzerStorage replaceStorageWithDirectoryAtPath:profileAnalyzerPath error:&profileAnalyzerError]) {
+            visitsAdded = [SCIProfileAnalyzerStorage mergeFromStorageDirectory:profileAnalyzerPath ownerFilterPK:nil error:&profileAnalyzerError];
+            if (visitsAdded < 0) {
                 if (scoped) [url stopAccessingSecurityScopedResource];
-                SCINotify(kSCINotificationSettingsImport, @"Import failed", profileAnalyzerError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                SCINotify(kSCINotificationSettingsImport, @"Import failed", profileAnalyzerError.localizedDescription ?: @"Profile Analyzer import failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
                 return;
             }
         }
@@ -1176,16 +1182,15 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
         NSMutableArray<NSString *> *restored = [NSMutableArray array];
         if (importSettings) [restored addObject:@"preferences"];
         if (importGallery) [restored addObject:[NSString stringWithFormat:@"Gallery (%ld added)", (long)galleryAddedCount]];
-        if (importDeletedMessages) [restored addObject:@"unsent messages"];
-        if (importProfileAnalyzer) [restored addObject:@"Profile Analyzer"];
+        if (importDeletedMessages) [restored addObject:[NSString stringWithFormat:@"Messages (%ld added)", (long)messagesAdded]];
+        if (importProfileAnalyzer) [restored addObject:[NSString stringWithFormat:@"Profile Analyzer (%ld visits)", (long)visitsAdded]];
         NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
         SCINotify(kSCINotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
 
-        // Only prompt to restart when something needs a relaunch to take effect.
-        // Preferences are read at launch / hook-install time; the deleted-messages and
-        // profile-analyzer stores are swapped on disk under live references. The Gallery
-        // merge writes to the live context, so a gallery-only import needs no restart.
-        if (importSettings || importDeletedMessages || importProfileAnalyzer) {
+        // Only preferences need a relaunch to take effect (read at launch / hook-install
+        // time). Gallery, messages and analyzer merges write to live stores and post
+        // change notifications, so they refresh in place.
+        if (importSettings) {
             [SCIUtils showRestartConfirmation];
         }
     };

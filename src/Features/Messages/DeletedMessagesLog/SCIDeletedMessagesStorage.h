@@ -125,6 +125,15 @@ extern NSNotificationName const SCIDeletedMessagesDidChangeNotification;
 + (NSString *)storageRootPath;
 + (BOOL)replaceStorageWithDirectoryAtPath:(NSString *)sourcePath error:(NSError **)error;
 
+/// Non-destructive import: merges an exported storage directory into the live store —
+/// per-owner messages are added (dedup by messageId), their media copied, and sender
+/// flags filled in for senders not already known. Existing data is never deleted.
+/// When `ownerFilterPK` is non-nil, only that owner's messages are merged (per-account
+/// import). Returns the number of messages added, or -1 on a hard failure.
++ (NSInteger)mergeFromStorageDirectory:(NSString *)sourcePath
+                         ownerFilterPK:(nullable NSString *)ownerFilterPK
+                                 error:(NSError **)error;
+
 @end
 
 NS_ASSUME_NONNULL_END

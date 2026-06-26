@@ -286,4 +286,66 @@ static NSInteger sciVisitIndexForPK(NSArray *list, NSString *pk) {
     return copied;
 }
 
++ (NSInteger)mergeFromStorageDirectory:(NSString *)sourcePath
+                         ownerFilterPK:(NSString *)ownerFilterPK
+                                 error:(NSError **)error {
+    if (sourcePath.length == 0) return 0;
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:sourcePath error:error];
+    if (!entries) return -1;
+
+    // Distinct account PKs present in the archive ("<pk>.<slot>.json").
+    NSArray<NSString *> *slots = @[@"current", @"previous", @"baseline", @"header", @"visits"];
+    NSMutableSet<NSString *> *pks = [NSMutableSet set];
+    for (NSString *entry in entries) {
+        for (NSString *slot in slots) {
+            NSString *suffix = [NSString stringWithFormat:@".%@.json", slot];
+            if ([entry hasSuffix:suffix]) { [pks addObject:[entry substringToIndex:entry.length - suffix.length]]; break; }
+        }
+    }
+
+    __block NSInteger added = 0;
+    for (NSString *safePK in pks) {
+        if (ownerFilterPK.length > 0 && ![safePK isEqualToString:sciSafePK(ownerFilterPK)]) continue;
+
+        // Snapshots: fill-only — adopt the archive's set only when we have no current
+        // snapshot, so an import never overwrites local analysis or a pinned baseline.
+        if (![fm fileExistsAtPath:sciPath(safePK, @"current")]) {
+            for (NSString *slot in @[@"current", @"previous", @"baseline", @"header"]) {
+                NSString *src = [sourcePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@.json", safePK, slot]];
+                if ([fm fileExistsAtPath:src]) [fm copyItemAtPath:src toPath:sciPath(safePK, slot) error:nil];
+            }
+        }
+
+        // Visits: union, keeping local entries and adding archive ones we don't have.
+        NSString *srcVisits = [sourcePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.visits.json", safePK]];
+        if (![fm fileExistsAtPath:srcVisits]) continue;
+        dispatch_sync(sciVisitQueue(), ^{
+            NSMutableArray *liveList = [(sciReadJSON(sciPath(safePK, @"visits"))[@"visits"] ?: @[]) mutableCopy];
+            NSArray *srcList = sciReadJSON(srcVisits)[@"visits"] ?: @[];
+            BOOL changed = NO;
+            for (id entry in srcList) {
+                if (![entry isKindOfClass:[NSDictionary class]]) continue;
+                id u = entry[@"user"];
+                NSString *vpk = ([u isKindOfClass:[NSDictionary class]] && [u[@"pk"] isKindOfClass:[NSString class]]) ? u[@"pk"] : nil;
+                if (vpk.length == 0 || sciVisitIndexForPK(liveList, vpk) != NSNotFound) continue;
+                [liveList addObject:entry];
+                changed = YES;
+                added++;
+            }
+            if (changed) {
+                [liveList sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+                    double la = [a[@"last_seen"] doubleValue], lb = [b[@"last_seen"] doubleValue];
+                    if (la > lb) return NSOrderedAscending;   // newest-first
+                    if (la < lb) return NSOrderedDescending;
+                    return NSOrderedSame;
+                }];
+                sciWriteJSON(sciPath(safePK, @"visits"), @{ @"visits": liveList });
+                sciPostDataChanged(safePK);
+            }
+        });
+    }
+    return added;
+}
+
 @end
