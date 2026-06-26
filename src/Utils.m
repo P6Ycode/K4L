@@ -576,6 +576,14 @@ static BOOL SCIPrefIsGlobalKey(NSString *key) {
     return NO;
 }
 
+BOOL SCIPerAccountModeActive(void) {
+    return SCIPrefPerAccountEnabled() && [SCIAccountManager currentAccountPK].length > 0;
+}
+
+BOOL SCIPreferenceKeyIsGlobal(NSString *key) {
+    return SCIPrefIsGlobalKey(key);
+}
+
 NSString *SCIEffectivePreferenceKey(NSString *key) {
     if (key.length == 0) return key;
     if (!SCIPrefPerAccountEnabled()) return key;

@@ -28,6 +28,15 @@ FOUNDATION_EXPORT NSString *SCIEffectivePreferenceKey(NSString *key);
 FOUNDATION_EXPORT id SCIPreferenceObjectForKey(NSString *key);
 FOUNDATION_EXPORT void SCIPreferenceSetObject(id _Nullable value, NSString *key);
 
+/// Canonical "per-account mode is active" gate: the global toggle is on AND an
+/// account PK is resolved. Single source of truth for whether per-account scoping
+/// applies (export prompt, gallery/downloads filtering, etc.).
+FOUNDATION_EXPORT BOOL SCIPerAccountModeActive(void);
+
+/// YES when `key` is forced device-global (app icon, appearance, tab layout, …) and
+/// therefore never stored per-account. Used to decide what a per-account export carries.
+FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
+
 #define SCILog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
 #define SCIWarnLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
 #define SCIErrorLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)

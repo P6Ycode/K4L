@@ -8,6 +8,7 @@
 #import "SCIAppIconCatalog.h"
 #import "../Utils.h"
 #import "../App/SCICore.h"
+#import "../Shared/Account/SCIAccountManager.h"
 #import "../Shared/UI/SCIIGAlertPresenter.h"
 #import "../Shared/Gallery/SCIGalleryCoreDataStack.h"
 #import "../Shared/Gallery/SCIGalleryManager.h"
@@ -15,6 +16,11 @@
 #import "../Shared/Settings/SCISettingsLockManager.h"
 #import "../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesStorage.h"
 #import "../Features/Profile/ProfileAnalyzer/SCIProfileAnalyzerStorage.h"
+
+typedef NS_ENUM(NSInteger, SCITransferAccountScope) {
+    SCITransferAccountScopeAllAccounts = 0,     // global + every account's overrides
+    SCITransferAccountScopeCurrentAccount = 1,  // global + the active account's overrides
+};
 
 @interface SCISettingsTransferManager () <UIDocumentPickerDelegate>
 @property (nonatomic, weak) UIViewController *presentingController;
@@ -24,6 +30,7 @@
 @property (nonatomic, assign) BOOL pendingImportDeletedMessages;
 @property (nonatomic, assign) BOOL pendingImportProfileAnalyzer;
 @property (nonatomic, assign) BOOL isImportMode;
+- (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer settingsScope:(SCITransferAccountScope)settingsScope;
 @end
 
 static NSString *SCITemporaryTransferRoot(NSString *suffix) {
@@ -73,6 +80,10 @@ static BOOL SCIIsSCIPreferenceKey(NSString *key) {
         exactKeys = [NSSet setWithArray:@[
             @"app_first_run"
         ]];
+        // Every SCInsta surface prefix. Keep this complete — a missing prefix means
+        // user-set keys of that group that aren't registered defaults / settings rows
+        // silently fall out of export (and per-account variants too). SCInsta-specific
+        // prefixes only; avoid generic ones (app_, dm_, enable_) that IG might also use.
         prefixes = @[
             @"feed_",
             @"general_",
@@ -83,7 +94,11 @@ static BOOL SCIIsSCIPreferenceKey(NSString *key) {
             @"profile_",
             @"reels_",
             @"stories_",
-            @"tools_"
+            @"tools_",
+            @"downloads_",
+            @"instants_",
+            @"trim_",
+            @"main_"
         ];
     });
 
@@ -92,6 +107,23 @@ static BOOL SCIIsSCIPreferenceKey(NSString *key) {
         if ([key hasPrefix:prefix]) return YES;
     }
     return NO;
+}
+
+// Per-account override keys are "u_<pk>_<baseKey>" (see SCIEffectivePreferenceKey in
+// Utils.m); pk is the numeric IG user PK. Parses one out, rejecting anything else.
+static BOOL SCIParsePerAccountKey(NSString *key, NSString * _Nullable * _Nullable pkOut, NSString * _Nullable * _Nullable baseOut) {
+    if (![key hasPrefix:@"u_"] || key.length < 4) return NO;
+    NSString *rest = [key substringFromIndex:2];
+    NSRange sep = [rest rangeOfString:@"_"];
+    if (sep.location == NSNotFound || sep.location == 0) return NO;
+    NSString *pk = [rest substringToIndex:sep.location];
+    // pk must be all digits so we never mistake an unrelated "u_*" key for ours.
+    if ([pk rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return NO;
+    NSString *base = [rest substringFromIndex:sep.location + 1];
+    if (base.length == 0) return NO;
+    if (pkOut) *pkOut = pk;
+    if (baseOut) *baseOut = base;
+    return YES;
 }
 
 // Transient / device-local state that must never travel between installs:
@@ -151,26 +183,56 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
     return keys;
 }
 
-static NSDictionary *SCIPreferencesSnapshot(void) {
+// Every per-account override key ("u_<pk>_<base>") currently in defaults whose base is
+// one of ours, filtered to the requested scope. The base allowlist (SCIExportedPreferenceKeys
+// ∪ SCIIsSCIPreferenceKey) is why the SCIIsSCIPreferenceKey prefix list must stay complete.
+static NSSet<NSString *> *SCIPerAccountOverrideKeys(SCITransferAccountScope scope, NSString *currentPK) {
+    NSMutableSet<NSString *> *keys = [NSMutableSet set];
+    NSSet<NSString *> *base = SCIExportedPreferenceKeys();
+    NSSet<NSString *> *excluded = SCITransferExcludedKeys();
     NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
+    for (NSString *key in allPrefs) {
+        NSString *pk = nil, *baseKey = nil;
+        if (!SCIParsePerAccountKey(key, &pk, &baseKey)) continue;
+        if (![base containsObject:baseKey] && !SCIIsSCIPreferenceKey(baseKey)) continue;
+        if ([excluded containsObject:baseKey]) continue;
+        if (scope == SCITransferAccountScopeCurrentAccount && ![pk isEqualToString:(currentPK ?: @"")]) continue;
+        [keys addObject:key];
+    }
+    return keys;
+}
+
+// Global/base keys + the in-scope per-account overrides.
+static NSSet<NSString *> *SCIExportedPreferenceKeysForScope(SCITransferAccountScope scope, NSString *currentPK) {
+    NSMutableSet<NSString *> *keys = [NSMutableSet setWithSet:SCIExportedPreferenceKeys()];
+    [keys unionSet:SCIPerAccountOverrideKeys(scope, currentPK)];
+    return keys;
+}
+
+static NSDictionary *SCIPreferencesSnapshotForScope(SCITransferAccountScope scope, NSString *currentPK) {
     NSMutableDictionary *snapshot = [NSMutableDictionary dictionary];
-    for (NSString *key in SCIExportedPreferenceKeys()) {
+
+    if (scope == SCITransferAccountScopeCurrentAccount) {
+        // "This account" = FLATTEN: capture the active account's *effective* values
+        // (per-account override → global → default) for every per-account-capable key,
+        // stored under base keys. Device-global keys are excluded — they aren't this
+        // account's settings. On import these are re-homed into the importing account's
+        // namespace, so other accounts are never touched.
+        for (NSString *key in SCIExportedPreferenceKeys()) {
+            if (SCIPreferenceKeyIsGlobal(key)) continue;
+            id value = SCIPreferenceObjectForKey(key);
+            if (value) snapshot[key] = value;
+        }
+        return snapshot;
+    }
+
+    // "All accounts" = verbatim: base/global keys + every account's overrides as stored.
+    NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
+    for (NSString *key in SCIExportedPreferenceKeysForScope(scope, currentPK)) {
         id value = allPrefs[key];
         if (value) snapshot[key] = value;
     }
     return snapshot;
-}
-
-static BOOL SCICopyItemReplacingDestination(NSString *sourcePath, NSString *destinationPath, NSError **error) {
-    NSFileManager *fm = [NSFileManager defaultManager];
-    if ([fm fileExistsAtPath:destinationPath]) {
-        if (![fm removeItemAtPath:destinationPath error:error]) {
-            return NO;
-        }
-    }
-    NSString *parent = [destinationPath stringByDeletingLastPathComponent];
-    [fm createDirectoryAtPath:parent withIntermediateDirectories:YES attributes:nil error:nil];
-    return [fm copyItemAtPath:sourcePath toPath:destinationPath error:error];
 }
 
 static UIViewController *SCIDocumentPickerPresenter(UIViewController *preferredController) {
@@ -676,16 +738,67 @@ static NSString *SCIResolvedImportBundleRootForPickedURL(NSURL *pickedURL, NSErr
     return SCIExpandSerializedSettingsTransferArchive(pickedURL, error);
 }
 
-static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGallery, BOOL includeDeletedMessages, BOOL includeProfileAnalyzer) {
-    return @{
-        @"format_version": @2,
+static NSString *SCITransferScopeString(SCITransferAccountScope scope) {
+    return scope == SCITransferAccountScopeCurrentAccount ? @"current" : @"all";
+}
+
+static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGallery, BOOL includeDeletedMessages, BOOL includeProfileAnalyzer, SCITransferAccountScope scope, NSString *sourcePK, NSArray<NSString *> *includedKeys) {
+    NSMutableDictionary *manifest = [@{
+        @"format_version": @4,
         @"created_at": [NSDate date],
         @"includes_settings": @(includeSettings),
         @"includes_gallery": @(includeGallery),
         @"includes_deleted_messages": @(includeDeletedMessages),
         @"includes_profile_analyzer": @(includeProfileAnalyzer),
-        @"included_keys": includeSettings ? [[SCIExportedPreferenceKeys() allObjects] sortedArrayUsingSelector:@selector(compare:)] : @[]
-    };
+        // The account scope of the whole export (settings + gallery). "current" exports
+        // are re-homed onto the importing device's active account. `account_scope`
+        // replaces the legacy `settings_scope` (still read on import for old archives).
+        @"account_scope": SCITransferScopeString(scope),
+        @"source_account_pk": sourcePK ?: @"",
+        @"included_keys": (includeSettings && includedKeys) ? [includedKeys sortedArrayUsingSelector:@selector(compare:)] : @[]
+    } mutableCopy];
+    return manifest;
+}
+
+// Sanitize a username/PK so it is safe inside a file name.
+static NSString *SCISanitizeFilenameComponent(NSString *component) {
+    if (component.length == 0) return @"";
+    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"];
+    NSMutableString *out = [NSMutableString string];
+    for (NSUInteger i = 0; i < component.length; i++) {
+        unichar c = [component characterAtIndex:i];
+        [out appendString:[allowed characterIsMember:c] ? [NSString stringWithCharacters:&c length:1] : @"-"];
+    }
+    return out;
+}
+
+// Descriptive, sortable, collision-free export file name, e.g.
+// "SCInsta-Settings-AllAccounts-2026-06-26.zip" or "SCInsta-Settings-jane.doe-2026-06-26.zip".
+static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGallery, BOOL includeDeletedMessages, BOOL includeProfileAnalyzer, SCITransferAccountScope scope, NSString *currentUsername, NSString *currentPK) {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    if (includeSettings) [parts addObject:@"Settings"];
+    if (includeGallery) [parts addObject:@"Gallery"];
+    if (includeDeletedMessages) [parts addObject:@"Messages"];
+    if (includeProfileAnalyzer) [parts addObject:@"Analyzer"];
+    NSString *content = parts.count == 0 ? @"Backup" : (parts.count > 2 ? @"Backup" : [parts componentsJoinedByString:@"+"]);
+
+    NSMutableString *name = [NSMutableString stringWithFormat:@"SCInsta-%@", content];
+    // Tag the filename by the scope that was chosen: a "this account" export always
+    // carries the account's username; an all-accounts export is labelled only when it
+    // actually included per-account-scopable content (settings or gallery).
+    if (scope == SCITransferAccountScopeCurrentAccount) {
+        NSString *who = currentUsername;
+        if (who.length == 0) who = [SCIAccountManager usernameForPK:currentPK];
+        if (who.length == 0) who = currentPK.length ? currentPK : @"account";
+        [name appendFormat:@"-%@", SCISanitizeFilenameComponent(who)];
+    } else if (includeSettings || includeGallery) {
+        [name appendString:@"-AllAccounts"];
+    }
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    formatter.dateFormat = @"yyyy-MM-dd";
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    [name appendFormat:@"-%@.zip", [formatter stringFromDate:[NSDate date]]];
+    return name;
 }
 
 @implementation SCISettingsTransferManager
@@ -754,9 +867,46 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
 }
 
 - (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer {
+    // When per-account settings is on, let the user choose whether to back up every
+    // account or just the active one — this scopes both preferences and the Gallery.
+    BOOL perAccountOn = [[NSUserDefaults standardUserDefaults] boolForKey:@"general_per_account_settings"];
+    NSString *currentPK = [SCIAccountManager currentAccountPK];
+    BOOL settingsScopable = includeSettings && SCIPerAccountOverrideKeys(SCITransferAccountScopeAllAccounts, nil).count > 0;
+    BOOL offerScope = perAccountOn && currentPK.length > 0 && (settingsScopable || includeGallery);
+
+    if (!offerScope) {
+        [self exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SCITransferAccountScopeAllAccounts];
+        return;
+    }
+
+    NSString *username = [SCIAccountManager currentAccountUsername];
+    NSString *thisTitle = username.length ? [NSString stringWithFormat:@"This Account Only (%@)", username] : @"This Account Only";
+    NSString *scopeMessage = includeGallery
+        ? @"Per-account settings are on. Back up every account's settings and Gallery, or only the active account's."
+        : @"Per-account settings are on. Back up every account's settings, or only the active account's.";
+    __weak typeof(self) weakSelf = self;
+    [SCIIGAlertPresenter presentActionSheetFromViewController:controller
+                                                        title:@"Which accounts?"
+                                                      message:scopeMessage
+                                                      actions:@[
+        [SCIIGAlertAction actionWithTitle:@"All Accounts" style:SCIIGAlertActionStyleDefault handler:^{
+            [weakSelf exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SCITransferAccountScopeAllAccounts];
+        }],
+        [SCIIGAlertAction actionWithTitle:thisTitle style:SCIIGAlertActionStyleDefault handler:^{
+            [weakSelf exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SCITransferAccountScopeCurrentAccount];
+        }],
+        [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
+    ]];
+}
+
+- (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer settingsScope:(SCITransferAccountScope)settingsScope {
     if (!includeSettings && !includeGallery && !includeDeletedMessages && !includeProfileAnalyzer) return;
     self.presentingController = controller;
     self.isImportMode = NO;
+
+    NSString *currentPK = [SCIAccountManager currentAccountPK];
+    // Only current-account exports record a source PK (so import can re-map it).
+    NSString *sourcePK = (settingsScope == SCITransferAccountScopeCurrentAccount) ? currentPK : nil;
 
     NSString *root = SCITemporaryTransferRoot(@"export");
     NSString *bundleRoot = [root stringByAppendingPathComponent:@"SCInstaExportBundle"];
@@ -769,22 +919,22 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
     NSFileManager *fm = [NSFileManager defaultManager];
     [fm createDirectoryAtPath:bundleRoot withIntermediateDirectories:YES attributes:nil error:nil];
 
+    NSArray<NSString *> *includedKeys = nil;
     if (includeSettings) {
         [fm createDirectoryAtPath:[prefsPath stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
-        NSDictionary *prefs = SCIPreferencesSnapshot();
+        NSDictionary *prefs = SCIPreferencesSnapshotForScope(settingsScope, currentPK);
+        includedKeys = prefs.allKeys;
         [prefs writeToFile:prefsPath atomically:YES];
     }
 
     if (includeGallery) {
-        NSError *copyError = nil;
-        NSString *gallerySource = [SCIGalleryPaths galleryDirectory];
-        if ([fm fileExistsAtPath:gallerySource]) {
-            if (![fm copyItemAtPath:gallerySource toPath:galleryDestination error:&copyError]) {
-                SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-                return;
-            }
-        } else if (![fm createDirectoryAtPath:galleryDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
-            SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+        // One safe path for both scopes: a fresh store built via Core Data (current ⇒
+        // only this account's files, all ⇒ every file). Avoids copying the live, possibly
+        // WAL-dirty gallery.sqlite.
+        NSString *ownerScope = (settingsScope == SCITransferAccountScopeCurrentAccount && currentPK.length > 0) ? currentPK : nil;
+        NSError *galleryError = nil;
+        if (![[SCIGalleryCoreDataStack shared] exportGalleryFilesToBundleDirectory:galleryDestination ownerAccountPK:ownerScope error:&galleryError]) {
+            SCINotify(kSCINotificationSettingsExport, @"Export failed", galleryError.localizedDescription ?: @"Gallery export failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
             return;
         }
     }
@@ -825,10 +975,11 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
         }
     }
 
-    [SCITransferManifest(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer) writeToFile:manifestPath atomically:YES];
+    [SCITransferManifest(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, sourcePK, includedKeys) writeToFile:manifestPath atomically:YES];
 
     NSError *archiveError = nil;
-    NSString *archivePath = [root stringByAppendingPathComponent:@"SCInsta.zip"];
+    NSString *archiveName = SCITransferArchiveFilename(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, [SCIAccountManager currentAccountUsername], currentPK);
+    NSString *archivePath = [root stringByAppendingPathComponent:archiveName];
     if (!SCIWriteStoredZipFromDirectory(bundleRoot, archivePath, &archiveError)) {
         NSString *message = archiveError.localizedDescription ?: @"The export zip could not be created.";
         SCINotify(kSCINotificationSettingsExport, @"Export failed", message, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
@@ -948,62 +1099,147 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
         return;
     }
 
+    // Backup scope (applies to both preferences and Gallery). A "current" backup is
+    // flattened onto this device's active account on import. Read the new `account_scope`
+    // field, falling back to the legacy `settings_scope` for older archives.
+    NSDictionary *scopeManifest = [manifest isKindOfClass:[NSDictionary class]] ? manifest : nil;
+    NSString *scopeString = scopeManifest[@"account_scope"] ?: scopeManifest[@"settings_scope"];
+    BOOL currentScope = [scopeString isEqualToString:@"current"];
+    NSString *currentPK = [SCIAccountManager currentAccountPK];
+    NSString *currentUsername = [SCIAccountManager currentAccountUsername];
+
     if (importSettings) {
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-        for (NSString *key in SCIExportedPreferenceKeys()) {
-            [defaults removeObjectForKey:key];
+
+        if (currentScope) {
+            // FLATTEN: re-home the backup's (base-key, effective-value) settings into the
+            // importing account's namespace — or global if per-account mode is off — and
+            // touch nothing else, so other accounts are unaffected.
+            NSString *targetPK = SCIPerAccountModeActive() ? currentPK : nil;
+            if (targetPK.length > 0) {
+                for (NSString *key in SCIPerAccountOverrideKeys(SCITransferAccountScopeCurrentAccount, targetPK)) {
+                    [defaults removeObjectForKey:key];
+                }
+            } else {
+                for (NSString *key in SCIExportedPreferenceKeys()) {
+                    [defaults removeObjectForKey:key];
+                }
+            }
+            [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
+                if (SCIPreferenceKeyIsGlobal(key) || !SCIPrefIsAvailable(key)) return;  // flatten archives carry only per-account-capable base keys
+                NSString *applyKey = targetPK.length > 0 ? [NSString stringWithFormat:@"u_%@_%@", targetPK, key] : key;
+                [defaults setObject:value forKey:applyKey];
+            }];
+        } else {
+            // ALL ACCOUNTS: verbatim restore — clear every scope key, apply as stored.
+            for (NSString *key in SCIExportedPreferenceKeysForScope(SCITransferAccountScopeAllAccounts, nil)) {
+                [defaults removeObjectForKey:key];
+            }
+            [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
+                NSString *pk = nil, *baseKey = nil;
+                BOOL isPerAccount = SCIParsePerAccountKey(key, &pk, &baseKey);
+                NSString *availabilityKey = isPerAccount ? baseKey : key;  // availability keyed by base pref
+                if (!SCIPrefIsAvailable(availabilityKey)) return;
+                [defaults setObject:value forKey:key];
+            }];
         }
-        [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
-            if (!SCIPrefIsAvailable(key)) return;
-            [defaults setObject:value forKey:key];
-        }];
         // The app icon is a pref but also live UIApplication state — apply the
         // imported selection so it changes immediately instead of requiring the
         // user to re-pick it.
         [SCIAppIconCatalog applyStoredIconIfNeeded];
     }
 
-    if (importGallery) {
-        [[SCIGalleryCoreDataStack shared] unloadPersistentStores];
-        NSError *galleryCopyError = nil;
-        if (!SCICopyItemReplacingDestination(galleryPath, [SCIGalleryPaths galleryDirectory], &galleryCopyError)) {
-            if (scoped) [url stopAccessingSecurityScopedResource];
-            SCINotify(kSCINotificationSettingsImport, @"Import failed", galleryCopyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-            [[SCIGalleryCoreDataStack shared] reloadPersistentContainer];
-            return;
+    // The non-gallery remainder (messages, profile analyzer, finalize) runs after the
+    // gallery merge — which may be deferred behind a conflict prompt — so it lives in a
+    // block invoked from every path.
+    void (^finishImport)(NSInteger) = ^(NSInteger galleryAddedCount) {
+        if (importDeletedMessages) {
+            NSError *deletedMessagesError = nil;
+            if (![SCIDeletedMessagesStorage replaceStorageWithDirectoryAtPath:deletedMessagesPath error:&deletedMessagesError]) {
+                if (scoped) [url stopAccessingSecurityScopedResource];
+                SCINotify(kSCINotificationSettingsImport, @"Import failed", deletedMessagesError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                return;
+            }
         }
-        [[SCIGalleryManager sharedManager] removePasscode];
-        [[SCIGalleryCoreDataStack shared] reloadPersistentContainer];
+
+        if (importProfileAnalyzer) {
+            NSError *profileAnalyzerError = nil;
+            if (![SCIProfileAnalyzerStorage replaceStorageWithDirectoryAtPath:profileAnalyzerPath error:&profileAnalyzerError]) {
+                if (scoped) [url stopAccessingSecurityScopedResource];
+                SCINotify(kSCINotificationSettingsImport, @"Import failed", profileAnalyzerError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                return;
+            }
+        }
+
+        if (scoped) [url stopAccessingSecurityScopedResource];
+
+        NSMutableArray<NSString *> *restored = [NSMutableArray array];
+        if (importSettings) [restored addObject:@"preferences"];
+        if (importGallery) [restored addObject:[NSString stringWithFormat:@"Gallery (%ld added)", (long)galleryAddedCount]];
+        if (importDeletedMessages) [restored addObject:@"unsent messages"];
+        if (importProfileAnalyzer) [restored addObject:@"Profile Analyzer"];
+        NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
+        SCINotify(kSCINotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
+
+        // Only prompt to restart when something needs a relaunch to take effect.
+        // Preferences are read at launch / hook-install time; the deleted-messages and
+        // profile-analyzer stores are swapped on disk under live references. The Gallery
+        // merge writes to the live context, so a gallery-only import needs no restart.
+        if (importSettings || importDeletedMessages || importProfileAnalyzer) {
+            [SCIUtils showRestartConfirmation];
+        }
+    };
+
+    // A "this account" import re-assigns gallery files to the active account.
+    NSString *remapPK = currentScope ? currentPK : nil;
+    NSString *remapUsername = currentScope ? currentUsername : nil;
+
+    void (^mergeGalleryThenFinish)(SCIGalleryImportConflictStrategy) = ^(SCIGalleryImportConflictStrategy strategy) {
+        NSInteger galleryAddedCount = 0;
+        if (importGallery) {
+            NSError *galleryMergeError = nil;
+            galleryAddedCount = [[SCIGalleryCoreDataStack shared] mergeGalleryFilesFromBundleDirectory:galleryPath
+                                                                                  remapOwnerAccountPK:remapPK
+                                                                                        ownerUsername:remapUsername
+                                                                                     conflictStrategy:strategy
+                                                                                                error:&galleryMergeError];
+            if (galleryAddedCount < 0) {
+                if (scoped) [url stopAccessingSecurityScopedResource];
+                SCINotify(kSCINotificationSettingsImport, @"Import failed", galleryMergeError.localizedDescription ?: @"Gallery import failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+                return;
+            }
+        }
+        finishImport(galleryAddedCount);
+    };
+
+    // If a "this account" gallery import collides with items already owned by another
+    // account on this device, ask once how to resolve them all, then proceed.
+    NSInteger conflicts = (importGallery && remapPK.length > 0)
+        ? [[SCIGalleryCoreDataStack shared] galleryImportConflictCountForBundleDirectory:galleryPath ownerAccountPK:remapPK]
+        : 0;
+    if (conflicts > 0) {
+        NSString *message = [NSString stringWithFormat:@"%ld imported file%@ already exist%@ on this device under a different account. What should happen to %@?",
+                             (long)conflicts, conflicts == 1 ? @"" : @"s", conflicts == 1 ? @"s" : @"", conflicts == 1 ? @"it" : @"them"];
+        [SCIIGAlertPresenter presentAlertFromViewController:topMostController()
+                                                      title:@"Files from Another Account"
+                                                    message:message
+                                                    actions:@[
+            [SCIIGAlertAction actionWithTitle:@"Claim for This Account" style:SCIIGAlertActionStyleDefault handler:^{
+                mergeGalleryThenFinish(SCIGalleryImportConflictStrategyClaim);
+            }],
+            [SCIIGAlertAction actionWithTitle:@"Keep a Separate Copy" style:SCIIGAlertActionStyleDefault handler:^{
+                mergeGalleryThenFinish(SCIGalleryImportConflictStrategyDuplicate);
+            }],
+            [SCIIGAlertAction actionWithTitle:[NSString stringWithFormat:@"Skip %@", conflicts == 1 ? @"It" : @"Them"]
+                                        style:SCIIGAlertActionStyleCancel
+                                      handler:^{
+                mergeGalleryThenFinish(SCIGalleryImportConflictStrategySkip);
+            }],
+        ]];
+        return;  // resolution continues in the chosen handler
     }
 
-    if (importDeletedMessages) {
-        NSError *deletedMessagesError = nil;
-        if (![SCIDeletedMessagesStorage replaceStorageWithDirectoryAtPath:deletedMessagesPath error:&deletedMessagesError]) {
-            if (scoped) [url stopAccessingSecurityScopedResource];
-            SCINotify(kSCINotificationSettingsImport, @"Import failed", deletedMessagesError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-            return;
-        }
-    }
-
-    if (importProfileAnalyzer) {
-        NSError *profileAnalyzerError = nil;
-        if (![SCIProfileAnalyzerStorage replaceStorageWithDirectoryAtPath:profileAnalyzerPath error:&profileAnalyzerError]) {
-            if (scoped) [url stopAccessingSecurityScopedResource];
-            SCINotify(kSCINotificationSettingsImport, @"Import failed", profileAnalyzerError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-            return;
-        }
-    }
-
-    if (scoped) [url stopAccessingSecurityScopedResource];
-
-    NSMutableArray<NSString *> *restored = [NSMutableArray array];
-    if (importSettings) [restored addObject:@"preferences"];
-    if (importGallery) [restored addObject:@"Gallery"];
-    if (importDeletedMessages) [restored addObject:@"unsent messages"];
-    if (importProfileAnalyzer) [restored addObject:@"Profile Analyzer"];
-    NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
-    SCINotify(kSCINotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
-    [SCIUtils showRestartConfirmation];
+    mergeGalleryThenFinish(SCIGalleryImportConflictStrategySkip);
 }
 
 - (void)resetAllSettingsFromController:(UIViewController *)controller {
@@ -1014,7 +1250,8 @@ static NSDictionary *SCITransferManifest(BOOL includeSettings, BOOL includeGalle
         [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil],
         [SCIIGAlertAction actionWithTitle:@"Reset" style:SCIIGAlertActionStyleDestructive handler:^{
             NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            for (NSString *key in SCIExportedPreferenceKeys()) {
+            // Clear global keys AND every account's per-account overrides.
+            for (NSString *key in SCIExportedPreferenceKeysForScope(SCITransferAccountScopeAllAccounts, nil)) {
                 [defaults removeObjectForKey:key];
             }
             [[SCISettingsLockManager sharedManager] removePasscode];

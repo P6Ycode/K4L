@@ -84,7 +84,10 @@
     }];
     profileAnalyzerRow.userInfo = @{@"checkmarked": @(self.includeProfileAnalyzer)};
 
-    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow, deletedMessagesRow, profileAnalyzerRow], self.importMode ? @"A restart prompt appears after a successful import." : nil)];
+    NSString *footer = self.importMode
+        ? @"Preferences are restored, replacing your current values for the imported scope. Gallery items are merged in and never deleted. A restart prompt appears after a successful import."
+        : nil;
+    NSArray *sections = @[SCITopicSection(@"", @[settingsRow, galleryRow, deletedMessagesRow, profileAnalyzerRow], footer)];
     [self replaceSections:sections];
 }
 
