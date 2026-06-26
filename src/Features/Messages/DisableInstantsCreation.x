@@ -85,7 +85,18 @@ static BOOL SCIQuickSnapCreationDisabled(void) {
 }
 
 static BOOL SCIQuickSnapSendConfirmEnabled(void) {
-    return [SCIUtils getBoolPref:kSCIQuickSnapConfirmCapturePref];
+    /// TODO: investigate — hard-disabled. Confirm Instant Capture cannot gate IG's
+    /// new VIDEO Instants pipeline: capture happens regardless of the capture-button
+    /// delegate (those callbacks are notification-only; swallowing them only breaks
+    /// the shutter UI), and both photo & video auto-send through the undo-send pill /
+    /// IGQuickSnapPendingSendManager — whose commit/timer is Swift-internal with
+    /// stripped symbols. +isVideoCaptureEnabled: is baked before our %ctor so it
+    /// can't be forced off either. The capture-button release gate below is therefore
+    /// a no-op for the new flow. Revisit when the undo-pill / pending-send commit can
+    /// be intercepted (would need deep ARM64 RE). See memory:
+    /// instants-confirm-capture-video-blocked. Restore by returning the pref read.
+    return NO;
+    // return [SCIUtils getBoolPref:kSCIQuickSnapConfirmCapturePref];
 }
 
 static BOOL SCIQuickSnapDisableCameraControlEnabled(void) {

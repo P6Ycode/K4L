@@ -57,9 +57,15 @@ static NSArray *SCIInstantsSettingsSections(void) {
            @"3. Stops the hardware Camera Control button (iPhone 16/17) from taking an Instant.\n"
            @"4. Adds a gallery button to the Instants camera to upload from Photos, Files, or Gallery."),
         SCITopicSection(@"Confirmation", @[
-            [SCISetting switchCellWithTitle:@"Confirm Instant Capture" icon:SCISettingsIcon(@"instants_burst") defaultsKey:@"instants_confirm_capture"],
+            ({
+                SCISetting *s = [SCISetting switchCellWithTitle:@"Confirm Instant Capture"
+                                                           icon:SCISettingsIcon(@"instants_burst")
+                                                    defaultsKey:@"instants_confirm_capture"];
+                s.enabledProvider = ^BOOL{ return NO; };
+                s;
+            }),
             [SCISetting switchCellWithTitle:@"Confirm Instant Reaction" icon:SCISettingsIcon(@"reactions") defaultsKey:@"instants_confirm_reaction"],
-        ], @"1. Asks for confirmation when you send a captured Instant, freezing the preview so the exact frame is kept until you confirm.\n"
+        ], @"1. Asks for confirmation when you send a captured Instant. Temporarily unavailable.\n"
            @"2. Shows a confirmation alert before an Instant reaction is sent."),
     ];
 }
