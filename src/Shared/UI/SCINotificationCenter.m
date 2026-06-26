@@ -176,7 +176,7 @@ NSArray<NSDictionary *> *SCINotificationPreferenceSections(void) {
         ]},
         @{@"title": @"Comments", @"items": @[
             SCINotificationItem(kSCINotificationCopyComment, @"Copy Comment", @"copy"),
-            SCINotificationItem(kSCINotificationCopyGIFLink, @"Copy GIF Link", @"link"),
+            SCINotificationItem(kSCINotificationCopyGIFLink, @"Copy Media Link", @"link"),
         ]},
         @{@"title": @"Media", @"items": @[
             SCINotificationItem(kSCINotificationMediaPreviewSavePhotos, @"Save to Photos", @"download"),
