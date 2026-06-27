@@ -290,6 +290,13 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     self.tableView.tintColor = [SCIUtils SCIColor_Primary];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 72.0;
+    // Disable header/footer height estimation. The grouped footers are multi-line
+    // self-sizing labels; with a non-zero estimate UIKit lays them out short, then
+    // corrects to the real (taller) height as they scroll into view, which shifts
+    // the content offset and reads as the table "jumping" (most visible on pages
+    // with long footers like Storage). Computing the real heights up front removes it.
+    self.tableView.estimatedSectionHeaderHeight = 0.0;
+    self.tableView.estimatedSectionFooterHeight = 0.0;
 
     [self.view addSubview:self.tableView];
     [self setupNavigationItems];
