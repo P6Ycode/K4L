@@ -554,6 +554,8 @@ static BOOL SCIPrefIsGlobalKey(NSString *key) {
             kSCIPrefPerAccountSettings,
             @"general_app_icon_identifier",
             @"tools_disable_all",
+            // Notification delivery is install-wide, not per-account.
+            @"tools_fix_duplicate_notifications",
             @"app_first_run",
             @"app_safe_startup",
             @"app_startup_profiling",

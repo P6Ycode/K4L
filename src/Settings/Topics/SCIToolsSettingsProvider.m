@@ -247,19 +247,20 @@ static NSArray *SCIManageSettingsDataSections(void) {
             [SCISetting buttonCellWithTitle:@"Reset Onboarding Completion State" subtitle:@"" icon:nil action:^(void) {
                 [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"app_first_run"];
                 [SCIUtils showRestartConfirmation];
-            }]
-        ], @"Quick Settings Access opens settings when long pressing the Home tab."),
-        SCISettingsLockSection(),
-        SCITopicSection(@"Instagram", @[
-            [SCISetting switchCellWithTitle:@"Hide TestFlight Popup" defaultsKey:@"tools_hide_testflight_popup" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Disable Safe Mode" defaultsKey:@"tools_disable_safe_mode"],
+            }],
             [SCISetting buttonCellWithTitle:@"Reset Safe Startup Mode" subtitle:@"" icon:nil action:^(void) {
                 SCIStabilityGuardReset();
                 [SCIUtils showRestartConfirmation];
             }],
+        ], @"Quick Settings Access opens settings when long pressing the Home tab. Reset Safe Startup Mode clears failed-launch counters and temporary hook suppression."),
+        SCISettingsLockSection(),
+        SCITopicSection(@"Instagram", @[
+            [SCISetting switchCellWithTitle:@"Hide TestFlight Popup" defaultsKey:@"tools_hide_testflight_popup" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Fix Duplicate Notifications" defaultsKey:@"tools_fix_duplicate_notifications"],
+            [SCISetting switchCellWithTitle:@"Disable Safe Mode" defaultsKey:@"tools_disable_safe_mode"],
         ], @"1. Suppresses the Instagram Beta update popup.\n"
-           @"2. Makes Instagram not reset settings after subsequent crashes. Use at your own risk.\n"
-           @"3. Clears failed-launch counters and temporary hook suppression."),
+           @"2. Drops the duplicate in-app banner sideloaded Instagram posts while the notification extension is already delivering the same push. Only acts while the app is foregrounded.\n"
+           @"3. Makes Instagram not reset settings after subsequent crashes. Use at your own risk."),
         SCITopicSection(@"Backup & Transfer", @[
             [SCISetting navigationCellWithTitle:@"Manage Settings & Data" subtitle:@"" icon:SCISettingsIcon(@"cloud") navSections:SCIManageSettingsDataSections()]
         ], nil)

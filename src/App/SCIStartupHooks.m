@@ -86,6 +86,7 @@ FOUNDATION_EXPORT void SCIInstallProfileHeaderControlsHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallAudioPageDownloadHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDMAudioDownloadHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallHideDirectCallButtonsHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallFixDuplicateNotificationsHooksIfNeeded(void);
 
 // Master kill switch: when YES, suppress all feature hook installation, but
 // keep the home long-press shortcut so users can still reach Settings to turn
@@ -252,6 +253,7 @@ void SCIInstallGeneralUIHooksIfNeeded(void) {
     SCIInstallEnhancedMediaResolutionHooksIfEnabled();
     SCIInstallAudioPageDownloadHooksIfNeeded();
     SCIInstallCaptureHidingHooksIfNeeded();
+    SCIInstallFixDuplicateNotificationsHooksIfNeeded();
 }
 
 void SCIInstallEnabledFeatureHooks(void) {

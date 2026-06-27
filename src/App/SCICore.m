@@ -42,6 +42,7 @@ static NSDictionary *SCIFeatureDefaults(void) {
         @"stories_detailed_color_picker": @(NO),
         @"msgs_disable_screenshot_detection": @(YES),
         @"tools_hide_testflight_popup": @(NO),
+        @"tools_fix_duplicate_notifications": @(NO),
         @"general_hold_send_copy_link": @(YES),
         @"stories_mark_seen_on_like": @(NO),
         @"stories_mark_seen_on_reply": @(NO),
