@@ -41,6 +41,7 @@ FOUNDATION_EXPORT void SCIInstallSettingsShortcutsHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDisableHapticsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallCopyDescriptionHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallNoRecentSearchesHooksIfEnabled(void);
+FOUNDATION_EXPORT void SCIInstallSearchBarIconRemapHooksIfNeeded(void);
 FOUNDATION_EXPORT void SCIInstallDetailedColorPickerHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallEnhancedMediaResolutionHooksIfEnabled(void);
 FOUNDATION_EXPORT void SCIInstallHideMetricsHooksIfEnabled(void);
@@ -250,6 +251,7 @@ void SCIInstallGeneralUIHooksIfNeeded(void) {
     SCIInstallDisableHapticsHooksIfEnabled();
     SCIInstallCopyDescriptionHooksIfEnabled();
     SCIInstallNoRecentSearchesHooksIfEnabled();
+    SCIInstallSearchBarIconRemapHooksIfNeeded();
     SCIInstallEnhancedMediaResolutionHooksIfEnabled();
     SCIInstallAudioPageDownloadHooksIfNeeded();
     SCIInstallCaptureHidingHooksIfNeeded();
