@@ -37,7 +37,7 @@
 
     self.highlightOverlay = [[UIView alloc] init];
     self.highlightOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    self.highlightOverlay.backgroundColor = [[SCIUtils SCIColor_InstagramPrimaryText] colorWithAlphaComponent:0.06];
+    self.highlightOverlay.backgroundColor = [SCIUtils SCIColor_ListRowPressedOverlay];
     self.highlightOverlay.hidden = YES;
     self.highlightOverlay.userInteractionEnabled = NO;
     [self.contentView addSubview:self.highlightOverlay];

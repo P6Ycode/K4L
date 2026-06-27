@@ -91,7 +91,7 @@ typedef NS_ENUM(NSUInteger, SCIDownloadsHistoryRowKind) {
         // Highlight overlay (manual — avoids separator jump that UIKit selection causes)
         _highlightOverlay = [UIView new];
         _highlightOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-        _highlightOverlay.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
+        _highlightOverlay.backgroundColor = [SCIUtils SCIColor_ListRowPressedOverlay];
         _highlightOverlay.hidden = YES;
         [self.contentView addSubview:_highlightOverlay];
         [NSLayoutConstraint activateConstraints:@[

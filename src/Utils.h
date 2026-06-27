@@ -109,6 +109,7 @@ FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
 + (UIColor *)SCIColor_InstagramFavorite;
 + (UIColor *)SCIColor_InstagramDestructive;
 + (UIColor *)SCIColor_InstagramPressedBackground;
++ (UIColor *)SCIColor_ListRowPressedOverlay;
 + (UIColor *)SCIColor_SettingsSwitchOnTint;
 + (UIColor *)SCIColor_SettingsSwitchThumbTint;
 + (UIColor *)SCIColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection;

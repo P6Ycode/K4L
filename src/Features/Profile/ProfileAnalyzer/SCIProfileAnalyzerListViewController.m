@@ -71,7 +71,7 @@ typedef NS_ENUM(NSInteger, SCIPASortMode) {
     if (!self) return self;
     self.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
     self.selectedBackgroundView = [UIView new];
-    self.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
+    self.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_ListRowPressedOverlay];
 
     _avatarView = [[SCIProfileAnalyzerAvatarView alloc] initWithFrame:CGRectZero];
     _avatarView.translatesAutoresizingMaskIntoConstraints = NO;

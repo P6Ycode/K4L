@@ -1027,6 +1027,14 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return SCIDynamicInstagramColor(232.0, 233.0, 238.0, 51.0, 60.0, 69.0);
 }
 
++ (UIColor *)SCIColor_ListRowPressedOverlay {
+    // Subtle text-tinted overlay used by the SCInsta Gallery list rows. Shared by
+    // the other custom list UIs (deleted messages, profile analyzer, downloads
+    // history) so their tap feedback matches the gallery rather than the heavier
+    // settings-cell pressed background.
+    return [[SCIUtils SCIColor_InstagramPrimaryText] colorWithAlphaComponent:0.06];
+}
+
 + (UIColor *)SCIColor_SettingsSwitchOnTint {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIColor.whiteColor : UIColor.blackColor;
