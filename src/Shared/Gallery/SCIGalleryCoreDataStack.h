@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryImportConflictStrategy) {
                               remapOwnerAccountPK:(nullable NSString *)remapOwnerAccountPK
                                     ownerUsername:(nullable NSString *)ownerUsername
                                  conflictStrategy:(SCIGalleryImportConflictStrategy)conflictStrategy
+                                  progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
                                             error:(NSError * _Nullable * _Nullable)error;
 
 /// Number of files in the bundle that already exist on the device but are owned by an
@@ -47,6 +48,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryImportConflictStrategy) {
 /// per-account ("this account") exports. Returns NO on failure (with `error` set).
 - (BOOL)exportGalleryFilesToBundleDirectory:(NSString *)bundleGalleryDirectory
                              ownerAccountPK:(nullable NSString *)ownerAccountPK
+                            progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
                                       error:(NSError * _Nullable * _Nullable)error;
 
 @end

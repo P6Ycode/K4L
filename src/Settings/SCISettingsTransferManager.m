@@ -33,6 +33,16 @@ typedef NS_ENUM(NSInteger, SCITransferAccountScope) {
 - (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer settingsScope:(SCITransferAccountScope)settingsScope;
 @end
 
+// Serial queue for the heavy file/zip work so export/import never block the UI.
+static dispatch_queue_t SCITransferWorkQueue(void) {
+    static dispatch_queue_t queue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        queue = dispatch_queue_create("com.socuul.scinsta.settings-transfer", DISPATCH_QUEUE_SERIAL);
+    });
+    return queue;
+}
+
 static NSString *SCITemporaryTransferRoot(NSString *suffix) {
     NSString *root = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"scinsta-transfer-%@-%@", suffix, NSUUID.UUID.UUIDString]];
     [[NSFileManager defaultManager] createDirectoryAtPath:root withIntermediateDirectories:YES attributes:nil error:nil];
@@ -919,88 +929,92 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     NSFileManager *fm = [NSFileManager defaultManager];
     [fm createDirectoryAtPath:bundleRoot withIntermediateDirectories:YES attributes:nil error:nil];
 
-    NSArray<NSString *> *includedKeys = nil;
-    if (includeSettings) {
-        [fm createDirectoryAtPath:[prefsPath stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
-        NSDictionary *prefs = SCIPreferencesSnapshotForScope(settingsScope, currentPK);
-        includedKeys = prefs.allKeys;
-        [prefs writeToFile:prefsPath atomically:YES];
-    }
+    SCINotificationPillView *pill = SCINotifyProgress(kSCINotificationSettingsExport, @"Exporting…", nil);
+    void (^setProgress)(float, NSString *) = ^(float fraction, NSString *subtitle) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [pill setProgress:fraction animated:YES];
+            [pill updateProgressTitle:@"Exporting…" subtitle:subtitle];
+        });
+    };
+    void (^failExport)(NSString *) = ^(NSString *message) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [pill showErrorWithTitle:@"Export failed" subtitle:message icon:nil];
+        });
+    };
 
-    if (includeGallery) {
-        // One safe path for both scopes: a fresh store built via Core Data (current ⇒
-        // only this account's files, all ⇒ every file). Avoids copying the live, possibly
-        // WAL-dirty gallery.sqlite.
-        NSString *ownerScope = (settingsScope == SCITransferAccountScopeCurrentAccount && currentPK.length > 0) ? currentPK : nil;
-        NSError *galleryError = nil;
-        if (![[SCIGalleryCoreDataStack shared] exportGalleryFilesToBundleDirectory:galleryDestination ownerAccountPK:ownerScope error:&galleryError]) {
-            SCINotify(kSCINotificationSettingsExport, @"Export failed", galleryError.localizedDescription ?: @"Gallery export failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+    dispatch_async(SCITransferWorkQueue(), ^{
+        NSArray<NSString *> *includedKeys = nil;
+        if (includeSettings) {
+            [fm createDirectoryAtPath:[prefsPath stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
+            NSDictionary *prefs = SCIPreferencesSnapshotForScope(settingsScope, currentPK);
+            includedKeys = prefs.allKeys;
+            [prefs writeToFile:prefsPath atomically:YES];
+        }
+        setProgress(0.05f, nil);
+
+        if (includeGallery) {
+            // One safe path for both scopes: a fresh store built via Core Data (current ⇒
+            // only this account's files, all ⇒ every file). Avoids copying the live, possibly
+            // WAL-dirty gallery.sqlite.
+            NSString *ownerScope = (settingsScope == SCITransferAccountScopeCurrentAccount && currentPK.length > 0) ? currentPK : nil;
+            NSError *galleryError = nil;
+            BOOL ok = [[SCIGalleryCoreDataStack shared] exportGalleryFilesToBundleDirectory:galleryDestination
+                                                                            ownerAccountPK:ownerScope
+                                                                           progressHandler:^(NSInteger done, NSInteger total) {
+                setProgress(0.05f + 0.55f * (total > 0 ? (float)done / total : 1.0f),
+                            [NSString stringWithFormat:@"Gallery %ld/%ld", (long)done, (long)total]);
+            } error:&galleryError];
+            if (!ok) { failExport(galleryError.localizedDescription ?: @"Gallery export failed."); return; }
+        }
+
+        if (includeDeletedMessages) {
+            setProgress(0.65f, @"Messages…");
+            NSError *copyError = nil;
+            NSString *source = [SCIDeletedMessagesStorage storageRootPath];
+            if ([fm fileExistsAtPath:source]) {
+                if (![fm copyItemAtPath:source toPath:deletedMessagesDestination error:&copyError]) { failExport(copyError.localizedDescription); return; }
+            } else if (![fm createDirectoryAtPath:deletedMessagesDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) { failExport(copyError.localizedDescription); return; }
+            NSString *keepalivePath = [deletedMessagesDestination stringByAppendingPathComponent:@".scinsta_keep"];
+            if (![fm fileExistsAtPath:keepalivePath]) [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
+        }
+
+        if (includeProfileAnalyzer) {
+            setProgress(0.72f, @"Profile Analyzer…");
+            NSError *copyError = nil;
+            NSString *source = [SCIProfileAnalyzerStorage storageRootPath];
+            if ([fm fileExistsAtPath:source]) {
+                if (![fm copyItemAtPath:source toPath:profileAnalyzerDestination error:&copyError]) { failExport(copyError.localizedDescription); return; }
+            } else if (![fm createDirectoryAtPath:profileAnalyzerDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) { failExport(copyError.localizedDescription); return; }
+            NSString *keepalivePath = [profileAnalyzerDestination stringByAppendingPathComponent:@".scinsta_keep"];
+            if (![fm fileExistsAtPath:keepalivePath]) [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
+        }
+
+        [SCITransferManifest(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, sourcePK, includedKeys) writeToFile:manifestPath atomically:YES];
+
+        setProgress(0.8f, @"Compressing…");
+        NSError *archiveError = nil;
+        NSString *archiveName = SCITransferArchiveFilename(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, [SCIAccountManager currentAccountUsername], currentPK);
+        NSString *archivePath = [root stringByAppendingPathComponent:archiveName];
+        if (!SCIWriteStoredZipFromDirectory(bundleRoot, archivePath, &archiveError)) {
+            failExport(archiveError.localizedDescription ?: @"The export zip could not be created.");
             return;
         }
-    }
+        setProgress(1.0f, nil);
 
-    if (includeDeletedMessages) {
-        NSError *copyError = nil;
-        NSString *source = [SCIDeletedMessagesStorage storageRootPath];
-        if ([fm fileExistsAtPath:source]) {
-            if (![fm copyItemAtPath:source toPath:deletedMessagesDestination error:&copyError]) {
-                SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+        NSURL *archiveURL = [NSURL fileURLWithPath:archivePath isDirectory:NO];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [pill dismiss];
+            UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[archiveURL] asCopy:YES];
+            picker.delegate = self;
+            self.activeDocumentPicker = picker;
+            UIViewController *presenter = SCIDocumentPickerPresenter(controller);
+            if (!presenter || !presenter.view.window) {
+                SCINotify(kSCINotificationSettingsExport, @"Export ready", @"Unable to open Files; opening share sheet instead.", @"arrow_up", SCINotificationToneForIconResource(@"arrow_up"));
+                [SCIUtils showShareVC:archiveURL];
                 return;
             }
-        } else if (![fm createDirectoryAtPath:deletedMessagesDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
-            SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-            return;
-        }
-        NSString *keepalivePath = [deletedMessagesDestination stringByAppendingPathComponent:@".scinsta_keep"];
-        if (![fm fileExistsAtPath:keepalivePath]) {
-            [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
-        }
-    }
-
-    if (includeProfileAnalyzer) {
-        NSError *copyError = nil;
-        NSString *source = [SCIProfileAnalyzerStorage storageRootPath];
-        if ([fm fileExistsAtPath:source]) {
-            if (![fm copyItemAtPath:source toPath:profileAnalyzerDestination error:&copyError]) {
-                SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-                return;
-            }
-        } else if (![fm createDirectoryAtPath:profileAnalyzerDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
-            SCINotify(kSCINotificationSettingsExport, @"Export failed", copyError.localizedDescription, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-            return;
-        }
-        NSString *keepalivePath = [profileAnalyzerDestination stringByAppendingPathComponent:@".scinsta_keep"];
-        if (![fm fileExistsAtPath:keepalivePath]) {
-            [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
-        }
-    }
-
-    [SCITransferManifest(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, sourcePK, includedKeys) writeToFile:manifestPath atomically:YES];
-
-    NSError *archiveError = nil;
-    NSString *archiveName = SCITransferArchiveFilename(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, [SCIAccountManager currentAccountUsername], currentPK);
-    NSString *archivePath = [root stringByAppendingPathComponent:archiveName];
-    if (!SCIWriteStoredZipFromDirectory(bundleRoot, archivePath, &archiveError)) {
-        NSString *message = archiveError.localizedDescription ?: @"The export zip could not be created.";
-        SCINotify(kSCINotificationSettingsExport, @"Export failed", message, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-        return;
-    }
-
-    NSURL *archiveURL = [NSURL fileURLWithPath:archivePath isDirectory:NO];
-    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[archiveURL] asCopy:YES];
-    picker.delegate = self;
-    self.activeDocumentPicker = picker;
-    SCILog(@"Transfer", @"Presenting export document picker settings=%@ gallery=%@ deletedMessages=%@ profileAnalyzer=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no", includeDeletedMessages ? @"yes" : @"no", includeProfileAnalyzer ? @"yes" : @"no");
-    dispatch_async(dispatch_get_main_queue(), ^{
-        UIViewController *presenter = SCIDocumentPickerPresenter(controller);
-        if (!presenter || !presenter.view.window) {
-            SCINotify(kSCINotificationSettingsExport, @"Export ready", @"Unable to open Files; opening share sheet instead.", @"arrow_up", SCINotificationToneForIconResource(@"arrow_up"));
-            [SCIUtils showShareVC:archiveURL];
-            return;
-        }
-        [presenter presentViewController:picker animated:YES completion:^{
-            SCINotify(kSCINotificationSettingsExport, @"Opened export sheet", nil, @"arrow_up", SCINotificationToneForIconResource(@"arrow_up"));
-        }];
+            [presenter presentViewController:picker animated:YES completion:nil];
+        });
     });
 }
 
@@ -1059,6 +1073,24 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     }
 
     BOOL scoped = [url startAccessingSecurityScopedResource];
+
+    // Progress pill so unzip + the heavy merges never block the UI.
+    SCINotificationPillView *pill = SCINotifyProgress(kSCINotificationSettingsImport, @"Importing…", nil);
+    void (^setProgress)(float, NSString *) = ^(float fraction, NSString *sub) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [pill setProgress:fraction animated:YES];
+            [pill updateProgressTitle:@"Importing…" subtitle:sub];
+        });
+    };
+    void (^failImport)(NSString *) = ^(NSString *message) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (scoped) [url stopAccessingSecurityScopedResource];
+            [pill showErrorWithTitle:@"Import failed" subtitle:message icon:nil];
+        });
+    };
+
+    dispatch_async(SCITransferWorkQueue(), ^{
+    setProgress(0.05f, @"Reading backup…");
     NSError *archiveError = nil;
     NSString *bundleRoot = SCIResolvedImportBundleRootForPickedURL(url, &archiveError);
     NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
@@ -1093,11 +1125,10 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     }
 
     if ((importSettings && !archiveHasSettings) || (importGallery && !archiveHasGallery) || (importDeletedMessages && !archiveHasDeletedMessages) || (importProfileAnalyzer && !archiveHasProfileAnalyzer) || (!archiveHasSettings && !archiveHasGallery && !archiveHasDeletedMessages && !archiveHasProfileAnalyzer)) {
-        if (scoped) [url stopAccessingSecurityScopedResource];
-        NSString *message = archiveError.localizedDescription ?: @"Archive contents were invalid.";
-        SCINotify(kSCINotificationSettingsImport, @"Import failed", message, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+        failImport(archiveError.localizedDescription ?: @"Archive contents were invalid.");
         return;
     }
+    setProgress(0.15f, nil);
 
     // Backup scope (applies to both preferences and Gallery). A "current" backup is
     // flattened onto this device's active account on import. Read the new `account_scope`
@@ -1143,41 +1174,31 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
                 [defaults setObject:value forKey:key];
             }];
         }
-        // The app icon is a pref but also live UIApplication state — apply the
-        // imported selection so it changes immediately instead of requiring the
-        // user to re-pick it.
-        [SCIAppIconCatalog applyStoredIconIfNeeded];
+        // The app icon is a pref but also live UIApplication state — apply the imported
+        // selection on the main thread so it changes immediately.
+        dispatch_async(dispatch_get_main_queue(), ^{ [SCIAppIconCatalog applyStoredIconIfNeeded]; });
     }
+    setProgress(0.25f, nil);
 
-    // The non-gallery remainder (messages, profile analyzer, finalize) runs after the
-    // gallery merge — which may be deferred behind a conflict prompt — so it lives in a
-    // block invoked from every path.
+    // The non-gallery remainder (messages, profile analyzer, finalize). Runs on the
+    // work queue; only the final summary/restart touches the main thread.
     void (^finishImport)(NSInteger) = ^(NSInteger galleryAddedCount) {
         NSInteger messagesAdded = 0;
         if (importDeletedMessages) {
-            // Non-destructive merge (dedup by messageId); never wipes existing logs.
+            setProgress(0.85f, @"Messages…");
             NSError *deletedMessagesError = nil;
             messagesAdded = [SCIDeletedMessagesStorage mergeFromStorageDirectory:deletedMessagesPath ownerFilterPK:nil error:&deletedMessagesError];
-            if (messagesAdded < 0) {
-                if (scoped) [url stopAccessingSecurityScopedResource];
-                SCINotify(kSCINotificationSettingsImport, @"Import failed", deletedMessagesError.localizedDescription ?: @"Messages import failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-                return;
-            }
+            if (messagesAdded < 0) { failImport(deletedMessagesError.localizedDescription ?: @"Messages import failed."); return; }
         }
 
         NSInteger visitsAdded = 0;
         if (importProfileAnalyzer) {
-            // Visits union + snapshots fill-only; never overwrites local analysis.
+            setProgress(0.93f, @"Profile Analyzer…");
             NSError *profileAnalyzerError = nil;
             visitsAdded = [SCIProfileAnalyzerStorage mergeFromStorageDirectory:profileAnalyzerPath ownerFilterPK:nil error:&profileAnalyzerError];
-            if (visitsAdded < 0) {
-                if (scoped) [url stopAccessingSecurityScopedResource];
-                SCINotify(kSCINotificationSettingsImport, @"Import failed", profileAnalyzerError.localizedDescription ?: @"Profile Analyzer import failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-                return;
-            }
+            if (visitsAdded < 0) { failImport(profileAnalyzerError.localizedDescription ?: @"Profile Analyzer import failed."); return; }
         }
-
-        if (scoped) [url stopAccessingSecurityScopedResource];
+        setProgress(1.0f, nil);
 
         NSMutableArray<NSString *> *restored = [NSMutableArray array];
         if (importSettings) [restored addObject:@"preferences"];
@@ -1185,14 +1206,14 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
         if (importDeletedMessages) [restored addObject:[NSString stringWithFormat:@"Messages (%ld added)", (long)messagesAdded]];
         if (importProfileAnalyzer) [restored addObject:[NSString stringWithFormat:@"Profile Analyzer (%ld visits)", (long)visitsAdded]];
         NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
-        SCINotify(kSCINotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
-
-        // Only preferences need a relaunch to take effect (read at launch / hook-install
-        // time). Gallery, messages and analyzer merges write to live stores and post
-        // change notifications, so they refresh in place.
-        if (importSettings) {
-            [SCIUtils showRestartConfirmation];
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (scoped) [url stopAccessingSecurityScopedResource];
+            [pill dismiss];
+            SCINotify(kSCINotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SCINotificationToneForIconResource(@"circle_check_filled"));
+            // Only preferences need a relaunch (read at launch / hook-install time). The
+            // gallery/messages/analyzer merges write live and post change notifications.
+            if (importSettings) [SCIUtils showRestartConfirmation];
+        });
     };
 
     // A "this account" import re-assigns gallery files to the active account.
@@ -1200,31 +1221,44 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     NSString *remapUsername = currentScope ? currentUsername : nil;
 
     void (^mergeGalleryThenFinish)(SCIGalleryImportConflictStrategy) = ^(SCIGalleryImportConflictStrategy strategy) {
-        NSInteger galleryAddedCount = 0;
-        if (importGallery) {
-            NSError *galleryMergeError = nil;
-            galleryAddedCount = [[SCIGalleryCoreDataStack shared] mergeGalleryFilesFromBundleDirectory:galleryPath
-                                                                                  remapOwnerAccountPK:remapPK
-                                                                                        ownerUsername:remapUsername
-                                                                                     conflictStrategy:strategy
-                                                                                                error:&galleryMergeError];
-            if (galleryAddedCount < 0) {
-                if (scoped) [url stopAccessingSecurityScopedResource];
-                SCINotify(kSCINotificationSettingsImport, @"Import failed", galleryMergeError.localizedDescription ?: @"Gallery import failed.", @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
-                return;
+        // Always hop to the work queue so file copies never run on the main thread,
+        // whether we arrive here directly or from the (main-thread) conflict alert.
+        dispatch_async(SCITransferWorkQueue(), ^{
+            NSInteger galleryAddedCount = 0;
+            if (importGallery) {
+                NSError *galleryMergeError = nil;
+                galleryAddedCount = [[SCIGalleryCoreDataStack shared] mergeGalleryFilesFromBundleDirectory:galleryPath
+                                                                                      remapOwnerAccountPK:remapPK
+                                                                                            ownerUsername:remapUsername
+                                                                                         conflictStrategy:strategy
+                                                                                          progressHandler:^(NSInteger done, NSInteger total) {
+                    setProgress(0.25f + 0.55f * (total > 0 ? (float)done / total : 1.0f),
+                                [NSString stringWithFormat:@"Gallery %ld/%ld", (long)done, (long)total]);
+                } error:&galleryMergeError];
+                if (galleryAddedCount < 0) { failImport(galleryMergeError.localizedDescription ?: @"Gallery import failed."); return; }
             }
-        }
-        finishImport(galleryAddedCount);
+            finishImport(galleryAddedCount);
+        });
     };
 
     // If a "this account" gallery import collides with items already owned by another
-    // account on this device, ask once how to resolve them all, then proceed.
-    NSInteger conflicts = (importGallery && remapPK.length > 0)
-        ? [[SCIGalleryCoreDataStack shared] galleryImportConflictCountForBundleDirectory:galleryPath ownerAccountPK:remapPK]
-        : 0;
-    if (conflicts > 0) {
-        NSString *message = [NSString stringWithFormat:@"%ld imported file%@ already exist%@ on this device under a different account. What should happen to %@?",
-                             (long)conflicts, conflicts == 1 ? @"" : @"s", conflicts == 1 ? @"s" : @"", conflicts == 1 ? @"it" : @"them"];
+    // account on this device, ask once how to resolve them all, then proceed. The
+    // conflict count reads Core Data, so run it on the main queue.
+    __block NSInteger conflicts = 0;
+    if (importGallery && remapPK.length > 0) {
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            conflicts = [[SCIGalleryCoreDataStack shared] galleryImportConflictCountForBundleDirectory:galleryPath ownerAccountPK:remapPK];
+        });
+    }
+
+    if (conflicts <= 0) {
+        mergeGalleryThenFinish(SCIGalleryImportConflictStrategySkip);
+        return;
+    }
+
+    NSString *message = [NSString stringWithFormat:@"%ld imported file%@ already exist%@ on this device under a different account. What should happen to %@?",
+                         (long)conflicts, conflicts == 1 ? @"" : @"s", conflicts == 1 ? @"s" : @"", conflicts == 1 ? @"it" : @"them"];
+    dispatch_async(dispatch_get_main_queue(), ^{
         [SCIIGAlertPresenter presentAlertFromViewController:topMostController()
                                                       title:@"Files from Another Account"
                                                     message:message
@@ -1241,10 +1275,8 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
                 mergeGalleryThenFinish(SCIGalleryImportConflictStrategySkip);
             }],
         ]];
-        return;  // resolution continues in the chosen handler
-    }
-
-    mergeGalleryThenFinish(SCIGalleryImportConflictStrategySkip);
+    });
+    });
 }
 
 - (void)resetAllSettingsFromController:(UIViewController *)controller {

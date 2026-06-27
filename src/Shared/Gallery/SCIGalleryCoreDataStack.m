@@ -329,6 +329,14 @@ static BOOL SCIGalleryOwnerEqual(NSString *a, NSString *b) {
     return [a isEqualToString:b];
 }
 
+// Run a Core Data block on the main queue (the view context's queue). Synchronous so
+// callers on a background queue can interleave fast main-thread CD work with their own
+// background file I/O.
+static void SCIGalleryRunOnMain(void (^block)(void)) {
+    if ([NSThread isMainThread]) block();
+    else dispatch_sync(dispatch_get_main_queue(), block);
+}
+
 // Opens an exported bundle's gallery.sqlite read-only against the current model
 // (migrating an older-schema archive first). Returns nil + sets *error on failure,
 // or nil + no error when the bundle has no store.
@@ -386,117 +394,141 @@ static BOOL SCIGalleryOwnerEqual(NSString *a, NSString *b) {
                               remapOwnerAccountPK:(nullable NSString *)remapOwnerAccountPK
                                     ownerUsername:(nullable NSString *)ownerUsername
                                  conflictStrategy:(SCIGalleryImportConflictStrategy)conflictStrategy
+                                  progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
                                             error:(NSError * _Nullable * _Nullable)error {
     NSFileManager *fm = [NSFileManager defaultManager];
-    NSError *openError = nil;
-    NSManagedObjectContext *archiveContext = [self archiveContextForBundleDirectory:bundleGalleryDirectory error:&openError];
-    if (!archiveContext) {
-        if (openError) {
-            SCILog(@"General", @"[SCInsta Gallery] Merge: failed opening archive store: %@", openError);
-            if (error) *error = openError;
-            return -1;
-        }
-        return 0;  // No store in the bundle — nothing to merge.
-    }
+    NSArray<NSString *> *attributeNames = [self buildModel].entitiesByName[kSCIGalleryEntityName].attributesByName.allKeys;
 
-    NSError *fetchError = nil;
-    NSArray<NSManagedObject *> *archiveRows = [archiveContext executeFetchRequest:[NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName] error:&fetchError];
-    if (!archiveRows) {
-        SCILog(@"General", @"[SCInsta Gallery] Merge: failed fetching archive rows: %@", fetchError);
-        if (error) *error = fetchError;
+    // 1. Read the archive rows as plain dictionaries and the live identifier→owner map.
+    // Core Data reads happen on the main queue; everything after is plain data + file I/O.
+    __block NSArray<NSDictionary *> *archiveRows = nil;
+    __block NSError *readError = nil;
+    NSMutableDictionary<NSString *, NSString *> *existingOwners = [NSMutableDictionary dictionary];  // identifier → ownerPK ("" = unassigned)
+    SCIGalleryRunOnMain(^{
+        NSManagedObjectContext *archiveContext = [self archiveContextForBundleDirectory:bundleGalleryDirectory error:&readError];
+        if (!archiveContext) return;
+        NSArray<NSManagedObject *> *objs = [archiveContext executeFetchRequest:[NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName] error:&readError];
+        NSMutableArray<NSDictionary *> *dicts = [NSMutableArray arrayWithCapacity:objs.count];
+        for (NSManagedObject *o in objs) {
+            NSMutableDictionary *d = [NSMutableDictionary dictionary];
+            for (NSString *a in attributeNames) { id v = [o valueForKey:a]; if (v) d[a] = v; }
+            [dicts addObject:d];
+        }
+        archiveRows = dicts;
+
+        NSFetchRequest *mreq = [NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName];
+        mreq.resultType = NSDictionaryResultType;
+        mreq.propertiesToFetch = @[@"identifier", @"ownerAccountPK"];
+        for (NSDictionary *row in [self.viewContext executeFetchRequest:mreq error:nil]) {
+            NSString *identifier = row[@"identifier"];
+            if (![identifier isKindOfClass:[NSString class]]) continue;
+            NSString *owner = [row[@"ownerAccountPK"] isKindOfClass:[NSString class]] ? row[@"ownerAccountPK"] : @"";
+            existingOwners[identifier] = owner;
+        }
+    });
+    if (readError) {
+        SCILog(@"General", @"[SCInsta Gallery] Merge: failed reading archive: %@", readError);
+        if (error) *error = readError;
         return -1;
     }
-
-    // Existing rows keyed by identifier (objects, so a conflict can be re-assigned in place).
-    NSManagedObjectContext *mainContext = self.viewContext;
-    NSMutableDictionary<NSString *, NSManagedObject *> *existingByID = [NSMutableDictionary dictionary];
-    for (NSManagedObject *row in [mainContext executeFetchRequest:[NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName] error:nil]) {
-        NSString *identifier = [row valueForKey:@"identifier"];
-        if (identifier.length > 0) existingByID[identifier] = row;
-    }
+    if (archiveRows.count == 0) return 0;
 
     NSString *mediaDir = [SCIGalleryPaths galleryMediaDirectory];
     NSString *thumbDir = [SCIGalleryPaths galleryThumbnailsDirectory];
     NSString *archiveFilesDir = [bundleGalleryDirectory stringByAppendingPathComponent:@"Files"];
     NSString *archiveThumbsDir = [bundleGalleryDirectory stringByAppendingPathComponent:@"Thumbnails"];
-    NSArray<NSString *> *attributeNames = [self buildModel].entitiesByName[kSCIGalleryEntityName].attributesByName.allKeys;
 
-    // Inserts a fresh copy of `src` under `targetIdentifier`, copying its media (with a
-    // collision-safe name) and thumbnail. Returns YES on success.
-    BOOL (^insertCopy)(NSManagedObject *, NSString *, NSString *) = ^BOOL(NSManagedObject *src, NSString *srcIdentifier, NSString *targetIdentifier) {
-        NSString *relativePath = [src valueForKey:@"relativePath"];
-        NSString *srcMediaPath = [archiveFilesDir stringByAppendingPathComponent:relativePath];
-        if (![fm fileExistsAtPath:srcMediaPath]) return NO;  // media missing — skip
-
+    // Copies a row's media (collision-safe) + thumbnail. Returns the dest relativePath, or nil.
+    NSString *(^copyFiles)(NSDictionary *, NSString *, NSString *) = ^NSString *(NSDictionary *row, NSString *srcId, NSString *targetId) {
+        NSString *relativePath = row[@"relativePath"];
+        NSString *srcMedia = [archiveFilesDir stringByAppendingPathComponent:relativePath];
+        if (![fm fileExistsAtPath:srcMedia]) return nil;
         NSString *destRelative = relativePath;
-        NSString *destMediaPath = [mediaDir stringByAppendingPathComponent:destRelative];
-        if ([fm fileExistsAtPath:destMediaPath]) {
+        NSString *destMedia = [mediaDir stringByAppendingPathComponent:destRelative];
+        if ([fm fileExistsAtPath:destMedia]) {
             NSString *stem = [relativePath stringByDeletingPathExtension];
             NSString *ext = [relativePath pathExtension];
-            NSUInteger suffix = 1;
+            NSUInteger n = 1;
             do {
-                destRelative = ext.length > 0 ? [NSString stringWithFormat:@"%@-%lu.%@", stem, (unsigned long)suffix, ext]
-                                              : [NSString stringWithFormat:@"%@-%lu", stem, (unsigned long)suffix];
-                destMediaPath = [mediaDir stringByAppendingPathComponent:destRelative];
-                suffix++;
-            } while ([fm fileExistsAtPath:destMediaPath]);
+                destRelative = ext.length > 0 ? [NSString stringWithFormat:@"%@-%lu.%@", stem, (unsigned long)n, ext]
+                                              : [NSString stringWithFormat:@"%@-%lu", stem, (unsigned long)n];
+                destMedia = [mediaDir stringByAppendingPathComponent:destRelative];
+                n++;
+            } while ([fm fileExistsAtPath:destMedia]);
         }
-        if (![fm copyItemAtPath:srcMediaPath toPath:destMediaPath error:nil]) return NO;
-
-        // Thumbnail is keyed by identifier (source named by srcIdentifier → dest by target).
-        NSString *srcThumb = [archiveThumbsDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", srcIdentifier]];
-        NSString *destThumb = [thumbDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", targetIdentifier]];
+        if (![fm copyItemAtPath:srcMedia toPath:destMedia error:nil]) return nil;
+        NSString *srcThumb = [archiveThumbsDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", srcId]];
+        NSString *destThumb = [thumbDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", targetId]];
         if ([fm fileExistsAtPath:srcThumb] && ![fm fileExistsAtPath:destThumb]) {
             [fm copyItemAtPath:srcThumb toPath:destThumb error:nil];
         }
-
-        NSManagedObject *dst = [NSEntityDescription insertNewObjectForEntityForName:kSCIGalleryEntityName inManagedObjectContext:mainContext];
-        for (NSString *attribute in attributeNames) {
-            [dst setValue:[src valueForKey:attribute] forKey:attribute];
-        }
-        [dst setValue:targetIdentifier forKey:@"identifier"];
-        [dst setValue:destRelative forKey:@"relativePath"];
-        if (remapOwnerAccountPK.length > 0) {
-            [dst setValue:remapOwnerAccountPK forKey:@"ownerAccountPK"];
-            [dst setValue:(ownerUsername.length > 0 ? ownerUsername : nil) forKey:@"ownerUsername"];
-        }
-        return YES;
+        return destRelative;
     };
 
-    NSInteger added = 0;
-    for (NSManagedObject *src in archiveRows) {
-        NSString *identifier = [src valueForKey:@"identifier"];
-        NSString *relativePath = [src valueForKey:@"relativePath"];
-        if (identifier.length == 0 || relativePath.length == 0) continue;
-
-        NSManagedObject *existing = existingByID[identifier];
-        if (existing) {
-            // Already on the device. Only a "this account" import with a different owner
-            // is a real conflict; otherwise it's a true duplicate we skip.
-            NSString *existingOwner = [existing valueForKey:@"ownerAccountPK"];
-            BOOL ownerConflict = remapOwnerAccountPK.length > 0 && !SCIGalleryOwnerEqual(existingOwner, remapOwnerAccountPK);
-            if (!ownerConflict) continue;
-
-            if (conflictStrategy == SCIGalleryImportConflictStrategyClaim) {
-                [existing setValue:remapOwnerAccountPK forKey:@"ownerAccountPK"];
-                [existing setValue:(ownerUsername.length > 0 ? ownerUsername : nil) forKey:@"ownerUsername"];
-                added++;
-            } else if (conflictStrategy == SCIGalleryImportConflictStrategyDuplicate) {
-                if (insertCopy(src, identifier, [NSUUID UUID].UUIDString)) added++;
+    // 2. Plan + copy files (no Core Data here — safe to run on a background queue), with progress.
+    NSMutableArray<NSDictionary *> *insertPlans = [NSMutableArray array];  // {row, targetId, destRelative}
+    NSMutableArray<NSString *> *claimIdentifiers = [NSMutableArray array];
+    NSInteger total = archiveRows.count, done = 0;
+    for (NSDictionary *row in archiveRows) {
+        @autoreleasepool {
+            NSString *identifier = row[@"identifier"];
+            NSString *relativePath = row[@"relativePath"];
+            if (identifier.length > 0 && relativePath.length > 0) {
+                NSString *existingOwner = existingOwners[identifier];
+                if (existingOwner != nil) {
+                    BOOL conflict = remapOwnerAccountPK.length > 0 && !SCIGalleryOwnerEqual(existingOwner.length ? existingOwner : nil, remapOwnerAccountPK);
+                    if (conflict && conflictStrategy == SCIGalleryImportConflictStrategyClaim) {
+                        [claimIdentifiers addObject:identifier];
+                    } else if (conflict && conflictStrategy == SCIGalleryImportConflictStrategyDuplicate) {
+                        NSString *newId = [NSUUID UUID].UUIDString;
+                        NSString *destRel = copyFiles(row, identifier, newId);
+                        if (destRel) [insertPlans addObject:@{ @"row": row, @"targetId": newId, @"destRelative": destRel }];
+                    }
+                    // No conflict, or Skip strategy: leave the existing file untouched.
+                } else {
+                    NSString *destRel = copyFiles(row, identifier, identifier);
+                    if (destRel) {
+                        [insertPlans addObject:@{ @"row": row, @"targetId": identifier, @"destRelative": destRel }];
+                        existingOwners[identifier] = remapOwnerAccountPK.length ? remapOwnerAccountPK : @"";  // guard duplicate ids in the archive
+                    }
+                }
             }
-            // Skip strategy: leave the existing file untouched.
-            continue;
         }
-
-        if (insertCopy(src, identifier, identifier)) {
-            existingByID[identifier] = src;  // guard against duplicate identifiers in the archive
-            added++;
-        }
+        done++;
+        if (progressHandler) progressHandler(done, total);
     }
 
-    NSError *saveError = nil;
-    if (mainContext.hasChanges && ![mainContext save:&saveError]) {
-        SCILog(@"General", @"[SCInsta Gallery] Merge: failed saving merged rows: %@", saveError);
+    // 3. Apply to the live store (fast Core Data work on the main queue).
+    __block NSInteger added = 0;
+    __block NSError *saveError = nil;
+    SCIGalleryRunOnMain(^{
+        NSManagedObjectContext *ctx = self.viewContext;
+        for (NSDictionary *plan in insertPlans) {
+            NSDictionary *row = plan[@"row"];
+            NSManagedObject *dst = [NSEntityDescription insertNewObjectForEntityForName:kSCIGalleryEntityName inManagedObjectContext:ctx];
+            for (NSString *attribute in attributeNames) { id v = row[attribute]; if (v) [dst setValue:v forKey:attribute]; }
+            [dst setValue:plan[@"targetId"] forKey:@"identifier"];
+            [dst setValue:plan[@"destRelative"] forKey:@"relativePath"];
+            if (remapOwnerAccountPK.length > 0) {
+                [dst setValue:remapOwnerAccountPK forKey:@"ownerAccountPK"];
+                [dst setValue:(ownerUsername.length > 0 ? ownerUsername : nil) forKey:@"ownerUsername"];
+            }
+            added++;
+        }
+        if (claimIdentifiers.count > 0) {
+            NSFetchRequest *req = [NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName];
+            req.predicate = [NSPredicate predicateWithFormat:@"identifier IN %@", claimIdentifiers];
+            for (NSManagedObject *o in [ctx executeFetchRequest:req error:nil]) {
+                [o setValue:remapOwnerAccountPK forKey:@"ownerAccountPK"];
+                [o setValue:(ownerUsername.length > 0 ? ownerUsername : nil) forKey:@"ownerUsername"];
+                added++;
+            }
+        }
+        if (ctx.hasChanges && ![ctx save:&saveError]) {
+            SCILog(@"General", @"[SCInsta Gallery] Merge: failed saving merged rows: %@", saveError);
+        }
+    });
+    if (saveError) {
         if (error) *error = saveError;
         return -1;
     }
@@ -507,6 +539,7 @@ static BOOL SCIGalleryOwnerEqual(NSString *a, NSString *b) {
 
 - (BOOL)exportGalleryFilesToBundleDirectory:(NSString *)bundleGalleryDirectory
                              ownerAccountPK:(nullable NSString *)ownerAccountPK
+                            progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
                                       error:(NSError * _Nullable * _Nullable)error {
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *destFiles = [bundleGalleryDirectory stringByAppendingPathComponent:@"Files"];
@@ -514,60 +547,70 @@ static BOOL SCIGalleryOwnerEqual(NSString *a, NSString *b) {
     [fm createDirectoryAtPath:destFiles withIntermediateDirectories:YES attributes:nil error:nil];
     [fm createDirectoryAtPath:destThumbs withIntermediateDirectories:YES attributes:nil error:nil];
 
-    // Fresh destination store carrying only the in-scope rows.
-    NSManagedObjectModel *model = [self buildModel];
-    NSURL *destStoreURL = [NSURL fileURLWithPath:[bundleGalleryDirectory stringByAppendingPathComponent:kSCIGalleryStoreName]];
-    NSPersistentStoreCoordinator *destCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
-    NSDictionary *options = @{ NSSQLitePragmasOption: @{ @"journal_mode": @"DELETE" } };
-    if (![destCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:destStoreURL options:options error:error]) {
-        return NO;
-    }
-    NSManagedObjectContext *destContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
-    destContext.persistentStoreCoordinator = destCoordinator;
+    NSArray<NSString *> *attributeNames = [self buildModel].entitiesByName[kSCIGalleryEntityName].attributesByName.allKeys;
 
-    NSManagedObjectContext *mainContext = self.viewContext;
-    NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName];
-    if (ownerAccountPK.length > 0) {
-        request.predicate = [NSPredicate predicateWithFormat:@"ownerAccountPK == %@", ownerAccountPK];
-    }
-    NSError *fetchError = nil;
-    NSArray<NSManagedObject *> *rows = [mainContext executeFetchRequest:request error:&fetchError];
-    if (!rows) {
-        if (error) *error = fetchError;
-        return NO;
-    }
+    // 1. Read the in-scope rows as plain dictionaries (Core Data on main).
+    __block NSArray<NSDictionary *> *rows = nil;
+    __block NSError *fetchError = nil;
+    SCIGalleryRunOnMain(^{
+        NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:kSCIGalleryEntityName];
+        if (ownerAccountPK.length > 0) request.predicate = [NSPredicate predicateWithFormat:@"ownerAccountPK == %@", ownerAccountPK];
+        NSArray<NSManagedObject *> *objs = [self.viewContext executeFetchRequest:request error:&fetchError];
+        NSMutableArray<NSDictionary *> *dicts = [NSMutableArray arrayWithCapacity:objs.count];
+        for (NSManagedObject *o in objs) {
+            NSMutableDictionary *d = [NSMutableDictionary dictionary];
+            for (NSString *a in attributeNames) { id v = [o valueForKey:a]; if (v) d[a] = v; }
+            [dicts addObject:d];
+        }
+        rows = dicts;
+    });
+    if (!rows) { if (error) *error = fetchError; return NO; }
 
+    // 2. Copy the media + thumbnails (no Core Data — safe on a background queue), with progress.
     NSString *srcFiles = [SCIGalleryPaths galleryMediaDirectory];
     NSString *srcThumbs = [SCIGalleryPaths galleryThumbnailsDirectory];
-    NSArray<NSString *> *attributeNames = model.entitiesByName[kSCIGalleryEntityName].attributesByName.allKeys;
-
-    for (NSManagedObject *src in rows) {
-        NSString *identifier = [src valueForKey:@"identifier"];
-        NSString *relativePath = [src valueForKey:@"relativePath"];
-        if (identifier.length == 0 || relativePath.length == 0) continue;
-        NSString *srcMediaPath = [srcFiles stringByAppendingPathComponent:relativePath];
-        if (![fm fileExistsAtPath:srcMediaPath]) continue;  // skip rows whose media is gone
-
-        [fm copyItemAtPath:srcMediaPath toPath:[destFiles stringByAppendingPathComponent:relativePath] error:nil];
-        NSString *srcThumb = [srcThumbs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", identifier]];
-        if ([fm fileExistsAtPath:srcThumb]) {
-            [fm copyItemAtPath:srcThumb toPath:[destThumbs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", identifier]] error:nil];
+    NSMutableArray<NSDictionary *> *exported = [NSMutableArray array];
+    NSInteger total = rows.count, done = 0;
+    for (NSDictionary *row in rows) {
+        @autoreleasepool {
+            NSString *identifier = row[@"identifier"];
+            NSString *relativePath = row[@"relativePath"];
+            if (identifier.length > 0 && relativePath.length > 0) {
+                NSString *srcMediaPath = [srcFiles stringByAppendingPathComponent:relativePath];
+                if ([fm fileExistsAtPath:srcMediaPath]) {
+                    [fm copyItemAtPath:srcMediaPath toPath:[destFiles stringByAppendingPathComponent:relativePath] error:nil];
+                    NSString *srcThumb = [srcThumbs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", identifier]];
+                    if ([fm fileExistsAtPath:srcThumb]) {
+                        [fm copyItemAtPath:srcThumb toPath:[destThumbs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", identifier]] error:nil];
+                    }
+                    [exported addObject:row];
+                }
+            }
         }
+        done++;
+        if (progressHandler) progressHandler(done, total);
+    }
 
-        NSManagedObject *dst = [NSEntityDescription insertNewObjectForEntityForName:kSCIGalleryEntityName inManagedObjectContext:destContext];
-        for (NSString *attribute in attributeNames) {
-            [dst setValue:[src valueForKey:attribute] forKey:attribute];
+    // 3. Build the fresh export store with the exported rows (isolated context; on main).
+    __block BOOL ok = YES;
+    __block NSError *storeError = nil;
+    SCIGalleryRunOnMain(^{
+        NSPersistentStoreCoordinator *destCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self buildModel]];
+        NSURL *destStoreURL = [NSURL fileURLWithPath:[bundleGalleryDirectory stringByAppendingPathComponent:kSCIGalleryStoreName]];
+        if (![destCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:destStoreURL options:@{ NSSQLitePragmasOption: @{ @"journal_mode": @"DELETE" } } error:&storeError]) {
+            ok = NO;
+            return;
         }
-    }
-
-    NSError *saveError = nil;
-    if (destContext.hasChanges && ![destContext save:&saveError]) {
-        if (error) *error = saveError;
-        return NO;
-    }
-    for (NSPersistentStore *store in [destCoordinator.persistentStores copy]) {
-        [destCoordinator removePersistentStore:store error:nil];
-    }
+        NSManagedObjectContext *destContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
+        destContext.persistentStoreCoordinator = destCoordinator;
+        for (NSDictionary *row in exported) {
+            NSManagedObject *dst = [NSEntityDescription insertNewObjectForEntityForName:kSCIGalleryEntityName inManagedObjectContext:destContext];
+            for (NSString *attribute in attributeNames) { id v = row[attribute]; if (v) [dst setValue:v forKey:attribute]; }
+        }
+        if (destContext.hasChanges && ![destContext save:&storeError]) ok = NO;
+        for (NSPersistentStore *store in [destCoordinator.persistentStores copy]) [destCoordinator removePersistentStore:store error:nil];
+    });
+    if (!ok) { if (error) *error = storeError; return NO; }
     return YES;
 }
 
