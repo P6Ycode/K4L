@@ -135,7 +135,9 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
 
     UIBarButtonItem *moreItem = SCIMediaChromeTopBarMenuButtonItem(@"more", [self moreMenu], @"More");
     UIBarButtonItem *sortItem = SCIMediaChromeTopBarMenuButtonItem(@"sort", [self sortMenu], @"Sort and Filter");
-    SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[moreItem, sortItem]);
+    // More button is always rightmost (last in trailing-group order), matching
+    // the downloads history convention.
+    SCIMediaChromeSetTrailingTopBarItems(self.navigationItem, @[sortItem, moreItem]);
     if (self.navigationController.viewControllers.firstObject == self) {
         SCIMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ SCIMediaChromeTopBarButtonItem(@"xmark", self, @selector(close)) ]);
     }

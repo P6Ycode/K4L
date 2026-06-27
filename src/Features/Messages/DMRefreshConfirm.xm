@@ -73,7 +73,7 @@ static void SCIConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
         sSCIDMRefreshAlertVisible = NO;
         SCIDMEndRefreshIfNeeded(self, arg);
     } title:@"Confirm Inbox Refresh"
-      message:@"Refreshing your inbox will reload direct messages from the server."];
+      message:@"Refreshing your inbox reloads direct messages from the server. Any unsent messages kept in chats will be lost."];
 }
 
 static void replaced_inboxRefreshControlArg(id self, SEL _cmd, id arg) {
@@ -111,7 +111,7 @@ static BOOL replaced_executePullToRefreshWithParams(id self, SEL _cmd, id params
         sSCIDMRefreshAlertVisible = NO;
         SCIDMEndRefreshIfNeeded(self, nil);
     } title:@"Confirm Inbox Refresh"
-      message:@"Refreshing your inbox will reload direct messages from the server."];
+      message:@"Refreshing your inbox reloads direct messages from the server. Any unsent messages kept in chats will be lost."];
 
     return NO;
 }

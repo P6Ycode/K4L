@@ -127,15 +127,23 @@
             ]]
         ], @"Control ads, AI and suggestions visibility by surface."),
         SCITopicSection(@"Comments", @[
+            [SCISetting switchCellWithTitle:@"Copy Comment" icon:SCISettingsIcon(@"copy") defaultsKey:@"general_comments_copy_text"],
+            [SCISetting switchCellWithTitle:@"Comment Media Actions" icon:SCISettingsIcon(@"action") defaultsKey:@"general_comments_media_actions"],
+            [SCISetting switchCellWithTitle:@"Upload Photos from Gallery" icon:SCISettingsIcon(@"media") defaultsKey:@"general_comments_gallery_upload"]
+        ], @"1. Adds a copy action to comment menus.\n"
+           @"2. Adds Photos, Share, Gallery, and link actions for GIF and photo comments.\n"
+           @"3. Long-press the composer's photo button to attach an image from your SCInsta Gallery."),
+        SCITopicSection(@"", @[
             [SCISetting switchCellWithTitle:@"Swipe to Close Comments" icon:SCISettingsIcon(@"left_right") defaultsKey:@"general_comments_swipe_close"],
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Swipe Direction" icon:SCISettingsIcon(@"left_right") menu:SCISwipeCloseCommentsDirectionMenu()], SCISettingsIcon(@"left_right")),
-            [SCISetting switchCellWithTitle:@"Copy Comment" icon:SCISettingsIcon(@"copy") defaultsKey:@"general_comments_copy_text"],
-            [SCISetting switchCellWithTitle:@"Comment Media Actions" icon:SCISettingsIcon(@"media") defaultsKey:@"general_comments_media_actions"],
+        ], @"Adds a horizontal swipe gesture to close comment sheets, in the chosen direction."),
+        SCITopicSection(@"", @[
             [SCISetting switchCellWithTitle:@"Confirm Comment Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"general_comments_confirm_like"],
             [SCISetting switchCellWithTitle:@"Hide Comment Shopping" icon:SCISettingsIcon(@"shopping_bag") defaultsKey:@"general_comments_hide_shopping"],
             [SCISetting switchCellWithTitle:@"Hide Gifts Button" icon:SCISettingsIcon(@"gift") defaultsKey:@"general_comments_hide_gifts_button"],
-            [SCISetting switchCellWithTitle:@"Upload Photos from Gallery" icon:SCISettingsIcon(@"media") defaultsKey:@"general_comments_gallery_upload"]
-        ], @"Copy Comment adds a copy action to comment menus. Comment Media Actions adds Photos, Share, Gallery, and link actions for GIF and photo comments. Swipe to Close Comments adds horizontal swipe gestures to comment sheets. Hide Comment Shopping removes commerce carousels in comment threads. Hide Gifts Button removes the gift shortcut from the comment composer. Upload Photos from Gallery lets you long-press the composer's photo button to attach an image from your SCInsta Gallery."),
+        ], @"1. Shows a confirmation alert before liking a comment.\n"
+           @"2. Removes commerce carousels in comment threads.\n"
+           @"3. Removes the gift shortcut from the comment composer."),
         SCITopicSection(@"Accounts", @[
             [self perAccountSetting],
             [self perAccountInfoSetting]

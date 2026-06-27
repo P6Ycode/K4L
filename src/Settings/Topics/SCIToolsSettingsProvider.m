@@ -70,7 +70,7 @@
     }];
     galleryRow.userInfo = @{@"checkmarked": @(self.includeGallery)};
 
-    SCISetting *deletedMessagesRow = [SCISetting buttonCellWithTitle:@"Deleted Messages" subtitle:@"" icon:SCISettingsIcon(@"messages") action:^{
+    SCISetting *deletedMessagesRow = [SCISetting buttonCellWithTitle:@"Messages Logs" subtitle:@"" icon:SCISettingsIcon(@"channels") action:^{
         self.includeDeletedMessages = !self.includeDeletedMessages;
         [self rebuildSections];
         [self updateActionEnabled];

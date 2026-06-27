@@ -29,7 +29,8 @@ static NSArray *SCIMessagesSettingsSections(void);
 - (void)switchChanged:(UISwitch *)sender {
     SCISetting *row = [self settingForSender:sender];
     [super switchChanged:sender];
-    if ([row.defaultsKey isEqualToString:@"msgs_manual_seen"]) {
+    if ([row.defaultsKey isEqualToString:@"msgs_manual_seen"] ||
+        [row.defaultsKey isEqualToString:@"msgs_manual_visual_seen"]) {
         [self replaceSections:SCIMessagesSettingsSections()];
     }
 }
@@ -43,6 +44,19 @@ static NSArray *SCIMessagesSettingsSections(void) {
                                                       viewController:SCIDirectManualSeenListViewController()];
     manualSeenList.userInfo = @{@"accessoryText": [NSString stringWithFormat:@"%lu", (unsigned long)SCIDirectManualSeenThreadCount(manualSeen)]};
 
+    // Auto-seen triggers only act while manual seen is on. Keep their stored value
+    // but lock the cells when manual seen is off.
+    SCISetting *seenOnSend = [SCISetting switchCellWithTitle:@"Mark Seen on Message Send" icon:SCISettingsIcon(@"messages") defaultsKey:@"msgs_seen_on_send"];
+    SCISetting *seenOnReply = [SCISetting switchCellWithTitle:@"Mark Seen on Message Reply" icon:SCISettingsIcon(@"reply") defaultsKey:@"msgs_seen_on_reply"];
+    SCISetting *seenOnReaction = [SCISetting switchCellWithTitle:@"Mark Seen on Reaction" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_seen_on_reaction"];
+    seenOnSend.enabledProvider = ^BOOL{ return [SCIUtils getBoolPref:@"msgs_manual_seen"]; };
+    seenOnReply.enabledProvider = ^BOOL{ return [SCIUtils getBoolPref:@"msgs_manual_seen"]; };
+    seenOnReaction.enabledProvider = ^BOOL{ return [SCIUtils getBoolPref:@"msgs_manual_seen"]; };
+
+    // Advancing after a manual seen only applies while visual manual seen is on.
+    SCISetting *advanceVisual = [SCISetting switchCellWithTitle:@"Advance After Manual Seen" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"msgs_advance_visual_on_seen"];
+    advanceVisual.enabledProvider = ^BOOL{ return [SCIUtils getBoolPref:@"msgs_manual_visual_seen"]; };
+
     return @[
         SCITopicSection(@"Action Button", @[
             [SCISetting switchCellWithTitle:@"Messages Action Button" icon:SCISettingsIcon(@"action") defaultsKey:kSCIMessagesActionButtonEnabledKey],
@@ -51,32 +65,51 @@ static NSArray *SCIMessagesSettingsSections(void) {
         ], @"Choose what tapping the action button does. Long press opens the full menu."),
         SCITopicSection(@"Messaging", @[
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_manual_seen"],
+            seenOnSend,
+            seenOnReply,
+            seenOnReaction,
             manualSeenList,
-            [SCISetting switchCellWithTitle:@"Mark Seen on Message Send" icon:SCISettingsIcon(@"messages") defaultsKey:@"msgs_seen_on_send"],
-            [SCISetting switchCellWithTitle:@"Mark Seen on Message Reply" icon:SCISettingsIcon(@"reply") defaultsKey:@"msgs_seen_on_reply"],
-            [SCISetting switchCellWithTitle:@"Mark Seen on Reaction" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_seen_on_reaction"],
+        ], manualSeen
+           ? @"1. Prevents automatic seen receipts and adds an eye button to mark chats as seen.\n"
+             @"2. Marks a chat as seen when you send a message.\n"
+             @"3. Marks a chat as seen when you reply.\n"
+             @"4. Marks a chat as seen when you react.\n\n"
+             @"Excluded Chats keep Instagram's normal seen behavior. Manage them from the eye button, an inbox long press, or the list above."
+           : @"1. Prevents automatic seen receipts and adds an eye button to mark chats as seen.\n"
+             @"2. Marks a chat as seen when you send a message.\n"
+             @"3. Marks a chat as seen when you reply.\n"
+             @"4. Marks a chat as seen when you react.\n\n"
+             @"Included Chats require the eye button or the auto-seen triggers above. Manage them from the eye button, an inbox long press, or the list above."),
+        SCITopicSection(@"Deleted Messages", @[
+            [SCISetting switchCellWithTitle:@"Keep Deleted Messages" icon:SCISettingsIcon(@"undo_circle") defaultsKey:@"msgs_keep_deleted"],
+            [SCISetting switchCellWithTitle:@"Confirm Inbox Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"msgs_confirm_refresh"],
+            [SCISetting switchCellWithTitle:@"Log Deleted Messages" icon:SCISettingsIcon(@"logs") defaultsKey:@"msgs_deleted_log"],
+            [SCISetting switchCellWithTitle:@"Log Removed Reactions" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_deleted_log_reactions"],
+            [SCISetting switchCellWithTitle:@"Respect Seen Chat List" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_deleted_log_respect_seen_list"],
+            [SCISetting navigationCellWithTitle:@"Deleted Messages Logs"
+                                       subtitle:@""
+                                           icon:SCISettingsIcon(@"channels")
+                                 viewController:[SCIDeletedMessagesViewController new]],
+        ], @"1. Preserves remotely unsent messages in the chat, marked with an undo-circle indicator.\n"
+           @"2. Asks before refreshing the inbox, which reloads threads and drops preserved messages.\n"
+           @"3. Records message content before removal and keeps view-once/view-twice media until cleared.\n"
+           @"4. Also logs reactions that are removed.\n"
+           @"5. Skips log capture and unsent notifications for chats in your manual-seen include/exclude list.\n"
+           @"6. Opens the captured deleted-message logs."),
+        SCITopicSection(@"Interface", @[
             [SCISetting switchCellWithTitle:@"Hide Typing Status" icon:SCISettingsIcon(@"keyboard") defaultsKey:@"msgs_disable_typing"],
             [SCISetting switchCellWithTitle:@"Hide Reels Blend Button" icon:SCISettingsIcon(@"blend") defaultsKey:@"msgs_hide_reels_blend"],
             [SCISetting switchCellWithTitle:@"Hide Audio Call Button" icon:SCISettingsIcon(@"call") defaultsKey:@"msgs_hide_audio_call_btn"],
             [SCISetting switchCellWithTitle:@"Hide Video Call Button" icon:SCISettingsIcon(@"video") defaultsKey:@"msgs_hide_video_call_btn"],
             [SCISetting switchCellWithTitle:@"No Suggested Chats" icon:SCISettingsIcon(@"question") defaultsKey:@"msgs_hide_suggested_chats"],
-        ], manualSeen
-           ? @"Prevents automatic seen receipts and adds an eye button. Excluded Chats keep Instagram's normal seen behavior and can be managed from the eye button, inbox long press, or this list. Optional triggers mark seen when sending, replying, or reacting. Additional controls suppress typing status and hide selected inbox or DM-header UI."
-           : @"Messages use Instagram's normal seen behavior except Included Chats, which require the eye button or enabled auto-seen triggers. Included Chats can be managed from the eye button, inbox long press, or this list. Additional controls suppress typing status and hide selected inbox or DM-header UI."),
-        SCITopicSection(@"", @[
-            [SCISetting switchCellWithTitle:@"Keep Deleted Messages" icon:SCISettingsIcon(@"undo_circle") defaultsKey:@"msgs_keep_deleted"],
-            [SCISetting switchCellWithTitle:@"Log Deleted Messages" icon:SCISettingsIcon(@"logs") defaultsKey:@"msgs_deleted_log"],
-            [SCISetting switchCellWithTitle:@"Log Removed Reactions" icon:SCISettingsIcon(@"reactions") defaultsKey:@"msgs_deleted_log_reactions"],
-            [SCISetting switchCellWithTitle:@"Respect Seen Chat List" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_deleted_log_respect_seen_list"],
-            [SCISetting navigationCellWithTitle:@"Deleted Messages Log"
-                                       subtitle:@""
-                                           icon:SCISettingsIcon(@"channels")
-                                 viewController:[SCIDeletedMessagesViewController new]],
-            [SCISetting switchCellWithTitle:@"Confirm Inbox Refresh" icon:SCISettingsIcon(@"arrow_cw") defaultsKey:@"msgs_confirm_refresh"]
-        ], @"Keep Deleted Messages preserves remotely unsent messages in chat and marks them with an undo-circle indicator. Log Deleted Messages records content before removal and saves view-once/view-twice media until manually cleared. Respect Seen Chat List skips log capture and unsent notifications for chats in your manual-seen include/exclude list without disabling preservation."),
+        ], @"1. Stops sending your typing indicator to others.\n"
+           @"2. Removes the Reels Blend button from the inbox.\n"
+           @"3. Hides the audio call button in the chat header.\n"
+           @"4. Hides the video call button in the chat header.\n"
+           @"5. Removes suggested chats from the inbox."),
         SCITopicSection(@"Visual Messages", @[
             [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"msgs_manual_visual_seen"],
-            [SCISetting switchCellWithTitle:@"Advance After Manual Seen" icon:SCISettingsIcon(@"autoscroll") defaultsKey:@"msgs_advance_visual_on_seen"],
+            advanceVisual,
             [SCISetting switchCellWithTitle:@"Disable View-Once Limitations" icon:SCISettingsIcon(@"view_once") defaultsKey:@"msgs_disable_view_once"],
             [SCISetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SCISettingsIcon(@"warning") defaultsKey:@"msgs_disable_screenshot_detection"]
         ], @"1. Prevents automatic seen receipts and adds a button to mark the chat as seen.\n"

@@ -36,24 +36,31 @@ static NSDictionary *SCIStoriesSeenReceiptsSection(void) {
     BOOL manualSeen = [SCIUtils getBoolPref:@"stories_manual_seen"];
     NSString *footer = manualSeen
         ? @"1. Stories are not marked seen automatically, except users in Excluded Users.\n"
-          @"2. Excluded users use Instagram's normal seen behavior and do not need the eye button.\n"
-          @"3. Mark the story as seen when you press like.\n"
-          @"4. Mark the story as seen when you send a reply."
+          @"2. Mark the story as seen when you press like.\n"
+          @"3. Mark the story as seen when you send a reply.\n"
+          @"4. Excluded Users use Instagram's normal seen behavior and do not need the eye button."
         : @"1. Stories use Instagram's normal seen behavior, except users in Included Users.\n"
-          @"2. Included users require the eye button, story like, or story reply to mark seen.\n"
-          @"3. Mark the story as seen when you press like.\n"
-          @"4. Mark the story as seen when you send a reply.";
+          @"2. Mark the story as seen when you press like.\n"
+          @"3. Mark the story as seen when you send a reply.\n"
+          @"4. Included Users require the eye button, story like, or story reply to mark seen.";
     SCISetting *manualSeenList = [SCISetting navigationCellWithTitle:SCIStoryManualSeenListTitle(manualSeen)
                                                             subtitle:@""
                                                                 icon:SCISettingsIcon(@"users")
                                                       viewController:SCIStoryManualSeenListViewController()];
     manualSeenList.userInfo = @{@"accessoryText": [NSString stringWithFormat:@"%lu", (unsigned long)SCIStoryManualSeenUserList(manualSeen).count]};
 
+    // The auto-seen triggers only do anything while manual seen is on. Keep their
+    // stored value but lock the cells when manual seen is off.
+    SCISetting *markSeenOnLike = [SCISetting switchCellWithTitle:@"Mark Seen on Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"stories_mark_seen_on_like"];
+    SCISetting *markSeenOnReply = [SCISetting switchCellWithTitle:@"Mark Seen on Reply" icon:SCISettingsIcon(@"reply") defaultsKey:@"stories_mark_seen_on_reply"];
+    markSeenOnLike.enabledProvider = ^BOOL{ return [SCIUtils getBoolPref:@"stories_manual_seen"]; };
+    markSeenOnReply.enabledProvider = ^BOOL{ return [SCIUtils getBoolPref:@"stories_manual_seen"]; };
+
     return SCITopicSection(@"Seen Receipts", @[
         [SCISetting switchCellWithTitle:@"Manually Mark Seen" icon:SCISettingsIcon(@"eye") defaultsKey:@"stories_manual_seen"],
+        markSeenOnLike,
+        markSeenOnReply,
         manualSeenList,
-        [SCISetting switchCellWithTitle:@"Mark Seen on Like" icon:SCISettingsIcon(@"heart") defaultsKey:@"stories_mark_seen_on_like"],
-        [SCISetting switchCellWithTitle:@"Mark Seen on Reply" icon:SCISettingsIcon(@"reply") defaultsKey:@"stories_mark_seen_on_reply"],
     ], footer);
 }
 
