@@ -6,6 +6,7 @@
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 #import "../../Shared/Audio/SCIAudioDMUploadCoordinator.h"
+#import "../../Shared/MediaUpload/SCIMediaDMUploadCoordinator.h"
 #import "../../Shared/Audio/SCIAudioDownloadCoordinator.h"
 #import "../../Shared/Audio/SCIAudioItem.h"
 #import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
@@ -420,7 +421,24 @@ static void SCIDMPresentAudioActions(UIView *view, SCIAudioSource source) {
 }
 
 static id SCIDMComposerSenderTarget(id composer) {
-    return [composer respondsToSelector:@selector(buttonDelegate)] ? ((id (*)(id, SEL))objc_msgSend)(composer, @selector(buttonDelegate)) : nil;
+    if ([composer respondsToSelector:@selector(buttonDelegate)]) {
+        return ((id (*)(id, SEL))objc_msgSend)(composer, @selector(buttonDelegate));
+    }
+    // IG 435+: the overflow controller holds a delegate that may be a wrapper
+    // around the composer rather than the composer itself.
+    id innerComposer = SCIDMAudioCall(composer, @"composer");
+    if ([innerComposer respondsToSelector:@selector(buttonDelegate)]) {
+        return ((id (*)(id, SEL))objc_msgSend)(innerComposer, @selector(buttonDelegate));
+    }
+    return nil;
+}
+
+// The overflow controller's link back to the composer: `_composer` up to IG 434,
+// `_delegate` from IG 435 (which is the composer, conforming to the new
+// IGDirectComposerOverflowControllerDelegate protocol).
+static id SCIDMComposerFromOverflowController(id overflowController) {
+    return SCIDMAudioIvarValue(overflowController, "_composer")
+        ?: SCIDMAudioIvarValue(overflowController, "_delegate");
 }
 
 static id SCIDMMenuItem(NSString *title, UIImage *image, void (^handler)(id item)) {
@@ -458,11 +476,45 @@ static id SCIDMUploadAudioMenuItemForComposer(id composer) {
     return SCIDMMenuItem(@"Upload Audio", [SCIAssetUtils instagramIconNamed:@"audio_upload" pointSize:24.0], ^(__unused id item) {
         id strongComposer = weakComposer;
         if (!strongComposer) return;
-        UIViewController *presenter = [SCIUtils viewControllerForAncestralView:(UIView *)strongComposer] ?: topMostController();
+        UIView *composerView = [strongComposer isKindOfClass:UIView.class] ? (UIView *)strongComposer : nil;
+        UIViewController *presenter = (composerView ? [SCIUtils viewControllerForAncestralView:composerView] : nil) ?: topMostController();
         [SCIAudioDMUploadCoordinator presentUploadPickerForSenderTarget:senderTarget
                                                               presenter:presenter
-                                                             sourceView:(UIView *)strongComposer];
+                                                             sourceView:composerView];
     });
+}
+
+static id SCIDMUploadMediaMenuItemForComposer(id composer) {
+    id senderTarget = SCIDMComposerSenderTarget(composer);
+    if (![SCIMediaDMUploadCoordinator senderTargetSupportsMediaUpload:senderTarget]) {
+        SCIWarnLog(@"MediaUpload", @"Missing direct media sender on composer delegate: %@", senderTarget);
+        return nil;
+    }
+
+    __weak id weakComposer = composer;
+    return SCIDMMenuItem(@"Upload Photo", [SCIAssetUtils instagramIconNamed:@"photo" pointSize:24.0], ^(__unused id item) {
+        id strongComposer = weakComposer;
+        if (!strongComposer) return;
+        UIView *composerView = [strongComposer isKindOfClass:UIView.class] ? (UIView *)strongComposer : nil;
+        UIViewController *presenter = (composerView ? [SCIUtils viewControllerForAncestralView:composerView] : nil) ?: topMostController();
+        [SCIMediaDMUploadCoordinator presentGalleryUploadPickerForSenderTarget:senderTarget
+                                                                    presenter:presenter
+                                                                   sourceView:composerView];
+    });
+}
+
+// Builds the SCInsta items appended to the composer overflow (+) menu, in order.
+static NSArray *SCIDMComposerExtraMenuItems(id composer) {
+    NSMutableArray *items = [NSMutableArray array];
+    if ([SCIUtils getBoolPref:@"msgs_upload_audio_messages"]) {
+        id audioItem = SCIDMUploadAudioMenuItemForComposer(composer);
+        if (audioItem) [items addObject:audioItem];
+    }
+    if ([SCIUtils getBoolPref:@"msgs_upload_gallery_media"]) {
+        id mediaItem = SCIDMUploadMediaMenuItemForComposer(composer);
+        if (mediaItem) [items addObject:mediaItem];
+    }
+    return items;
 }
 
 static void SCIDMPresentDownloadAudioActionsForViewModel(id viewModel) {
@@ -586,8 +638,10 @@ static id SCIDMPrismMenuViewInit5(id self, SEL _cmd, NSArray *elements, id heade
 %hook IGDirectComposerOverflowController
 
 - (id)_setupMenuItemGroup {
-    id composer = SCIDMAudioIvarValue(self, "_composer");
-    if (![SCIUtils getBoolPref:@"msgs_upload_audio_messages"] || !composer) {
+    id composer = SCIDMComposerFromOverflowController(self);
+    BOOL anyUploadEnabled = [SCIUtils getBoolPref:@"msgs_upload_audio_messages"] ||
+                            [SCIUtils getBoolPref:@"msgs_upload_gallery_media"];
+    if (!anyUploadEnabled || !composer) {
         return %orig;
     }
 
@@ -606,10 +660,10 @@ static id SCIDMPrismMenuViewInit5(id self, SEL _cmd, NSArray *elements, id heade
 - (id)initWithMenuItems:(id)menuItems edr:(_Bool)edr headerLabelText:(id)headerLabelText {
     id updatedItems = menuItems;
     if (sSCIDMComposerForOverflowMenu && !sSCIDMUploadItemInjectedForOverflowMenu && [menuItems isKindOfClass:NSArray.class]) {
-        id item = SCIDMUploadAudioMenuItemForComposer(sSCIDMComposerForOverflowMenu);
-        if (item) {
+        NSArray *extraItems = SCIDMComposerExtraMenuItems(sSCIDMComposerForOverflowMenu);
+        if (extraItems.count > 0) {
             NSMutableArray *mutableItems = [(NSArray *)menuItems mutableCopy];
-            [mutableItems addObject:item];
+            [mutableItems addObjectsFromArray:extraItems];
             updatedItems = [mutableItems copy];
             sSCIDMUploadItemInjectedForOverflowMenu = YES;
         }
@@ -620,10 +674,10 @@ static id SCIDMPrismMenuViewInit5(id self, SEL _cmd, NSArray *elements, id heade
 - (id)initWithMenuItems:(id)menuItems edr:(_Bool)edr headerLabelText:(id)headerLabelText enableScrollToDismiss:(_Bool)enableScrollToDismiss {
     id updatedItems = menuItems;
     if (sSCIDMComposerForOverflowMenu && !sSCIDMUploadItemInjectedForOverflowMenu && [menuItems isKindOfClass:NSArray.class]) {
-        id item = SCIDMUploadAudioMenuItemForComposer(sSCIDMComposerForOverflowMenu);
-        if (item) {
+        NSArray *extraItems = SCIDMComposerExtraMenuItems(sSCIDMComposerForOverflowMenu);
+        if (extraItems.count > 0) {
             NSMutableArray *mutableItems = [(NSArray *)menuItems mutableCopy];
-            [mutableItems addObject:item];
+            [mutableItems addObjectsFromArray:extraItems];
             updatedItems = [mutableItems copy];
             sSCIDMUploadItemInjectedForOverflowMenu = YES;
         }
@@ -659,10 +713,14 @@ static id SCIDMPrismMenuViewInit5(id self, SEL _cmd, NSArray *elements, id heade
 %end
 
 extern "C" void SCIInstallDMAudioDownloadHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"downloads_audio_enabled"]) return;
-    if (![SCIUtils getBoolPref:@"msgs_download_audio_messages"] &&
-        ![SCIUtils getBoolPref:@"msgs_download_notes_audio"] &&
-        ![SCIUtils getBoolPref:@"msgs_upload_audio_messages"]) return;
+    // Audio download/upload features sit behind the audio-downloads master switch;
+    // gallery photo upload is independent of it.
+    BOOL audioFeatureEnabled = [SCIUtils getBoolPref:@"downloads_audio_enabled"] &&
+        ([SCIUtils getBoolPref:@"msgs_download_audio_messages"] ||
+         [SCIUtils getBoolPref:@"msgs_download_notes_audio"] ||
+         [SCIUtils getBoolPref:@"msgs_upload_audio_messages"]);
+    BOOL mediaUploadEnabled = [SCIUtils getBoolPref:@"msgs_upload_gallery_media"];
+    if (!audioFeatureEnabled && !mediaUploadEnabled) return;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SCIDMAudioDownloadHooks);

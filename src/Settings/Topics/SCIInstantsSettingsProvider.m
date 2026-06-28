@@ -51,11 +51,11 @@ static NSArray *SCIInstantsSettingsSections(void) {
                                                     defaultsKey:@"instants_disable_camera_control"];
                 s;
             }),
-            [SCISetting switchCellWithTitle:@"Upload from Gallery" icon:SCISettingsIcon(@"media") defaultsKey:@"instants_upload_from_gallery"],
+            [SCISetting switchCellWithTitle:@"Upload from Gallery" icon:SCISettingsIcon(@"photo_gallery") defaultsKey:@"instants_upload_from_gallery"],
         ], @"1. Blocks Instant capture (photo and video) without disabling received Instants. The shutter is darkened.\n"
            @"2. Skips the camera page Instagram opens after viewing the last Instant.\n"
            @"3. Stops the hardware Camera Control button (iPhone 16/17) from taking an Instant.\n"
-           @"4. Adds a gallery button to the Instants camera to upload from Photos, Files, or Gallery."),
+           @"4. Adds a button to the Instants navigation bar to upload from Photos, Files, or Gallery."),
         SCITopicSection(@"Confirmation", @[
             ({
                 SCISetting *s = [SCISetting switchCellWithTitle:@"Confirm Instant Capture"

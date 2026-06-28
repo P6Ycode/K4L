@@ -14,6 +14,10 @@
 @property (nonatomic, strong) UIView *pillBackground;
 @property (nonatomic, strong) UILabel *pillLabel;
 @property (nonatomic, strong) UILabel *dateLabel;
+@property (nonatomic, strong) UIView *folderContextChip;
+@property (nonatomic, strong) UIImageView *folderContextIcon;
+@property (nonatomic, strong) UILabel *folderContextLabel;
+@property (nonatomic, strong) NSLayoutConstraint *folderContextChipLeadingConstraint;
 @property (nonatomic, strong) UIImageView *favoriteIcon;
 @property (nonatomic, strong) UIButton *moreButton;
 @property (nonatomic, strong) UIImageView *selectionIndicator;
@@ -94,6 +98,28 @@
     self.dateLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [self.contentView addSubview:self.dateLabel];
 
+    self.folderContextChip = [[UIView alloc] init];
+    self.folderContextChip.translatesAutoresizingMaskIntoConstraints = NO;
+    self.folderContextChip.backgroundColor = [SCIUtils SCIColor_InstagramTertiaryBackground];
+    self.folderContextChip.layer.cornerRadius = 5;
+    self.folderContextChip.clipsToBounds = YES;
+    self.folderContextChip.hidden = YES;
+    [self.contentView addSubview:self.folderContextChip];
+
+    self.folderContextIcon = [[UIImageView alloc] init];
+    self.folderContextIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    self.folderContextIcon.contentMode = UIViewContentModeScaleAspectFit;
+    self.folderContextIcon.tintColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    [self.folderContextChip addSubview:self.folderContextIcon];
+
+    self.folderContextLabel = [[UILabel alloc] init];
+    self.folderContextLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.folderContextLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
+    self.folderContextLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+    self.folderContextLabel.numberOfLines = 1;
+    self.folderContextLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [self.folderContextChip addSubview:self.folderContextLabel];
+
     UIImage *favImg = [SCIAssetUtils instagramIconNamed:@"heart_filled" pointSize:14.0];
     self.favoriteIcon = [[UIImageView alloc] initWithImage:favImg];
     self.favoriteIcon.contentMode = UIViewContentModeScaleAspectFit;
@@ -120,6 +146,10 @@
     [self.contentView addSubview:self.moreButton];
 
     self.thumbnailLeadingConstraint = [self.thumbnailView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16];
+
+    // Folder context chip trails the date on the third row; hidden when the cell
+    // isn't showing a search result's home folder.
+    self.folderContextChipLeadingConstraint = [self.folderContextChip.leadingAnchor constraintEqualToAnchor:self.dateLabel.trailingAnchor constant:8];
 
     self.separator = [[UIView alloc] init];
     self.separator.translatesAutoresizingMaskIntoConstraints = NO;
@@ -171,6 +201,20 @@
         [self.dateLabel.centerYAnchor constraintEqualToAnchor:self.pillBackground.centerYAnchor],
         [self.dateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor constant:-8],
 
+        self.folderContextChipLeadingConstraint,
+        [self.folderContextChip.centerYAnchor constraintEqualToAnchor:self.pillBackground.centerYAnchor],
+        [self.folderContextChip.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor constant:-8],
+
+        [self.folderContextIcon.leadingAnchor constraintEqualToAnchor:self.folderContextChip.leadingAnchor constant:7],
+        [self.folderContextIcon.centerYAnchor constraintEqualToAnchor:self.folderContextChip.centerYAnchor],
+        [self.folderContextIcon.widthAnchor constraintEqualToConstant:12],
+        [self.folderContextIcon.heightAnchor constraintEqualToConstant:12],
+
+        [self.folderContextLabel.leadingAnchor constraintEqualToAnchor:self.folderContextIcon.trailingAnchor constant:3],
+        [self.folderContextLabel.trailingAnchor constraintEqualToAnchor:self.folderContextChip.trailingAnchor constant:-8],
+        [self.folderContextLabel.topAnchor constraintEqualToAnchor:self.folderContextChip.topAnchor constant:3],
+        [self.folderContextLabel.bottomAnchor constraintEqualToAnchor:self.folderContextChip.bottomAnchor constant:-3],
+
         [self.favoriteIcon.trailingAnchor constraintEqualToAnchor:self.moreButton.leadingAnchor constant:-6],
         [self.favoriteIcon.centerYAnchor constraintEqualToAnchor:self.titleLabel.centerYAnchor],
         [self.favoriteIcon.widthAnchor constraintEqualToConstant:14],
@@ -195,6 +239,7 @@
     self.technicalLabel.text = nil;
     self.pillLabel.text = nil;
     self.dateLabel.text = nil;
+    [self setFolderContextName:nil];
     self.favoriteIcon.hidden = YES;
     self.file = nil;
     self.moreButton.menu = nil;
@@ -213,17 +258,18 @@
 }
 
 - (void)setFolderContextName:(NSString *)folderName {
-    NSString *base = [self.file listTechnicalLine] ?: @"";
-    // Prepend the folder so it stays visible — the technical detail truncates at
-    // the tail instead of hiding the folder when the line is long.
+    // The home folder of a search result is shown as a chip at the tail of the
+    // third row (after the source pill and date), led by a folder glyph.
     if (folderName.length == 0) {
-        self.technicalLabel.text = base;
+        self.folderContextChip.hidden = YES;
+        self.folderContextLabel.text = nil;
         return;
     }
-    NSString *folderPart = [NSString stringWithFormat:@"· in \"%@\"", folderName];
-    self.technicalLabel.text = base.length > 0
-        ? [NSString stringWithFormat:@"%@ · %@", folderPart, base]
-        : folderPart;
+    if (!self.folderContextIcon.image) {
+        self.folderContextIcon.image = [SCIAssetUtils instagramIconNamed:@"folder" pointSize:12.0];
+    }
+    self.folderContextLabel.text = folderName;
+    self.folderContextChip.hidden = NO;
 }
 
 - (void)configureWithGalleryFile:(SCIGalleryFile *)file

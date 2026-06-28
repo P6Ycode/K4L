@@ -90,7 +90,9 @@ static UITextField *SCIInstantsSecureTextFieldAncestor(UIView *view) {
 %hook UILabel
 - (void)setText:(NSString *)text {
     %orig;
-    if (!SCIInstantsScreenshotBypassActive() || !SCIInstantsIsScreenshotCoverText(text)) return;
+    // Text check first (cheap string scan, almost always false) — avoids the
+    // expensive pref read + VC-tree walk for every label in the app.
+    if (!SCIInstantsIsScreenshotCoverText(text) || !SCIInstantsScreenshotBypassActive()) return;
     UILabel *label = (UILabel *)self;
     UIView *cover = SCIInstantsTopAncestorBelowWindow(label) ?: label.superview ?: label;
     cover.hidden = YES;

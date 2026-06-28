@@ -44,6 +44,10 @@ static NSMutableDictionary<NSString *, NSDate *> *sciUnsentToastDedupe;
 static NSMutableArray<NSDictionary *> *sciPendingReactionPreviews;
 static char kSCIPreservedIndicatorOwnMessageKey;
 static char kSCIPreservedIndicatorStyleKey;
+// Per-cell reference to its live indicator badge (nil when none). Lets the hot
+// layoutSubviews path skip the full re-evaluation for the common, non-preserved
+// cell without a subtree viewWithTag: search or metadata resolution.
+static char kSCIPreservedIndicatorBadgeKey;
 
 static void sciUpdateCellIndicator(id cell);
 
@@ -1201,10 +1205,11 @@ static void sciUpdateCellIndicator(id cell) {
 	if (![cell isKindOfClass:UIView.class]) return;
 
 	UIView *view = (UIView *)cell;
-	UIView *old = [view viewWithTag:SCI_PRESERVED_TAG];
+	UIView *old = objc_getAssociatedObject(cell, &kSCIPreservedIndicatorBadgeKey) ?: [view viewWithTag:SCI_PRESERVED_TAG];
 
 	if (!sciIndicatorEnabled()) {
 		if (old) [old removeFromSuperview];
+		objc_setAssociatedObject(cell, &kSCIPreservedIndicatorBadgeKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		sciSetTrailingAccessoriesHidden(cell, NO);
 		return;
 	}
@@ -1213,6 +1218,7 @@ static void sciUpdateCellIndicator(id cell) {
 
 	if (!preserved) {
 		if (old) [old removeFromSuperview];
+		objc_setAssociatedObject(cell, &kSCIPreservedIndicatorBadgeKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		sciSetTrailingAccessoriesHidden(cell, NO);
 		return;
 	}
@@ -1229,6 +1235,7 @@ static void sciUpdateCellIndicator(id cell) {
 
 	if (old && [oldDirection isKindOfClass:NSNumber.class] && oldDirection.boolValue == sentByCurrentUser && [oldStyle isEqualToString:@"undo_filled_secondary_circle_44"] && old.superview == host) {
 		sciPositionIndicatorBadge(old, cell, content, host, sentByCurrentUser);
+		objc_setAssociatedObject(cell, &kSCIPreservedIndicatorBadgeKey, old, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		return;
 	}
 	if (old) [old removeFromSuperview];
@@ -1269,11 +1276,15 @@ static void sciUpdateCellIndicator(id cell) {
 		[icon.widthAnchor constraintEqualToConstant:16.0],
 		[icon.heightAnchor constraintEqualToConstant:16.0],
 	]];
+
+	objc_setAssociatedObject(cell, &kSCIPreservedIndicatorBadgeKey, badge, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 static void (*orig_configureCell)(id, SEL, id, id, id);
 static void new_configureCell(id self, SEL _cmd, id vm, id ringSpec, id launcherSet) {
 	orig_configureCell(self, _cmd, vm, ringSpec, launcherSet);
+
+	if (!sciIndicatorEnabled()) return;
 
 	NSString *sid = sciCellServerId(self);
 	if (sid.length) {
@@ -1298,7 +1309,21 @@ static void new_configureCell(id self, SEL _cmd, id vm, id ringSpec, id launcher
 static void (*orig_cellLayoutSubviews)(id, SEL);
 static void new_cellLayoutSubviews(id self, SEL _cmd) {
 	orig_cellLayoutSubviews(self, _cmd);
-	if (sciIndicatorEnabled()) sciUpdateCellIndicator(self);
+
+	// Hot path: only cells that actually carry an indicator badge need work here,
+	// and that work is a pure reposition. Add/remove decisions stay in
+	// configureCell / sciRefreshVisibleCellIndicators. The common cell exits with
+	// a single associated-object read — no pref read, no subtree search, no
+	// metadata lookup.
+	UIView *badge = objc_getAssociatedObject(self, &kSCIPreservedIndicatorBadgeKey);
+	UIView *host = badge.superview;
+	if (!badge || !host) return;
+	if (!sciIndicatorEnabled()) return;
+
+	BOOL sentByCurrentUser = [objc_getAssociatedObject(badge, &kSCIPreservedIndicatorOwnMessageKey) boolValue];
+	UIView *content = sciIvarAny(self, @[@"_messageContentContainerView",
+	                                     @"$__lazy_storage_$_messageContentContainerView"]) ?: (UIView *)self;
+	sciPositionIndicatorBadge(badge, self, content, host, sentByCurrentUser);
 }
 
 static void (*orig_addAccessory)(id, SEL, id);

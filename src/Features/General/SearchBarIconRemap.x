@@ -32,7 +32,8 @@ static NSString *SCIPlainSearchIconName(NSString *genAIName) {
 %hook UIImage
 
 + (UIImage *)imageNamed:(NSString *)name inBundle:(NSBundle *)bundle compatibleWithTraitCollection:(UITraitCollection *)traitCollection {
-    if (SCISearchIconRemapActive() && SCINameIsGenAISearchIcon(name)) {
+    // Name check first (cheap string scan); pref read only for the rare match.
+    if (SCINameIsGenAISearchIcon(name) && SCISearchIconRemapActive()) {
         NSString *plain = SCIPlainSearchIconName(name);
         UIImage *replacement = %orig(plain, bundle, traitCollection)
             ?: %orig(plain, nil, traitCollection)
@@ -43,7 +44,7 @@ static NSString *SCIPlainSearchIconName(NSString *genAIName) {
 }
 
 + (UIImage *)imageNamed:(NSString *)name inBundle:(NSBundle *)bundle withConfiguration:(UIImageConfiguration *)configuration {
-    if (SCISearchIconRemapActive() && SCINameIsGenAISearchIcon(name)) {
+    if (SCINameIsGenAISearchIcon(name) && SCISearchIconRemapActive()) {
         NSString *plain = SCIPlainSearchIconName(name);
         UIImage *replacement = %orig(plain, bundle, configuration)
             ?: %orig(plain, nil, configuration)
@@ -54,7 +55,7 @@ static NSString *SCIPlainSearchIconName(NSString *genAIName) {
 }
 
 + (UIImage *)imageNamed:(NSString *)name {
-    if (SCISearchIconRemapActive() && SCINameIsGenAISearchIcon(name)) {
+    if (SCINameIsGenAISearchIcon(name) && SCISearchIconRemapActive()) {
         NSString *plain = SCIPlainSearchIconName(name);
         UIImage *replacement = %orig(plain) ?: [SCIAssetUtils instagramIconNamed:@"search"];
         if (replacement) return replacement;

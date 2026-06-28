@@ -129,9 +129,13 @@ static NSArray *SCIMessagesSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Download Notes Audio" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio" requiresRestart:YES]
         ], @"Note Theming enables Instagram's note theme picker. Custom Note Themes add custom emoji, background, and text color options."),
         SCITopicSection(@"Audio", @[
-            [SCISetting switchCellWithTitle:@"Download Audio Messages" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Upload Audio Messages" icon:SCISettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages" requiresRestart:YES]
-        ], @"Downloads add audio actions to supported voice/audio message views. Upload converts selected audio or video to M4A when a compatible Instagram sender is available."),
+            [SCISetting switchCellWithTitle:@"Download Voice Messages" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages" requiresRestart:YES],
+            [SCISetting switchCellWithTitle:@"Upload Audio" icon:SCISettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages" requiresRestart:YES]
+        ], @"1. Adds audio actions to supported voice/audio message views.\n"
+           @"2. Adds an option to the composer plus (+) menu that sends the selected audio or video as a voice message."),
+        SCITopicSection(@"Media", @[
+            [SCISetting switchCellWithTitle:@"Upload Photo from Gallery" icon:SCISettingsIcon(@"photo") defaultsKey:@"msgs_upload_gallery_media" requiresRestart:YES]
+        ], @"Adds an option to the composer plus (+) menu that sends a photo from the SCInsta Gallery into the chat."),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Audio Call" icon:SCISettingsIcon(@"call") defaultsKey:kSCIMessagesAudioCallConfirmKey],
             [SCISetting switchCellWithTitle:@"Confirm Video Call" icon:SCISettingsIcon(@"video") defaultsKey:kSCIMessagesVideoCallConfirmKey],

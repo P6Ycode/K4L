@@ -129,7 +129,7 @@
         SCITopicSection(@"Comments", @[
             [SCISetting switchCellWithTitle:@"Copy Comment" icon:SCISettingsIcon(@"copy") defaultsKey:@"general_comments_copy_text"],
             [SCISetting switchCellWithTitle:@"Comment Media Actions" icon:SCISettingsIcon(@"action") defaultsKey:@"general_comments_media_actions"],
-            [SCISetting switchCellWithTitle:@"Upload Photos from Gallery" icon:SCISettingsIcon(@"media") defaultsKey:@"general_comments_gallery_upload"]
+            [SCISetting switchCellWithTitle:@"Upload Photo from Gallery" icon:SCISettingsIcon(@"photo") defaultsKey:@"general_comments_gallery_upload"]
         ], @"1. Adds a copy action to comment menus.\n"
            @"2. Adds Photos, Share, Gallery, and link actions for GIF and photo comments.\n"
            @"3. Long-press the composer's photo button to attach an image from your SCInsta Gallery."),

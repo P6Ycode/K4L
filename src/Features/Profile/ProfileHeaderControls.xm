@@ -4,24 +4,28 @@
 static const void *kSCIProfileHeaderSavedHiddenKey = &kSCIProfileHeaderSavedHiddenKey;
 static const void *kSCIProfileHeaderSavedAlphaKey = &kSCIProfileHeaderSavedAlphaKey;
 
-static BOOL SCIProfileShouldHideThreadsButton(UIView *view) {
-    if (![SCIUtils getBoolPref:@"profile_hide_threads_btn"]) return NO;
+// Tracks whether we've ever hidden anything, so the disabled/default case can
+// skip the subtree walk entirely (and only pays it once to restore after a
+// toggle-off).
+static BOOL sSCIProfileControlsEverApplied = NO;
+
+static BOOL SCIProfileViewIsThreadsButton(UIView *view) {
     NSString *identifier = view.accessibilityIdentifier ?: @"";
-    NSString *label = view.accessibilityLabel ?: @"";
     if ([identifier isEqualToString:@"profile-app-switch-button"]) return YES;
+    NSString *label = view.accessibilityLabel ?: @"";
     if ([label rangeOfString:@"switch to threads" options:NSCaseInsensitiveSearch].location != NSNotFound) return YES;
     return NO;
 }
 
-static BOOL SCIProfileShouldHideNotesBubble(UIView *view) {
-    if (![SCIUtils getBoolPref:@"profile_hide_notes_bubble"]) return NO;
+static BOOL SCIProfileViewIsNotesBubble(UIView *view) {
     NSString *className = NSStringFromClass(view.class);
     return [className containsString:@"IGDirectNotesThoughtBubbleView"];
 }
 
-static void SCIApplyProfileHeaderVisibility(UIView *view) {
+static void SCIApplyProfileHeaderVisibility(UIView *view, BOOL hideThreads, BOOL hideNotes) {
     if (!view) return;
-    BOOL shouldHide = SCIProfileShouldHideThreadsButton(view) || SCIProfileShouldHideNotesBubble(view);
+    BOOL shouldHide = (hideThreads && SCIProfileViewIsThreadsButton(view)) ||
+                      (hideNotes && SCIProfileViewIsNotesBubble(view));
     NSNumber *savedHidden = objc_getAssociatedObject(view, kSCIProfileHeaderSavedHiddenKey);
     NSNumber *savedAlpha = objc_getAssociatedObject(view, kSCIProfileHeaderSavedAlphaKey);
 
@@ -43,17 +47,37 @@ static void SCIApplyProfileHeaderVisibility(UIView *view) {
     }
 }
 
-%group SCIProfileHeaderControlsHooks
-
-%hook UIView
-- (void)didMoveToWindow {
-    %orig;
-    SCIApplyProfileHeaderVisibility((UIView *)self);
+static void SCIApplyProfileHeaderControlsInTree(UIView *view, BOOL hideThreads, BOOL hideNotes, NSUInteger depth) {
+    if (!view || depth > 40) return;
+    SCIApplyProfileHeaderVisibility(view, hideThreads, hideNotes);
+    for (UIView *sub in view.subviews) {
+        SCIApplyProfileHeaderControlsInTree(sub, hideThreads, hideNotes, depth + 1);
+    }
 }
 
-- (void)layoutSubviews {
+// Applied only when a profile is on screen — never on the per-view, app-wide layout path
+static void SCIApplyProfileHeaderControls(UIViewController *vc) {
+    BOOL hideThreads = [SCIUtils getBoolPref:@"profile_hide_threads_btn"];
+    BOOL hideNotes = [SCIUtils getBoolPref:@"profile_hide_notes_bubble"];
+    if (!hideThreads && !hideNotes && !sSCIProfileControlsEverApplied) return;
+    if (hideThreads || hideNotes) sSCIProfileControlsEverApplied = YES;
+
+    SCIApplyProfileHeaderControlsInTree(vc.view, hideThreads, hideNotes, 0);
+    UIView *navBar = vc.navigationController.navigationBar;
+    if (navBar) SCIApplyProfileHeaderControlsInTree(navBar, hideThreads, hideNotes, 0);
+}
+
+%group SCIProfileHeaderControlsHooks
+
+%hook IGProfileViewController
+- (void)viewDidLayoutSubviews {
     %orig;
-    SCIApplyProfileHeaderVisibility((UIView *)self);
+    SCIApplyProfileHeaderControls((UIViewController *)self);
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    SCIApplyProfileHeaderControls((UIViewController *)self);
 }
 %end
 
