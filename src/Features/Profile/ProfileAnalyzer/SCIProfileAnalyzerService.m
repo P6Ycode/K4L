@@ -95,7 +95,7 @@ NSNotificationName const SCIProfileAnalyzerProgressDidChangeNotification = @"SCI
     }
 
     __weak typeof(self) weakSelf = self;
-    [self reportProgress:progress status:@"Fetching profile info…" fraction:0.02];
+    [self reportProgress:progress status:@"Fetching profile info..." fraction:0.02];
 
     [SCIInstagramAPI sendRequestWithMethod:@"GET"
                                       path:[NSString stringWithFormat:@"users/%@/info/", selfPK]
@@ -295,8 +295,8 @@ NSNotificationName const SCIProfileAnalyzerProgressDidChangeNotification = @"SCI
         double stageLocal = total > 0 ? MIN(1.0, (double)acc.count / (double)total) : 0;
         double frac = 0.03 + (stageOffset + stageLocal * stageWeight) * 0.97;
         NSString *label = isFollowers
-            ? [NSString stringWithFormat:@"Fetching followers (%lu/%ld)…", (unsigned long)acc.count, (long)total]
-            : [NSString stringWithFormat:@"Fetching following (%lu/%ld)…", (unsigned long)acc.count, (long)total];
+            ? [NSString stringWithFormat:@"Fetching followers • %lu/%ld...", (unsigned long)acc.count, (long)total]
+            : [NSString stringWithFormat:@"Fetching following • %lu/%ld...", (unsigned long)acc.count, (long)total];
         [strongSelf reportProgress:progress status:label fraction:frac];
 
         if (!nextMax.length || strongSelf.cancelled) {

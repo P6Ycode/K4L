@@ -27,8 +27,7 @@ static NSString * const kSCIReelsActionButtonEnabledKey = @"reels_action_btn";
         ], nil),
         SCITopicSection(@"Layout", @[
             [SCISetting switchCellWithTitle:@"Hide Reels Header" icon:SCISettingsIcon(@"reels") defaultsKey:@"reels_hide_header"],
-            [SCISetting switchCellWithTitle:@"Hide Repost Button" icon:SCISettingsIcon(@"repost") defaultsKey:@"reels_hide_repost_btn" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Hide Suggested Accounts" icon:SCISettingsIcon(@"users") defaultsKey:@"general_hide_suggested_users_reels"]
+            [SCISetting switchCellWithTitle:@"Hide Repost Button" icon:SCISettingsIcon(@"repost") defaultsKey:@"reels_hide_repost_btn" requiresRestart:YES]
         ], nil),
         SCITopicSection(@"Metrics", @[
             [SCISetting switchCellWithTitle:@"Hide Like Count" icon:SCISettingsIcon(@"heart") defaultsKey:@"reels_hide_like_count"],

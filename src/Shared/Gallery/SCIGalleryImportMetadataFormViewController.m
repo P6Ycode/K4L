@@ -145,7 +145,7 @@ static NSDate * _Nullable SCIFormParsedGallerySortDate(NSString *raw) {
         case SCIGalleryImportFormRowFileStem:
             return @"Used only in the saved filename when the imported name is useless (UUID, generic export). Not Instagram’s shortcode — use Shortcode below for posts.";
         case SCIGalleryImportFormRowSource:
-            return @"Feed, Story, Reels, etc. Story builds /stories/<user>/<media id>/. Reels opens shortcode as /reel/…; Feed uses /p/… when building a link.";
+            return @"Feed, Story, Reels, etc. Story builds /stories/<user>/<media id>/. Reels opens shortcode as /reel/...; Feed uses /p/... when building a link.";
         case SCIGalleryImportFormRowUsername:
             return @"Account handle without @. Used for Open profile and, if Profile URL is empty, to fill an instagram:// profile link. Required to open a Story.";
         case SCIGalleryImportFormRowUserPK:

@@ -30,7 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// When set, used for `SCIGalleryFile.dateAdded` as the import/save time (e.g. parsed from a leading epoch segment in tweak-style basenames).
 @property (nonatomic, strong, nullable) NSDate *importCapturedDate;
 
-/// Optional media posted time parsed from tweak-style trailing compact dates (…_story_yyyyMMddHHmmss). Used for generated filename compact segment when available.
+/// Optional media posted time parsed from tweak-style trailing compact dates (..._story_yyyyMMddHHmmss). Used for generated filename compact segment when available.
 @property (nonatomic, strong, nullable) NSDate *importPostedDate;
 
 @end

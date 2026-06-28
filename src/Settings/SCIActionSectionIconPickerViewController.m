@@ -87,7 +87,7 @@ static NSString *SCISectionIconPickerCellTitle(NSString *title) {
 
     _checkmarkView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"circle_check_filled" pointSize:18.0]];
     _checkmarkView.translatesAutoresizingMaskIntoConstraints = NO;
-    _checkmarkView.tintColor = [SCIUtils SCIColor_Primary];
+    _checkmarkView.tintColor = [SCIUtils SCIColor_InstagramBlue];
     _checkmarkView.hidden = YES;
     [self.contentView addSubview:_checkmarkView];
 
@@ -120,12 +120,12 @@ static NSString *SCISectionIconPickerCellTitle(NSString *title) {
 
 - (void)configureSelected:(BOOL)selected {
     self.checkmarkView.hidden = !selected;
-    if (selected) self.contentView.layer.borderColor = [SCIUtils SCIColor_Primary].CGColor;
+    if (selected) self.contentView.layer.borderColor = [SCIUtils SCIColor_InstagramBlue].CGColor;
     self.contentView.layer.borderWidth = selected ? 2.0 : 0.0;
     self.contentView.backgroundColor = selected
-        ? [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.12]
+        ? [[SCIUtils SCIColor_InstagramBlue] colorWithAlphaComponent:0.12]
         : [SCIUtils SCIColor_InstagramSecondaryBackground];
-    self.iconView.tintColor = selected ? [SCIUtils SCIColor_Primary] : [SCIUtils SCIColor_InstagramPrimaryText];
+    self.iconView.tintColor = selected ? [SCIUtils SCIColor_InstagramBlue] : [SCIUtils SCIColor_InstagramPrimaryText];
 }
 
 - (void)configureWithItem:(SCISectionIconPickerItem *)item image:(UIImage *)image selected:(BOOL)selected {

@@ -60,9 +60,9 @@
 
         _selectedOverlay = [[UIView alloc] initWithFrame:self.contentView.bounds];
         _selectedOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        _selectedOverlay.backgroundColor = [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.28];
+        _selectedOverlay.backgroundColor = [[SCIUtils SCIColor_InstagramBlue] colorWithAlphaComponent:0.28];
         _selectedOverlay.layer.borderWidth = 2.0;
-        _selectedOverlay.layer.borderColor = [SCIUtils SCIColor_Primary].CGColor;
+        _selectedOverlay.layer.borderColor = [SCIUtils SCIColor_InstagramBlue].CGColor;
         _selectedOverlay.layer.cornerRadius = 10.0;
         _selectedOverlay.layer.cornerCurve = kCACornerCurveContinuous;
         _selectedOverlay.hidden = YES;
@@ -110,7 +110,7 @@
     NSString *resource = selected ? @"circle_check_filled" : @"circle";
     UIImage *badge = [SCIAssetUtils instagramIconNamed:resource pointSize:24.0];
     if (selected) {
-        badge = [badge imageWithTintColor:[SCIUtils SCIColor_Primary] renderingMode:UIImageRenderingModeAlwaysOriginal];
+        badge = [badge imageWithTintColor:[SCIUtils SCIColor_InstagramBlue] renderingMode:UIImageRenderingModeAlwaysOriginal];
     } else {
         badge = [badge imageWithTintColor:[UIColor whiteColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
     }

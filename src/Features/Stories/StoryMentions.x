@@ -80,7 +80,7 @@ static void SCIMentionStyleFollowButton(UIButton *btn, BOOL following) {
         btn.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
         [btn setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
     } else {
-        btn.backgroundColor = [SCIUtils SCIColor_Primary];
+        btn.backgroundColor = [SCIUtils SCIColor_InstagramBlue];
         [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     }
     btn.layer.borderWidth = 0.0;

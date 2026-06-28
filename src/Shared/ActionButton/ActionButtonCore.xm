@@ -2896,7 +2896,7 @@ SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button) {
 }
 
 // Builds the "Bulk" section (Download All / Copy All / Select Media) for a
-// carousel, titled "<sectionTitle> · N" with N the carousel item count.
+// carousel, titled "<sectionTitle> • N" with N the carousel item count.
 // `sectionTitle`/`sectionIconName`/`collapsible` come from the user-orderable
 // Bulk section so it behaves like any other section. Resolved lazily from a
 // UIDeferredMenuElement so it reflects the fully-loaded carousel at the moment
@@ -2997,7 +2997,7 @@ static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfigu
     // Present the bulk actions as their own section, styled like the other
     // collapsible sections. Title carries the carousel item count.
     NSString *baseTitle = sectionTitle.length > 0 ? sectionTitle : @"Bulk";
-    NSString *title = [NSString stringWithFormat:@"%@ · %lu", baseTitle, (unsigned long)bulkEntries.count];
+    NSString *title = [NSString stringWithFormat:@"%@ • %lu", baseTitle, (unsigned long)bulkEntries.count];
     UIImage *bulkIcon = [[[SCIAssetUtils instagramIconNamed:(sectionIconName.length > 0 ? sectionIconName : @"carousel") pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
     UIMenuElement *section = collapsible
         ? SCISubmenuOrSingleElement(title, bulkIcon, children)

@@ -500,7 +500,7 @@ static void sciResolveSenderInfo(NSString *pk, NSString **outUser, NSString **ou
 
 #pragma mark - Share/link title fallback
 
-// Walks string ivars by name (title/caption/headline/…). First non-empty wins; longer wins ties.
+// Walks string ivars by name (title/caption/headline/...). First non-empty wins; longer wins ties.
 static NSString *sciExtractShareTitle(id obj) {
     if (!obj) return nil;
     NSMutableSet *visited = [NSMutableSet set];

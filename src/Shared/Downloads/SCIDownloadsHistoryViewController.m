@@ -722,7 +722,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
         case SCIDownloadStateRunning:
         case SCIDownloadStateFinalizing:
             icon = @"play_filled";
-            color = [SCIUtils SCIColor_Primary];
+            color = [SCIUtils SCIColor_InstagramBlue];
             break;
         case SCIDownloadStateQueued:
         case SCIDownloadStatePending:
@@ -796,7 +796,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
         cell.rowTypeIcon.image = [SCIAssetUtils instagramIconNamed:SCIMediaIconName(first.mediaKind) pointSize:12];
     }
 
-    // Technical line (gallery-style: size · duration for video/audio, size · items for carousel)
+    // Technical line (gallery-style: size • duration for video/audio, size • items for carousel)
     NSMutableArray *parts = [NSMutableArray array];
     if (job.state == SCIDownloadStateRunning || job.state == SCIDownloadStateFinalizing) {
         int pct = MIN(100, MAX(0, (int)(job.aggregateProgress * 100)));
@@ -822,7 +822,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
             }
         }
     }
-    cell.technicalLabel.text = [parts componentsJoinedByString:@" · "];
+    cell.technicalLabel.text = [parts componentsJoinedByString:@" • "];
 
     // Pill: source surface
     cell.pillBackground.hidden = NO;
@@ -876,7 +876,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
             statusIcon = @"circle_off"; statusColor = [SCIUtils SCIColor_InstagramSecondaryText]; break;
         case SCIDownloadStateRunning:
         case SCIDownloadStateFinalizing:
-            statusIcon = @"play_filled"; statusColor = [SCIUtils SCIColor_Primary]; break;
+            statusIcon = @"play_filled"; statusColor = [SCIUtils SCIColor_InstagramBlue]; break;
         case SCIDownloadStateQueued:
         case SCIDownloadStatePending:
         case SCIDownloadStateWaitingForPreflight:
@@ -918,7 +918,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
         }
     }
     cell.compactLabel.hidden = NO;
-    cell.compactLabel.text = [parts componentsJoinedByString:@" · "];
+    cell.compactLabel.text = [parts componentsJoinedByString:@" • "];
 
     cell.separatorLeading.constant = 56;
 }
@@ -1035,7 +1035,7 @@ static void SCIApplyStatusBadge(SCIDownloadHistoryCell *cell, SCIDownloadState s
             done(YES);
         }];
         retry.image = [SCIAssetUtils instagramIconNamed:@"arrow_cw" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate];
-        retry.backgroundColor = [SCIUtils SCIColor_Primary];
+        retry.backgroundColor = [SCIUtils SCIColor_InstagramBlue];
         retry.accessibilityLabel = @"Retry";
         [actions addObject:retry];
     }

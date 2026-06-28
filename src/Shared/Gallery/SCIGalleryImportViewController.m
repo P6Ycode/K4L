@@ -88,7 +88,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryImportMainSection) {
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == SCIGalleryImportMainSectionShared) {
-        return @"Shared values apply to each new file you add. Use “Merge…” to copy them into files already in the queue (file name key and display name on each file are left as-is).";
+        return @"Shared values apply to each new file you add. Use “Merge...” to copy them into files already in the queue (file name key and display name on each file are left as-is).";
     }
     if (section == SCIGalleryImportMainSectionQueue && self.queuedFiles.count == 0) {
         return @"Tap Add to choose images or videos from Files. Then tap a row to enter post/profile metadata so Open original / Open profile work like saves from Instagram.";
@@ -129,7 +129,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryImportMainSection) {
     if (m.sourceMediaCode.length > 0) {
         [parts addObject:m.sourceMediaCode];
     }
-    return parts.count ? [parts componentsJoinedByString:@" · "] : @"Edit metadata…";
+    return parts.count ? [parts componentsJoinedByString:@" • "] : @"Edit metadata...";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -375,7 +375,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryImportMainSection) {
 
     if (failures > 0) {
         NSString *subtitle = lastErr.length
-            ? [NSString stringWithFormat:@"%lu couldn’t be saved · %@", (unsigned long)failures, lastErr]
+            ? [NSString stringWithFormat:@"%lu couldn’t be saved • %@", (unsigned long)failures, lastErr]
             : [NSString stringWithFormat:@"%lu couldn’t be saved", (unsigned long)failures];
         SCINotify(kSCINotificationGalleryImport, @"Import incomplete", subtitle, @"error_filled", SCINotificationToneError);
         return;

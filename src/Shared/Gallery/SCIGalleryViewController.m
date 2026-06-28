@@ -1564,7 +1564,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     }
 
     // Grouped into inline sections so related actions read together and the
-    // destructive delete is isolated at the bottom: open/navigate · edit · share ·
+    // destructive delete is isolated at the bottom: open/navigate • edit • share •
     // delete.
     NSMutableArray<UIMenuElement *> *openSection = [NSMutableArray array];
     if (openOriginalAction) [openSection addObject:openOriginalAction];
@@ -1868,7 +1868,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         }]];
     }
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"New folder…"
+    [actions addObject:[SCIIGAlertAction actionWithTitle:@"New folder..."
                                                    style:SCIIGAlertActionStyleDefault
                                                  handler:^{
         [SCIIGAlertPresenter presentTextInputAlertFromViewController:self

@@ -98,7 +98,7 @@
         BOOL checked = [row.userInfo[@"checkmarked"] boolValue];
         if (checked) {
             UIImageView *checkmarkView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"circle_check_filled"]];
-            checkmarkView.tintColor = [SCIUtils SCIColor_Primary];
+            checkmarkView.tintColor = [SCIUtils SCIColor_InstagramBlue];
             cell.accessoryView = checkmarkView;
         } else {
             cell.accessoryView = nil;

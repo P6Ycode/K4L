@@ -126,15 +126,15 @@ static NSArray *SCIMessagesSettingsSections(void) {
             [SCISetting switchCellWithTitle:@"Hide Friends Map" icon:SCISettingsIcon(@"map") defaultsKey:@"msgs_hide_friends_map"],
             [SCISetting switchCellWithTitle:@"Note Theming" icon:SCISettingsIcon(@"palette") defaultsKey:@"msgs_notes_customization"],
             [SCISetting switchCellWithTitle:@"Custom Note Themes" icon:SCISettingsIcon(@"eyedropper") defaultsKey:@"msgs_custom_note_themes"],
-            [SCISetting switchCellWithTitle:@"Download Notes Audio" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio" requiresRestart:YES]
+            [SCISetting switchCellWithTitle:@"Download Notes Audio" icon:SCISettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio"]
         ], @"Note Theming enables Instagram's note theme picker. Custom Note Themes add custom emoji, background, and text color options."),
         SCITopicSection(@"Audio", @[
-            [SCISetting switchCellWithTitle:@"Download Voice Messages" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages" requiresRestart:YES],
-            [SCISetting switchCellWithTitle:@"Upload Audio" icon:SCISettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages" requiresRestart:YES]
+            [SCISetting switchCellWithTitle:@"Download Voice Messages" icon:SCISettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages"],
+            [SCISetting switchCellWithTitle:@"Upload Audio" icon:SCISettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages"]
         ], @"1. Adds audio actions to supported voice/audio message views.\n"
            @"2. Adds an option to the composer plus (+) menu that sends the selected audio or video as a voice message."),
         SCITopicSection(@"Media", @[
-            [SCISetting switchCellWithTitle:@"Upload Photo from Gallery" icon:SCISettingsIcon(@"photo") defaultsKey:@"msgs_upload_gallery_media" requiresRestart:YES]
+            [SCISetting switchCellWithTitle:@"Upload Photo from Gallery" icon:SCISettingsIcon(@"photo") defaultsKey:@"msgs_upload_gallery_media"]
         ], @"Adds an option to the composer plus (+) menu that sends a photo from the SCInsta Gallery into the chat."),
         SCITopicSection(@"Confirmation", @[
             [SCISetting switchCellWithTitle:@"Confirm Audio Call" icon:SCISettingsIcon(@"call") defaultsKey:kSCIMessagesAudioCallConfirmKey],

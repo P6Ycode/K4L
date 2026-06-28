@@ -47,8 +47,8 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
 
 - (void)updateChipAppearance {
     if (self.selectedChip) {
-        self.backgroundColor = [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.18];
-        self.tintColor = [SCIUtils SCIColor_Primary];
+        self.backgroundColor = [[SCIUtils SCIColor_InstagramBlue] colorWithAlphaComponent:0.18];
+        self.tintColor = [SCIUtils SCIColor_InstagramBlue];
         [self setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
     } else {
         self.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
@@ -233,8 +233,8 @@ static NSString *SCIGallerySortResourceSymbol(SCIGallerySortMode mode) {
 
 - (void)updateGroupChip:(UIButton *)chip selected:(BOOL)selected {
     if (selected) {
-        chip.backgroundColor = [[SCIUtils SCIColor_Primary] colorWithAlphaComponent:0.18];
-        chip.tintColor = [SCIUtils SCIColor_Primary];
+        chip.backgroundColor = [[SCIUtils SCIColor_InstagramBlue] colorWithAlphaComponent:0.18];
+        chip.tintColor = [SCIUtils SCIColor_InstagramBlue];
         [chip setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
     } else {
         chip.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];

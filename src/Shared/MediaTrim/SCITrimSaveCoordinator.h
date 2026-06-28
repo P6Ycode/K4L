@@ -47,7 +47,7 @@ typedef void (^SCITrimStoreBlock)(NSURL *renderedURL, SCITrimStoreCompletion don
 /// Renders `result` and routes the output to one of the save-flow destinations
 /// ("photos", "gallery", "share", "clipboard"), carrying `metadata` onto Gallery
 /// copies so filenames/attribution match the source (instead of falling back to
-/// `media_other_…`). This is the shared routing used by every "pick a
+/// `media_other_...`). This is the shared routing used by every "pick a
 /// destination" trim entry point. `presenter` is required for "share". Pass
 /// `existingPill` to continue an in-flight progress pill.
 + (void)routeResult:(SCITrimResult *)result

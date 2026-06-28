@@ -287,7 +287,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     self.tableView.dropDelegate = self;
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
     self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.tintColor = [SCIUtils SCIColor_Primary];
+    self.tableView.tintColor = [SCIUtils SCIColor_InstagramBlue];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 72.0;
     // Disable header/footer height estimation. The grouped footers are multi-line
@@ -377,7 +377,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     UIListContentConfiguration *cellContentConfig = cell.defaultContentConfiguration;
     cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.tintColor = [SCIUtils SCIColor_Primary];
+    cell.tintColor = [SCIUtils SCIColor_InstagramBlue];
     cell.selectedBackgroundView = [self selectionBackgroundView];
     cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramPrimaryText];
     cellContentConfig.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];
@@ -446,7 +446,7 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
         }
 
         case SCITableCellLink: {
-            cellContentConfig.textProperties.color = [SCIUtils SCIColor_Primary];
+            cellContentConfig.textProperties.color = [SCIUtils SCIColor_InstagramBlue];
             cellContentConfig.textProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
                                                                       weight:UIFontWeightMedium];
 
@@ -688,6 +688,13 @@ static UIImage *SCISettingsBreadcrumbChevronImage(void) {
     ]];
     header.accessibilityLabel = SCISettingsBreadcrumbText(components);
     return header;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    if ([self isSearching] && [self.sections[section][@"breadcrumbComponents"] isKindOfClass:[NSArray class]] && [self.sections[section][@"breadcrumbComponents"] count] > 0) {
+        return 34.0;
+    }
+    return UITableViewAutomaticDimension;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {

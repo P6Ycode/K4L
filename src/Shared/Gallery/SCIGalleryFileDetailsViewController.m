@@ -54,7 +54,7 @@ typedef NS_ENUM(NSInteger, SCIDetailsEditRow) {
     _datePicker.datePickerMode = UIDatePickerModeDateAndTime;
     _datePicker.preferredDatePickerStyle = UIDatePickerStyleCompact;
     _datePicker.date = self.file.dateAdded ?: [NSDate date];
-    _datePicker.tintColor = [SCIUtils SCIColor_Primary];
+    _datePicker.tintColor = [SCIUtils SCIColor_InstagramBlue];
 }
 
 - (UITextField *)editableField {

@@ -489,7 +489,7 @@ static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
         completionHandler(YES);
     }];
     pinAction.image = [SCIAssetUtils instagramIconNamed:(group.isPinned ? @"pin_filled" : @"pin") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
-    pinAction.backgroundColor = [SCIUtils SCIColor_Primary];
+    pinAction.backgroundColor = [SCIUtils SCIColor_InstagramBlue];
     pinAction.accessibilityLabel = group.isPinned ? @"Unpin" : @"Pin";
     UIContextualAction *blockAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
         [SCIDeletedMessagesStorage setSenderBlocked:!group.isBlocked senderPK:group.flagKey ownerPK:self.ownerPK];

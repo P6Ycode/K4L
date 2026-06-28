@@ -37,7 +37,7 @@ static UICommand *SCIProfileActionDefaultCommand(NSString *title, NSString *reso
 
 static UIMenu *SCIProfileActionDefaultMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SCIProfileActionDefaultCommand(@"None", @"action", kSCIProfileActionNone),
+        SCIProfileActionDefaultCommand(@"Open Menu", @"action", kSCIProfileActionNone),
         SCIProfileActionDefaultCommand(@"Copy Info", @"copy", kSCIProfileActionCopyInfo),
         SCIProfileActionDefaultCommand(@"View Picture", @"photo", kSCIProfileActionViewPicture),
         SCIProfileActionDefaultCommand(@"Share Picture", @"share", kSCIProfileActionSharePicture),

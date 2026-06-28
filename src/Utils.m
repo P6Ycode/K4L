@@ -221,18 +221,23 @@ static UIColor *SCIInstagramColorFromClassSelector(NSString *className, SEL sele
     return [color isKindOfClass:[UIColor class]] ? color : nil;
 }
 
+static UIColor *SCIInstagramPrimaryAccentColor(void) {
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.408 green:0.557 blue:1.032 alpha:1.0];
+        } else {
+            return [UIColor colorWithRed:0.270 green:0.367 blue:1.013 alpha:1.0];
+        }
+    }];
+}
+
 static UIColor *SCIInstagramDestructiveColor(void) {
-    UIColor *color = SCIInstagramColorFromClassSelector(@"HMDSColor", @selector(dangerText));
-    if (color) return color;
-
-    color = SCIInstagramColorFromClassSelector(@"HMDSColor", @selector(danger));
-    if (color) return color;
-
-    color = SCIInstagramColorFromClassSelector(@"TWDSColor", @selector(negative));
-    if (color) return color;
-
-    return [UIColor colorWithDynamicProvider:^UIColor *(__unused UITraitCollection *traits) {
-        return [UIColor colorWithRed:1.0 green:0.396 blue:0.490 alpha:1.0];
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.957 green:0.357 blue:0.420 alpha:1.0];
+        } else {
+            return [UIColor colorWithRed:0.867 green:0.082 blue:0.208 alpha:1.0];
+        }
     }];
 }
 
@@ -979,8 +984,8 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 
 // MARK: Colours
-+ (UIColor *)SCIColor_Primary {
-    return [UIColor colorWithRed:0/255.0 green:149/255.0 blue:246/255.0 alpha:1.0];
++ (UIColor *)SCIColor_InstagramBlue {
+    return SCIInstagramPrimaryAccentColor();
 }
 
 + (UIColor *)SCIColor_InstagramBackground {

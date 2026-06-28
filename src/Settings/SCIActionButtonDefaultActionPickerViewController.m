@@ -40,7 +40,7 @@ NSString *SCIActionButtonDefaultActionIdentifierForSource(SCIActionButtonSource 
 
 NSString *SCIActionButtonDefaultActionTitleForSource(SCIActionButtonSource source) {
     NSString *identifier = SCIActionButtonDefaultActionIdentifierForSource(source);
-    if ([identifier isEqualToString:kSCIActionNone]) return @"None";
+    if ([identifier isEqualToString:kSCIActionNone]) return @"Open Menu";
     return SCIActionDescriptorDisplayTitle(identifier, SCIActionButtonTopicTitleForSource(source));
 }
 
@@ -111,7 +111,7 @@ static NSArray<NSDictionary *> *SCIActionButtonDefaultActionSections(SCIActionBu
     self.tableView.delegate = self;
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
     self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.tintColor = [SCIUtils SCIColor_Primary];
+    self.tableView.tintColor = [SCIUtils SCIColor_InstagramBlue];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:kSCIActionDefaultPickerCellIdentifier];
     [self.view addSubview:self.tableView];
 }
@@ -139,16 +139,16 @@ static NSArray<NSDictionary *> *SCIActionButtonDefaultActionSections(SCIActionBu
     BOOL isNone = [identifier isEqualToString:kSCIActionNone];
 
     cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.tintColor = [SCIUtils SCIColor_Primary];
+    cell.tintColor = [SCIUtils SCIColor_InstagramBlue];
     cell.selectedBackgroundView = [self selectionBackgroundView];
-    config.text = isNone ? @"None" : SCIActionDescriptorDisplayTitle(identifier, SCIActionButtonTopicTitleForSource(self.source));
+    config.text = isNone ? @"Open Menu" : SCIActionDescriptorDisplayTitle(identifier, SCIActionButtonTopicTitleForSource(self.source));
     config.textProperties.color = [SCIUtils SCIColor_InstagramPrimaryText];
     config.image = SCISettingsIcon(isNone ? @"action" : SCIActionDescriptorIconName(identifier));
     config.imageProperties.tintColor = [SCIUtils SCIColor_InstagramPrimaryText];
 
     if ([identifier isEqualToString:SCIActionButtonDefaultActionIdentifierForSource(self.source)]) {
         UIImageView *checkmarkView = [[UIImageView alloc] initWithImage:[SCIAssetUtils instagramIconNamed:@"circle_check_filled"]];
-        checkmarkView.tintColor = [SCIUtils SCIColor_Primary];
+        checkmarkView.tintColor = [SCIUtils SCIColor_InstagramBlue];
         cell.accessoryView = checkmarkView;
     } else {
         cell.accessoryView = nil;

@@ -140,7 +140,7 @@ static NSString *SCIAudioPageIconForAction(NSString *action) {
     if ([action isEqualToString:kSCIAudioPageActionConvertShare]) return @"share";
     if ([action isEqualToString:kSCIAudioPageActionPlay]) return @"play";
     if ([action isEqualToString:kSCIAudioPageActionCopyURL]) return @"link";
-    return @"share";
+    return @"action";
 }
 
 static UIImage *SCIAudioPageMenuIcon(NSString *iconName) {
@@ -283,12 +283,11 @@ static void SCIAudioPageInstallButton(UIView *bar) {
     NSString *defaultAction = [SCIUtils getStringPref:kSCIAudioPageDefaultActionKey];
     if (defaultAction.length == 0) defaultAction = kSCIAudioPageActionShare;
 
-    BOOL isNone = [defaultAction isEqualToString:@"none"];
-    NSString *iconName = isNone ? @"action" : SCIAudioPageIconForAction(defaultAction);
-
     CGFloat side = MAX(28.0, CGRectGetHeight(anchor.frame));
 
-    UIImage *icon = [SCIAssetUtils instagramIconNamed:iconName pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImage *icon = [SCIAssetUtils instagramIconNamed:SCIAudioPageIconForAction(defaultAction)
+                                            pointSize:24.0
+                                        renderingMode:UIImageRenderingModeAlwaysTemplate];
     [button setImage:icon forState:UIControlStateNormal];
     button.tintColor = UIColor.labelColor;
     button.backgroundColor = SCIAudioPageBackgroundColorFromAnchor(anchor);
@@ -297,6 +296,7 @@ static void SCIAudioPageInstallButton(UIView *bar) {
     if (!button.menu) {
         button.menu = SCIAudioPageMenuForButton(button);
     }
+    BOOL isNone = [defaultAction isEqualToString:@"none"];
     button.showsMenuAsPrimaryAction = isNone;
 
     host.frame = CGRectMake(CGRectGetMinX(anchor.frame) - side - 8.0, CGRectGetMidY(anchor.frame) - side / 2.0, side, side);

@@ -95,7 +95,7 @@
         return;
     }
     __weak typeof(self) weakSelf = self;
-    [self downloadURLs:@[ editURL ] title:@"Preparing video…" pill:nil completion:^(NSArray<NSURL *> *locals) {
+    [self downloadURLs:@[ editURL ] title:@"Preparing video..." pill:nil completion:^(NSArray<NSURL *> *locals) {
         if (locals.count > 0) {
             [weakSelf presentEditorForLocalURL:locals[0]];
         }
@@ -250,10 +250,10 @@ didCompleteWithError:(NSError *)error {
         // One continuous pill spans the high-quality download and the render —
         // hand it off rather than stacking a second notification.
         SCINotificationPillView *pill =
-            [[SCINotificationCenter shared] beginUnmanagedProgressWithTitle:@"Downloading…" onCancel:nil];
+            [[SCINotificationCenter shared] beginUnmanagedProgressWithTitle:@"Downloading..." onCancel:nil];
         __weak typeof(self) weakSelf = self;
         [self downloadURLs:@[ self.plan.finalVideoURL, self.plan.finalAudioURL ]
-                     title:@"Downloading high quality…"
+                     title:@"Downloading high quality..."
                       pill:pill
                 completion:^(NSArray<NSURL *> *locals) {
             __strong typeof(weakSelf) self = weakSelf;

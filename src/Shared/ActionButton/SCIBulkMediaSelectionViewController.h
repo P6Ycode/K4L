@@ -19,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /// A bulk destination the user can run the selection through (Photos, Gallery,
-/// Share, Clipboard, Copy Links, …). `identifier` is opaque to this controller
+/// Share, Clipboard, Copy Links, ...). `identifier` is opaque to this controller
 /// and handed straight back through the completion block. `iconName` is a custom
 /// asset name, rendered by the picker at its native bottom-bar size.
 @interface SCIBulkSelectionDestination : NSObject

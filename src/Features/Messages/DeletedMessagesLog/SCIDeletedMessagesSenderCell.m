@@ -141,11 +141,11 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group) 
     SCIDeletedMessage *latest = group.latest;
     NSString *body = nil;
     if (latest.kind == SCIDeletedMessageKindShare) {
-        // "Reel · @author" / "Post · caption" so shares read by type at a glance.
+        // "Reel • @author" / "Post • caption" so shares read by type at a glance.
         NSString *type = SCIDeletedMessageShareSubtypeName(latest.shareSubtype);
         NSString *detail = latest.shareAuthor.length ? latest.shareAuthor
                          : (latest.text.length ? latest.text : latest.previewText);
-        body = detail.length ? [NSString stringWithFormat:@"%@ · %@", type, detail] : type;
+        body = detail.length ? [NSString stringWithFormat:@"%@ • %@", type, detail] : type;
     }
     else if (latest.text.length) body = latest.text;
     else if (latest.previewText.length) body = latest.previewText;
@@ -161,7 +161,7 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group) 
     }
 
     if (group.count > 1) {
-        return [NSString stringWithFormat:@"%@  ·  %lu unsent", body, (unsigned long)group.count];
+        return [NSString stringWithFormat:@"%@  •  %lu unsent", body, (unsigned long)group.count];
     }
     return body;
 }

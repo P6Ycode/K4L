@@ -487,7 +487,7 @@ static NSString *SCIPARelativeDate(NSDate *date) {
 
     if (self.kind == SCIPAListKindVisited && indexPath.row < (NSInteger)self.shownVisits.count) {
         SCIProfileAnalyzerVisit *v = self.shownVisits[indexPath.row];
-        NSString *count = v.visitCount > 1 ? [NSString stringWithFormat:@"  ·  %ld visits", (long)v.visitCount] : @"";
+        NSString *count = v.visitCount > 1 ? [NSString stringWithFormat:@"  •  %ld visits", (long)v.visitCount] : @"";
         cell.subtitleLabel.text = [NSString stringWithFormat:@"%@%@", SCIPARelativeDate(v.lastSeen), count];
     } else if (self.kind == SCIPAListKindProfileUpdate && indexPath.row < (NSInteger)self.shownUpdates.count) {
         cell.subtitleLabel.text = [self changeSummaryForUpdate:self.shownUpdates[indexPath.row]];
@@ -515,7 +515,7 @@ static NSString *SCIPARelativeDate(NSDate *date) {
     if (ch.usernameChanged)   [parts addObject:[NSString stringWithFormat:@"@%@ → @%@", ch.previous.username ?: @"", ch.current.username ?: @""]];
     if (ch.fullNameChanged)   [parts addObject:[NSString stringWithFormat:@"name: %@ → %@", ch.previous.fullName ?: @"—", ch.current.fullName ?: @"—"]];
     if (ch.profilePicChanged) [parts addObject:@"changed profile picture"];
-    return [parts componentsJoinedByString:@"  ·  "];
+    return [parts componentsJoinedByString:@"  •  "];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -613,7 +613,7 @@ static NSString *SCIPARelativeDate(NSDate *date) {
     } else {
         [button setTitle:@"Follow" forState:UIControlStateNormal];
         [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        button.backgroundColor = [SCIUtils SCIColor_Primary] ?: [UIColor systemBlueColor];
+        button.backgroundColor = [SCIUtils SCIColor_InstagramBlue] ?: [UIColor systemBlueColor];
         button.layer.borderWidth = 0.0;
     }
 }

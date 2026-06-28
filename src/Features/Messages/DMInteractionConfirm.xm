@@ -40,7 +40,7 @@ void SCIMarkDirectThreadSeenAfterReaction(id source);
 //   IGDirectMessageReactionSelectionViewController
 //       -reactionContainerView:didSelectEmojiAtIndex:       ← we hook HERE
 //           → internally delegates to IGDirectMessageReactionController
-//               -messageReactionSelectionViewController:didToggleEmoji:…
+//               -messageReactionSelectionViewController:didToggleEmoji:...
 //
 // We ONLY hook the picker VC entry point. Hooking the delegate too
 // causes a double-prompt because %orig on the picker method cascades

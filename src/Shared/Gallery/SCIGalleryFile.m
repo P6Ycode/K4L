@@ -209,7 +209,7 @@ static NSDate * _Nullable SCIParseEpochDateFromString(NSString *s) {
     return [NSDate dateWithTimeIntervalSince1970:seconds];
 }
 
-/// Recognizes slug segments matching `SCIGallerySourceSlug` output (feed, story, reel, …).
+/// Recognizes slug segments matching `SCIGallerySourceSlug` output (feed, story, reel, ...).
 static BOOL SCISourceFromBasenameSlug(NSString *low, SCIGallerySource *out) {
     if ([low isEqualToString:@"feed"]) {
         *out = SCIGallerySourceFeed;
@@ -861,7 +861,7 @@ NSString *SCIFileNameForMedia(NSURL *fileURL,
             [parts addObject:br];
         }
     }
-    return [parts componentsJoinedByString:@" · "];
+    return [parts componentsJoinedByString:@" • "];
 }
 
 - (NSString *)listDownloadDateString {

@@ -90,7 +90,7 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
             SCISettingApplySelectedMenuIcon([SCISetting menuCellWithTitle:@"Quick Gallery Access" icon:SCISettingsIcon(@"circle_off") menu:SCIGalleryShortcutTargetMenu()], SCISettingsIcon(@"circle_off"))
         ], @"Choose the tab that opens Gallery on long press. None disables the action."),
         SCITopicSection(@"Import", @[
-            [SCISetting buttonCellWithTitle:@"Import from Files…" subtitle:nil icon:SCISettingsIcon(@"arrow_down") action:^{}]
+            [SCISetting buttonCellWithTitle:@"Import from Files..." subtitle:nil icon:SCISettingsIcon(@"arrow_down") action:^{}]
         ], @"Import from the Files app with full editable metadata."),
         SCITopicSection(@"Delete", @[
             [SCISetting buttonCellWithTitle:@"Delete Files" subtitle:nil icon:SCISettingsIcon(@"trash") action:^{}]
@@ -229,7 +229,7 @@ static NSString * const kGalleryQuickAccessDisabledValue = @"none";
 
     [sections addObject:SCITopicSection(@"Shortcuts", @[shortcutTarget], @"Choose the tab that opens Gallery on long press. None disables the action.")];
 
-    SCISetting *importRow = [SCISetting buttonCellWithTitle:@"Import from Files…" subtitle:nil icon:SCISettingsIcon(@"arrow_down") action:^{
+    SCISetting *importRow = [SCISetting buttonCellWithTitle:@"Import from Files..." subtitle:nil icon:SCISettingsIcon(@"arrow_down") action:^{
         SCIGalleryImportViewController *vc = [[SCIGalleryImportViewController alloc] initWithDestinationFolderPath:self.importDestinationFolderPath];
         [self.navigationController pushViewController:vc animated:YES];
     }];

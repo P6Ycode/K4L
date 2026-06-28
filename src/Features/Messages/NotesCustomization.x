@@ -86,7 +86,7 @@ static char targetStaticRef[] = "target";
         UIButton *leftButton = [UIButton buttonWithType:UIButtonTypeSystem];
         leftButton.configuration = config;
         leftButton.translatesAutoresizingMaskIntoConstraints = NO;
-        leftButton.tintColor = [SCIUtils SCIColor_Primary];
+        leftButton.tintColor = [SCIUtils SCIColor_InstagramBlue];
 
         NSMutableAttributedString *attrTitleLeft = [[NSMutableAttributedString alloc] initWithString:@"Background"];
         [attrTitleLeft addAttribute:NSFontAttributeName
@@ -104,7 +104,7 @@ static char targetStaticRef[] = "target";
         UIButton *middleButton = [UIButton buttonWithType:UIButtonTypeSystem];
         middleButton.configuration = config;
         middleButton.translatesAutoresizingMaskIntoConstraints = NO;
-        middleButton.tintColor = [SCIUtils SCIColor_Primary];
+        middleButton.tintColor = [SCIUtils SCIColor_InstagramBlue];
 
         NSMutableAttributedString *attrTitleMiddle = [[NSMutableAttributedString alloc] initWithString:@"Text"];
         [attrTitleMiddle addAttribute:NSFontAttributeName
@@ -122,7 +122,7 @@ static char targetStaticRef[] = "target";
         UIButton *rightButton = [UIButton buttonWithType:UIButtonTypeSystem];
         rightButton.configuration = config;
         rightButton.translatesAutoresizingMaskIntoConstraints = NO;
-        rightButton.tintColor = [SCIUtils SCIColor_Primary];
+        rightButton.tintColor = [SCIUtils SCIColor_InstagramBlue];
 
         NSMutableAttributedString *attrTitleRight = [[NSMutableAttributedString alloc] initWithString:@"Emoji"];
         [attrTitleRight addAttribute:NSFontAttributeName

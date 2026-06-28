@@ -41,7 +41,7 @@
     self.view.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.tableView.sectionIndexColor = [SCIUtils SCIColor_Primary];
+    self.tableView.sectionIndexColor = [SCIUtils SCIColor_InstagramBlue];
     self.tableView.sectionIndexBackgroundColor = [UIColor clearColor];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"user"];
 

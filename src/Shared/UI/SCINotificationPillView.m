@@ -4,7 +4,7 @@
 #import "../../AssetUtils.h"
 
 @interface SCIUtils : NSObject
-+ (UIColor *)SCIColor_Primary;
++ (UIColor *)SCIColor_InstagramBlue;
 + (BOOL)getBoolPref:(NSString *)key;
 + (NSString *)getStringPref:(NSString *)key;
 @end

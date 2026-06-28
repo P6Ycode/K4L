@@ -514,7 +514,7 @@ static NSString *SCIDeletedFormatDuration(double seconds);
 
     [self setOutgoing:outgoing];
 
-    // Share-kind rows label themselves by the actual content type (Reel/Post/…)
+    // Share-kind rows label themselves by the actual content type (Reel/Post/...)
     // instead of a generic "Share".
     NSString *kindName, *kindSymbol;
     if (message.kind == SCIDeletedMessageKindShare) {
@@ -617,7 +617,7 @@ static NSString *SCIDeletedFormatDuration(double seconds);
     if (newline.location != NSNotFound) caption = [caption substringToIndex:newline.location];
 
     if (isShare) {
-        // Title = the shared content's author; subtitle = "Reel · caption".
+        // Title = the shared content's author; subtitle = "Reel • caption".
         NSString *typeName = SCIDeletedMessageShareSubtypeName(message.shareSubtype);
         NSString *author = message.shareAuthor.length ? message.shareAuthor : nil;
         self.cardTitle.text = author ?: (caption.length ? caption : typeName);
@@ -628,7 +628,7 @@ static NSString *SCIDeletedFormatDuration(double seconds);
         NSString *subtitle = nil;
         if (author) {
             subtitle = (caption.length && ![caption isEqualToString:author])
-                ? [NSString stringWithFormat:@"%@ · %@", typeName, caption] : typeName;
+                ? [NSString stringWithFormat:@"%@ • %@", typeName, caption] : typeName;
         } else if (caption.length) {
             subtitle = typeName;
         }

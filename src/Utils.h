@@ -33,7 +33,7 @@ FOUNDATION_EXPORT void SCIPreferenceSetObject(id _Nullable value, NSString *key)
 /// applies (export prompt, gallery/downloads filtering, etc.).
 FOUNDATION_EXPORT BOOL SCIPerAccountModeActive(void);
 
-/// YES when `key` is forced device-global (app icon, appearance, tab layout, …) and
+/// YES when `key` is forced device-global (app icon, appearance, tab layout, ...) and
 /// therefore never stored per-account. Used to decide what a per-account export carries.
 FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
 
@@ -97,7 +97,7 @@ FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
 + (void)presentViewControllerInSheet:(UIViewController *)vc;
 
 // Colours
-+ (UIColor *)SCIColor_Primary;
++ (UIColor *)SCIColor_InstagramBlue;
 + (UIColor *)SCIColor_InstagramBackground;
 + (UIColor *)SCIColor_InstagramSecondaryBackground;
 + (UIColor *)SCIColor_InstagramTertiaryBackground;

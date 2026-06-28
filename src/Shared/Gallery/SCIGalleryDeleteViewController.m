@@ -64,7 +64,7 @@ typedef NS_ENUM(NSInteger, SCIGalleryDeleteSection) {
     self.view.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
     self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.tintColor = [SCIUtils SCIColor_Primary];
+    self.tableView.tintColor = [SCIUtils SCIColor_InstagramBlue];
     [self reloadDataModel];
 }
 

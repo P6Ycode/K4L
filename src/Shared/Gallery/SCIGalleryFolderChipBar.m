@@ -88,7 +88,7 @@ static CGFloat const kChipHorizontalInset = 14.0;
     chip.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
 
     NSString *title = count > 0
-        ? [NSString stringWithFormat:@"%@  ·  %ld", name, (long)count]
+        ? [NSString stringWithFormat:@"%@  •  %ld", name, (long)count]
         : name;
     [chip setTitle:title forState:UIControlStateNormal];
 

@@ -329,11 +329,11 @@ static NSString *SCITrimFormatTime(NSTimeInterval seconds) {
 
 - (void)updateTimeLabel {
     if (self.scrubber.isSingleFrameMode) {
-        self.timeLabel.text = [NSString stringWithFormat:@"Frame · %@", SCITrimFormatTime(self.scrubber.frameTime)];
+        self.timeLabel.text = [NSString stringWithFormat:@"Frame • %@", SCITrimFormatTime(self.scrubber.frameTime)];
         return;
     }
     NSTimeInterval dur = self.scrubber.endTime - self.scrubber.startTime;
-    self.timeLabel.text = [NSString stringWithFormat:@"%@ – %@  ·  %.1fs",
+    self.timeLabel.text = [NSString stringWithFormat:@"%@ – %@  •  %.1fs",
                            SCITrimFormatTime(self.scrubber.startTime),
                            SCITrimFormatTime(self.scrubber.endTime),
                            dur];

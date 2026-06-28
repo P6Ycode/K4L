@@ -55,7 +55,7 @@ static char kSCIActionsListSwitchAssocKey;
     self.tableView.dropDelegate = self;
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
     self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.tintColor = [SCIUtils SCIColor_Primary];
+    self.tableView.tintColor = [SCIUtils SCIColor_InstagramBlue];
     [self.view addSubview:self.tableView];
 }
 
@@ -149,7 +149,7 @@ static char kSCIActionsListSwitchAssocKey;
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     UIListContentConfiguration *config = cell.defaultContentConfiguration;
     cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.tintColor = [SCIUtils SCIColor_Primary];
+    cell.tintColor = [SCIUtils SCIColor_InstagramBlue];
     cell.selectedBackgroundView = [self selectionBackgroundView];
     config.textProperties.color = [SCIUtils SCIColor_InstagramPrimaryText];
     config.secondaryTextProperties.color = [SCIUtils SCIColor_InstagramSecondaryText];

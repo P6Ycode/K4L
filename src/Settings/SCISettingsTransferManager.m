@@ -157,7 +157,7 @@ static NSSet<NSString *> *SCIExportedPreferenceKeys(void) {
     // Every key registered as an SCInsta default is, by construction, one of
     // ours — include them all rather than prefix-filtering. The old prefix
     // allowlist silently dropped whole feature groups whose keys don't start
-    // with a "surface" prefix (downloads_, instants_, trim_, main_feed_mode, …),
+    // with a "surface" prefix (downloads_, instants_, trim_, main_feed_mode, ...),
     // which is why those settings were lost across export/import.
     for (NSString *key in SCICoreRegisteredDefaults()) {
         [keys addObject:key];
@@ -929,11 +929,11 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     NSFileManager *fm = [NSFileManager defaultManager];
     [fm createDirectoryAtPath:bundleRoot withIntermediateDirectories:YES attributes:nil error:nil];
 
-    SCINotificationPillView *pill = SCINotifyProgress(kSCINotificationSettingsExport, @"Exporting…", nil);
+    SCINotificationPillView *pill = SCINotifyProgress(kSCINotificationSettingsExport, @"Exporting...", nil);
     void (^setProgress)(float, NSString *) = ^(float fraction, NSString *subtitle) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [pill setProgress:fraction animated:YES];
-            [pill updateProgressTitle:@"Exporting…" subtitle:subtitle];
+            [pill updateProgressTitle:@"Exporting..." subtitle:subtitle];
         });
     };
     void (^failExport)(NSString *) = ^(NSString *message) {
@@ -968,7 +968,7 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
         }
 
         if (includeDeletedMessages) {
-            setProgress(0.65f, @"Messages…");
+            setProgress(0.65f, @"Messages...");
             NSError *copyError = nil;
             NSString *source = [SCIDeletedMessagesStorage storageRootPath];
             if ([fm fileExistsAtPath:source]) {
@@ -979,7 +979,7 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
         }
 
         if (includeProfileAnalyzer) {
-            setProgress(0.72f, @"Profile Analyzer…");
+            setProgress(0.72f, @"Profile Analyzer...");
             NSError *copyError = nil;
             NSString *source = [SCIProfileAnalyzerStorage storageRootPath];
             if ([fm fileExistsAtPath:source]) {
@@ -991,7 +991,7 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
 
         [SCITransferManifest(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, sourcePK, includedKeys) writeToFile:manifestPath atomically:YES];
 
-        setProgress(0.8f, @"Compressing…");
+        setProgress(0.8f, @"Compressing...");
         NSError *archiveError = nil;
         NSString *archiveName = SCITransferArchiveFilename(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, [SCIAccountManager currentAccountUsername], currentPK);
         NSString *archivePath = [root stringByAppendingPathComponent:archiveName];
@@ -1075,11 +1075,11 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     BOOL scoped = [url startAccessingSecurityScopedResource];
 
     // Progress pill so unzip + the heavy merges never block the UI.
-    SCINotificationPillView *pill = SCINotifyProgress(kSCINotificationSettingsImport, @"Importing…", nil);
+    SCINotificationPillView *pill = SCINotifyProgress(kSCINotificationSettingsImport, @"Importing...", nil);
     void (^setProgress)(float, NSString *) = ^(float fraction, NSString *sub) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [pill setProgress:fraction animated:YES];
-            [pill updateProgressTitle:@"Importing…" subtitle:sub];
+            [pill updateProgressTitle:@"Importing..." subtitle:sub];
         });
     };
     void (^failImport)(NSString *) = ^(NSString *message) {
@@ -1090,7 +1090,7 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     };
 
     dispatch_async(SCITransferWorkQueue(), ^{
-    setProgress(0.05f, @"Reading backup…");
+    setProgress(0.05f, @"Reading backup...");
     NSError *archiveError = nil;
     NSString *bundleRoot = SCIResolvedImportBundleRootForPickedURL(url, &archiveError);
     NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
@@ -1185,7 +1185,7 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     void (^finishImport)(NSInteger) = ^(NSInteger galleryAddedCount) {
         NSInteger messagesAdded = 0;
         if (importDeletedMessages) {
-            setProgress(0.85f, @"Messages…");
+            setProgress(0.85f, @"Messages...");
             NSError *deletedMessagesError = nil;
             messagesAdded = [SCIDeletedMessagesStorage mergeFromStorageDirectory:deletedMessagesPath ownerFilterPK:nil error:&deletedMessagesError];
             if (messagesAdded < 0) { failImport(deletedMessagesError.localizedDescription ?: @"Messages import failed."); return; }
@@ -1193,7 +1193,7 @@ static NSString *SCITransferArchiveFilename(BOOL includeSettings, BOOL includeGa
 
         NSInteger visitsAdded = 0;
         if (importProfileAnalyzer) {
-            setProgress(0.93f, @"Profile Analyzer…");
+            setProgress(0.93f, @"Profile Analyzer...");
             NSError *profileAnalyzerError = nil;
             visitsAdded = [SCIProfileAnalyzerStorage mergeFromStorageDirectory:profileAnalyzerPath ownerFilterPK:nil error:&profileAnalyzerError];
             if (visitsAdded < 0) { failImport(profileAnalyzerError.localizedDescription ?: @"Profile Analyzer import failed."); return; }

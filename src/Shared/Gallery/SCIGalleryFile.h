@@ -117,7 +117,7 @@ typedef NS_ENUM(int16_t, SCIGallerySource) {
 /// Primary line in list mode: username when known, else `displayName`.
 - (NSString *)listPrimaryTitle;
 
-/// Second line: duration · size · resolution · bitrate (video), or size · resolution (image).
+/// Second line: duration • size • resolution • bitrate (video), or size • resolution (image).
 - (NSString *)listTechnicalLine;
 
 /// Third line: human-readable download date (e.g. Apr 17 at 2:04 AM).

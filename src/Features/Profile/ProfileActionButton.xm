@@ -576,7 +576,7 @@ static UILabel *SCIProfileFindUsernameLabel(UIView *view) {
 
 // Because our button is an overlay (not in IG's rightButtons array), IG sizes the
 // username with no knowledge of it, so a long name runs under the button. We clamp
-// the title view (and its label) so it ends before us and truncates with "…",
+// the title view (and its label) so it ends before us and truncates with "...",
 // mirroring IG's native behaviour when a trailing button is present. Runs after
 // IG's own layout each pass, so short names are left untouched / auto-reset.
 static void SCIProfileClampTitleToButton(UIView *headerView, SCIProfileHeaderActionButton *button) {

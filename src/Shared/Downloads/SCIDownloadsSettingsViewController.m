@@ -17,7 +17,7 @@
         @{@"title": @"Save to Gallery", @"value": @"gallery", @"icon": @"media"},
         @{@"title": @"Play", @"value": @"play", @"icon": @"play"},
         @{@"title": @"Copy Download URL", @"value": @"copy_url", @"icon": @"link"},
-        @{@"title": @"None", @"value": @"none", @"icon": @"action"}
+        @{@"title": @"Open Menu", @"value": @"none", @"icon": @"action"}
     ];
     NSMutableArray<UICommand *> *commands = [NSMutableArray array];
     for (NSDictionary *item in items) {

@@ -303,7 +303,7 @@ typedef NS_ENUM(NSInteger, SCIPACategory) {
     self.tableView.delegate = self;
     self.tableView.backgroundColor = [SCIUtils SCIColor_InstagramGroupedBackground];
     self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
-    self.tableView.tintColor = [SCIUtils SCIColor_Primary];
+    self.tableView.tintColor = [SCIUtils SCIColor_InstagramBlue];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 56.0;
     self.tableView.sectionHeaderTopPadding = 0;
@@ -472,7 +472,7 @@ static NSString *SCIPACompact(NSInteger n) {
 
     SCINotificationPillView *pill = nil;
     if (SCINotificationIsEnabled(kSCINotificationProfileAnalyzerComplete)) {
-        pill = SCINotifyProgress(kSCINotificationProfileAnalyzerComplete, @"Analyzing profile…", ^{
+        pill = SCINotifyProgress(kSCINotificationProfileAnalyzerComplete, @"Analyzing profile...", ^{
             [[SCIProfileAnalyzerService sharedService] cancel];
         });
         [pill setProgress:0.02f animated:NO];
@@ -485,7 +485,7 @@ static NSString *SCIPACompact(NSInteger n) {
     [svc runForSelfWithHeaderInfo:^(NSDictionary *userInfo) {
         [weakSelf paintHeaderIdentity];
     } progress:^(NSString *status, double fraction) {
-        [pill updateProgressTitle:@"Analyzing profile…" subtitle:status];
+        [pill updateProgressTitle:@"Analyzing profile..." subtitle:status];
         [pill setProgress:(float)fraction animated:YES];
     } completion:^(SCIProfileAnalyzerSnapshot *snapshot, NSError *error) {
         [weakSelf setScanning:NO];
@@ -516,7 +516,7 @@ static NSString *SCIPACompact(NSInteger n) {
 - (void)setScanning:(BOOL)scanning {
     self.header.scanButton.scanning = scanning;
     if (scanning) {
-        [self.header.scanButton setText:@"Analyzing…"];
+        [self.header.scanButton setText:@"Analyzing..."];
         [self.header.scanButton setProgress:MAX(0.02, [SCIProfileAnalyzerService sharedService].currentFraction) animated:NO];
     } else {
         [self.header.scanButton setText:(self.report.current ? @"Re-run Analysis" : @"Run Analysis")];
@@ -615,7 +615,7 @@ typedef NS_ENUM(NSInteger, SCIPASectionKind) {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     UIListContentConfiguration *content = cell.defaultContentConfiguration;
     cell.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-    cell.tintColor = [SCIUtils SCIColor_Primary];
+    cell.tintColor = [SCIUtils SCIColor_InstagramBlue];
     UIView *selected = [UIView new];
     selected.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
     cell.selectedBackgroundView = selected;

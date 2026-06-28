@@ -915,7 +915,7 @@ static void sciShowUnsentToast(NSDictionary *preview, NSString *fallbackSender, 
 	NSArray<NSString *> *dedupeKeys = sciUnsentToastDedupeKeys(preview, fallbackSid, sender, kind, text);
 	if (!sciShouldShowUnsentToast(dedupeKeys)) return;
 	NSString *kindPhrase = sciNotificationKindPhrase(kind);
-	// Name shared posts by their actual type (reel/post/story/…) in the toast too.
+	// Name shared posts by their actual type (reel/post/story/...) in the toast too.
 	if (kind == SCIDeletedMessageKindShare) {
 		NSString *subtype = [preview[@"shareSubtype"] isKindOfClass:NSString.class] ? preview[@"shareSubtype"] : nil;
 		kindPhrase = [SCIDeletedMessageShareSubtypeName(subtype) lowercaseString];
@@ -923,7 +923,7 @@ static void sciShowUnsentToast(NSDictionary *preview, NSString *fallbackSender, 
 	NSString *title = [NSString stringWithFormat:@"%@ unsent a %@", sender, kindPhrase];
 	NSString *subtitle = text.length ? [NSString stringWithFormat:@"\"%@\"", text] : nil;
 	if (ownerAccount.length) {
-		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ · %@", title, subtitle] : title;
+		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ • %@", title, subtitle] : title;
 		title = ownerAccount;
 	}
 
@@ -955,7 +955,7 @@ static void sciShowUnsentReactionToast(NSDictionary *preview, NSString *ownerAcc
 		: [NSString stringWithFormat:@"%@ removed a reaction", sender];
 	NSString *subtitle = targetPreview.length ? [NSString stringWithFormat:@"On \"%@\"", targetPreview] : nil;
 	if (ownerAccount.length) {
-		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ · %@", title, subtitle] : title;
+		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ • %@", title, subtitle] : title;
 		title = ownerAccount;
 	}
 	[sciUnsentReactionBatcher() addEntrySender:sender title:title subtitle:subtitle onTap:nil];

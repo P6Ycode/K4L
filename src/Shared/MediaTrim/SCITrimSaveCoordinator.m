@@ -34,7 +34,7 @@
         SCIGallerySource source = originFile ? (SCIGallerySource)originFile.source : fallbackSource;
         NSString *folder = originFile ? originFile.folderPath : folderPath;
         // Carry the original's origin metadata onto the copy so its filename and
-        // Open Profile/Post links match (otherwise it falls back to media_other_…).
+        // Open Profile/Post links match (otherwise it falls back to media_other_...).
         SCIGallerySaveMetadata *metadata = originFile ? [originFile saveMetadata] : nil;
         NSError *error = nil;
         SCIGalleryFile *saved = [SCIGalleryFile saveFileToGallery:rendered
@@ -193,7 +193,7 @@
           completion:(void (^)(BOOL))completion {
     BOOL isFrame = (result.mode == SCITrimResultModeSingleFrame);
     NSString *basename = [NSString stringWithFormat:@"SCITrim-%@", NSUUID.UUID.UUIDString];
-    NSString *title = progressTitle.length > 0 ? progressTitle : (isFrame ? @"Extracting frame…" : @"Trimming…");
+    NSString *title = progressTitle.length > 0 ? progressTitle : (isFrame ? @"Extracting frame..." : @"Trimming...");
 
     // Continue an in-flight pill (e.g. from a preceding download) instead of
     // stacking a second notification.

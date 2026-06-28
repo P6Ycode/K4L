@@ -1104,7 +1104,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
   // dismiss). Expanded Instagram media (stories, feed, reels, DMs) instead pick
   // a destination in-editor — Photos / Gallery / Share / Copy — exactly like the
   // "Trim & Save" action button, so it no longer silently dumps a copy into the
-  // Gallery (and carries source attribution so the filename isn't media_other_…).
+  // Gallery (and carries source attribution so the filename isn't media_other_...).
   BOOL fromGallery = (item.galleryFile != nil);
   if (!fromGallery) {
     config.doneOptions = @[
@@ -1603,7 +1603,7 @@ static CGPoint SCICenterForBounds(CGRect bounds) {
 
   // Mirror the action-button bulk menu: let the user hand-pick a subset.
   UIAction *selectMediaAction = [UIAction
-      actionWithTitle:[NSString stringWithFormat:@"Select Media · %lu",
+      actionWithTitle:[NSString stringWithFormat:@"Select Media • %lu",
                                                  (unsigned long)bulkItems.count]
                 image:[SCIAssetUtils instagramIconNamed:@"carousel"
                                               pointSize:22.0]

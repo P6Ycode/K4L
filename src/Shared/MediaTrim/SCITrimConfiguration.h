@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
                        iconName:(nullable NSString *)iconName;
 @end
 
-/// Describes one trim session. Built by the caller (gallery, save flow, …) and
+/// Describes one trim session. Built by the caller (gallery, save flow, ...) and
 /// handed to `SCITrimEditorViewController`. Intentionally media-agnostic so the
 /// same object can configure an audio trim later.
 @interface SCITrimConfiguration : NSObject
