@@ -6,6 +6,7 @@
 @interface SCIUtils : NSObject
 + (UIColor *)SCIColor_Primary;
 + (BOOL)getBoolPref:(NSString *)key;
++ (NSString *)getStringPref:(NSString *)key;
 @end
 
 // iOS 26 Liquid Glass for the notification pill. UIGlassEffect is an iOS-26-SDK
@@ -728,7 +729,7 @@ typedef NS_ENUM(NSUInteger, SCIPillVisualTone) {
     percent = MAX(0, MIN(100, percent));
     NSString *percentString = [NSString stringWithFormat:@"%3ld%%", (long)percent];
 
-    NSString *style = [NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationProgressSubtitleStyleKey];
+    NSString *style = [SCIUtils getStringPref:kSCINotificationProgressSubtitleStyleKey];
     if (style.length == 0) style = @"both";
     if ([style isEqualToString:@"off"]) {
         return nil;

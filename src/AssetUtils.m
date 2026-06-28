@@ -246,6 +246,8 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
             @"settings_reels": @{@"candidates": @[@"ig_icon_settings_outline_44"]},
             @"share": @{@"candidates": @[@"ig_icon_share_pano_outline_24"]},
             @"share_reels": @{@"candidates": @[@"ig_icon_share_outline_44"]},
+            @"shares": @{@"candidates": @[@"ig_icon_direct_prism_outline_16"]},
+            @"shares_filled": @{@"candidates": @[@"ig_icon_direct_prism_filled_16"]},
             @"shopping_bag": @{@"candidates": @[@"ig_icon_shopping_bag_pano_outline_24", @"ig_icon_shopping_bag_outline_24"]},
             @"shopping_cart": @{@"candidates": @[@"ig_icon_shopping_cart_pano_outline_24", @"ig_icon_shopping_cart_outline_24"]},
             @"size_large": @{@"candidates": @[@"ig_icon_fit_outline_24"]},

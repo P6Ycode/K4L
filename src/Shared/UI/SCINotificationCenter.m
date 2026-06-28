@@ -115,6 +115,13 @@ static NSUInteger const kSCINotificationMaxQueuedToasts = 3;
     if (hit == self || hit == self.rootViewController.view) return nil;
     return hit;
 }
+// Tapping a pill must not make this overlay the key window — otherwise anything
+// a pill's tap handler presents (e.g. the deleted-messages log sheet) attaches
+// to this window and gets torn down with it when the pill dismisses. Pills still
+// receive touches; key status isn't required for that.
+- (BOOL)canBecomeKeyWindow {
+    return NO;
+}
 @end
 
 static NSDictionary *SCINotificationItem(NSString *identifier, NSString *title, NSString *iconName) {
@@ -244,11 +251,15 @@ NSDictionary<NSString *, id> *SCINotificationDefaultPreferences(void) {
 
 BOOL SCINotificationIsEnabled(NSString *identifier) {
     if (!SCINotificationIdentifierIsRegistered(identifier)) return NO;
-    return [NSUserDefaults.standardUserDefaults boolForKey:SCINotificationDefaultsKey(identifier)];
+    // Via SCIUtils so per-account toggles resolve (see SCINotificationPillDuration).
+    return [SCIUtils getBoolPref:SCINotificationDefaultsKey(identifier)];
 }
 
 NSTimeInterval SCINotificationPillDuration(void) {
-    NSTimeInterval duration = [NSUserDefaults.standardUserDefaults doubleForKey:kSCINotificationPillDurationKey];
+    // Read through SCIUtils so the per-account effective key resolves — the
+    // settings UI writes via SCIEffectivePreferenceKey, so a raw read here would
+    // always miss it and fall back to the default when per-account prefs are on.
+    NSTimeInterval duration = [SCIUtils getDoublePref:kSCINotificationPillDurationKey];
     if (duration <= 0.0) duration = kSCINotificationDefaultPillDuration;
     return MIN(kSCINotificationMaxPillDuration, MAX(kSCINotificationMinPillDuration, duration));
 }
@@ -256,7 +267,7 @@ NSTimeInterval SCINotificationPillDuration(void) {
 void SCINotificationTriggerHaptic(NSString *identifier, SCINotificationTone tone) {
     if (!SCINotificationIdentifierIsRegistered(identifier)) return;
     if ([SCIUtils getBoolPref:@"general_disable_haptics"]) return;
-    if (![NSUserDefaults.standardUserDefaults boolForKey:SCINotificationHapticDefaultsKey(identifier)]) return;
+    if (![SCIUtils getBoolPref:SCINotificationHapticDefaultsKey(identifier)]) return;
 
     dispatch_block_t trigger = ^{
         switch (tone) {
@@ -315,7 +326,8 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
                 subtitle:(NSString *)subtitle
             iconResource:(NSString *)iconResource
                     tone:(SCINotificationTone)tone
-           triggerHaptic:(BOOL)triggerHaptic;
+           triggerHaptic:(BOOL)triggerHaptic
+                   onTap:(void (^)(void))onTap;
 @end
 
 @implementation SCINotificationCenter
@@ -405,7 +417,7 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
 
 - (void)relayoutAnimated:(BOOL)animated {
     UIView *host = self.overlayRoot.view;
-    BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
+    BOOL isBottom = [[SCIUtils getStringPref:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
     for (NSUInteger i = 0; i < self.visible.count; i++) {
         CGFloat offset = [self offsetForIndex:i];
         self.visible[i].topConstraint.constant = isBottom ? -offset : offset;
@@ -421,7 +433,7 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
 - (void)insertPill:(SCINotificationPillView *)pill identifier:(NSString *)identifier progress:(BOOL)progress {
     UIView *host = [self hostView];
     [host addSubview:pill];
-    BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
+    BOOL isBottom = [[SCIUtils getStringPref:kSCINotificationPillPositionKey] isEqualToString:@"bottom"];
     NSLayoutConstraint *anchor;
     if (isBottom) {
         anchor = [pill.bottomAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.bottomAnchor constant:90.0];
@@ -487,7 +499,8 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
                       subtitle:next[@"subtitle"]
                   iconResource:next[@"icon"]
                           tone:[next[@"tone"] unsignedIntegerValue]
-                 triggerHaptic:NO];
+                 triggerHaptic:NO
+                         onTap:next[@"onTap"]];
     }
 }
 
@@ -496,7 +509,7 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
                 subtitle:(NSString *)subtitle
             iconResource:(NSString *)iconResource
                     tone:(SCINotificationTone)tone {
-    [self notifyIdentifier:identifier title:title subtitle:subtitle iconResource:iconResource tone:tone triggerHaptic:YES];
+    [self notifyIdentifier:identifier title:title subtitle:subtitle iconResource:iconResource tone:tone triggerHaptic:YES onTap:nil];
 }
 
 - (void)notifyIdentifier:(NSString *)identifier
@@ -504,7 +517,8 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
                 subtitle:(NSString *)subtitle
             iconResource:(NSString *)iconResource
                     tone:(SCINotificationTone)tone
-           triggerHaptic:(BOOL)triggerHaptic {
+           triggerHaptic:(BOOL)triggerHaptic
+                   onTap:(void (^)(void))onTap {
     if (triggerHaptic) {
         SCINotificationTriggerHaptic(identifier, tone);
     }
@@ -515,13 +529,15 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
             if (!slot.progress) visibleToasts++;
         }
         if (visibleToasts >= kSCINotificationMaxQueuedToasts) {
-            [self.queue addObject:@{
+            NSMutableDictionary *queued = [@{
                 @"identifier": identifier ?: @"",
                 @"title": title ?: @"",
                 @"subtitle": subtitle ?: @"",
                 @"icon": SCINotificationIconResourceForTone(iconResource, tone) ?: @"",
                 @"tone": @(tone),
-            }];
+            } mutableCopy];
+            if (onTap) queued[@"onTap"] = [onTap copy];
+            [self.queue addObject:queued];
             return;
         }
         NSString *resolvedSubtitle = subtitle;
@@ -556,7 +572,9 @@ static NSString *SCINotificationIconResourceForTone(NSString *iconResource, SCIN
                 };
             }
         }
-        
+        // An explicit tap handler takes precedence over the identifier-based ones.
+        if (onTap) pill.onTapWhenCompleted = onTap;
+
         [self insertPill:pill identifier:identifier progress:NO];
     }];
 }
@@ -605,6 +623,15 @@ void SCINotify(NSString *identifier,
                NSString *iconResource,
                SCINotificationTone tone) {
     [[SCINotificationCenter shared] notifyIdentifier:identifier title:title subtitle:subtitle iconResource:iconResource tone:tone];
+}
+
+void SCINotifyTappable(NSString *identifier,
+                       NSString *title,
+                       NSString *subtitle,
+                       NSString *iconResource,
+                       SCINotificationTone tone,
+                       void (^onTap)(void)) {
+    [[SCINotificationCenter shared] notifyIdentifier:identifier title:title subtitle:subtitle iconResource:iconResource tone:tone triggerHaptic:YES onTap:onTap];
 }
 
 SCINotificationPillView *SCINotifyProgress(NSString *identifier, NSString *title, void (^onCancel)(void)) {

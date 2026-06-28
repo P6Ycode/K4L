@@ -115,7 +115,10 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group);
     self.pinBadge.hidden = !group.isPinned;
 
     SCIDeletedMessage *latest = group.latest;
-    self.previewIcon.image = [SCIAssetUtils instagramIconNamed:SCIDeletedMessageKindSymbolFilled(latest.kind, YES)
+    NSString *previewSymbol = latest.kind == SCIDeletedMessageKindShare
+        ? SCIDeletedMessageShareSubtypeSymbol(latest.shareSubtype)
+        : SCIDeletedMessageKindSymbolFilled(latest.kind, YES);
+    self.previewIcon.image = [SCIAssetUtils instagramIconNamed:previewSymbol
                                                       pointSize:14.0
                                                   renderingMode:UIImageRenderingModeAlwaysTemplate];
     self.previewLabel.text = SCIDeletedMessagesSenderPreview(group);
@@ -137,7 +140,14 @@ static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group);
 static NSString *SCIDeletedMessagesSenderPreview(SCIDeletedMessageGroup *group) {
     SCIDeletedMessage *latest = group.latest;
     NSString *body = nil;
-    if (latest.text.length) body = latest.text;
+    if (latest.kind == SCIDeletedMessageKindShare) {
+        // "Reel · @author" / "Post · caption" so shares read by type at a glance.
+        NSString *type = SCIDeletedMessageShareSubtypeName(latest.shareSubtype);
+        NSString *detail = latest.shareAuthor.length ? latest.shareAuthor
+                         : (latest.text.length ? latest.text : latest.previewText);
+        body = detail.length ? [NSString stringWithFormat:@"%@ · %@", type, detail] : type;
+    }
+    else if (latest.text.length) body = latest.text;
     else if (latest.previewText.length) body = latest.previewText;
     else body = SCIDeletedMessageKindLocalizedName(latest.kind);
 

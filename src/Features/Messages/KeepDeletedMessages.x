@@ -6,6 +6,7 @@
 #import "../../Shared/UI/SCINotificationCenter.h"
 #import "DeletedMessagesLog/SCIDeletedMessagesCapture.h"
 #import "DeletedMessagesLog/SCIDeletedMessagesStorage.h"
+#import "DeletedMessagesLog/SCIDeletedMessagesViewController.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <substrate.h>
@@ -19,6 +20,13 @@
 #define SCI_PRESERVED_MAX		200
 #define SCI_UNSENT_TOAST_DEDUPE_MAX	200
 #define SCI_UNSENT_TOAST_DEDUPE_TTL	5.0
+// Coalescing: collapse a burst of unsent toasts into one summary pill so a
+// backlog sync after being away doesn't bombard the user with pills. We wait
+// for a short quiet window (IDLE) after the last event, but never hold a pill
+// longer than MAX after the first buffered event so a steady stream still
+// resolves periodically.
+#define SCI_UNSENT_COALESCE_IDLE	0.8
+#define SCI_UNSENT_COALESCE_MAX		3.0
 #define SCI_PRESERVED_IDS_KEY	@"SCIPreservedMsgIdsByPk"
 #define SCI_PRESERVED_LEGACY_KEY	@"SCIPreservedMsgIds"
 #define SCI_PRESERVED_TAG		1399
@@ -208,6 +216,18 @@ static void sciTrackSentByOwner(NSString *sid, BOOL sentByOwner) {
 	NSMutableDictionary *m = sciSentByOwnerMap();
 	m[sid] = @(sentByOwner);
 	sciTrimMap(m, SCI_SENDER_MAP_MAX);
+}
+
+// Whether `sid` was sent by the account that owns the thread — i.e. a message
+// the user unsent themselves. In IG a message's sender is its unsender, so
+// these shouldn't fire an "unsent" toast. Returns NO when ownership is unknown
+// so a genuine unsend by someone else still notifies.
+static BOOL sciSidSentByOwner(NSString *sid, NSString *ownerPk) {
+	if (!sid.length) return NO;
+	NSNumber *flag = sciSentByOwnerMap()[sid];
+	if (flag) return flag.boolValue;
+	NSString *senderPk = sciSenderMap()[sid];
+	return senderPk.length && ownerPk.length && [senderPk isEqualToString:ownerPk];
 }
 
 static BOOL sciIsReactionOrActionLog(NSString *sid) {
@@ -467,6 +487,12 @@ static BOOL sciHandleReactionMutation(id mutation, NSString *messageId, NSString
 			NSString *uname = sciDirectUserResolverUsernameForPK(reactorPk);
 			if (uname.length) preview[@"senderUsername"] = uname;
 		}
+		// When log capture is off, `info` is nil so the target message preview was
+		// never resolved — do it here so the toast can show what was reacted to.
+		if (![preview[@"targetPreview"] isKindOfClass:NSString.class] && messageId.length) {
+			NSString *tp = sciDMCaptureReactionTargetPreview(messageId, applicator, threadId);
+			if (tp.length) preview[@"targetPreview"] = tp;
+		}
 		if (preview.count) {
 			if (!sciPendingReactionPreviews) sciPendingReactionPreviews = NSMutableArray.array;
 			[sciPendingReactionPreviews addObject:preview.copy];
@@ -536,13 +562,16 @@ static BOOL sciProcessMessageUpdate(id update, NSString *ownerPk, NSString *thre
 	for (id key in keys) {
 		NSString *sid = sciServerIdFromKey(key);
 		if (!sid.length) continue;
-		BOOL reactionOrActionLog = sciIsReactionOrActionLog(sid);
-		if (reactionOrActionLog && !sciReactionLogEnabled()) continue;
+		// Reaction removals also arrive here as an actionlog message-key removal.
+		// They're handled separately by the reaction-mutation path, so never let
+		// them flow into the message-unsend pipeline (else they double-notify as
+		// "unsent a message" alongside the reaction toast).
+		if (sciIsReactionOrActionLog(sid)) continue;
 		NSString *senderPk = sciSenderMap()[sid];
 		if (senderPk.length && [SCIDeletedMessagesStorage isSenderBlocked:senderPk ownerPK:ownerPk]) continue;
 		if (senderPk.length) sciTrackSentByOwner(sid, [senderPk isEqualToString:ownerPk]);
 
-		if (keepOn && !reactionOrActionLog) {
+		if (keepOn) {
 			if (bucket) [bucket addObject:sid];
 			[preserved addObject:sid];
 			didPreserve = YES;
@@ -737,20 +766,171 @@ static BOOL sciShouldShowUnsentToast(NSArray<NSString *> *dedupeKeys) {
 	return YES;
 }
 
-static void sciShowUnsentToast(NSDictionary *preview, NSString *fallbackSender, NSString *ownerAccount, NSString *fallbackSid) {
+// Build a human-readable list of distinct senders, e.g. "@a", "@a & @b",
+// "@a, @b & 2 others". Senders are passed in first-seen order.
+static NSString *sciSenderSummary(NSArray<NSString *> *senders) {
+	NSUInteger n = senders.count;
+	if (n == 0) return nil;
+	if (n == 1) return senders[0];
+	if (n == 2) return [NSString stringWithFormat:@"%@ & %@", senders[0], senders[1]];
+	NSUInteger others = n - 2;
+	return [NSString stringWithFormat:@"%@, %@ & %lu other%@",
+		senders[0], senders[1], (unsigned long)others, others == 1 ? @"" : @"s"];
+}
+
+// A debounce buffer that collapses a burst of unsent/reaction toasts into one
+// summary pill. A single buffered event renders the full per-event pill; two or
+// more collapse to a sender-aware summary. One batcher instance per identifier.
+@interface SCIUnsentToastBatcher : NSObject
+@property (nonatomic, copy) NSString *identifier;
+@property (nonatomic, copy) NSString *iconResource;
+// Given the distinct senders (first-seen order) and total event count, returns
+// @{ @"title": ..., @"subtitle": (optional) } for the collapsed summary pill.
+@property (nonatomic, copy) NSDictionary *(^summaryBuilder)(NSArray<NSString *> *senders, NSUInteger count);
+// Tap handler used for the collapsed summary pill (a burst spans threads, so it
+// opens the whole log rather than one thread).
+@property (nonatomic, copy) void (^summaryOnTap)(void);
+@property (nonatomic, strong) NSMutableArray<NSDictionary *> *entries;
+@property (nonatomic, strong) NSTimer *flushTimer;
+@property (nonatomic, strong) NSDate *firstEventDate;
+- (void)addEntrySender:(NSString *)sender
+                 title:(NSString *)title
+              subtitle:(nullable NSString *)subtitle
+                 onTap:(nullable void (^)(void))onTap;
+@end
+
+@implementation SCIUnsentToastBatcher
+
+- (instancetype)init {
+	if ((self = [super init])) _entries = NSMutableArray.array;
+	return self;
+}
+
+// Always called on the main thread (toasts are dispatched onto the main queue).
+- (void)addEntrySender:(NSString *)sender
+                 title:(NSString *)title
+              subtitle:(NSString *)subtitle
+                 onTap:(void (^)(void))onTap {
+	NSMutableDictionary *entry = [@{
+		@"sender": sender.length ? sender : @"Someone",
+		@"title": title ?: @"",
+		@"subtitle": subtitle ?: @"",
+	} mutableCopy];
+	if (onTap) entry[@"onTap"] = [onTap copy];
+	[self.entries addObject:entry];
+	if (!self.firstEventDate) self.firstEventDate = NSDate.date;
+
+	NSTimeInterval elapsed = -[self.firstEventDate timeIntervalSinceNow];
+	NSTimeInterval remaining = SCI_UNSENT_COALESCE_MAX - elapsed;
+	[self.flushTimer invalidate];
+	if (remaining <= 0) {
+		[self flush];
+		return;
+	}
+	NSTimeInterval interval = MIN((NSTimeInterval)SCI_UNSENT_COALESCE_IDLE, remaining);
+	__weak typeof(self) weakSelf = self;
+	self.flushTimer = [NSTimer scheduledTimerWithTimeInterval:interval repeats:NO block:^(__unused NSTimer *t) {
+		[weakSelf flush];
+	}];
+}
+
+- (void)flush {
+	[self.flushTimer invalidate];
+	self.flushTimer = nil;
+	self.firstEventDate = nil;
+	NSArray<NSDictionary *> *batch = [self.entries copy];
+	[self.entries removeAllObjects];
+	if (!batch.count) return;
+
+	if (batch.count == 1) {
+		NSDictionary *entry = batch.firstObject;
+		NSString *subtitle = [entry[@"subtitle"] length] ? entry[@"subtitle"] : nil;
+		SCINotifyTappable(self.identifier, entry[@"title"], subtitle, self.iconResource, SCINotificationToneInfo, entry[@"onTap"]);
+		return;
+	}
+
+	NSMutableArray<NSString *> *senders = NSMutableArray.array;
+	for (NSDictionary *entry in batch) {
+		NSString *sender = entry[@"sender"];
+		if (sender.length && ![senders containsObject:sender]) [senders addObject:sender];
+	}
+	NSDictionary *summary = self.summaryBuilder(senders, batch.count);
+	NSString *subtitle = [summary[@"subtitle"] length] ? summary[@"subtitle"] : nil;
+	SCINotifyTappable(self.identifier, summary[@"title"], subtitle, self.iconResource, SCINotificationToneInfo, self.summaryOnTap);
+}
+
+@end
+
+static SCIUnsentToastBatcher *sciUnsentMessageBatcher(void) {
+	static SCIUnsentToastBatcher *batcher;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		batcher = [SCIUnsentToastBatcher new];
+		batcher.identifier = kSCINotificationUnsentMessage;
+		batcher.iconResource = @"undo_filled";
+		batcher.summaryOnTap = ^{
+			[SCIDeletedMessagesViewController presentFromViewController:nil];
+		};
+		batcher.summaryBuilder = ^NSDictionary *(NSArray<NSString *> *senders, NSUInteger count) {
+			if (senders.count == 1) {
+				return @{@"title": [NSString stringWithFormat:@"%@ unsent %lu messages", senders[0], (unsigned long)count]};
+			}
+			return @{
+				@"title": [NSString stringWithFormat:@"%lu messages unsent", (unsigned long)count],
+				@"subtitle": [@"from " stringByAppendingString:sciSenderSummary(senders) ?: @""],
+			};
+		};
+	});
+	return batcher;
+}
+
+static SCIUnsentToastBatcher *sciUnsentReactionBatcher(void) {
+	static SCIUnsentToastBatcher *batcher;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		batcher = [SCIUnsentToastBatcher new];
+		batcher.identifier = kSCINotificationUnsentReaction;
+		batcher.iconResource = @"reactions";
+		batcher.summaryBuilder = ^NSDictionary *(NSArray<NSString *> *senders, NSUInteger count) {
+			if (senders.count == 1) {
+				return @{@"title": [NSString stringWithFormat:@"%@ removed %lu reactions", senders[0], (unsigned long)count]};
+			}
+			return @{
+				@"title": [NSString stringWithFormat:@"%lu reactions removed", (unsigned long)count],
+				@"subtitle": [@"from " stringByAppendingString:sciSenderSummary(senders) ?: @""],
+			};
+		};
+	});
+	return batcher;
+}
+
+static void sciShowUnsentToast(NSDictionary *preview, NSString *fallbackSender, NSString *fallbackSenderPk, NSString *fallbackThreadId, NSString *ownerAccount, NSString *fallbackSid) {
 	NSString *sender = preview ? sciDisplayNameForPreview(preview, fallbackSender) : (fallbackSender.length ? fallbackSender : @"Someone");
 	SCIDeletedMessageKind kind = [preview[@"kind"] isKindOfClass:NSNumber.class] ? (SCIDeletedMessageKind)[preview[@"kind"] integerValue] : SCIDeletedMessageKindUnknown;
 	NSString *text = sciTrimmedSingleLinePreview(preview[@"previewText"] ?: preview[@"text"]);
 	NSArray<NSString *> *dedupeKeys = sciUnsentToastDedupeKeys(preview, fallbackSid, sender, kind, text);
 	if (!sciShouldShowUnsentToast(dedupeKeys)) return;
 	NSString *kindPhrase = sciNotificationKindPhrase(kind);
+	// Name shared posts by their actual type (reel/post/story/…) in the toast too.
+	if (kind == SCIDeletedMessageKindShare) {
+		NSString *subtype = [preview[@"shareSubtype"] isKindOfClass:NSString.class] ? preview[@"shareSubtype"] : nil;
+		kindPhrase = [SCIDeletedMessageShareSubtypeName(subtype) lowercaseString];
+	}
 	NSString *title = [NSString stringWithFormat:@"%@ unsent a %@", sender, kindPhrase];
 	NSString *subtitle = text.length ? [NSString stringWithFormat:@"\"%@\"", text] : nil;
 	if (ownerAccount.length) {
 		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ · %@", title, subtitle] : title;
 		title = ownerAccount;
 	}
-	SCINotify(kSCINotificationUnsentMessage, title, subtitle, @"undo_filled", SCINotificationToneInfo);
+
+	// Tapping the pill opens this thread's deleted-messages log (like the eye-menu
+	// action). Prefer the message's own thread/sender, falling back to the pass's.
+	NSString *threadId = [preview[@"threadId"] isKindOfClass:NSString.class] ? preview[@"threadId"] : fallbackThreadId;
+	NSString *senderPk = [preview[@"senderPk"] isKindOfClass:NSString.class] ? preview[@"senderPk"] : fallbackSenderPk;
+	void (^onTap)(void) = (threadId.length || senderPk.length) ? ^{
+		[SCIDeletedMessagesViewController presentForThreadId:threadId senderPK:senderPk senderName:nil fromViewController:nil];
+	} : nil;
+	[sciUnsentMessageBatcher() addEntrySender:sender title:title subtitle:subtitle onTap:onTap];
 }
 
 static void sciShowUnsentReactionToast(NSDictionary *preview, NSString *ownerAccount) {
@@ -774,7 +954,7 @@ static void sciShowUnsentReactionToast(NSDictionary *preview, NSString *ownerAcc
 		subtitle = subtitle.length ? [NSString stringWithFormat:@"%@ · %@", title, subtitle] : title;
 		title = ownerAccount;
 	}
-	SCINotify(kSCINotificationUnsentReaction, title, subtitle, @"reactions", SCINotificationToneInfo);
+	[sciUnsentReactionBatcher() addEntrySender:sender title:title subtitle:subtitle onTap:nil];
 }
 
 static void sciRefreshVisibleCellIndicators(void) {
@@ -839,26 +1019,41 @@ static void sciHandleApplyUpdates(id self, id updates, void (^invokeOriginal)(vo
 
 	if (!preserved.count && !detected.count && !reactionPreviews.count) return;
 
-	NSString *sid = preserved.anyObject ?: detected.anyObject;
-	NSString *senderName = sid.length ? sciSenderNameMap()[sid] : nil;
-	NSString *senderPk = sid.length ? sciSenderMap()[sid] : nil;
-
-	if (!senderName.length && senderPk.length) {
-		senderName = sciDirectUserResolverUsernameForPK(senderPk);
-		if (senderName.length) sciTrackSenderName(sid, senderName);
-	}
-
 	NSString *currentPk = sciCurrentUserPk();
 	BOOL foreground = currentPk.length && [currentPk isEqualToString:ownerPk];
 	NSString *ownerName = foreground ? nil : sciOwnerUsernameFromApplicator(self);
 
+	// Build the toast set, excluding the user's own unsends — a self-unsend has
+	// the owner as its sender and shouldn't notify. Preserve/log above already
+	// ran and are unaffected.
+	NSMutableArray<NSDictionary *> *toastPreviews = NSMutableArray.array;
+	for (NSDictionary *preview in previews) {
+		NSString *psid = [preview[@"messageId"] isKindOfClass:NSString.class] ? preview[@"messageId"] : nil;
+		NSString *psender = [preview[@"senderPk"] isKindOfClass:NSString.class] ? preview[@"senderPk"] : nil;
+		BOOL ownUnsend = (psender.length && ownerPk.length && [psender isEqualToString:ownerPk])
+			|| sciSidSentByOwner(psid, ownerPk);
+		if (!ownUnsend) [toastPreviews addObject:preview];
+	}
+	NSString *toastSid = nil;
+	for (NSString *d in detected) {
+		if (sciSidSentByOwner(d, ownerPk)) continue;
+		toastSid = d;
+		break;
+	}
+	NSString *toastSenderName = toastSid.length ? sciSenderNameMap()[toastSid] : nil;
+	NSString *toastSenderPk = toastSid.length ? sciSenderMap()[toastSid] : nil;
+	if (!toastSenderName.length && toastSenderPk.length) {
+		toastSenderName = sciDirectUserResolverUsernameForPK(toastSenderPk);
+		if (toastSenderName.length) sciTrackSenderName(toastSid, toastSenderName);
+	}
+
 	dispatch_async(dispatch_get_main_queue(), ^{
 		if (foreground) sciRefreshVisibleCellIndicators();
-		if (toastOn && detected.count) {
-			if (previews.count) {
-				for (NSDictionary *preview in previews) sciShowUnsentToast(preview, senderName, ownerName, sid);
-			} else {
-				sciShowUnsentToast(nil, senderName, ownerName, sid);
+		if (toastOn) {
+			if (toastPreviews.count) {
+				for (NSDictionary *preview in toastPreviews) sciShowUnsentToast(preview, toastSenderName, toastSenderPk, nil, ownerName, toastSid);
+			} else if (toastSid.length) {
+				sciShowUnsentToast(nil, toastSenderName, toastSenderPk, nil, ownerName, toastSid);
 			}
 		}
 		if (reactionPreviews.count) {

@@ -36,13 +36,13 @@
 
 // Chip filter columns — see SCIDeletedMessagesViewController for the rationale.
 static NSArray<NSString *> *SCIDMDetailChipTitles(void) {
-    return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Share", @"Link", @"Reaction"];
+    return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Shares", @"Link", @"Reaction"];
 }
 static NSArray<NSString *> *SCIDMDetailChipSymbols(void) {
-    return @[@"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
+    return @[@"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"shares", @"link", @"reactions"];
 }
 static NSArray<NSString *> *SCIDMDetailChipSelectedSymbols(void) {
-    return @[@"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"share", @"link", @"reactions"];
+    return @[@"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"shares_filled", @"link", @"reactions"];
 }
 static SCIDeletedMessageKind SCIDMDetailChipKindForIndex(NSInteger index) {
     switch (index) {

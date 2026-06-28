@@ -74,6 +74,23 @@ NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageKind kind, BOOL fil
     }
 }
 
+NSString *SCIDeletedMessageShareSubtypeName(NSString *subtype) {
+    if ([subtype isEqualToString:@"reel"])     return @"Reel";
+    if ([subtype isEqualToString:@"post"])     return @"Post";
+    if ([subtype isEqualToString:@"story"])    return @"Story";
+    if ([subtype isEqualToString:@"profile"])  return @"Profile";
+    if ([subtype isEqualToString:@"note"])     return @"Note";
+    if ([subtype isEqualToString:@"location"]) return @"Location";
+    if ([subtype isEqualToString:@"audio"])    return @"Audio";
+    return @"Shared post";
+}
+
+NSString *SCIDeletedMessageShareSubtypeSymbol(__unused NSString *subtype) {
+    // A shared post is a DM-forwarded post in every case, so use IG's "share to
+    // direct" prism glyph for all subtypes.
+    return @"ig_icon_direct_prism_filled_12";
+}
+
 static NSDate *sciDateFromJSON(id v) {
     if ([v isKindOfClass:[NSNumber class]]) return [NSDate dateWithTimeIntervalSince1970:[v doubleValue]];
     return nil;
@@ -126,6 +143,8 @@ static double sciDouble(id v) {
     m.replyToMessageId     = sciStr(dict[@"reply_to_id"]);
     m.reactionEmoji        = sciStr(dict[@"reaction_emoji"]);
     m.reactionTargetPreview = sciStr(dict[@"reaction_target"]);
+    m.shareSubtype         = sciStr(dict[@"share_subtype"]);
+    m.shareAuthor          = sciStr(dict[@"share_author"]);
     if (!m.messageId.length || !m.senderPk.length) return nil;
     return m;
 }
@@ -163,6 +182,8 @@ static double sciDouble(id v) {
     if (self.replyToMessageId.length) d[@"reply_to_id"]        = self.replyToMessageId;
     if (self.reactionEmoji.length)    d[@"reaction_emoji"]     = self.reactionEmoji;
     if (self.reactionTargetPreview.length) d[@"reaction_target"] = self.reactionTargetPreview;
+    if (self.shareSubtype.length)  d[@"share_subtype"]           = self.shareSubtype;
+    if (self.shareAuthor.length)   d[@"share_author"]            = self.shareAuthor;
     return d;
 }
 

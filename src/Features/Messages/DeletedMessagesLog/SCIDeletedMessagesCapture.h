@@ -67,6 +67,13 @@ NSDictionary * _Nullable sciDMCaptureNoteReactionUnsend(id _Nullable reaction,
                                                         NSString * _Nullable ownerPk,
                                                         NSString * _Nullable threadId);
 
+// One-line preview of the message a reaction was attached to, resolved by
+// server id (live ref cache, then thread client state). Used by the unsent
+// reaction toast when log capture is off and so didn't already resolve it.
+NSString * _Nullable sciDMCaptureReactionTargetPreview(NSString * _Nullable messageId,
+                                                       id _Nullable applicator,
+                                                       NSString * _Nullable threadId);
+
 #ifdef __cplusplus
 }
 #endif

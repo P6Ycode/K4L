@@ -55,14 +55,14 @@ static NSString *SCIDMCurrentUserPK(void) {
 // there's no dedicated "All" chip. Index maps to an explicit kind so chip order
 // is decoupled from the enum's numeric values.
 static NSArray<NSString *> *SCIDMChipTitles(void) {
-    return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Share", @"Link", @"Reaction"];
+    return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Shares", @"Link", @"Reaction"];
 }
 static NSArray<NSString *> *SCIDMChipSymbols(void) {
-    return @[@"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"share", @"link", @"reactions"];
+    return @[@"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"shares", @"link", @"reactions"];
 }
 // Filled variants used when a chip is selected.
 static NSArray<NSString *> *SCIDMChipSelectedSymbols(void) {
-    return @[@"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"share", @"link", @"reactions"];
+    return @[@"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"shares_filled", @"link", @"reactions"];
 }
 static SCIDeletedMessageKind SCIDMChipKindForIndex(NSInteger index) {
     switch (index) {

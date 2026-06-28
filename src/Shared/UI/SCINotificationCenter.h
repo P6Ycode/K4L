@@ -91,6 +91,15 @@ void SCINotify(NSString *identifier,
                NSString * _Nullable iconResource,
                SCINotificationTone tone);
 
+// As SCINotify, but the pill runs `onTap` when tapped (then dismisses). Used to
+// jump from a toast to a relevant screen (e.g. the deleted-messages log).
+void SCINotifyTappable(NSString *identifier,
+                       NSString *title,
+                       NSString * _Nullable subtitle,
+                       NSString * _Nullable iconResource,
+                       SCINotificationTone tone,
+                       void (^ _Nullable onTap)(void));
+
 SCINotificationPillView * _Nullable SCINotifyProgress(NSString *identifier,
                                                   NSString * _Nullable title,
                                                   void (^ _Nullable onCancel)(void));

@@ -616,6 +616,108 @@ static void sciScanVoiceMetadata(id media, double *outDuration, NSArray **outWav
     }
 }
 
+#pragma mark - Share subtype / preview helpers
+
+// Classify what a shared post actually is from its deep-link / target URL and
+// (as a hint) the XMA content type. Returns "reel"/"post"/"story"/"profile"/
+// "note"/"location"/"audio", or nil when it's an ordinary link or unknowable.
+static NSString *sciShareSubtypeFromTarget(NSString *urlStr, NSString *contentType) {
+    NSString *ct = [contentType isKindOfClass:[NSString class]] ? contentType.lowercaseString : @"";
+    NSURL *u = urlStr.length ? [NSURL URLWithString:urlStr] : nil;
+    NSString *path = (u.path.length ? u.path : urlStr).lowercaseString;
+    NSString *host = u.host.lowercaseString ?: @"";
+
+    // Path is the most reliable signal for IG permalinks / deep links.
+    if ([path containsString:@"/reel/"] || [path containsString:@"/reels/"]
+        || [path containsString:@"clips_viewer"]) return @"reel";
+    if ([path containsString:@"/stories/"] || [path containsString:@"story_viewer"]) return @"story";
+    if ([path containsString:@"/p/"] || [path containsString:@"/tv/"]
+        || [path containsString:@"media?id"]) return @"post";
+    if ([path containsString:@"audio_page"]) return @"audio";
+
+    // Content-type hints when the URL is opaque.
+    if ([ct containsString:@"clip"] || [ct containsString:@"reel"]) return @"reel";
+    if ([ct containsString:@"story"]) return @"story";
+    if ([ct containsString:@"profile"] || [ct containsString:@"user"]) return @"profile";
+    if ([ct containsString:@"location"]) return @"location";
+    if ([ct containsString:@"note"]) return @"note";
+    if ([ct containsString:@"media_share"] || [ct containsString:@"felix"]
+        || [ct containsString:@"clips"]) return @"post";
+
+    // A bare instagram.com/<handle> path (single component) is a profile share.
+    if ([host containsString:@"instagram.com"]) {
+        NSMutableArray<NSString *> *parts = [NSMutableArray array];
+        for (NSString *p in [path componentsSeparatedByString:@"/"]) if (p.length) [parts addObject:p];
+        if (parts.count == 1 && ![parts.firstObject containsString:@"."]) return @"profile";
+    }
+    return nil;
+}
+
+// Whether a URL string looks like a fetchable preview image (CDN image host or
+// image extension). Lets us recover a post cover even when the preview sits
+// under an unhinted key the scorer wouldn't classify as a thumbnail.
+static BOOL sciURLLooksLikeImage(NSString *s) {
+    if (![s isKindOfClass:[NSString class]] || !s.length) return NO;
+    NSString *lower = s.lowercaseString;
+    if (![lower hasPrefix:@"http"]) return NO;
+    NSString *pathPart = lower;
+    NSRange q = [pathPart rangeOfString:@"?"];
+    if (q.location != NSNotFound) pathPart = [pathPart substringToIndex:q.location];
+    for (NSString *ext in @[@".jpg", @".jpeg", @".png", @".webp", @".heic"]) {
+        if ([pathPart hasSuffix:ext]) return YES;
+    }
+    // IG/FB image CDN hosts serve images even without an extension in the path.
+    if (([lower containsString:@"cdninstagram.com"] || [lower containsString:@"fbcdn.net"])
+        && ([lower containsString:@".jpg"] || [lower containsString:@".webp"]
+            || [lower containsString:@".heic"] || [lower containsString:@"=jpg"]
+            || [lower containsString:@"stp="])) return YES;
+    return NO;
+}
+
+// Depth-first hunt for the first image-looking URL anywhere under `obj` (strings,
+// URLs, collections, and object ivars). Cycle-guarded; stops at the first hit.
+static void sciCollectImageURL(id obj, int depth, NSMutableSet *visited, NSString **out) {
+    if (*out || !obj || depth < 0) return;
+    if ([obj isKindOfClass:[NSString class]]) {
+        if (sciURLLooksLikeImage(obj)) *out = obj;
+        return;
+    }
+    if ([obj isKindOfClass:[NSURL class]]) {
+        sciCollectImageURL([(NSURL *)obj absoluteString], depth, visited, out);
+        return;
+    }
+    if ([obj isKindOfClass:[NSArray class]] || [obj isKindOfClass:[NSSet class]]
+        || [obj isKindOfClass:[NSOrderedSet class]]) {
+        for (id e in obj) { sciCollectImageURL(e, depth - 1, visited, out); if (*out) return; }
+        return;
+    }
+    if ([obj isKindOfClass:[NSDictionary class]]) {
+        for (id k in (NSDictionary *)obj) {
+            sciCollectImageURL(((NSDictionary *)obj)[k], depth - 1, visited, out);
+            if (*out) return;
+        }
+        return;
+    }
+    Class cls = [obj class];
+    NSString *cn = NSStringFromClass(cls);
+    if ([cn hasPrefix:@"NS"] || [cn hasPrefix:@"_NS"] || [cn hasPrefix:@"OS"] || [cn hasPrefix:@"__"]) return;
+    NSValue *box = [NSValue valueWithNonretainedObject:obj];
+    if ([visited containsObject:box]) return;
+    [visited addObject:box];
+    for (Class c = cls; c && c != [NSObject class]; c = class_getSuperclass(c)) {
+        unsigned int n = 0;
+        Ivar *list = class_copyIvarList(c, &n);
+        for (unsigned int i = 0; i < n; i++) {
+            const char *t = ivar_getTypeEncoding(list[i]);
+            if (!t || t[0] != '@') continue;
+            id v = object_getIvar(obj, list[i]);
+            sciCollectImageURL(v, depth - 1, visited, out);
+            if (*out) { free(list); return; }
+        }
+        if (list) free(list);
+    }
+}
+
 #pragma mark - Snapshot builder
 
 // Returns nil for system / placeholder / non-user rows.
@@ -703,6 +805,7 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
 
     SCIDeletedMessageKind kind = SCIDeletedMessageKindUnknown;
     NSString *text = nil, *mediaURL = nil, *thumbURL = nil;
+    NSString *shareSubtype = nil, *shareAuthor = nil;
     int mediaScore = 0, thumbScore = 0;
 
     NSString *txt = sciStrIvar(content, "_text_string");
@@ -860,6 +963,7 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
                 @[@"webURL", @"shareURL", @"deepLink", @"url", @"mediaURL", @"playableURL"]);
             if (u.length) mediaURL = u;
         }
+        shareAuthor = sciTryStringSelectors(reshare, @[@"username", @"ownerUsername", @"name"]);
     }
 
     // Link branch — IGDirectLinkContext has direct ivars.
@@ -957,14 +1061,18 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
                 return nil;
             };
 
-            // IGDirectXMAShareBuilder mirror keys — priority order.
-            NSArray<NSString *> *titleKeys = @[
-                @"headerTitleText", @"titleText", @"headerSubtitleText",
-                @"subtitleText", @"captionBodyText", @"footerBodyText",
-                @"overlayTitle", @"overlayDescription", @"overlayText",
-                @"quotedTitleText", @"quotedAttributionText", @"quotedCaptionBodyText",
-                @"groupName", @"targetURLTitle",
-                @"title", @"caption", @"text", @"summary", @"description"
+            // IGDirectXMAShareBuilder mirror keys. Author (the shared content's
+            // owner) and caption are pulled separately so the card can show
+            // "@author" as the title and the caption underneath.
+            NSArray<NSString *> *authorKeys = @[
+                @"headerTitleText", @"quotedAttributionText", @"groupName",
+                @"overlayTitle", @"titleText"
+            ];
+            NSArray<NSString *> *captionKeys = @[
+                @"captionBodyText", @"subtitleText", @"headerSubtitleText",
+                @"footerBodyText", @"overlayDescription", @"overlayText",
+                @"quotedCaptionBodyText", @"quotedTitleText", @"targetURLTitle",
+                @"caption", @"text", @"summary", @"description", @"title"
             ];
             // Audio: prefer .mp4 (download/play); others: targetURL (in-app open).
             NSArray<NSString *> *mediaKeys = (kind == SCIDeletedMessageKindAudioShare)
@@ -981,13 +1089,22 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
                 @"thumbnailURL", @"posterURL", @"imageURL"
             ];
 
-            NSMutableArray *titleParts = [NSMutableArray array];
             for (id obj in probeTargets) {
-                NSString *t = pickStr(obj, titleKeys);
-                if (t.length && ![titleParts containsObject:t]) [titleParts addObject:t];
-                if (titleParts.count >= 3) break;
+                NSString *a = pickStr(obj, authorKeys);
+                if (a.length) { shareAuthor = a; break; }
             }
-            if (!text.length && titleParts.count) text = [titleParts componentsJoinedByString:@"\n"];
+            NSMutableArray *captionParts = [NSMutableArray array];
+            for (id obj in probeTargets) {
+                NSString *t = pickStr(obj, captionKeys);
+                if (t.length && ![t isEqualToString:shareAuthor] && ![captionParts containsObject:t]) {
+                    [captionParts addObject:t];
+                }
+                if (captionParts.count >= 2) break;
+            }
+            if (!text.length && captionParts.count) text = [captionParts componentsJoinedByString:@"\n"];
+            // No caption found — fall back to the author so the row isn't blank
+            // and stays searchable.
+            if (!text.length && shareAuthor.length) text = shareAuthor;
 
             for (id obj in probeTargets) {
                 if (!mediaURL.length) {
@@ -1002,6 +1119,15 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
             }
 
             sciScanForURLsRecursive(xmaLike, 5, &mediaURL, &mediaScore, &thumbURL, &thumbScore, @"xma");
+
+            // Recover a post cover the scorer may have missed: if we still have no
+            // thumbnail, hunt for the first image-looking URL anywhere in the XMA.
+            if (!thumbURL.length) {
+                NSMutableSet *seen = [NSMutableSet set];
+                NSString *img = nil;
+                sciCollectImageURL(xmaLike, 5, seen, &img);
+                if (img.length) { thumbURL = img; thumbScore = 50; }
+            }
 
             // Unwrap IG/FB outbound redirector — `l.instagram.com/?u=<real>`.
             if (kind == SCIDeletedMessageKindLink && mediaURL.length) {
@@ -1019,15 +1145,27 @@ static NSDictionary *sciBuildSnapshot(id message, NSString *ownerHint) {
                     }
                 }
             }
+
+            if (kind == SCIDeletedMessageKindShare) {
+                shareSubtype = sciShareSubtypeFromTarget(mediaURL, xmaContentType);
+            }
         }
     }
 
     if (kind == SCIDeletedMessageKindUnknown && text.length) kind = SCIDeletedMessageKindText;
 
+    // Reshare and other non-XMA share paths don't carry a content type, but the
+    // target URL alone is usually enough to classify the subtype.
+    if (kind == SCIDeletedMessageKindShare && !shareSubtype.length) {
+        shareSubtype = sciShareSubtypeFromTarget(mediaURL, nil);
+    }
+
     snap[@"kind"]  = @(kind);
     if (text.length)     snap[@"text"]      = text;
     if (mediaURL.length) snap[@"media_url"] = mediaURL;
     if (thumbURL.length) snap[@"thumb_url"] = thumbURL;
+    if (shareSubtype.length) snap[@"share_subtype"] = shareSubtype;
+    if (shareAuthor.length)  snap[@"share_author"]  = shareAuthor;
     return snap;
 }
 
@@ -1405,6 +1543,7 @@ NSArray<NSDictionary *> *sciDMCapturePreviewMetadataForKeys(NSArray *keys,
         if ([snap[@"sender_username"] isKindOfClass:[NSString class]]) preview[@"senderUsername"] = snap[@"sender_username"];
         if ([snap[@"sender_full_name"] isKindOfClass:[NSString class]]) preview[@"senderFullName"] = snap[@"sender_full_name"];
         if ([snap[@"kind"] isKindOfClass:[NSNumber class]]) preview[@"kind"] = snap[@"kind"];
+        if ([snap[@"share_subtype"] isKindOfClass:[NSString class]]) preview[@"shareSubtype"] = snap[@"share_subtype"];
         if ([snap[@"text"] isKindOfClass:[NSString class]]) {
             preview[@"text"] = snap[@"text"];
             preview[@"previewText"] = snap[@"text"];
@@ -1456,6 +1595,8 @@ static BOOL sciFinalizeSnapshot(NSDictionary *snap, NSString *sid, NSString *thr
     id wf = snap[@"waveform"];
     if ([wf isKindOfClass:[NSArray class]]) m.waveform = wf;
     m.replyToMessageId = snap[@"reply_to_id"];
+    m.shareSubtype = snap[@"share_subtype"];
+    m.shareAuthor  = snap[@"share_author"];
 
     if (![SCIDeletedMessagesStorage saveMessage:m forOwnerPK:owner]) return NO;
 
@@ -1733,6 +1874,18 @@ static BOOL sciReactionCaptureEnabled(void) {
     return [SCIUtils getBoolPref:@"msgs_deleted_log_reactions"];
 }
 
+// Resolve the message a reaction targeted, by server id. Prefers the live weak
+// ref cache (populated on insert), then falls back to the thread client state.
+static id sciResolveReactionTargetMessage(NSString *messageId, id applicator, NSString *threadId) {
+    if (!messageId.length) return nil;
+    id msg = nil;
+    @synchronized (sciMessageRefsLock()) {
+        msg = [sciMessageRefs() objectForKey:messageId];
+    }
+    if (!msg) msg = sciFallbackLookupMessage(applicator, messageId, threadId);
+    return msg;
+}
+
 // Best-effort one-line preview of the message a reaction was attached to.
 static NSString *sciReactionTargetPreview(id targetMessage) {
     if (!targetMessage) return nil;
@@ -1782,6 +1935,9 @@ NSDictionary *sciDMCaptureNoteReactionUnsend(id reaction,
                           pk,
                           emoji.length ? emoji : @"?"];
 
+    if (!targetMessage && targetMessageId.length) {
+        targetMessage = sciResolveReactionTargetMessage(targetMessageId, applicator, threadId);
+    }
     NSString *targetPreview = sciReactionTargetPreview(targetMessage);
 
     NSString *u = nil, *fn = nil, *pic = nil;
@@ -1837,4 +1993,9 @@ NSDictionary *sciDMCaptureNoteReactionUnsend(id reaction,
     if (emoji.length) info[@"emoji"] = emoji;
     if (targetPreview.length) info[@"targetPreview"] = targetPreview;
     return info.copy;
+}
+
+NSString *sciDMCaptureReactionTargetPreview(NSString *messageId, id applicator, NSString *threadId) {
+    id targetMessage = sciResolveReactionTargetMessage(messageId, applicator, threadId);
+    return sciReactionTargetPreview(targetMessage);
 }

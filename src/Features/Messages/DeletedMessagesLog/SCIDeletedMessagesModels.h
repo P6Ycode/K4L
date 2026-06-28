@@ -26,6 +26,14 @@ FOUNDATION_EXPORT NSString *SCIDeletedMessageKindSymbol(SCIDeletedMessageKind ki
 // `filled` is YES; other kinds are unaffected (they have no filled variant).
 FOUNDATION_EXPORT NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageKind kind, BOOL filled);
 
+// Human label for a Share subtype string ("reel"→"Reel", "post"→"Post",
+// "story"→"Story", "profile"→"Profile", "note"→"Note", "location"→"Location",
+// "audio"→"Audio"). Returns "Shared post" for nil/unknown/generic. Used to label
+// Share-kind messages by the actual content type instead of a generic "Share".
+FOUNDATION_EXPORT NSString *SCIDeletedMessageShareSubtypeName(NSString * _Nullable subtype);
+// Icon glyph for a Share subtype, falling back to the generic share glyph.
+FOUNDATION_EXPORT NSString *SCIDeletedMessageShareSubtypeSymbol(NSString * _Nullable subtype);
+
 @interface SCIDeletedMessage : NSObject
 
 @property (nonatomic, copy)   NSString *messageId;
@@ -73,6 +81,12 @@ FOUNDATION_EXPORT NSString *SCIDeletedMessageKindSymbolFilled(SCIDeletedMessageK
 // message it was reacting to (when resolvable).
 @property (nonatomic, copy, nullable) NSString *reactionEmoji;
 @property (nonatomic, copy, nullable) NSString *reactionTargetPreview;
+
+// Share-kind messages only: the shared content's subtype ("reel"/"post"/"story"/
+// "profile"/"note"/"location"/"audio") and the author handle of the shared post,
+// so the log can label it by what it actually is and show the author.
+@property (nonatomic, copy, nullable) NSString *shareSubtype;
+@property (nonatomic, copy, nullable) NSString *shareAuthor;
 
 + (instancetype)messageFromJSONDict:(NSDictionary *)dict;
 - (NSDictionary *)toJSONDict;

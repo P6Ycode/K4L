@@ -349,7 +349,9 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
     NSString *partnerPK = nil;
     NSString *partnerName = nil;
     SCIDirectResolveChatPartner(context, &partnerPK, &partnerName);
-    NSString *threadId = context.isGroup ? nil : context.threadId;
+    // Pass threadId for groups too — presentForThreadId: resolves a group entry
+    // via groupForThreadId:, so a group thread opens scoped to its own log.
+    NSString *threadId = context.threadId;
     UIAction *logAction = [UIAction actionWithTitle:@"Deleted Messages"
                                               image:logImage
                                          identifier:nil
@@ -357,7 +359,7 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
         if (threadId.length || partnerPK.length) {
             [SCIDeletedMessagesViewController presentForThreadId:threadId senderPK:partnerPK senderName:partnerName fromViewController:nil];
         } else {
-            // Group chat or unresolved participant — open the full list.
+            // Unresolved thread/participant — open the full list.
             [SCIDeletedMessagesViewController presentFromViewController:nil];
         }
     }];

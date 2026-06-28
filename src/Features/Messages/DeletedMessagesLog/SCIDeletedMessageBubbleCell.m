@@ -399,7 +399,9 @@ static NSString *SCIDeletedFormatDuration(double seconds);
     textStack.alignment = UIStackViewAlignmentLeading;
     [_cardView addSubview:textStack];
 
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleMediaTap)];
+    // One recognizer, split by location: tapping the thumbnail opens the preview
+    // image; tapping the rest of the card body opens the shared post itself.
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleCardTap:)];
     [_cardView addGestureRecognizer:tap];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -462,6 +464,27 @@ static NSString *SCIDeletedFormatDuration(double seconds);
     }
 }
 
+- (void)handleCardTap:(UITapGestureRecognizer *)recognizer {
+    // Thumbnail area → open the preview image (existing media-tap behavior).
+    CGPoint point = [recognizer locationInView:self.cardThumb];
+    if ([self.cardThumb pointInside:point withEvent:nil]) {
+        [self handleMediaTap];
+        return;
+    }
+    // Card body → open the shared post itself inside Instagram, routed through
+    // the app's universal-link/deeplink handler (same path as the gallery's
+    // "Open Original Post"). Links/audio keep the whole-card behavior.
+    if (self.message.kind == SCIDeletedMessageKindShare) {
+        NSString *urlStr = self.message.mediaURL.length ? self.message.mediaURL : self.message.thumbnailURL;
+        NSURL *url = urlStr.length ? [NSURL URLWithString:urlStr] : nil;
+        if (url) {
+            [SCIUtils openInstagramMediaURL:url];
+            return;
+        }
+    }
+    [self handleMediaTap];
+}
+
 - (void)applyLoadedThumbnail:(UIImage *)thumbnail forMessageId:(NSString *)messageId {
     if (!thumbnail || !messageId.length) return;
     if (![self.messageId isEqualToString:messageId]) return;   // cell was reused
@@ -491,8 +514,18 @@ static NSString *SCIDeletedFormatDuration(double seconds);
 
     [self setOutgoing:outgoing];
 
-    self.kindIcon.image = [SCIAssetUtils instagramIconNamed:SCIDeletedMessageKindSymbolFilled(message.kind, YES) pointSize:12.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.kindLabel.text = [SCIDeletedMessageKindLocalizedName(message.kind) uppercaseString];
+    // Share-kind rows label themselves by the actual content type (Reel/Post/…)
+    // instead of a generic "Share".
+    NSString *kindName, *kindSymbol;
+    if (message.kind == SCIDeletedMessageKindShare) {
+        kindName   = SCIDeletedMessageShareSubtypeName(message.shareSubtype);
+        kindSymbol = SCIDeletedMessageShareSubtypeSymbol(message.shareSubtype);
+    } else {
+        kindName   = SCIDeletedMessageKindLocalizedName(message.kind);
+        kindSymbol = SCIDeletedMessageKindSymbolFilled(message.kind, YES);
+    }
+    self.kindIcon.image = [SCIAssetUtils instagramIconNamed:kindSymbol pointSize:12.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+    self.kindLabel.text = [kindName uppercaseString];
     self.timeLabel.text = [SCIDeletedMessagesDate stringForDate:(message.deletedAt ?: message.capturedAt ?: message.sentAt)];
 
     // Reset visibility.
@@ -564,25 +597,51 @@ static NSString *SCIDeletedFormatDuration(double seconds);
 - (void)configureCardWithMessage:(SCIDeletedMessage *)message thumbnail:(UIImage *)thumbnail {
     self.cardView.hidden = NO;
     self.cardThumb.image = thumbnail;
-    // Show a kind glyph in the thumb when there's no preview image.
+    BOOL isShare = (message.kind == SCIDeletedMessageKindShare);
+
+    // Show a glyph in the thumb when there's no preview image.
     if (thumbnail) {
         self.cardPlaceholder.hidden = YES;
     } else {
         self.cardPlaceholder.hidden = NO;
-        self.cardPlaceholder.image = [SCIAssetUtils instagramIconNamed:SCIDeletedMessageKindSymbol(message.kind)
+        NSString *symbol = isShare ? SCIDeletedMessageShareSubtypeSymbol(message.shareSubtype)
+                                   : SCIDeletedMessageKindSymbol(message.kind);
+        self.cardPlaceholder.image = [SCIAssetUtils instagramIconNamed:symbol
                                                               pointSize:22.0
                                                           renderingMode:UIImageRenderingModeAlwaysTemplate];
     }
-    NSString *title = message.text.length ? message.text : (message.previewText.length ? message.previewText : SCIDeletedMessageKindLocalizedName(message.kind));
-    // Show only the first line as the card title.
-    NSRange newline = [title rangeOfString:@"\n"];
-    if (newline.location != NSNotFound) title = [title substringToIndex:newline.location];
-    self.cardTitle.text = title;
 
-    NSString *urlStr = message.mediaURL.length ? message.mediaURL : message.thumbnailURL;
-    NSURL *url = urlStr.length ? [NSURL URLWithString:urlStr] : nil;
-    self.cardURL.text = url.host ?: urlStr;
-    self.cardURL.hidden = (self.cardURL.text.length == 0);
+    // First line of the caption (if any).
+    NSString *caption = message.text.length ? message.text : message.previewText;
+    NSRange newline = caption.length ? [caption rangeOfString:@"\n"] : NSMakeRange(NSNotFound, 0);
+    if (newline.location != NSNotFound) caption = [caption substringToIndex:newline.location];
+
+    if (isShare) {
+        // Title = the shared content's author; subtitle = "Reel · caption".
+        NSString *typeName = SCIDeletedMessageShareSubtypeName(message.shareSubtype);
+        NSString *author = message.shareAuthor.length ? message.shareAuthor : nil;
+        self.cardTitle.text = author ?: (caption.length ? caption : typeName);
+
+        // Subtitle carries the type (and caption when the title is the author).
+        // When the title already is the type, drop the subtitle so it's not shown
+        // twice.
+        NSString *subtitle = nil;
+        if (author) {
+            subtitle = (caption.length && ![caption isEqualToString:author])
+                ? [NSString stringWithFormat:@"%@ · %@", typeName, caption] : typeName;
+        } else if (caption.length) {
+            subtitle = typeName;
+        }
+        self.cardURL.text = subtitle ?: @"";
+        self.cardURL.hidden = (subtitle.length == 0);
+    } else {
+        // Link / audio share — caption title + the URL host underneath.
+        self.cardTitle.text = caption.length ? caption : SCIDeletedMessageKindLocalizedName(message.kind);
+        NSString *urlStr = message.mediaURL.length ? message.mediaURL : message.thumbnailURL;
+        NSURL *url = urlStr.length ? [NSURL URLWithString:urlStr] : nil;
+        self.cardURL.text = url.host ?: urlStr;
+        self.cardURL.hidden = (self.cardURL.text.length == 0);
+    }
 }
 
 #pragma mark - Helpers
