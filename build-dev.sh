@@ -24,16 +24,16 @@ else
     # Change framework locations to @rpath
     install_name_tool -change "/Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate" \
                               "@rpath/CydiaSubstrate.framework/CydiaSubstrate" \
-                              ".theos/obj/debug/SCInsta.dylib" 2>/dev/null || true
+                              ".theos/obj/debug/Sparkle.dylib" 2>/dev/null || true
 
     # Kill running process
     pymobiledevice3 developer dvt pkill "LiveContainer" --tunnel $PYMOBILEDEVICE3_UDID
 
     # Copy only the tweak dylib. The LiveContainer base IPA is expected to already
     # contain the FFmpeg frameworks.
-    pymobiledevice3 apps push $LIVECONTAINER_APPID .theos/obj/debug/SCInsta.dylib Documents/Tweaks/SCInsta
+    pymobiledevice3 apps push $LIVECONTAINER_APPID .theos/obj/debug/Sparkle.dylib Documents/Tweaks/Sparkle
 
-    # Launch SCInsta on iPhone
+    # Launch Sparkle on iPhone
     sleep 1
     pymobiledevice3 developer dvt launch --kill-existing --tunnel $PYMOBILEDEVICE3_UDID $DEVLAUNCHER_APPID
 fi

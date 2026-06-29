@@ -3,9 +3,9 @@
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
 
-static const void *kSCIClipboardExploreGestureKey = &kSCIClipboardExploreGestureKey;
+static const void *kSPKClipboardExploreGestureKey = &kSPKClipboardExploreGestureKey;
 
-static NSURL *SCINormalizedInstagramClipboardURL(NSString *raw) {
+static NSURL *SPKNormalizedInstagramClipboardURL(NSString *raw) {
     if (raw.length == 0) return nil;
 
     NSString *trimmed = [raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -43,7 +43,7 @@ static NSURL *SCINormalizedInstagramClipboardURL(NSString *raw) {
     return nil;
 }
 
-static BOOL SCICanAttemptOpenInstagramClipboardURL(NSURL *url) {
+static BOOL SPKCanAttemptOpenInstagramClipboardURL(NSURL *url) {
     if (!url) return NO;
 
     NSString *scheme = url.scheme.lowercaseString ?: @"";
@@ -60,36 +60,36 @@ static BOOL SCICanAttemptOpenInstagramClipboardURL(NSURL *url) {
     return NO;
 }
 
-@interface SCIClipboardExploreLinkHandler : NSObject <UIGestureRecognizerDelegate>
+@interface SPKClipboardExploreLinkHandler : NSObject <UIGestureRecognizerDelegate>
 + (instancetype)sharedHandler;
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture;
 @end
 
-@implementation SCIClipboardExploreLinkHandler
+@implementation SPKClipboardExploreLinkHandler
 
 + (instancetype)sharedHandler {
-    static SCIClipboardExploreLinkHandler *handler = nil;
+    static SPKClipboardExploreLinkHandler *handler = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        handler = [[SCIClipboardExploreLinkHandler alloc] init];
+        handler = [[SPKClipboardExploreLinkHandler alloc] init];
     });
     return handler;
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     (void)gestureRecognizer;
-    if (![SCIUtils getBoolPref:@"interface_open_clipboard_link"]) return NO;
+    if (![SPKUtils getBoolPref:@"interface_open_clipboard_link"]) return NO;
 
-    NSURL *url = SCINormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
-    return SCICanAttemptOpenInstagramClipboardURL(url);
+    NSURL *url = SPKNormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
+    return SPKCanAttemptOpenInstagramClipboardURL(url);
 }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateBegan) return;
 
-    NSURL *url = SCINormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
-    if (!SCICanAttemptOpenInstagramClipboardURL(url)) return;
-    if (![SCIUtils openInstagramMediaURL:url]) return;
+    NSURL *url = SPKNormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
+    if (!SPKCanAttemptOpenInstagramClipboardURL(url)) return;
+    if (![SPKUtils openInstagramMediaURL:url]) return;
 
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
     [feedback impactOccurred];
@@ -97,19 +97,19 @@ static BOOL SCICanAttemptOpenInstagramClipboardURL(NSURL *url) {
 
 @end
 
-static void SCIAttachClipboardGestureToExploreButton(UIButton *button) {
-    if (!button || objc_getAssociatedObject(button, kSCIClipboardExploreGestureKey)) return;
+static void SPKAttachClipboardGestureToExploreButton(UIButton *button) {
+    if (!button || objc_getAssociatedObject(button, kSPKClipboardExploreGestureKey)) return;
 
-    SCIClipboardExploreLinkHandler *handler = [SCIClipboardExploreLinkHandler sharedHandler];
+    SPKClipboardExploreLinkHandler *handler = [SPKClipboardExploreLinkHandler sharedHandler];
     UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc] initWithTarget:handler action:@selector(handleLongPress:)];
     gesture.minimumPressDuration = 0.5;
     gesture.delegate = handler;
     gesture.cancelsTouchesInView = YES;
     [button addGestureRecognizer:gesture];
-    objc_setAssociatedObject(button, kSCIClipboardExploreGestureKey, gesture, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(button, kSPKClipboardExploreGestureKey, gesture, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-%group SCIOpenLinkFromClipboardHooks
+%group SPKOpenLinkFromClipboardHooks
 
 %hook IGTabBarController
 
@@ -121,7 +121,7 @@ static void SCIAttachClipboardGestureToExploreButton(UIButton *button) {
 
     id exploreButton = object_getIvar(self, exploreButtonIvar);
     if ([exploreButton isKindOfClass:[UIButton class]]) {
-        SCIAttachClipboardGestureToExploreButton((UIButton *)exploreButton);
+        SPKAttachClipboardGestureToExploreButton((UIButton *)exploreButton);
     }
 }
 
@@ -129,11 +129,11 @@ static void SCIAttachClipboardGestureToExploreButton(UIButton *button) {
 
 %end
 
-extern "C" void SCIInstallOpenLinkFromClipboardHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"interface_open_clipboard_link"]) return;
+extern "C" void SPKInstallOpenLinkFromClipboardHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"interface_open_clipboard_link"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIOpenLinkFromClipboardHooks);
+        %init(SPKOpenLinkFromClipboardHooks);
     });
 }

@@ -1,27 +1,27 @@
 {
-    "SCIUtils: Bool Pref": {
-		"prefix": "scibool",
+    "SPKUtils: Bool Pref": {
+		"prefix": "spkbool",
 		"body": [
-            "if ([SCIUtils getBoolPref:@\"${1:key}\"]) $0"
+            "if ([SPKUtils getBoolPref:@\"${1:key}\"]) $0"
 		]
 	},
-    "SCIUtils: String Pref": {
-		"prefix": "scistring",
+    "SPKUtils: String Pref": {
+		"prefix": "spkstring",
 		"body": [
-            "if ([[SCIUtils getStringPref:@\"${1:key}\"] isEqualToString:@\"${2:string}\"]) $0"
+            "if ([[SPKUtils getStringPref:@\"${1:key}\"] isEqualToString:@\"${2:string}\"]) $0"
 		]
 	},
 
-	"SCIUtils: Log": {
-		"prefix": "scilog",
+	"SPKUtils: Log": {
+		"prefix": "spklog",
 		"body": [
-            "SCILog($0);"
+            "SPKLog($0);"
 		]
 	},
-	"SCIUtils: Log Id": {
-		"prefix": "scilogid",
+	"SPKUtils: Log Id": {
+		"prefix": "spklogid",
 		"body": [
-            "SCILogId(@\"${1:prefix}\", $0);"
+            "SPKLogId(@\"${1:prefix}\", $0);"
 		]
 	}
 }

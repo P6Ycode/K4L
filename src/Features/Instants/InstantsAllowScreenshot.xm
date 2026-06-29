@@ -1,29 +1,29 @@
 #import <UIKit/UIKit.h>
 
 #import "../../Utils.h"
-#import "../../Shared/UI/SCIChrome.h"
+#import "../../Shared/UI/SPKChrome.h"
 
-static NSString * const kSCIInstantsAllowScreenshotPref = @"instants_allow_screenshot";
+static NSString * const kSPKInstantsAllowScreenshotPref = @"instants_allow_screenshot";
 
-static BOOL SCIInstantsAllowScreenshotEnabled(void) {
-    return [SCIUtils getBoolPref:kSCIInstantsAllowScreenshotPref];
+static BOOL SPKInstantsAllowScreenshotEnabled(void) {
+    return [SPKUtils getBoolPref:kSPKInstantsAllowScreenshotPref];
 }
 
-static BOOL SCIInstantsViewControllerTreeContainsQuickSnap(UIViewController *controller) {
+static BOOL SPKInstantsViewControllerTreeContainsQuickSnap(UIViewController *controller) {
     if (!controller) return NO;
     if ([NSStringFromClass(controller.class) containsString:@"QuickSnap"]) return YES;
     for (UIViewController *child in controller.childViewControllers) {
-        if (SCIInstantsViewControllerTreeContainsQuickSnap(child)) return YES;
+        if (SPKInstantsViewControllerTreeContainsQuickSnap(child)) return YES;
     }
-    return SCIInstantsViewControllerTreeContainsQuickSnap(controller.presentedViewController);
+    return SPKInstantsViewControllerTreeContainsQuickSnap(controller.presentedViewController);
 }
 
-static BOOL SCIInstantsScreenshotBypassActive(void) {
-    if (!SCIInstantsAllowScreenshotEnabled()) return NO;
+static BOOL SPKInstantsScreenshotBypassActive(void) {
+    if (!SPKInstantsAllowScreenshotEnabled()) return NO;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class]) continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            if (SCIInstantsViewControllerTreeContainsQuickSnap(window.rootViewController)) {
+            if (SPKInstantsViewControllerTreeContainsQuickSnap(window.rootViewController)) {
                 return YES;
             }
         }
@@ -31,7 +31,7 @@ static BOOL SCIInstantsScreenshotBypassActive(void) {
     return NO;
 }
 
-static BOOL SCIInstantsIsScreenshotCoverText(NSString *text) {
+static BOOL SPKInstantsIsScreenshotCoverText(NSString *text) {
     if (![text isKindOfClass:NSString.class] || text.length == 0) return NO;
     NSString *lower = text.lowercaseString;
     return [lower containsString:@"screenshot or record"] ||
@@ -39,7 +39,7 @@ static BOOL SCIInstantsIsScreenshotCoverText(NSString *text) {
            [lower containsString:@"only meant to be replayed once"];
 }
 
-static UIView *SCIInstantsTopAncestorBelowWindow(UIView *view) {
+static UIView *SPKInstantsTopAncestorBelowWindow(UIView *view) {
     UIView *current = view;
     while (current.superview && ![current.superview isKindOfClass:UIWindow.class]) {
         current = current.superview;
@@ -47,7 +47,7 @@ static UIView *SCIInstantsTopAncestorBelowWindow(UIView *view) {
     return current.superview ? current : nil;
 }
 
-static UITextField *SCIInstantsSecureTextFieldAncestor(UIView *view) {
+static UITextField *SPKInstantsSecureTextFieldAncestor(UIView *view) {
     UIView *parent = view.superview;
     while (parent) {
         if ([parent isKindOfClass:UITextField.class]) return (UITextField *)parent;
@@ -56,30 +56,30 @@ static UITextField *SCIInstantsSecureTextFieldAncestor(UIView *view) {
     return nil;
 }
 
-%group SCIInstantsAllowScreenshotHooks
+%group SPKInstantsAllowScreenshotHooks
 
 %hook UIScreen
 - (BOOL)isCaptured {
-    if (SCIInstantsScreenshotBypassActive()) return NO;
+    if (SPKInstantsScreenshotBypassActive()) return NO;
     return %orig;
 }
 %end
 
 %hook NSNotificationCenter
 - (void)postNotificationName:(NSNotificationName)name object:(id)object userInfo:(NSDictionary *)userInfo {
-    if (SCIInstantsScreenshotBypassActive() && [name isEqualToString:UIApplicationUserDidTakeScreenshotNotification]) return;
+    if (SPKInstantsScreenshotBypassActive() && [name isEqualToString:UIApplicationUserDidTakeScreenshotNotification]) return;
     %orig;
 }
 
 - (void)postNotificationName:(NSNotificationName)name object:(id)object {
-    if (SCIInstantsScreenshotBypassActive() && [name isEqualToString:UIApplicationUserDidTakeScreenshotNotification]) return;
+    if (SPKInstantsScreenshotBypassActive() && [name isEqualToString:UIApplicationUserDidTakeScreenshotNotification]) return;
     %orig;
 }
 %end
 
 %hook UITextField
 - (void)setSecureTextEntry:(BOOL)secureTextEntry {
-    if (secureTextEntry && SCIInstantsScreenshotBypassActive() && !SCIChromeCanvasOwnsSecureField((UITextField *)self)) {
+    if (secureTextEntry && SPKInstantsScreenshotBypassActive() && !SPKChromeCanvasOwnsSecureField((UITextField *)self)) {
         %orig(NO);
         return;
     }
@@ -92,16 +92,16 @@ static UITextField *SCIInstantsSecureTextFieldAncestor(UIView *view) {
     %orig;
     // Text check first (cheap string scan, almost always false) — avoids the
     // expensive pref read + VC-tree walk for every label in the app.
-    if (!SCIInstantsIsScreenshotCoverText(text) || !SCIInstantsScreenshotBypassActive()) return;
+    if (!SPKInstantsIsScreenshotCoverText(text) || !SPKInstantsScreenshotBypassActive()) return;
     UILabel *label = (UILabel *)self;
-    UIView *cover = SCIInstantsTopAncestorBelowWindow(label) ?: label.superview ?: label;
+    UIView *cover = SPKInstantsTopAncestorBelowWindow(label) ?: label.superview ?: label;
     cover.hidden = YES;
     cover.alpha = 0.0;
     label.hidden = YES;
     label.alpha = 0.0;
 
-    UITextField *secureField = SCIInstantsSecureTextFieldAncestor(cover);
-    if (secureField.secureTextEntry && !SCIChromeCanvasOwnsSecureField(secureField)) {
+    UITextField *secureField = SPKInstantsSecureTextFieldAncestor(cover);
+    if (secureField.secureTextEntry && !SPKChromeCanvasOwnsSecureField(secureField)) {
         secureField.secureTextEntry = NO;
     }
 }
@@ -109,10 +109,10 @@ static UITextField *SCIInstantsSecureTextFieldAncestor(UIView *view) {
 
 %end
 
-extern "C" void SCIInstallInstantsAllowScreenshotHooksIfEnabled(void) {
+extern "C" void SPKInstallInstantsAllowScreenshotHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIInstantsAllowScreenshotHooks);
-        SCILog(@"Instants", @"[SCInsta] Instants allow screenshot hooks installed");
+        %init(SPKInstantsAllowScreenshotHooks);
+        SPKLog(@"Instants", @"[Sparkle] Instants allow screenshot hooks installed");
     });
 }

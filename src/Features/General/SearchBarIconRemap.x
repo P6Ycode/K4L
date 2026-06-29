@@ -12,52 +12,52 @@
 // which we can resolve ourselves. No magic enum values, and reversible the moment
 // the pref is off.
 
-static inline BOOL SCISearchIconRemapActive(void) {
-    return [SCIUtils getBoolPref:@"general_hide_meta_ai_explore"];
+static inline BOOL SPKSearchIconRemapActive(void) {
+    return [SPKUtils getBoolPref:@"general_hide_meta_ai_explore"];
 }
 
-static BOOL SCINameIsGenAISearchIcon(NSString *name) {
+static BOOL SPKNameIsGenAISearchIcon(NSString *name) {
     return [name isKindOfClass:[NSString class]] &&
            [name containsString:@"gen_ai"] &&
            [name containsString:@"search"];
 }
 
-static NSString *SCIPlainSearchIconName(NSString *genAIName) {
+static NSString *SPKPlainSearchIconName(NSString *genAIName) {
     // ig_icon_search_gen_ai_pano_outline_20 -> ig_icon_search_pano_outline_20
     return [genAIName stringByReplacingOccurrencesOfString:@"_gen_ai" withString:@""];
 }
 
-%group SCISearchBarIconRemapHooks
+%group SPKSearchBarIconRemapHooks
 
 %hook UIImage
 
 + (UIImage *)imageNamed:(NSString *)name inBundle:(NSBundle *)bundle compatibleWithTraitCollection:(UITraitCollection *)traitCollection {
     // Name check first (cheap string scan); pref read only for the rare match.
-    if (SCINameIsGenAISearchIcon(name) && SCISearchIconRemapActive()) {
-        NSString *plain = SCIPlainSearchIconName(name);
+    if (SPKNameIsGenAISearchIcon(name) && SPKSearchIconRemapActive()) {
+        NSString *plain = SPKPlainSearchIconName(name);
         UIImage *replacement = %orig(plain, bundle, traitCollection)
             ?: %orig(plain, nil, traitCollection)
-            ?: [SCIAssetUtils instagramIconNamed:@"search"];
+            ?: [SPKAssetUtils instagramIconNamed:@"search"];
         if (replacement) return replacement;
     }
     return %orig;
 }
 
 + (UIImage *)imageNamed:(NSString *)name inBundle:(NSBundle *)bundle withConfiguration:(UIImageConfiguration *)configuration {
-    if (SCINameIsGenAISearchIcon(name) && SCISearchIconRemapActive()) {
-        NSString *plain = SCIPlainSearchIconName(name);
+    if (SPKNameIsGenAISearchIcon(name) && SPKSearchIconRemapActive()) {
+        NSString *plain = SPKPlainSearchIconName(name);
         UIImage *replacement = %orig(plain, bundle, configuration)
             ?: %orig(plain, nil, configuration)
-            ?: [SCIAssetUtils instagramIconNamed:@"search"];
+            ?: [SPKAssetUtils instagramIconNamed:@"search"];
         if (replacement) return replacement;
     }
     return %orig;
 }
 
 + (UIImage *)imageNamed:(NSString *)name {
-    if (SCINameIsGenAISearchIcon(name) && SCISearchIconRemapActive()) {
-        NSString *plain = SCIPlainSearchIconName(name);
-        UIImage *replacement = %orig(plain) ?: [SCIAssetUtils instagramIconNamed:@"search"];
+    if (SPKNameIsGenAISearchIcon(name) && SPKSearchIconRemapActive()) {
+        NSString *plain = SPKPlainSearchIconName(name);
+        UIImage *replacement = %orig(plain) ?: [SPKAssetUtils instagramIconNamed:@"search"];
         if (replacement) return replacement;
     }
     return %orig;
@@ -67,9 +67,9 @@ static NSString *SCIPlainSearchIconName(NSString *genAIName) {
 
 %end
 
-void SCIInstallSearchBarIconRemapHooksIfNeeded(void) {
+void SPKInstallSearchBarIconRemapHooksIfNeeded(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCISearchBarIconRemapHooks);
+        %init(SPKSearchBarIconRemapHooks);
     });
 }

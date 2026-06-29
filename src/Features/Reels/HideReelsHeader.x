@@ -1,13 +1,13 @@
 #import "../../Utils.h"
 
-%group SCIHideReelsHeaderHooks
+%group SPKHideReelsHeaderHooks
 
 %hook IGSundialViewerNavigationBarOld
 - (void)didMoveToWindow {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"reels_hide_header"]) {
-        SCILog(@"General", @"[SCInsta] Hiding reels header");
+    if ([SPKUtils getBoolPref:@"reels_hide_header"]) {
+        SPKLog(@"General", @"[Sparkle] Hiding reels header");
 
         [self removeFromSuperview];
     }
@@ -16,11 +16,11 @@
 
 %end
 
-void SCIInstallHideReelsHeaderHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"reels_hide_header"]) return;
+void SPKInstallHideReelsHeaderHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"reels_hide_header"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideReelsHeaderHooks);
+        %init(SPKHideReelsHeaderHooks);
     });
 }

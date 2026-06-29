@@ -9,11 +9,11 @@
 static NSInteger const IGHomeFeedPickerMenuItemForYou = 0;
 static NSInteger const IGHomeFeedPickerMenuItemFollowing = 5;
 
-static BOOL SCIFollowingFeedEnabled(void) {
-    return [[SCIUtils getStringPref:@"main_feed_mode"] isEqualToString:@"following"];
+static BOOL SPKFollowingFeedEnabled(void) {
+    return [[SPKUtils getStringPref:@"main_feed_mode"] isEqualToString:@"following"];
 }
 
-%group SCIFollowingFeedHooks
+%group SPKFollowingFeedHooks
 
 %hook IGHomeFeedPickerMenuController
 
@@ -162,13 +162,13 @@ mainFeedNetworkSourceSessionDeps:(id)deps
 
 %end
 
-extern "C" void SCIInstallFollowingFeedHooksIfEnabled(void) {
-    if (!SCIFollowingFeedEnabled()) {
+extern "C" void SPKInstallFollowingFeedHooksIfEnabled(void) {
+    if (!SPKFollowingFeedEnabled()) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIFollowingFeedHooks);
+        %init(SPKFollowingFeedHooks);
     });
 }

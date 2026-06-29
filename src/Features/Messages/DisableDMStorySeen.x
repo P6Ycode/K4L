@@ -1,33 +1,33 @@
 #import "../../Utils.h"
 #import "../../Tweak.h"
 
-static inline BOOL SCIUnlimitedReplayEnabled(void) {
-    return [SCIUtils getBoolPref:@"msgs_manual_visual_seen"];
+static inline BOOL SPKUnlimitedReplayEnabled(void) {
+    return [SPKUtils getBoolPref:@"msgs_manual_visual_seen"];
 }
 
-static inline BOOL SCIShouldPassThroughManualDirectSeen(id message) {
-    return (message && SCIPendingDirectVisualMessageToMarkSeen && message == SCIPendingDirectVisualMessageToMarkSeen);
+static inline BOOL SPKShouldPassThroughManualDirectSeen(id message) {
+    return (message && SPKPendingDirectVisualMessageToMarkSeen && message == SPKPendingDirectVisualMessageToMarkSeen);
 }
 
-%group SCIDisableDMStorySeenHooks
+%group SPKDisableDMStorySeenHooks
 
 %hook IGDirectVisualMessageViewerEventHandler
 - (void)visualMessageViewerController:(id)arg1 didBeginPlaybackForVisualMessage:(id)arg2 atIndex:(NSInteger)arg3 {
-    if (!SCIUnlimitedReplayEnabled()) {
+    if (!SPKUnlimitedReplayEnabled()) {
         return %orig;
     }
 
-    if (SCIShouldPassThroughManualDirectSeen(arg2)) {
+    if (SPKShouldPassThroughManualDirectSeen(arg2)) {
         return %orig;
     }
 }
 
 - (void)visualMessageViewerController:(id)arg1 didEndPlaybackForVisualMessage:(id)arg2 atIndex:(NSInteger)arg3 mediaCurrentTime:(CGFloat)arg4 forNavType:(NSInteger)arg5 {
-    if (!SCIUnlimitedReplayEnabled()) {
+    if (!SPKUnlimitedReplayEnabled()) {
         return %orig;
     }
 
-    if (SCIShouldPassThroughManualDirectSeen(arg2)) {
+    if (SPKShouldPassThroughManualDirectSeen(arg2)) {
         return %orig;
     }
 }
@@ -35,13 +35,13 @@ static inline BOOL SCIShouldPassThroughManualDirectSeen(id message) {
 
 %end
 
-void SCIInstallDisableDMStorySeenHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"msgs_manual_visual_seen"]) {
+void SPKInstallDisableDMStorySeenHooksIfNeeded(void) {
+    if (![SPKUtils getBoolPref:@"msgs_manual_visual_seen"]) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIDisableDMStorySeenHooks);
+        %init(SPKDisableDMStorySeenHooks);
     });
 }

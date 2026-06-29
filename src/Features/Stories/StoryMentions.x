@@ -4,30 +4,30 @@
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 #import "../../InstagramHeaders.h"
-#import "../../Networking/SCIInstagramAPI.h"
-#import "../../Shared/UI/SCIMediaChrome.h"
-#import "../../Shared/UI/SCINotificationCenter.h"
+#import "../../Networking/SPKInstagramAPI.h"
+#import "../../Shared/UI/SPKMediaChrome.h"
+#import "../../Shared/UI/SPKNotificationCenter.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
 
-extern void SCIPauseStoryPlaybackFromOverlaySubview(UIView *view);
-extern void SCIResumeStoryPlaybackFromOverlaySubview(UIView *view);
+extern void SPKPauseStoryPlaybackFromOverlaySubview(UIView *view);
+extern void SPKResumeStoryPlaybackFromOverlaySubview(UIView *view);
 
-static NSMutableDictionary<NSString *, NSArray<NSDictionary *> *> *SCIStoryMentionsSessionCache;
-static NSMutableDictionary<NSString *, NSDictionary *> *SCIStoryMentionsFriendshipStatusCache;
-static NSCache<NSString *, UIImage *> *SCIStoryMentionsAvatarCache;
+static NSMutableDictionary<NSString *, NSArray<NSDictionary *> *> *SPKStoryMentionsSessionCache;
+static NSMutableDictionary<NSString *, NSDictionary *> *SPKStoryMentionsFriendshipStatusCache;
+static NSCache<NSString *, UIImage *> *SPKStoryMentionsAvatarCache;
 
-static void SCIStoryMentionsEnsureSessionCaches(void) {
+static void SPKStoryMentionsEnsureSessionCaches(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCIStoryMentionsSessionCache = [NSMutableDictionary dictionary];
-        SCIStoryMentionsFriendshipStatusCache = [NSMutableDictionary dictionary];
-        SCIStoryMentionsAvatarCache = [[NSCache alloc] init];
-        SCIStoryMentionsAvatarCache.countLimit = 128;
+        SPKStoryMentionsSessionCache = [NSMutableDictionary dictionary];
+        SPKStoryMentionsFriendshipStatusCache = [NSMutableDictionary dictionary];
+        SPKStoryMentionsAvatarCache = [[NSCache alloc] init];
+        SPKStoryMentionsAvatarCache.countLimit = 128;
     });
 }
 
-static NSString *SCIStoryMentionsCacheKeyForMedia(id media) {
+static NSString *SPKStoryMentionsCacheKeyForMedia(id media) {
     if (!media) return nil;
     for (NSString *selectorName in @[@"pk", @"id", @"mediaID", @"mediaId", @"code", @"shortCode", @"shortcode"]) {
         id value = nil;
@@ -45,7 +45,7 @@ static NSString *SCIStoryMentionsCacheKeyForMedia(id media) {
 
 // IGUser stores fields in a Pando-backed dictionary (_fieldCache).
 // Standard KVC may return NSNull, so we read the dict directly.
-static id SCIMentionFieldCacheValue(id obj, NSString *key) {
+static id SPKMentionFieldCacheValue(id obj, NSString *key) {
     if (!obj || !key) return nil;
     static Ivar fcIvar = NULL;
     static dispatch_once_t once;
@@ -61,10 +61,10 @@ static id SCIMentionFieldCacheValue(id obj, NSString *key) {
     return val;
 }
 
-static NSString *SCIMentionUserPK(id userObj) {
+static NSString *SPKMentionUserPK(id userObj) {
     if (!userObj) return nil;
-    id pk = SCIMentionFieldCacheValue(userObj, @"strong_id__");
-    if (!pk) pk = SCIMentionFieldCacheValue(userObj, @"pk");
+    id pk = SPKMentionFieldCacheValue(userObj, @"strong_id__");
+    if (!pk) pk = SPKMentionFieldCacheValue(userObj, @"pk");
     if (!pk) {
         @try {
             Ivar pkIvar = class_getInstanceVariable([userObj class], "_pk");
@@ -74,13 +74,13 @@ static NSString *SCIMentionUserPK(id userObj) {
     return pk ? [NSString stringWithFormat:@"%@", pk] : nil;
 }
 
-static void SCIMentionStyleFollowButton(UIButton *btn, BOOL following) {
+static void SPKMentionStyleFollowButton(UIButton *btn, BOOL following) {
     [btn setTitle:following ? @"Following" : @"Follow" forState:UIControlStateNormal];
     if (following) {
-        btn.backgroundColor = [SCIUtils SCIColor_InstagramSecondaryBackground];
-        [btn setTitleColor:[SCIUtils SCIColor_InstagramPrimaryText] forState:UIControlStateNormal];
+        btn.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
+        [btn setTitleColor:[SPKUtils SPKColor_InstagramPrimaryText] forState:UIControlStateNormal];
     } else {
-        btn.backgroundColor = [SCIUtils SCIColor_InstagramBlue];
+        btn.backgroundColor = [SPKUtils SPKColor_InstagramBlue];
         [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     }
     btn.layer.borderWidth = 0.0;
@@ -92,7 +92,7 @@ static void SCIMentionStyleFollowButton(UIButton *btn, BOOL following) {
 
 // Enriched version that also extracts userObj, pk, and profile_pic_url
 // (the SeenButtons.x version only extracts username and fullName)
-static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
+static NSArray<NSDictionary *> *SPKStoryMentionsEnriched(UIView *overlayView) {
     if (!overlayView) return @[];
 
     // Use the same resolution path as SeenButtons.x
@@ -144,9 +144,9 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 
     if (!media) return @[];
 
-    SCIStoryMentionsEnsureSessionCaches();
-    NSString *cacheKey = SCIStoryMentionsCacheKeyForMedia(media);
-    NSArray<NSDictionary *> *cached = cacheKey.length > 0 ? SCIStoryMentionsSessionCache[cacheKey] : nil;
+    SPKStoryMentionsEnsureSessionCaches();
+    NSString *cacheKey = SPKStoryMentionsCacheKeyForMedia(media);
+    NSArray<NSDictionary *> *cached = cacheKey.length > 0 ? SPKStoryMentionsSessionCache[cacheKey] : nil;
     if (cached) return cached;
 
     SEL mentionsSel = NSSelectorFromString(@"reelMentions");
@@ -172,13 +172,13 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         NSMutableDictionary *info = [NSMutableDictionary dictionary];
         info[@"userObj"] = user;
 
-        NSString *username = SCIMentionFieldCacheValue(user, @"username");
+        NSString *username = SPKMentionFieldCacheValue(user, @"username");
         if (username.length) info[@"username"] = username;
 
-        NSString *fullName = SCIMentionFieldCacheValue(user, @"full_name");
+        NSString *fullName = SPKMentionFieldCacheValue(user, @"full_name");
         if (fullName.length) info[@"fullName"] = fullName;
 
-        NSString *picStr = SCIMentionFieldCacheValue(user, @"profile_pic_url");
+        NSString *picStr = SPKMentionFieldCacheValue(user, @"profile_pic_url");
         if (picStr.length) {
             NSURL *picURL = [NSURL URLWithString:picStr];
             if (picURL) info[@"picURL"] = picURL;
@@ -187,16 +187,16 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         if (info.count > 1) [userInfos addObject:info]; // must have userObj + at least one other field
     }
     NSArray<NSDictionary *> *result = [userInfos copy];
-    if (cacheKey.length > 0) SCIStoryMentionsSessionCache[cacheKey] = result;
+    if (cacheKey.length > 0) SPKStoryMentionsSessionCache[cacheKey] = result;
     return result;
 }
 
 /// ============ Bottom sheet VC ============
 
-#define kSCIMentionAvatarSize 52.0
-#define kSCIMentionRowHeight  72.0
+#define kSPKMentionAvatarSize 52.0
+#define kSPKMentionRowHeight  72.0
 
-@interface SCIMentionCell : UITableViewCell
+@interface SPKMentionCell : UITableViewCell
 @property (nonatomic, strong) UIImageView *avatarView;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *subLabel;
@@ -204,31 +204,31 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 @property (nonatomic, strong) UIActivityIndicatorView *spinner;
 @end
 
-@implementation SCIMentionCell
+@implementation SPKMentionCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        self.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+        self.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
         self.selectedBackgroundView = [UIView new];
-        self.selectedBackgroundView.backgroundColor = [SCIUtils SCIColor_InstagramPressedBackground];
+        self.selectedBackgroundView.backgroundColor = [SPKUtils SPKColor_InstagramPressedBackground];
         
         self.avatarView = [[UIImageView alloc] init];
         self.avatarView.clipsToBounds = YES;
         self.avatarView.contentMode = UIViewContentModeScaleAspectFill;
-        self.avatarView.layer.cornerRadius = kSCIMentionAvatarSize / 2.0;
-        self.avatarView.backgroundColor = [SCIUtils SCIColor_InstagramSeparator];
+        self.avatarView.layer.cornerRadius = kSPKMentionAvatarSize / 2.0;
+        self.avatarView.backgroundColor = [SPKUtils SPKColor_InstagramSeparator];
         self.avatarView.translatesAutoresizingMaskIntoConstraints = NO;
         [self.contentView addSubview:self.avatarView];
         
         self.nameLabel = [[UILabel alloc] init];
         self.nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-        self.nameLabel.textColor = [SCIUtils SCIColor_InstagramPrimaryText];
+        self.nameLabel.textColor = [SPKUtils SPKColor_InstagramPrimaryText];
         self.nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
         self.subLabel = [[UILabel alloc] init];
         self.subLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
-        self.subLabel.textColor = [SCIUtils SCIColor_InstagramSecondaryText];
+        self.subLabel.textColor = [SPKUtils SPKColor_InstagramSecondaryText];
         self.subLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
         self.followBtn = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -252,8 +252,8 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         [NSLayoutConstraint activateConstraints:@[
             [self.avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
             [self.avatarView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-            [self.avatarView.widthAnchor constraintEqualToConstant:kSCIMentionAvatarSize],
-            [self.avatarView.heightAnchor constraintEqualToConstant:kSCIMentionAvatarSize],
+            [self.avatarView.widthAnchor constraintEqualToConstant:kSPKMentionAvatarSize],
+            [self.avatarView.heightAnchor constraintEqualToConstant:kSPKMentionAvatarSize],
             
             [textStack.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:12],
             [textStack.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
@@ -272,7 +272,7 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 }
 
 @end
-@interface SCIStoryMentionsVC : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@interface SPKStoryMentionsVC : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) NSArray<NSDictionary *> *userInfos;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSString *currentUsername;
@@ -280,11 +280,11 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 @property (nonatomic, weak) UIView *storyOverlayView; // for resuming playback on dismiss
 @end
 
-@implementation SCIStoryMentionsVC
+@implementation SPKStoryMentionsVC
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [SCIUtils SCIColor_InstagramBackground];
+    self.view.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
     self.title = @"Mentions";
 
     // Resolve current user to hide the Follow button for yourself
@@ -300,9 +300,9 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     self.tableView.delegate = self;
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.backgroundColor = [UIColor clearColor];
-    self.tableView.separatorColor = [SCIUtils SCIColor_InstagramSeparator];
+    self.tableView.separatorColor = [SPKUtils SPKColor_InstagramSeparator];
     self.tableView.separatorInset = UIEdgeInsetsMake(0.0, 80.0, 0.0, 0.0);
-    self.tableView.rowHeight = kSCIMentionRowHeight;
+    self.tableView.rowHeight = kSPKMentionRowHeight;
     self.tableView.estimatedRowHeight = 0;
     self.tableView.estimatedSectionHeaderHeight = 0;
     self.tableView.estimatedSectionFooterHeight = 0;
@@ -320,13 +320,13 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     ]];
 
     // Bulk-fetch friendship statuses in one round trip
-    SCIStoryMentionsEnsureSessionCaches();
+    SPKStoryMentionsEnsureSessionCaches();
     self.friendshipStatuses = [NSMutableDictionary dictionary];
     NSMutableArray<NSString *> *missingPKs = [NSMutableArray array];
     for (NSDictionary *info in self.userInfos) {
-        NSString *pk = SCIMentionUserPK(info[@"userObj"]);
+        NSString *pk = SPKMentionUserPK(info[@"userObj"]);
         if (!pk.length) continue;
-        NSDictionary *cachedStatus = SCIStoryMentionsFriendshipStatusCache[pk];
+        NSDictionary *cachedStatus = SPKStoryMentionsFriendshipStatusCache[pk];
         if (cachedStatus) {
             self.friendshipStatuses[pk] = cachedStatus;
         } else {
@@ -335,10 +335,10 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     }
     if (missingPKs.count) {
         __weak typeof(self) weakSelf = self;
-        [SCIInstagramAPI fetchFriendshipStatusesForPKs:missingPKs completion:^(NSDictionary *statuses, NSError *error) {
+        [SPKInstagramAPI fetchFriendshipStatusesForPKs:missingPKs completion:^(NSDictionary *statuses, NSError *error) {
             (void)error;
             if (!statuses.count) return;
-            [SCIStoryMentionsFriendshipStatusCache addEntriesFromDictionary:statuses];
+            [SPKStoryMentionsFriendshipStatusCache addEntriesFromDictionary:statuses];
             [weakSelf.friendshipStatuses addEntriesFromDictionary:statuses];
             [weakSelf.tableView reloadData];
         }];
@@ -361,7 +361,7 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
         [appearance configureWithDefaultBackground]; // system default — matches Settings sheet style
         appearance.titleTextAttributes = @{
-            NSForegroundColorAttributeName: [SCIUtils SCIColor_InstagramPrimaryText],
+            NSForegroundColorAttributeName: [SPKUtils SPKColor_InstagramPrimaryText],
             NSFontAttributeName: [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold]
         };
         
@@ -376,7 +376,7 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     [super viewDidDisappear:animated];
     // Resume story playback when mentions sheet is dismissed
     if (self.storyOverlayView) {
-        SCIResumeStoryPlaybackFromOverlaySubview(self.storyOverlayView);
+        SPKResumeStoryPlaybackFromOverlaySubview(self.storyOverlayView);
         
         UIResponder *r = self.storyOverlayView;
         while (r) {
@@ -399,10 +399,10 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    static NSString *rid = @"SCIMention";
-    SCIMentionCell *cell = [tableView dequeueReusableCellWithIdentifier:rid];
+    static NSString *rid = @"SPKMention";
+    SPKMentionCell *cell = [tableView dequeueReusableCellWithIdentifier:rid];
     if (!cell) {
-        cell = [[SCIMentionCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:rid];
+        cell = [[SPKMentionCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:rid];
     }
 
     NSDictionary *info = self.userInfos[indexPath.row];
@@ -415,15 +415,15 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     cell.subLabel.hidden = !fullName.length;
 
     // Default avatar
-    cell.avatarView.image = [SCIAssetUtils instagramIconNamed:@"user_circle" pointSize:24.0];
-    cell.avatarView.tintColor = [SCIUtils SCIColor_InstagramTertiaryText];
+    cell.avatarView.image = [SPKAssetUtils instagramIconNamed:@"user_circle" pointSize:24.0];
+    cell.avatarView.tintColor = [SPKUtils SPKColor_InstagramTertiaryText];
 
     // Avatar fetch with session cache
     if (picURL) {
         NSString *cacheKey = picURL.absoluteString;
         objc_setAssociatedObject(cell.avatarView, @selector(cellForRowAtIndexPath:), cacheKey, OBJC_ASSOCIATION_COPY_NONATOMIC);
 
-        UIImage *cachedAvatar = cacheKey.length > 0 ? [SCIStoryMentionsAvatarCache objectForKey:cacheKey] : nil;
+        UIImage *cachedAvatar = cacheKey.length > 0 ? [SPKStoryMentionsAvatarCache objectForKey:cacheKey] : nil;
         if (cachedAvatar) {
             cell.avatarView.image = cachedAvatar;
             cell.avatarView.tintColor = nil;
@@ -436,12 +436,12 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
                 UIImage *img = [UIImage imageWithData:data];
                 if (!img) return;
                 if (cacheKey.length > 0) {
-                    [SCIStoryMentionsAvatarCache setObject:img forKey:cacheKey];
+                    [SPKStoryMentionsAvatarCache setObject:img forKey:cacheKey];
                 }
                 dispatch_async(dispatch_get_main_queue(), ^{
                     UITableViewCell *c = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
-                    if (!c || ![c isKindOfClass:[SCIMentionCell class]]) return;
-                    SCIMentionCell *mc = (SCIMentionCell *)c;
+                    if (!c || ![c isKindOfClass:[SPKMentionCell class]]) return;
+                    SPKMentionCell *mc = (SPKMentionCell *)c;
                     NSString *boundKey = objc_getAssociatedObject(mc.avatarView, @selector(cellForRowAtIndexPath:));
                     if (mc.avatarView && (!boundKey || [boundKey isEqualToString:cacheKey])) {
                         mc.avatarView.image = img;
@@ -455,7 +455,7 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     // Follow button state
     [cell.followBtn removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];
     [cell.spinner stopAnimating];
-    cell.spinner.color = [SCIUtils SCIColor_InstagramSecondaryText];
+    cell.spinner.color = [SPKUtils SPKColor_InstagramSecondaryText];
 
     BOOL isMe = self.currentUsername && [username isEqualToString:self.currentUsername];
     if (isMe) {
@@ -465,15 +465,15 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         id userObj = info[@"userObj"];
 
         BOOL following = NO;
-        NSString *pk = SCIMentionUserPK(userObj);
+        NSString *pk = SPKMentionUserPK(userObj);
         NSDictionary *status = pk ? self.friendshipStatuses[pk] : nil;
         if ([status isKindOfClass:[NSDictionary class]]) {
             following = [status[@"following"] boolValue];
         }
-        SCIMentionStyleFollowButton(cell.followBtn, following);
+        SPKMentionStyleFollowButton(cell.followBtn, following);
 
         objc_setAssociatedObject(cell.followBtn, "userObj", userObj, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        [cell.followBtn addTarget:self action:@selector(sci_followTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [cell.followBtn addTarget:self action:@selector(spk_followTapped:) forControlEvents:UIControlEventTouchUpInside];
     }
 
     return cell;
@@ -481,10 +481,10 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 
 #pragma mark - Follow/Unfollow
 
-- (void)sci_followTapped:(UIButton *)sender {
+- (void)spk_followTapped:(UIButton *)sender {
     id userObj = objc_getAssociatedObject(sender, "userObj");
     if (!userObj) return;
-    NSString *pk = SCIMentionUserPK(userObj);
+    NSString *pk = SPKMentionUserPK(userObj);
     if (!pk.length) return;
 
     BOOL currentlyFollowing = [[sender titleForState:UIControlStateNormal] isEqualToString:@"Following"];
@@ -503,32 +503,32 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
         [spinner startAnimating];
 
         __weak typeof(self) weakSelf = self;
-        SCIAPICompletion done = ^(NSDictionary *response, NSError *error) {
+        SPKAPICompletion done = ^(NSDictionary *response, NSError *error) {
             [spinner stopAnimating];
             sender.userInteractionEnabled = YES;
             BOOL ok = (response && [response[@"status"] isEqualToString:@"ok"]);
             if (ok) {
-                SCIMentionStyleFollowButton(sender, !currentlyFollowing);
+                SPKMentionStyleFollowButton(sender, !currentlyFollowing);
                 NSMutableDictionary *s = [weakSelf.friendshipStatuses[pk] mutableCopy] ?: [NSMutableDictionary dictionary];
                 s[@"following"] = @(!currentlyFollowing);
                 NSDictionary *updatedStatus = [s copy];
                 weakSelf.friendshipStatuses[pk] = updatedStatus;
-                SCIStoryMentionsEnsureSessionCaches();
-                SCIStoryMentionsFriendshipStatusCache[pk] = updatedStatus;
+                SPKStoryMentionsEnsureSessionCaches();
+                SPKStoryMentionsFriendshipStatusCache[pk] = updatedStatus;
             } else {
                 [sender setTitle:savedTitle forState:UIControlStateNormal];
             }
         };
 
-        if (currentlyFollowing) [SCIInstagramAPI unfollowUserPK:pk completion:done];
-        else                    [SCIInstagramAPI followUserPK:pk   completion:done];
+        if (currentlyFollowing) [SPKInstagramAPI unfollowUserPK:pk completion:done];
+        else                    [SPKInstagramAPI followUserPK:pk   completion:done];
     };
-    if (!currentlyFollowing && [SCIUtils getBoolPref:@"profile_confirm_follow"]) {
-        [SCIUtils showConfirmation:doIt
+    if (!currentlyFollowing && [SPKUtils getBoolPref:@"profile_confirm_follow"]) {
+        [SPKUtils showConfirmation:doIt
                              title:@"Confirm Follow"
                            message:@"Are you sure you want to follow this account?"];
-    } else if (currentlyFollowing && [SCIUtils getBoolPref:@"profile_confirm_unfollow"]) {
-        [SCIUtils showConfirmation:doIt
+    } else if (currentlyFollowing && [SPKUtils getBoolPref:@"profile_confirm_unfollow"]) {
+        [SPKUtils showConfirmation:doIt
                              title:@"Confirm Unfollow"
                            message:@"Are you sure you want to unfollow this account?"];
     } else {
@@ -545,7 +545,7 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
     if (username.length == 0) return;
 
     [self.navigationController dismissViewControllerAnimated:YES completion:^{
-        [SCIUtils openInstagramProfileForUsername:username];
+        [SPKUtils openInstagramProfileForUsername:username];
     }];
 }
 
@@ -553,18 +553,18 @@ static NSArray<NSDictionary *> *SCIStoryMentionsEnriched(UIView *overlayView) {
 
 // ============ Presentation entry point ============
 
-extern void SCIPauseStoryPlaybackFromOverlaySubview(UIView *);
-extern void SCIResumeStoryPlaybackFromOverlaySubview(UIView *);
+extern void SPKPauseStoryPlaybackFromOverlaySubview(UIView *);
+extern void SPKResumeStoryPlaybackFromOverlaySubview(UIView *);
 
-void SCIPresentStoryMentionsSheet(UIView *overlayView) {
-    NSArray<NSDictionary *> *enriched = SCIStoryMentionsEnriched(overlayView);
+void SPKPresentStoryMentionsSheet(UIView *overlayView) {
+    NSArray<NSDictionary *> *enriched = SPKStoryMentionsEnriched(overlayView);
 
-    UIViewController *presenter = [SCIUtils nearestViewControllerForView:overlayView];
+    UIViewController *presenter = [SPKUtils nearestViewControllerForView:overlayView];
     if (!presenter) return;
     
-    SCIPauseStoryPlaybackFromOverlaySubview(overlayView);
+    SPKPauseStoryPlaybackFromOverlaySubview(overlayView);
 
-    SCIStoryMentionsVC *vc = [[SCIStoryMentionsVC alloc] init];
+    SPKStoryMentionsVC *vc = [[SPKStoryMentionsVC alloc] init];
     vc.userInfos = enriched;
     vc.storyOverlayView = overlayView;
 
@@ -576,7 +576,7 @@ void SCIPresentStoryMentionsSheet(UIView *overlayView) {
 
     if (@available(iOS 16.0, *)) {
         CGFloat headerHeight = 56.0;
-        CGFloat contentHeight = MAX(1, enriched.count) * kSCIMentionRowHeight;
+        CGFloat contentHeight = MAX(1, enriched.count) * kSPKMentionRowHeight;
         CGFloat totalHeight = headerHeight + contentHeight + 40.0;
         UISheetPresentationControllerDetent *customDetent =
             [UISheetPresentationControllerDetent customDetentWithIdentifier:@"custom_fit"
@@ -593,6 +593,6 @@ void SCIPresentStoryMentionsSheet(UIView *overlayView) {
     sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = YES;
     sheet.prefersGrabberVisible = YES;
 
-    SCINotify(kSCINotificationStoryMentionsSheet, @"Opened story mentions", nil, @"mention", SCINotificationToneForIconResource(@"mention"));
+    SPKNotify(kSPKNotificationStoryMentionsSheet, @"Opened story mentions", nil, @"mention", SPKNotificationToneForIconResource(@"mention"));
     [presenter presentViewController:nav animated:YES completion:nil];
 }

@@ -16,15 +16,15 @@
 // versions (addItem:, _processRecentlySelectedRecipients:, and the
 // shouldAddToRecents init) via MSHookMessageEx.
 
-static BOOL SCINoRecentSearchesEnabled(void) {
-    return [SCIUtils getBoolPref:@"general_no_recent_searches"];
+static BOOL SPKNoRecentSearchesEnabled(void) {
+    return [SPKUtils getBoolPref:@"general_no_recent_searches"];
 }
 
 #pragma mark - IGSearchEntityRouter (gate recents at the source)
 
 static id (*orig_searchRouterInit3)(id, SEL, id, id, BOOL) = NULL;
 static id replaced_searchRouterInit3(id self, SEL _cmd, id session, id module, BOOL shouldAddToRecents) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         shouldAddToRecents = NO;
     }
     return orig_searchRouterInit3(self, _cmd, session, module, shouldAddToRecents);
@@ -32,7 +32,7 @@ static id replaced_searchRouterInit3(id self, SEL _cmd, id session, id module, B
 
 static id (*orig_searchRouterInit4)(id, SEL, id, id, BOOL, long long) = NULL;
 static id replaced_searchRouterInit4(id self, SEL _cmd, id session, id module, BOOL shouldAddToRecents, long long mode) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         shouldAddToRecents = NO;
     }
     return orig_searchRouterInit4(self, _cmd, session, module, shouldAddToRecents, mode);
@@ -42,7 +42,7 @@ static id replaced_searchRouterInit4(id self, SEL _cmd, id session, id module, B
 
 static BOOL (*orig_recentStoreAddItem)(id, SEL, id) = NULL;
 static BOOL replaced_recentStoreAddItem(id self, SEL _cmd, id item) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         return NO;
     }
     return orig_recentStoreAddItem(self, _cmd, item);
@@ -54,7 +54,7 @@ static BOOL replaced_recentStoreAddItem(id self, SEL _cmd, id item) {
 // is reversible the moment the pref is turned back off.
 static id (*orig_recentStoreRecentItems)(id, SEL) = NULL;
 static id replaced_recentStoreRecentItems(id self, SEL _cmd) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         return @[];
     }
     return orig_recentStoreRecentItems(self, _cmd);
@@ -62,7 +62,7 @@ static id replaced_recentStoreRecentItems(id self, SEL _cmd) {
 
 static id (*orig_recentStoreAllItems)(id, SEL) = NULL;
 static id replaced_recentStoreAllItems(id self, SEL _cmd) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         return @[];
     }
     return orig_recentStoreAllItems(self, _cmd);
@@ -72,7 +72,7 @@ static id replaced_recentStoreAllItems(id self, SEL _cmd) {
 
 static void (*orig_directProcessRecents)(id, SEL, id) = NULL;
 static void replaced_directProcessRecents(id self, SEL _cmd, id recipients) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         return;
     }
     orig_directProcessRecents(self, _cmd, recipients);
@@ -82,7 +82,7 @@ static void replaced_directProcessRecents(id self, SEL _cmd, id recipients) {
 // hidden for previously-saved entries.
 static BOOL (*orig_directIsEmpty)(id, SEL) = NULL;
 static BOOL replaced_directIsEmpty(id self, SEL _cmd) {
-    if (SCINoRecentSearchesEnabled()) {
+    if (SPKNoRecentSearchesEnabled()) {
         return YES;
     }
     return orig_directIsEmpty(self, _cmd);
@@ -90,7 +90,7 @@ static BOOL replaced_directIsEmpty(id self, SEL _cmd) {
 
 #pragma mark - Installation
 
-static Class SCIResolveClass(NSArray<NSString *> *candidateNames) {
+static Class SPKResolveClass(NSArray<NSString *> *candidateNames) {
     for (NSString *name in candidateNames) {
         Class cls = NSClassFromString(name);
         if (cls) return cls;
@@ -98,50 +98,50 @@ static Class SCIResolveClass(NSArray<NSString *> *candidateNames) {
     return Nil;
 }
 
-static void SCIHookIfPresent(Class cls, NSString *selectorName, IMP replacement, void *origStore) {
+static void SPKHookIfPresent(Class cls, NSString *selectorName, IMP replacement, void *origStore) {
     if (!cls) return;
     SEL selector = NSSelectorFromString(selectorName);
     if (!class_getInstanceMethod(cls, selector)) return;
     MSHookMessageEx(cls, selector, replacement, (IMP *)origStore);
 }
 
-void SCIInstallNoRecentSearchesHooksIfEnabled(void) {
-    if (!SCINoRecentSearchesEnabled()) return;
+void SPKInstallNoRecentSearchesHooksIfEnabled(void) {
+    if (!SPKNoRecentSearchesEnabled()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         // IGSearchEntityRouter — force shouldAddToRecents off in every init variant.
-        Class routerClass = SCIResolveClass(@[
+        Class routerClass = SPKResolveClass(@[
             @"IGSearchEntityRouter",
             @"_TtC20IGSearchEntityRouter20IGSearchEntityRouter",
         ]);
-        SCIHookIfPresent(routerClass,
+        SPKHookIfPresent(routerClass,
                          @"initWithUserSession:analyticsModule:shouldAddToRecents:",
                          (IMP)replaced_searchRouterInit3, &orig_searchRouterInit3);
-        SCIHookIfPresent(routerClass,
+        SPKHookIfPresent(routerClass,
                          @"initWithUserSession:analyticsModule:shouldAddToRecents:mode:",
                          (IMP)replaced_searchRouterInit4, &orig_searchRouterInit4);
 
         // IGRecentSearchStore — block new entries from being recorded.
-        Class recentStoreClass = SCIResolveClass(@[
+        Class recentStoreClass = SPKResolveClass(@[
             @"IGRecentSearchStore",
             @"_TtC19IGRecentSearchStore19IGRecentSearchStore",
         ]);
-        SCIHookIfPresent(recentStoreClass, @"addItem:",
+        SPKHookIfPresent(recentStoreClass, @"addItem:",
                          (IMP)replaced_recentStoreAddItem, &orig_recentStoreAddItem);
-        SCIHookIfPresent(recentStoreClass, @"recentItems",
+        SPKHookIfPresent(recentStoreClass, @"recentItems",
                          (IMP)replaced_recentStoreRecentItems, &orig_recentStoreRecentItems);
-        SCIHookIfPresent(recentStoreClass, @"allItems",
+        SPKHookIfPresent(recentStoreClass, @"allItems",
                          (IMP)replaced_recentStoreAllItems, &orig_recentStoreAllItems);
 
         // IGDirectRecipientRecentSearchStorage — block recent DM recipients.
         // (Still a plain Obj-C class on both 410 and 435.)
-        Class directStorageClass = SCIResolveClass(@[
+        Class directStorageClass = SPKResolveClass(@[
             @"IGDirectRecipientRecentSearchStorage",
         ]);
-        SCIHookIfPresent(directStorageClass, @"_processRecentlySelectedRecipients:",
+        SPKHookIfPresent(directStorageClass, @"_processRecentlySelectedRecipients:",
                          (IMP)replaced_directProcessRecents, &orig_directProcessRecents);
-        SCIHookIfPresent(directStorageClass, @"isEmpty",
+        SPKHookIfPresent(directStorageClass, @"isEmpty",
                          (IMP)replaced_directIsEmpty, &orig_directIsEmpty);
     });
 }

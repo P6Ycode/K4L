@@ -3,36 +3,36 @@
 
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
-#import "../../Settings/SCISettingsViewController.h"
-#import "../../Shared/Gallery/SCIGalleryViewController.h"
+#import "../../Settings/SPKSettingsViewController.h"
+#import "../../Shared/Gallery/SPKGalleryViewController.h"
 
-static const void *kSCIHomeTabSettingsLongPressAssocKey = &kSCIHomeTabSettingsLongPressAssocKey;
-static const void *kSCIGalleryTabLongPressAssocKey = &kSCIGalleryTabLongPressAssocKey;
-static const void *kSCIProfileMoreSettingsLongPressAssocKey = &kSCIProfileMoreSettingsLongPressAssocKey;
-static const NSTimeInterval kSCIHomeTabLongPressDuration = 0.5;
-static const NSTimeInterval kSCIGalleryTabLongPressDuration = 0.65;
-static const NSTimeInterval kSCIProfileMoreSettingsLongPressDuration = 0.5;
-static NSInteger const kSCIProfileMoreShortcutMaxInstallAttempts = 6;
-static NSString * const kSCIGalleryQuickAccessDisabledValue = @"none";
+static const void *kSPKHomeTabSettingsLongPressAssocKey = &kSPKHomeTabSettingsLongPressAssocKey;
+static const void *kSPKGalleryTabLongPressAssocKey = &kSPKGalleryTabLongPressAssocKey;
+static const void *kSPKProfileMoreSettingsLongPressAssocKey = &kSPKProfileMoreSettingsLongPressAssocKey;
+static const NSTimeInterval kSPKHomeTabLongPressDuration = 0.5;
+static const NSTimeInterval kSPKGalleryTabLongPressDuration = 0.65;
+static const NSTimeInterval kSPKProfileMoreSettingsLongPressDuration = 0.5;
+static NSInteger const kSPKProfileMoreShortcutMaxInstallAttempts = 6;
+static NSString * const kSPKGalleryQuickAccessDisabledValue = @"none";
 
-@interface IGTabBarButton (SCIQuickActions)
-- (void)sci_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration;
-- (void)sci_removeProfileAccountPickerLongPressIfNeeded;
+@interface IGTabBarButton (SPKQuickActions)
+- (void)spk_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration;
+- (void)spk_removeProfileAccountPickerLongPressIfNeeded;
 - (void)handleHomeTabLongPress:(UILongPressGestureRecognizer *)sender;
 - (void)handleDirectInboxTabLongPress:(UILongPressGestureRecognizer *)sender;
 @end
 
-@interface SCISettingsShortcutTarget : NSObject
+@interface SPKSettingsShortcutTarget : NSObject
 + (instancetype)sharedTarget;
 - (void)handleProfileMoreLongPress:(UILongPressGestureRecognizer *)sender;
 @end
 
-@implementation SCISettingsShortcutTarget
+@implementation SPKSettingsShortcutTarget
 + (instancetype)sharedTarget {
-    static SCISettingsShortcutTarget *target;
+    static SPKSettingsShortcutTarget *target;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        target = [SCISettingsShortcutTarget new];
+        target = [SPKSettingsShortcutTarget new];
     });
     return target;
 }
@@ -40,32 +40,32 @@ static NSString * const kSCIGalleryQuickAccessDisabledValue = @"none";
 - (void)handleProfileMoreLongPress:(UILongPressGestureRecognizer *)sender {
     if (sender.state != UIGestureRecognizerStateBegan) return;
 
-    SCILog(@"General", @"[SCInsta] Tweak settings gesture activated");
-    [SCIUtils showSettingsVC:sender.view.window];
+    SPKLog(@"General", @"[Sparkle] Tweak settings gesture activated");
+    [SPKUtils showSettingsVC:sender.view.window];
 }
 @end
 
-static BOOL SCIIsProfileMoreButton(UIView *view) {
+static BOOL SPKIsProfileMoreButton(UIView *view) {
     return [view.accessibilityIdentifier isEqualToString:@"profile-more-button"];
 }
 
-static void SCIAddProfileSettingsLongPressToView(UIView *view) {
+static void SPKAddProfileSettingsLongPressToView(UIView *view) {
     if (!view) return;
     for (UIGestureRecognizer *gesture in view.gestureRecognizers) {
         if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
-        if (objc_getAssociatedObject(gesture, kSCIProfileMoreSettingsLongPressAssocKey)) {
+        if (objc_getAssociatedObject(gesture, kSPKProfileMoreSettingsLongPressAssocKey)) {
             return;
         }
     }
 
-    SCILog(@"General", @"[SCInsta] Adding tweak settings long press gesture recognizer to %@ id=%@ label=%@",
+    SPKLog(@"General", @"[Sparkle] Adding tweak settings long press gesture recognizer to %@ id=%@ label=%@",
            NSStringFromClass(view.class),
            view.accessibilityIdentifier,
            view.accessibilityLabel);
 
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:[SCISettingsShortcutTarget sharedTarget]
+    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:[SPKSettingsShortcutTarget sharedTarget]
                                                                                             action:@selector(handleProfileMoreLongPress:)];
-    longPress.minimumPressDuration = kSCIProfileMoreSettingsLongPressDuration;
+    longPress.minimumPressDuration = kSPKProfileMoreSettingsLongPressDuration;
     longPress.cancelsTouchesInView = YES;
     longPress.delaysTouchesBegan = YES;
     longPress.delaysTouchesEnded = YES;
@@ -75,63 +75,63 @@ static void SCIAddProfileSettingsLongPressToView(UIView *view) {
     }
 
     [view addGestureRecognizer:longPress];
-    objc_setAssociatedObject(longPress, kSCIProfileMoreSettingsLongPressAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(longPress, kSPKProfileMoreSettingsLongPressAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static void (*orig_sciProfileMoreDidMoveToWindow)(id, SEL);
-static void SCIHookedProfileMoreDidMoveToWindow(id self, SEL _cmd) {
-    if (orig_sciProfileMoreDidMoveToWindow) orig_sciProfileMoreDidMoveToWindow(self, _cmd);
-    if ([self isKindOfClass:[UIView class]] && SCIIsProfileMoreButton((UIView *)self)) {
-        SCIAddProfileSettingsLongPressToView((UIView *)self);
+static void (*orig_spkProfileMoreDidMoveToWindow)(id, SEL);
+static void SPKHookedProfileMoreDidMoveToWindow(id self, SEL _cmd) {
+    if (orig_spkProfileMoreDidMoveToWindow) orig_spkProfileMoreDidMoveToWindow(self, _cmd);
+    if ([self isKindOfClass:[UIView class]] && SPKIsProfileMoreButton((UIView *)self)) {
+        SPKAddProfileSettingsLongPressToView((UIView *)self);
     }
 }
 
-static void (*orig_sciProfileMoreLayoutSubviews)(id, SEL);
-static void SCIHookedProfileMoreLayoutSubviews(id self, SEL _cmd) {
-    if (orig_sciProfileMoreLayoutSubviews) orig_sciProfileMoreLayoutSubviews(self, _cmd);
-    if ([self isKindOfClass:[UIView class]] && SCIIsProfileMoreButton((UIView *)self)) {
-        SCIAddProfileSettingsLongPressToView((UIView *)self);
+static void (*orig_spkProfileMoreLayoutSubviews)(id, SEL);
+static void SPKHookedProfileMoreLayoutSubviews(id self, SEL _cmd) {
+    if (orig_spkProfileMoreLayoutSubviews) orig_spkProfileMoreLayoutSubviews(self, _cmd);
+    if ([self isKindOfClass:[UIView class]] && SPKIsProfileMoreButton((UIView *)self)) {
+        SPKAddProfileSettingsLongPressToView((UIView *)self);
     }
 }
 
-static BOOL SCIProfileMoreShortcutHooksInstalled = NO;
-static BOOL SCIProfileMoreShortcutRetryScheduled = NO;
-static NSInteger SCIProfileMoreShortcutInstallAttempts = 0;
+static BOOL SPKProfileMoreShortcutHooksInstalled = NO;
+static BOOL SPKProfileMoreShortcutRetryScheduled = NO;
+static NSInteger SPKProfileMoreShortcutInstallAttempts = 0;
 
-static void SCIInstallProfileMoreShortcutHooks(void) {
-    if (SCIProfileMoreShortcutHooksInstalled) return;
+static void SPKInstallProfileMoreShortcutHooks(void) {
+    if (SPKProfileMoreShortcutHooksInstalled) return;
 
-    SCIProfileMoreShortcutInstallAttempts += 1;
+    SPKProfileMoreShortcutInstallAttempts += 1;
     Class buttonClass = objc_getClass("IGProfileNavigation.IGBadgedNavigationButton");
     if (!buttonClass) buttonClass = objc_getClass("_TtC19IGProfileNavigation24IGBadgedNavigationButton");
     if (!buttonClass) buttonClass = objc_getClass("IGBadgedNavigationButton");
     if (!buttonClass) {
-        SCILog(@"General", @"[SCInsta] Profile more settings shortcut hook target unavailable attempt=%ld",
-               (long)SCIProfileMoreShortcutInstallAttempts);
-        if (!SCIProfileMoreShortcutRetryScheduled &&
-            SCIProfileMoreShortcutInstallAttempts < kSCIProfileMoreShortcutMaxInstallAttempts) {
-            SCIProfileMoreShortcutRetryScheduled = YES;
+        SPKLog(@"General", @"[Sparkle] Profile more settings shortcut hook target unavailable attempt=%ld",
+               (long)SPKProfileMoreShortcutInstallAttempts);
+        if (!SPKProfileMoreShortcutRetryScheduled &&
+            SPKProfileMoreShortcutInstallAttempts < kSPKProfileMoreShortcutMaxInstallAttempts) {
+            SPKProfileMoreShortcutRetryScheduled = YES;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.75 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                SCIProfileMoreShortcutRetryScheduled = NO;
-                SCIInstallProfileMoreShortcutHooks();
+                SPKProfileMoreShortcutRetryScheduled = NO;
+                SPKInstallProfileMoreShortcutHooks();
             });
         }
         return;
     }
 
-    MSHookMessageEx(buttonClass, @selector(didMoveToWindow), (IMP)SCIHookedProfileMoreDidMoveToWindow, (IMP *)&orig_sciProfileMoreDidMoveToWindow);
-    MSHookMessageEx(buttonClass, @selector(layoutSubviews), (IMP)SCIHookedProfileMoreLayoutSubviews, (IMP *)&orig_sciProfileMoreLayoutSubviews);
-    SCIProfileMoreShortcutHooksInstalled = YES;
-    SCILog(@"General", @"[SCInsta] Profile more settings shortcut hooks class=%@", NSStringFromClass(buttonClass));
+    MSHookMessageEx(buttonClass, @selector(didMoveToWindow), (IMP)SPKHookedProfileMoreDidMoveToWindow, (IMP *)&orig_spkProfileMoreDidMoveToWindow);
+    MSHookMessageEx(buttonClass, @selector(layoutSubviews), (IMP)SPKHookedProfileMoreLayoutSubviews, (IMP *)&orig_spkProfileMoreLayoutSubviews);
+    SPKProfileMoreShortcutHooksInstalled = YES;
+    SPKLog(@"General", @"[Sparkle] Profile more settings shortcut hooks class=%@", NSStringFromClass(buttonClass));
 }
 
-static NSString *SCIGalleryShortcutTabIdentifier(void) {
+static NSString *SPKGalleryShortcutTabIdentifier(void) {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSString *identifier = [defaults stringForKey:@"gallery_quick_access_tab"];
     if (identifier.length == 0) {
-        identifier = kSCIGalleryQuickAccessDisabledValue;
+        identifier = kSPKGalleryQuickAccessDisabledValue;
     }
-    if ([identifier isEqualToString:kSCIGalleryQuickAccessDisabledValue]) return identifier;
+    if ([identifier isEqualToString:kSPKGalleryQuickAccessDisabledValue]) return identifier;
 
     NSString *target = identifier;
     BOOL usesClassicTabOrdering = [[[NSUserDefaults standardUserDefaults] stringForKey:@"interface_nav_order"] isEqualToString:@"classic"];
@@ -140,9 +140,9 @@ static NSString *SCIGalleryShortcutTabIdentifier(void) {
     return target;
 }
 
-static BOOL SCITabIdentifierMatchesGalleryShortcut(NSString *identifier, NSString *label) {
-    NSString *target = SCIGalleryShortcutTabIdentifier();
-    if ([target isEqualToString:kSCIGalleryQuickAccessDisabledValue]) return NO;
+static BOOL SPKTabIdentifierMatchesGalleryShortcut(NSString *identifier, NSString *label) {
+    NSString *target = SPKGalleryShortcutTabIdentifier();
+    if ([target isEqualToString:kSPKGalleryQuickAccessDisabledValue]) return NO;
 
     NSString *candidate = [NSString stringWithFormat:@"%@ %@", identifier ?: @"", label ?: @""].lowercaseString;
     if ([identifier isEqualToString:target]) return YES;
@@ -157,14 +157,14 @@ static BOOL SCITabIdentifierMatchesGalleryShortcut(NSString *identifier, NSStrin
     return NO;
 }
 
-static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *label) {
-    return [SCIGalleryShortcutTabIdentifier() isEqualToString:@"profile-tab"] &&
+static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *label) {
+    return [SPKGalleryShortcutTabIdentifier() isEqualToString:@"profile-tab"] &&
            [identifier isEqualToString:@"profile-tab"] &&
            [(label ?: @"") isEqualToString:@"Profile"];
 }
 
-// Show SCInsta tweak settings by holding on the settings/more icon under profile for ~1 second
-	%group SCISettingsShortcutsHooks
+// Show Sparkle tweak settings by holding on the settings/more icon under profile for ~1 second
+	%group SPKSettingsShortcutsHooks
 
 	// Quick access to tweak settings by holding on home tab button
 %hook IGTabBarButton
@@ -173,20 +173,20 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
     NSString *identifier = self.accessibilityIdentifier ?: @"";
     NSString *label = self.accessibilityLabel ?: @"";
-    if ([identifier isEqualToString:@"mainfeed-tab"] && [SCIUtils getBoolPref:@"tools_settings_shortcut"]) {
-        if (![SCIGalleryShortcutTabIdentifier() isEqualToString:@"mainfeed-tab"]) {
-            [self sci_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSCIHomeTabSettingsLongPressAssocKey minimumDuration:kSCIHomeTabLongPressDuration];
+    if ([identifier isEqualToString:@"mainfeed-tab"] && [SPKUtils getBoolPref:@"tools_settings_shortcut"]) {
+        if (![SPKGalleryShortcutTabIdentifier() isEqualToString:@"mainfeed-tab"]) {
+            [self spk_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSPKHomeTabSettingsLongPressAssocKey minimumDuration:kSPKHomeTabLongPressDuration];
         }
     }
-    if (SCITabIdentifierMatchesGalleryShortcut(identifier, label)) {
-        if (SCIShouldReplaceProfileTabLongPress(identifier, label)) {
-            [self sci_removeProfileAccountPickerLongPressIfNeeded];
+    if (SPKTabIdentifierMatchesGalleryShortcut(identifier, label)) {
+        if (SPKShouldReplaceProfileTabLongPress(identifier, label)) {
+            [self spk_removeProfileAccountPickerLongPressIfNeeded];
         }
-        [self sci_addLongPressWithAction:@selector(handleDirectInboxTabLongPress:) marker:kSCIGalleryTabLongPressAssocKey minimumDuration:kSCIGalleryTabLongPressDuration];
+        [self spk_addLongPressWithAction:@selector(handleDirectInboxTabLongPress:) marker:kSPKGalleryTabLongPressAssocKey minimumDuration:kSPKGalleryTabLongPressDuration];
     }
 }
 
-%new - (void)sci_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration {
+%new - (void)spk_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration {
     for (UIGestureRecognizer *gesture in self.gestureRecognizers) {
         if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
         if (objc_getAssociatedObject(gesture, marker)) {
@@ -196,7 +196,7 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:action];
     longPress.minimumPressDuration = minimumDuration;
-    BOOL shouldCancel = (marker == kSCIGalleryTabLongPressAssocKey || marker == kSCIHomeTabSettingsLongPressAssocKey);
+    BOOL shouldCancel = (marker == kSPKGalleryTabLongPressAssocKey || marker == kSPKHomeTabSettingsLongPressAssocKey);
     longPress.cancelsTouchesInView = shouldCancel;
     longPress.delaysTouchesBegan = shouldCancel;
     longPress.delaysTouchesEnded = shouldCancel;
@@ -209,10 +209,10 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
     objc_setAssociatedObject(longPress, marker, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-%new - (void)sci_removeProfileAccountPickerLongPressIfNeeded {
+%new - (void)spk_removeProfileAccountPickerLongPressIfNeeded {
     for (UIGestureRecognizer *gesture in [self.gestureRecognizers copy]) {
         if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
-        if (objc_getAssociatedObject(gesture, kSCIGalleryTabLongPressAssocKey)) continue;
+        if (objc_getAssociatedObject(gesture, kSPKGalleryTabLongPressAssocKey)) continue;
 
         UILongPressGestureRecognizer *longPress = (UILongPressGestureRecognizer *)gesture;
         if (fabs(longPress.minimumPressDuration - 0.5) > 0.01) continue;
@@ -224,22 +224,22 @@ static BOOL SCIShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 %new - (void)handleHomeTabLongPress:(UILongPressGestureRecognizer *)sender {
     if (sender.state != UIGestureRecognizerStateBegan) return;
 
-    [SCIUtils showSettingsVC:[self window]];
+    [SPKUtils showSettingsVC:[self window]];
 }
 
 %new - (void)handleDirectInboxTabLongPress:(UILongPressGestureRecognizer *)sender {
     if (sender.state != UIGestureRecognizerStateBegan) return;
 
-    [SCIGalleryViewController presentGallery];
+    [SPKGalleryViewController presentGallery];
 }
 %end
 
 %end
 
-	void SCIInstallSettingsShortcutsHooksIfNeeded(void) {
+	void SPKInstallSettingsShortcutsHooksIfNeeded(void) {
 	    static dispatch_once_t onceToken;
 	    dispatch_once(&onceToken, ^{
-	        %init(SCISettingsShortcutsHooks);
-            SCIInstallProfileMoreShortcutHooks();
+	        %init(SPKSettingsShortcutsHooks);
+            SPKInstallProfileMoreShortcutHooks();
 	    });
 	}

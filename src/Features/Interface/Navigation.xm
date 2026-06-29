@@ -1,7 +1,7 @@
 #import "../../Utils.h"
 #import <objc/message.h>
 
-static NSString *SCISelectorForLaunchTabPreference(NSString *preference) {
+static NSString *SPKSelectorForLaunchTabPreference(NSString *preference) {
     if ([preference isEqualToString:@"feed"]) return @"_timelineButtonPressed";
     if ([preference isEqualToString:@"reels"]) return @"_discoverVideoButtonPressed";
     if ([preference isEqualToString:@"inbox"]) return @"_directInboxButtonPressed";
@@ -14,32 +14,32 @@ BOOL isSurfaceShown(IGMainAppSurfaceIntent *surface) {
     BOOL isShown = YES;
 
     // Feed
-    if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"FEED"] && [SCIUtils getBoolPref:@"interface_hide_feed_tab"]) {
+    if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"FEED"] && [SPKUtils getBoolPref:@"interface_hide_feed_tab"]) {
         isShown = NO;
     }
     
     // Reels
-    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"CLIPS"] && [SCIUtils getBoolPref:@"interface_hide_reels_tab"]) {
+    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"CLIPS"] && [SPKUtils getBoolPref:@"interface_hide_reels_tab"]) {
         isShown = NO;
     }
 
     // Messages
-    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"DIRECT"] && [SCIUtils getBoolPref:@"interface_hide_msgs_tab"]) {
+    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"DIRECT"] && [SPKUtils getBoolPref:@"interface_hide_msgs_tab"]) {
         isShown = NO;
     }
 
     // Explore
-    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"SEARCH"] && [SCIUtils getBoolPref:@"interface_hide_explore_tab"]) {
+    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"SEARCH"] && [SPKUtils getBoolPref:@"interface_hide_explore_tab"]) {
         isShown = NO;
     }
 
     // Profile
-    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"PROFILE"] && [SCIUtils getBoolPref:@"interface_hide_profile_tab"]) {
+    else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"PROFILE"] && [SPKUtils getBoolPref:@"interface_hide_profile_tab"]) {
         isShown = NO;
     }
 
     // Create
-    else if ([(NSNumber *)[surface valueForKey:@"_subtype"] unsignedIntegerValue] == 3 && [SCIUtils getBoolPref:@"interface_hide_create_tab"]) {
+    else if ([(NSNumber *)[surface valueForKey:@"_subtype"] unsignedIntegerValue] == 3 && [SPKUtils getBoolPref:@"interface_hide_create_tab"]) {
         isShown = NO;
     }
 
@@ -62,7 +62,7 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 
 ///////////////////////////////////////////////
 
-%group SCINavigationHooks
+%group SPKNavigationHooks
 
 %hook IGTabBarControllerSwipeCoordinator
 - (id)initWithSurfaces:(id)surfaces parentViewController:(id)controller enableHaptics:(_Bool)haptics launcherSet:(id)set {
@@ -79,7 +79,7 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     if (appliedLaunchTab) return;
     appliedLaunchTab = YES;
 
-    NSString *selectorName = SCISelectorForLaunchTabPreference([SCIUtils getStringPref:@"interface_launch_tab"]);
+    NSString *selectorName = SPKSelectorForLaunchTabPreference([SPKUtils getStringPref:@"interface_launch_tab"]);
     SEL selector = selectorName.length > 0 ? NSSelectorFromString(selectorName) : nil;
     if (selector && [self respondsToSelector:selector]) {
         ((void(*)(id, SEL))objc_msgSend)(self, selector);
@@ -88,9 +88,9 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 
 - (void)_layoutTabBar {
     // Prevents the wrong icon from being shown as selected because of mismatched surface array indexes
-    NSArray *_tabBarSurfaces = [SCIUtils getIvarForObj:self name:"_tabBarSurfaces"];
+    NSArray *_tabBarSurfaces = [SPKUtils getIvarForObj:self name:"_tabBarSurfaces"];
 
-    [SCIUtils setIvarForObj:self name:"_tabBarSurfaces" value:filterSurfacesArray(_tabBarSurfaces)];
+    [SPKUtils setIvarForObj:self name:"_tabBarSurfaces" value:filterSurfacesArray(_tabBarSurfaces)];
     
     %orig;
 }
@@ -111,9 +111,9 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 %hook _TtC18IGNavConfiguration18IGNavConfiguration
 - (NSInteger)tabOrdering {
 
-    if ([[SCIUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"]) return 0;
-    else if ([[SCIUtils getStringPref:@"interface_nav_order"] isEqualToString:@"standard"]) return 1;
-    else if ([[SCIUtils getStringPref:@"interface_nav_order"] isEqualToString:@"alternate"]) return 2;
+    if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"]) return 0;
+    else if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"standard"]) return 1;
+    else if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"alternate"]) return 2;
 
     return %orig;
 
@@ -124,8 +124,8 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 
 - (BOOL)isTabSwipingEnabled {
 
-    if ([[SCIUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"enabled"]) return YES;
-    else if ([[SCIUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"disabled"]) return NO;
+    if ([[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"enabled"]) return YES;
+    else if ([[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"disabled"]) return NO;
 
     return %orig;
 
@@ -139,10 +139,10 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 - (void)didMoveToWindow {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"interface_hide_msgs_tab"]) {
+    if ([SPKUtils getBoolPref:@"interface_hide_msgs_tab"]) {
         UIButton *rightButton = [self valueForKey:@"rightButton"];
         if (rightButton) {
-            SCILog(@"General", @"[SCInsta] Hiding messages tab (on feed)");
+            SPKLog(@"General", @"[Sparkle] Hiding messages tab (on feed)");
 
             [rightButton removeFromSuperview];
         }
@@ -152,20 +152,20 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 
 %end
 
-extern "C" void SCIInstallNavigationHooksIfNeeded(void) {
-    BOOL shouldInstall = ![[SCIUtils getStringPref:@"interface_nav_order"] isEqualToString:@"default"] ||
-                         ![[SCIUtils getStringPref:@"interface_launch_tab"] isEqualToString:@"default"] ||
-                         ![[SCIUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"default"] ||
-                         [SCIUtils getBoolPref:@"interface_hide_feed_tab"] ||
-                         [SCIUtils getBoolPref:@"interface_hide_reels_tab"] ||
-                         [SCIUtils getBoolPref:@"interface_hide_msgs_tab"] ||
-                         [SCIUtils getBoolPref:@"interface_hide_explore_tab"] ||
-                         [SCIUtils getBoolPref:@"interface_hide_profile_tab"] ||
-                         [SCIUtils getBoolPref:@"interface_hide_create_tab"];
+extern "C" void SPKInstallNavigationHooksIfNeeded(void) {
+    BOOL shouldInstall = ![[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"default"] ||
+                         ![[SPKUtils getStringPref:@"interface_launch_tab"] isEqualToString:@"default"] ||
+                         ![[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"default"] ||
+                         [SPKUtils getBoolPref:@"interface_hide_feed_tab"] ||
+                         [SPKUtils getBoolPref:@"interface_hide_reels_tab"] ||
+                         [SPKUtils getBoolPref:@"interface_hide_msgs_tab"] ||
+                         [SPKUtils getBoolPref:@"interface_hide_explore_tab"] ||
+                         [SPKUtils getBoolPref:@"interface_hide_profile_tab"] ||
+                         [SPKUtils getBoolPref:@"interface_hide_create_tab"];
     if (!shouldInstall) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCINavigationHooks);
+        %init(SPKNavigationHooks);
     });
 }

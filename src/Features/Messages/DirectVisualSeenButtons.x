@@ -6,44 +6,44 @@
 #import "../../AssetUtils.h"
 #import "../../Tweak.h"
 #import "../../Utils.h"
-#import "../../Shared/Messages/SCIDirectSeenContext.h"
-#import "../../Shared/Stories/SCIStoryContext.h"
-#import "../../Shared/UI/SCIChrome.h"
+#import "../../Shared/Messages/SPKDirectSeenContext.h"
+#import "../../Shared/Stories/SPKStoryContext.h"
+#import "../../Shared/UI/SPKChrome.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SCIApplyButtonStyle(UIButton *button, NSInteger source);
+void SPKApplyButtonStyle(UIButton *button, NSInteger source);
 #ifdef __cplusplus
 }
 #endif
 
-static NSString * const kSCISeenMessagesBarIconResource = @"eye";
-static NSInteger const kSCIActionButtonSourceDirect = 4;
-static NSInteger const kSCIDirectActionButtonTag = 921344;
-static NSInteger const kSCIDirectSeenButtonTag = 921345;
-static const void *kSCIDirectSeenBottomConstraintAssocKey = &kSCIDirectSeenBottomConstraintAssocKey;
-static const void *kSCIDirectSeenTrailingOverlayConstraintAssocKey = &kSCIDirectSeenTrailingOverlayConstraintAssocKey;
-static const void *kSCIDirectSeenTrailingActionConstraintAssocKey = &kSCIDirectSeenTrailingActionConstraintAssocKey;
-static const void *kSCIDirectSeenCenterYActionConstraintAssocKey = &kSCIDirectSeenCenterYActionConstraintAssocKey;
-static const void *kSCIDirectSeenWidthConstraintAssocKey = &kSCIDirectSeenWidthConstraintAssocKey;
-static const void *kSCIDirectSeenHeightConstraintAssocKey = &kSCIDirectSeenHeightConstraintAssocKey;
-static const void *kSCIDirectSeenAnchoredActionButtonAssocKey = &kSCIDirectSeenAnchoredActionButtonAssocKey;
-static const void *kSCIDirectVisualObservedInputViewAssocKey = &kSCIDirectVisualObservedInputViewAssocKey;
-static const void *kSCIDirectVisualHasInputObserverAssocKey = &kSCIDirectVisualHasInputObserverAssocKey;
-static void *kSCIDirectVisualInputAlphaObserverContext = &kSCIDirectVisualInputAlphaObserverContext;
+static NSString * const kSPKSeenMessagesBarIconResource = @"eye";
+static NSInteger const kSPKActionButtonSourceDirect = 4;
+static NSInteger const kSPKDirectActionButtonTag = 921344;
+static NSInteger const kSPKDirectSeenButtonTag = 921345;
+static const void *kSPKDirectSeenBottomConstraintAssocKey = &kSPKDirectSeenBottomConstraintAssocKey;
+static const void *kSPKDirectSeenTrailingOverlayConstraintAssocKey = &kSPKDirectSeenTrailingOverlayConstraintAssocKey;
+static const void *kSPKDirectSeenTrailingActionConstraintAssocKey = &kSPKDirectSeenTrailingActionConstraintAssocKey;
+static const void *kSPKDirectSeenCenterYActionConstraintAssocKey = &kSPKDirectSeenCenterYActionConstraintAssocKey;
+static const void *kSPKDirectSeenWidthConstraintAssocKey = &kSPKDirectSeenWidthConstraintAssocKey;
+static const void *kSPKDirectSeenHeightConstraintAssocKey = &kSPKDirectSeenHeightConstraintAssocKey;
+static const void *kSPKDirectSeenAnchoredActionButtonAssocKey = &kSPKDirectSeenAnchoredActionButtonAssocKey;
+static const void *kSPKDirectVisualObservedInputViewAssocKey = &kSPKDirectVisualObservedInputViewAssocKey;
+static const void *kSPKDirectVisualHasInputObserverAssocKey = &kSPKDirectVisualHasInputObserverAssocKey;
+static void *kSPKDirectVisualInputAlphaObserverContext = &kSPKDirectVisualInputAlphaObserverContext;
 
-static id SCIKVCObject(id target, NSString *key);
+static id SPKKVCObject(id target, NSString *key);
 
-static inline BOOL SCIDirectManualSeenRulesEnabled(void) {
-    return [SCIUtils getBoolPref:@"msgs_manual_seen"] || SCIDirectManualSeenThreadCount(NO) > 0;
+static inline BOOL SPKDirectManualSeenRulesEnabled(void) {
+    return [SPKUtils getBoolPref:@"msgs_manual_seen"] || SPKDirectManualSeenThreadCount(NO) > 0;
 }
 
-static inline BOOL SCIDirectSeenHooksNeeded(void) {
-    return SCIDirectManualSeenRulesEnabled() ||
-           [SCIUtils getBoolPref:@"msgs_manual_visual_seen"] ||
-           [SCIUtils getBoolPref:@"msgs_advance_visual_on_seen"];
+static inline BOOL SPKDirectSeenHooksNeeded(void) {
+    return SPKDirectManualSeenRulesEnabled() ||
+           [SPKUtils getBoolPref:@"msgs_manual_visual_seen"] ||
+           [SPKUtils getBoolPref:@"msgs_advance_visual_on_seen"];
 }
-static NSArray *SCIArrayFromCollection(id collection) {
+static NSArray *SPKArrayFromCollection(id collection) {
     if (!collection ||
         [collection isKindOfClass:[NSDictionary class]] ||
         [collection isKindOfClass:[NSString class]] ||
@@ -74,7 +74,7 @@ static NSArray *SCIArrayFromCollection(id collection) {
     return nil;
 }
 
-static id SCIKVCObject(id target, NSString *key) {
+static id SPKKVCObject(id target, NSString *key) {
     if (!target || key.length == 0) return nil;
 
     @try {
@@ -84,7 +84,7 @@ static id SCIKVCObject(id target, NSString *key) {
     }
 }
 
-static id SCIObjectForSelector(id target, NSString *selectorName) {
+static id SPKObjectForSelector(id target, NSString *selectorName) {
     if (!target || selectorName.length == 0) return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
@@ -93,27 +93,27 @@ static id SCIObjectForSelector(id target, NSString *selectorName) {
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-static id SCIFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
+static id SPKFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
     if (!target || selectors.count == 0) return nil;
     for (NSString *selectorName in selectors) {
-        id value = SCIObjectForSelector(target, selectorName);
+        id value = SPKObjectForSelector(target, selectorName);
         if (value) return value;
     }
     return nil;
 }
 
-static void SCIPlayButtonTappedHaptic(void) {
+static void SPKPlayButtonTappedHaptic(void) {
     UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
     [feedback selectionChanged];
 }
-static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
+static UIButton *SPKStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     UIView *existing = [container viewWithTag:tag];
-    if ([existing isKindOfClass:SCIChromeButton.class]) {
+    if ([existing isKindOfClass:SPKChromeButton.class]) {
         return (UIButton *)existing;
     }
     [existing removeFromSuperview];
 
-    SCIChromeButton *button = [[SCIChromeButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
+    SPKChromeButton *button = [[SPKChromeButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
     button.tag = tag;
     button.adjustsImageWhenHighlighted = YES;
     button.showsMenuAsPrimaryAction = NO;
@@ -122,10 +122,10 @@ static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     return button;
 }
 
-static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *logMessage) {
+static void SPKSetSeenButtonImage(UIButton *button, UIImage *image, NSString *logMessage) {
     UIImage *templatedImage = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    if ([button isKindOfClass:SCIChromeButton.class]) {
-        SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+    if ([button isKindOfClass:SPKChromeButton.class]) {
+        SPKChromeButton *chromeButton = (SPKChromeButton *)button;
         chromeButton.iconView.image = templatedImage;
         chromeButton.iconTint = UIColor.whiteColor;
         [button setImage:nil forState:UIControlStateNormal];
@@ -133,7 +133,7 @@ static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
         [button setImage:templatedImage forState:UIControlStateNormal];
     }
 
-    SCILog(@"Capture", @"%@ tag=%ld button=%@<%p> subviews=%@ imageView=%@<%p> imageSuperview=%@<%p>",
+    SPKLog(@"Capture", @"%@ tag=%ld button=%@<%p> subviews=%@ imageView=%@<%p> imageSuperview=%@<%p>",
            logMessage,
            (long)button.tag,
            NSStringFromClass(button.class),
@@ -145,16 +145,16 @@ static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
            button.imageView.superview);
 }
 
-static void SCIApplyStorySeenButtonStyle(UIButton *button) {
+static void SPKApplyStorySeenButtonStyle(UIButton *button) {
     if (!button) return;
-    SCIApplyButtonStyle(button, kSCIActionButtonSourceDirect);
+    SPKApplyButtonStyle(button, kSPKActionButtonSourceDirect);
 }
 
-static UIView *SCIDirectOverlayViewFromController(UIViewController *controller) {
+static UIView *SPKDirectOverlayViewFromController(UIViewController *controller) {
     if (!controller) return nil;
 
-    id viewerContainer = [SCIUtils getIvarForObj:controller name:"_viewerContainerView"];
-    if (!viewerContainer) viewerContainer = SCIKVCObject(controller, @"viewerContainerView");
+    id viewerContainer = [SPKUtils getIvarForObj:controller name:"_viewerContainerView"];
+    if (!viewerContainer) viewerContainer = SPKKVCObject(controller, @"viewerContainerView");
 
     SEL overlaySelector = NSSelectorFromString(@"overlayView");
     if (![viewerContainer respondsToSelector:overlaySelector]) return nil;
@@ -162,30 +162,30 @@ static UIView *SCIDirectOverlayViewFromController(UIViewController *controller) 
     return [overlay isKindOfClass:[UIView class]] ? (UIView *)overlay : nil;
 }
 
-static id SCIDirectCurrentMessageFromController(UIViewController *controller) {
+static id SPKDirectCurrentMessageFromController(UIViewController *controller) {
     if (!controller) return nil;
 
-    id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-    if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+    id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+    if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
-    id message = [SCIUtils getIvarForObj:dataSource name:"_currentMessage"];
-    if (!message) message = SCIKVCObject(dataSource, @"currentMessage");
+    id message = [SPKUtils getIvarForObj:dataSource name:"_currentMessage"];
+    if (!message) message = SPKKVCObject(dataSource, @"currentMessage");
     return message;
 }
 
-static NSInteger SCIDirectCurrentIndexFromController(UIViewController *controller) {
+static NSInteger SPKDirectCurrentIndexFromController(UIViewController *controller) {
     if (!controller) return 0;
 
-    id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-    if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+    id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+    if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
     for (NSString *selectorName in @[@"currentItemIndex", @"currentIndex", @"itemIndex"]) {
-        NSNumber *index = [SCIUtils numericValueForObj:dataSource selectorName:selectorName];
+        NSNumber *index = [SPKUtils numericValueForObj:dataSource selectorName:selectorName];
         if (index && index.integerValue >= 0) return index.integerValue;
     }
 
     for (NSString *key in @[@"currentItemIndex", @"currentIndex", @"itemIndex"]) {
-        id value = SCIKVCObject(dataSource, key);
+        id value = SPKKVCObject(dataSource, key);
         if ([value respondsToSelector:@selector(integerValue)] && [value integerValue] >= 0) {
             return [value integerValue];
         }
@@ -194,7 +194,7 @@ static NSInteger SCIDirectCurrentIndexFromController(UIViewController *controlle
     return 0;
 }
 
-static CGFloat SCIHeightFromFrameLikeObject(id object) {
+static CGFloat SPKHeightFromFrameLikeObject(id object) {
     if (!object) return 0.0;
 
     if ([object isKindOfClass:[UIView class]]) {
@@ -212,110 +212,110 @@ static CGFloat SCIHeightFromFrameLikeObject(id object) {
     return 0.0;
 }
 
-static CGFloat SCIDirectBottomOffset(UIViewController *controller) {
+static CGFloat SPKDirectBottomOffset(UIViewController *controller) {
     if (!controller) return 12.0;
 
-    id inputView = [SCIUtils getIvarForObj:controller name:"_inputView"];
+    id inputView = [SPKUtils getIvarForObj:controller name:"_inputView"];
     CGFloat offset = controller.view.safeAreaInsets.bottom + 12.0;
     if (inputView) {
-        offset += SCIHeightFromFrameLikeObject(inputView);
+        offset += SPKHeightFromFrameLikeObject(inputView);
     }
 
     return offset;
 }
 
-static UIView *SCIDirectInputViewFromController(UIViewController *controller) {
+static UIView *SPKDirectInputViewFromController(UIViewController *controller) {
     if (!controller) return nil;
 
-    id inputView = [SCIUtils getIvarForObj:controller name:"_inputView"];
+    id inputView = [SPKUtils getIvarForObj:controller name:"_inputView"];
     if (![inputView isKindOfClass:[UIView class]]) {
-        inputView = SCIKVCObject(controller, @"inputView");
+        inputView = SPKKVCObject(controller, @"inputView");
     }
     return [inputView isKindOfClass:[UIView class]] ? (UIView *)inputView : nil;
 }
 
-static void SCIUpdateDirectVisualButtonsAlpha(UIViewController *controller, CGFloat alpha) {
+static void SPKUpdateDirectVisualButtonsAlpha(UIViewController *controller, CGFloat alpha) {
     if (!controller) return;
-    UIView *overlay = SCIDirectOverlayViewFromController(controller);
+    UIView *overlay = SPKDirectOverlayViewFromController(controller);
     if (!overlay) return;
 
-    UIButton *actionButton = (UIButton *)[overlay viewWithTag:kSCIDirectActionButtonTag];
+    UIButton *actionButton = (UIButton *)[overlay viewWithTag:kSPKDirectActionButtonTag];
     if ([actionButton isKindOfClass:[UIButton class]]) {
         actionButton.alpha = alpha;
     }
 
-    UIButton *seenButton = (UIButton *)[overlay viewWithTag:kSCIDirectSeenButtonTag];
+    UIButton *seenButton = (UIButton *)[overlay viewWithTag:kSPKDirectSeenButtonTag];
     if ([seenButton isKindOfClass:[UIButton class]]) {
         seenButton.alpha = alpha;
     }
 }
 
-static void SCIRemoveDirectVisualInputAlphaObserverIfNeeded(UIViewController *controller) {
-    UIView *observedInputView = objc_getAssociatedObject(controller, kSCIDirectVisualObservedInputViewAssocKey);
-    BOOL hasObserver = [objc_getAssociatedObject(controller, kSCIDirectVisualHasInputObserverAssocKey) boolValue];
+static void SPKRemoveDirectVisualInputAlphaObserverIfNeeded(UIViewController *controller) {
+    UIView *observedInputView = objc_getAssociatedObject(controller, kSPKDirectVisualObservedInputViewAssocKey);
+    BOOL hasObserver = [objc_getAssociatedObject(controller, kSPKDirectVisualHasInputObserverAssocKey) boolValue];
     if (observedInputView && hasObserver) {
-        [observedInputView removeObserver:controller forKeyPath:@"alpha" context:kSCIDirectVisualInputAlphaObserverContext];
+        [observedInputView removeObserver:controller forKeyPath:@"alpha" context:kSPKDirectVisualInputAlphaObserverContext];
     }
 
-    objc_setAssociatedObject(controller, kSCIDirectVisualObservedInputViewAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(controller, kSCIDirectVisualHasInputObserverAssocKey, @NO, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(controller, kSPKDirectVisualObservedInputViewAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(controller, kSPKDirectVisualHasInputObserverAssocKey, @NO, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static void SCIEnsureDirectVisualInputAlphaObserver(UIViewController *controller) {
+static void SPKEnsureDirectVisualInputAlphaObserver(UIViewController *controller) {
     if (!controller) return;
 
-    UIView *inputView = SCIDirectInputViewFromController(controller);
-    UIView *observedInputView = objc_getAssociatedObject(controller, kSCIDirectVisualObservedInputViewAssocKey);
-    BOOL hasObserver = [objc_getAssociatedObject(controller, kSCIDirectVisualHasInputObserverAssocKey) boolValue];
+    UIView *inputView = SPKDirectInputViewFromController(controller);
+    UIView *observedInputView = objc_getAssociatedObject(controller, kSPKDirectVisualObservedInputViewAssocKey);
+    BOOL hasObserver = [objc_getAssociatedObject(controller, kSPKDirectVisualHasInputObserverAssocKey) boolValue];
     if (observedInputView && observedInputView != inputView && hasObserver) {
-        [observedInputView removeObserver:controller forKeyPath:@"alpha" context:kSCIDirectVisualInputAlphaObserverContext];
-        objc_setAssociatedObject(controller, kSCIDirectVisualHasInputObserverAssocKey, @NO, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [observedInputView removeObserver:controller forKeyPath:@"alpha" context:kSPKDirectVisualInputAlphaObserverContext];
+        objc_setAssociatedObject(controller, kSPKDirectVisualHasInputObserverAssocKey, @NO, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         hasObserver = NO;
     }
 
     if (observedInputView != inputView) {
-        objc_setAssociatedObject(controller, kSCIDirectVisualObservedInputViewAssocKey, inputView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(controller, kSPKDirectVisualObservedInputViewAssocKey, inputView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
     if (inputView && !hasObserver) {
         [inputView addObserver:controller
                     forKeyPath:@"alpha"
                        options:NSKeyValueObservingOptionInitial | NSKeyValueObservingOptionNew
-                       context:kSCIDirectVisualInputAlphaObserverContext];
-        objc_setAssociatedObject(controller, kSCIDirectVisualHasInputObserverAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                       context:kSPKDirectVisualInputAlphaObserverContext];
+        objc_setAssociatedObject(controller, kSPKDirectVisualHasInputObserverAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 }
 
-static inline BOOL SCIShouldShowDirectVisualSeenButton(void) {
-    return [SCIUtils getBoolPref:@"msgs_manual_seen"] || [SCIUtils getBoolPref:@"msgs_manual_visual_seen"];
+static inline BOOL SPKShouldShowDirectVisualSeenButton(void) {
+    return [SPKUtils getBoolPref:@"msgs_manual_seen"] || [SPKUtils getBoolPref:@"msgs_manual_visual_seen"];
 }
 
-static BOOL SCIDirectInvokeNoArgSelector(id object, SEL selector) {
+static BOOL SPKDirectInvokeNoArgSelector(id object, SEL selector) {
     if (!object || !selector || ![object respondsToSelector:selector]) return NO;
     ((void (*)(id, SEL))objc_msgSend)(object, selector);
     return YES;
 }
 
-static BOOL SCIDirectInvokeObjectArgSelector(id object, SEL selector, id argument) {
+static BOOL SPKDirectInvokeObjectArgSelector(id object, SEL selector, id argument) {
     if (!object || !selector || ![object respondsToSelector:selector]) return NO;
     ((void (*)(id, SEL, id))objc_msgSend)(object, selector, argument);
     return YES;
 }
 
-static BOOL SCIDirectInvokeIntegerArgSelector(id object, SEL selector, NSInteger argument) {
+static BOOL SPKDirectInvokeIntegerArgSelector(id object, SEL selector, NSInteger argument) {
     if (!object || !selector || ![object respondsToSelector:selector]) return NO;
     ((void (*)(id, SEL, NSInteger))objc_msgSend)(object, selector, argument);
     return YES;
 }
 
-static BOOL SCIDirectInvokeDismissShowNextSelector(id object) {
+static BOOL SPKDirectInvokeDismissShowNextSelector(id object) {
     SEL selector = NSSelectorFromString(@"dismissWithShowNext:completion:");
     if (!object || ![object respondsToSelector:selector]) return NO;
     ((void (*)(id, SEL, BOOL, id))objc_msgSend)(object, selector, YES, nil);
     return YES;
 }
 
-static NSArray *SCIDirectVisualAdvanceTargets(UIViewController *controller) {
+static NSArray *SPKDirectVisualAdvanceTargets(UIViewController *controller) {
     if (!controller) return @[];
 
     NSMutableArray *targets = [NSMutableArray array];
@@ -337,7 +337,7 @@ static NSArray *SCIDirectVisualAdvanceTargets(UIViewController *controller) {
     ];
 
     for (NSString *key in keys) {
-        id target = [key hasPrefix:@"_"] ? [SCIUtils getIvarForObj:controller name:key.UTF8String] : SCIKVCObject(controller, key);
+        id target = [key hasPrefix:@"_"] ? [SPKUtils getIvarForObj:controller name:key.UTF8String] : SPKKVCObject(controller, key);
         if (target && ![targets containsObject:target]) {
             [targets addObject:target];
         }
@@ -350,7 +350,7 @@ static NSArray *SCIDirectVisualAdvanceTargets(UIViewController *controller) {
     return targets;
 }
 
-static BOOL SCIDirectAdvanceVisualViewer(UIViewController *controller) {
+static BOOL SPKDirectAdvanceVisualViewer(UIViewController *controller) {
     if (!controller) return NO;
 
     SEL overlayTapSelector = NSSelectorFromString(@"fullscreenOverlay:didTapInRegion:");
@@ -359,10 +359,10 @@ static BOOL SCIDirectAdvanceVisualViewer(UIViewController *controller) {
         return YES;
     }
 
-    NSArray *targets = SCIDirectVisualAdvanceTargets(controller);
+    NSArray *targets = SPKDirectVisualAdvanceTargets(controller);
 
     for (id target in targets) {
-        if (SCIDirectInvokeDismissShowNextSelector(target)) return YES;
+        if (SPKDirectInvokeDismissShowNextSelector(target)) return YES;
     }
 
     NSArray<NSString *> *integerSelectors = @[
@@ -374,7 +374,7 @@ static BOOL SCIDirectAdvanceVisualViewer(UIViewController *controller) {
     ];
     for (id target in targets) {
         for (NSString *selectorName in integerSelectors) {
-            if (SCIDirectInvokeIntegerArgSelector(target, NSSelectorFromString(selectorName), 1)) return YES;
+            if (SPKDirectInvokeIntegerArgSelector(target, NSSelectorFromString(selectorName), 1)) return YES;
         }
     }
 
@@ -389,7 +389,7 @@ static BOOL SCIDirectAdvanceVisualViewer(UIViewController *controller) {
     ];
     for (id target in targets) {
         for (NSString *selectorName in noArgSelectors) {
-            if (SCIDirectInvokeNoArgSelector(target, NSSelectorFromString(selectorName))) return YES;
+            if (SPKDirectInvokeNoArgSelector(target, NSSelectorFromString(selectorName))) return YES;
         }
     }
 
@@ -399,24 +399,24 @@ static BOOL SCIDirectAdvanceVisualViewer(UIViewController *controller) {
         return YES;
     }
 
-    return SCIDirectInvokeObjectArgSelector(controller, NSSelectorFromString(@"_didTapHeaderViewDismissButton:"), nil);
+    return SPKDirectInvokeObjectArgSelector(controller, NSSelectorFromString(@"_didTapHeaderViewDismissButton:"), nil);
 }
 
-static void SCIMarkDirectVisualMessageAsSeen(UIViewController *controller) {
+static void SPKMarkDirectVisualMessageAsSeen(UIViewController *controller) {
     if (!controller) return;
 
-    id message = SCIDirectCurrentMessageFromController(controller);
+    id message = SPKDirectCurrentMessageFromController(controller);
     if (!message) {
-        SCINotify(kSCINotificationDirectVisualMarkSeen, @"Message not found", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKNotificationDirectVisualMarkSeen, @"Message not found", nil, @"error_filled", SPKNotificationToneError);
         return;
     }
 
-    id responders = [SCIUtils getIvarForObj:controller name:"_eventResponders"];
-    if (!responders) responders = SCIKVCObject(controller, @"eventResponders");
+    id responders = [SPKUtils getIvarForObj:controller name:"_eventResponders"];
+    if (!responders) responders = SPKKVCObject(controller, @"eventResponders");
 
     SEL beginPlaybackSelector = NSSelectorFromString(@"visualMessageViewerController:didBeginPlaybackForVisualMessage:atIndex:");
     Class eventHandlerClass = NSClassFromString(@"IGDirectVisualMessageViewerEventHandler");
-    NSArray *responderCollection = SCIArrayFromCollection(responders);
+    NSArray *responderCollection = SPKArrayFromCollection(responders);
     NSMutableArray *orderedResponders = [NSMutableArray array];
     for (id responder in responderCollection ?: (responders ? @[responders] : @[])) {
         if (eventHandlerClass && [responder isKindOfClass:eventHandlerClass]) {
@@ -431,7 +431,7 @@ static void SCIMarkDirectVisualMessageAsSeen(UIViewController *controller) {
 
     BOOL dispatched = NO;
 
-    SCIPendingDirectVisualMessageToMarkSeen = message;
+    SPKPendingDirectVisualMessageToMarkSeen = message;
     @try {
         for (id responder in orderedResponders) {
             if ([responder respondsToSelector:beginPlaybackSelector]) {
@@ -440,62 +440,62 @@ static void SCIMarkDirectVisualMessageAsSeen(UIViewController *controller) {
             }
         }
     } @finally {
-        SCIPendingDirectVisualMessageToMarkSeen = nil;
+        SPKPendingDirectVisualMessageToMarkSeen = nil;
     }
     if (!dispatched) {
-        SCINotify(kSCINotificationDirectVisualMarkSeen, @"Unable to mark as seen", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKNotificationDirectVisualMarkSeen, @"Unable to mark as seen", nil, @"error_filled", SPKNotificationToneError);
         return;
     }
 
-    if ([SCIUtils getBoolPref:@"msgs_advance_visual_on_seen"]) {
+    if ([SPKUtils getBoolPref:@"msgs_advance_visual_on_seen"]) {
         __weak UIViewController *weakController = controller;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            SCIDirectAdvanceVisualViewer(weakController);
+            SPKDirectAdvanceVisualViewer(weakController);
         });
     }
 
-    SCINotify(kSCINotificationDirectVisualMarkSeen, @"Marked as seen", nil, @"circle_check_filled", SCINotificationToneSuccess);
+    SPKNotify(kSPKNotificationDirectVisualMarkSeen, @"Marked as seen", nil, @"circle_check_filled", SPKNotificationToneSuccess);
 }
 
-static void SCIInstallDirectSeenButton(UIViewController *controller) {
-    UIView *overlay = SCIDirectOverlayViewFromController(controller);
+static void SPKInstallDirectSeenButton(UIViewController *controller) {
+    UIView *overlay = SPKDirectOverlayViewFromController(controller);
     if (!overlay) return;
 
-    UIButton *seenButton = (UIButton *)[overlay viewWithTag:kSCIDirectSeenButtonTag];
-    if (!SCIShouldShowDirectVisualSeenButton()) {
+    UIButton *seenButton = (UIButton *)[overlay viewWithTag:kSPKDirectSeenButtonTag];
+    if (!SPKShouldShowDirectVisualSeenButton()) {
         [seenButton removeFromSuperview];
         return;
     }
 
-    if (![seenButton isKindOfClass:SCIChromeButton.class]) {
+    if (![seenButton isKindOfClass:SPKChromeButton.class]) {
         [seenButton removeFromSuperview];
-        seenButton = SCIStorySeenButtonWithTag(overlay, kSCIDirectSeenButtonTag);
-        seenButton.tag = kSCIDirectSeenButtonTag;
+        seenButton = SPKStorySeenButtonWithTag(overlay, kSPKDirectSeenButtonTag);
+        seenButton.tag = kSPKDirectSeenButtonTag;
         seenButton.adjustsImageWhenHighlighted = YES;
-        UIImage *seenImage = [SCIAssetUtils instagramIconNamed:kSCISeenMessagesBarIconResource pointSize:24.0];
-        SCISetSeenButtonImage(seenButton, seenImage, @"Direct seen custom icon assigned");
-        [seenButton addTarget:controller action:@selector(sci_didTapDirectSeenButton:) forControlEvents:UIControlEventTouchUpInside];
+        UIImage *seenImage = [SPKAssetUtils instagramIconNamed:kSPKSeenMessagesBarIconResource pointSize:24.0];
+        SPKSetSeenButtonImage(seenButton, seenImage, @"Direct seen custom icon assigned");
+        [seenButton addTarget:controller action:@selector(spk_didTapDirectSeenButton:) forControlEvents:UIControlEventTouchUpInside];
     }
 
     seenButton.translatesAutoresizingMaskIntoConstraints = NO;
-    SCIApplyStorySeenButtonStyle(seenButton);
+    SPKApplyStorySeenButtonStyle(seenButton);
 
     CGFloat size = 44.0;
-    CGFloat bottomOffset = SCIDirectBottomOffset(controller);
-    UIButton *actionButton = (UIButton *)[overlay viewWithTag:kSCIDirectActionButtonTag];
+    CGFloat bottomOffset = SPKDirectBottomOffset(controller);
+    UIButton *actionButton = (UIButton *)[overlay viewWithTag:kSPKDirectActionButtonTag];
     BOOL actionVisible = [actionButton isKindOfClass:[UIButton class]]
         && !actionButton.hidden
         && actionButton.superview == overlay
         && CGRectGetWidth(actionButton.bounds) > 0.0
         && CGRectGetHeight(actionButton.bounds) > 0.0;
 
-    NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(seenButton, kSCIDirectSeenBottomConstraintAssocKey);
-    NSLayoutConstraint *trailingOverlayConstraint = objc_getAssociatedObject(seenButton, kSCIDirectSeenTrailingOverlayConstraintAssocKey);
-    NSLayoutConstraint *trailingActionConstraint = objc_getAssociatedObject(seenButton, kSCIDirectSeenTrailingActionConstraintAssocKey);
-    NSLayoutConstraint *centerYActionConstraint = objc_getAssociatedObject(seenButton, kSCIDirectSeenCenterYActionConstraintAssocKey);
-    NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(seenButton, kSCIDirectSeenWidthConstraintAssocKey);
-    NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(seenButton, kSCIDirectSeenHeightConstraintAssocKey);
-    UIButton *anchoredActionButton = objc_getAssociatedObject(seenButton, kSCIDirectSeenAnchoredActionButtonAssocKey);
+    NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenBottomConstraintAssocKey);
+    NSLayoutConstraint *trailingOverlayConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenTrailingOverlayConstraintAssocKey);
+    NSLayoutConstraint *trailingActionConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenTrailingActionConstraintAssocKey);
+    NSLayoutConstraint *centerYActionConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenCenterYActionConstraintAssocKey);
+    NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenWidthConstraintAssocKey);
+    NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenHeightConstraintAssocKey);
+    UIButton *anchoredActionButton = objc_getAssociatedObject(seenButton, kSPKDirectSeenAnchoredActionButtonAssocKey);
 
     if (!bottomConstraint || !trailingOverlayConstraint || !widthConstraint || !heightConstraint) {
         bottomConstraint = [seenButton.bottomAnchor constraintEqualToAnchor:overlay.bottomAnchor constant:-bottomOffset];
@@ -510,10 +510,10 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
             heightConstraint
         ]];
 
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenTrailingOverlayConstraintAssocKey, trailingOverlayConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenTrailingOverlayConstraintAssocKey, trailingOverlayConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
     if (actionVisible && (!trailingActionConstraint || anchoredActionButton != actionButton)) {
@@ -521,15 +521,15 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
             trailingActionConstraint.active = NO;
         }
         trailingActionConstraint = [seenButton.trailingAnchor constraintEqualToAnchor:actionButton.leadingAnchor constant:-5.0];
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenTrailingActionConstraintAssocKey, trailingActionConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenAnchoredActionButtonAssocKey, actionButton, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenTrailingActionConstraintAssocKey, trailingActionConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenAnchoredActionButtonAssocKey, actionButton, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     if (actionVisible && (!centerYActionConstraint || anchoredActionButton != actionButton)) {
         if (centerYActionConstraint) {
             centerYActionConstraint.active = NO;
         }
         centerYActionConstraint = [seenButton.centerYAnchor constraintEqualToAnchor:actionButton.centerYAnchor];
-        objc_setAssociatedObject(seenButton, kSCIDirectSeenCenterYActionConstraintAssocKey, centerYActionConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(seenButton, kSPKDirectSeenCenterYActionConstraintAssocKey, centerYActionConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
     bottomConstraint.constant = -bottomOffset;
@@ -552,32 +552,32 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
     [overlay bringSubviewToFront:seenButton];
 }
 
-%group SCIDirectVisualSeenButtonHooks
+%group SPKDirectVisualSeenButtonHooks
 
 %hook IGDirectVisualMessageViewerController
 - (void)viewDidLayoutSubviews {
     %orig;
-    if (!SCIDirectSeenHooksNeeded()) return;
-    UIView *inputView = SCIDirectInputViewFromController((UIViewController *)self);
-    SCIEnsureDirectVisualInputAlphaObserver((UIViewController *)self);
-    SCIInstallDirectSeenButton((UIViewController *)self);
-    SCIUpdateDirectVisualButtonsAlpha((UIViewController *)self, inputView ? inputView.alpha : 1.0);
+    if (!SPKDirectSeenHooksNeeded()) return;
+    UIView *inputView = SPKDirectInputViewFromController((UIViewController *)self);
+    SPKEnsureDirectVisualInputAlphaObserver((UIViewController *)self);
+    SPKInstallDirectSeenButton((UIViewController *)self);
+    SPKUpdateDirectVisualButtonsAlpha((UIViewController *)self, inputView ? inputView.alpha : 1.0);
     __weak UIViewController *weakController = (UIViewController *)self;
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *strongController = weakController;
         if (!strongController) return;
-        UIView *strongInputView = SCIDirectInputViewFromController(strongController);
-        SCIInstallDirectSeenButton(strongController);
-        SCIUpdateDirectVisualButtonsAlpha(strongController, strongInputView ? strongInputView.alpha : 1.0);
+        UIView *strongInputView = SPKDirectInputViewFromController(strongController);
+        SPKInstallDirectSeenButton(strongController);
+        SPKUpdateDirectVisualButtonsAlpha(strongController, strongInputView ? strongInputView.alpha : 1.0);
     });
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context {
-    if (!SCIDirectSeenHooksNeeded()) {
+    if (!SPKDirectSeenHooksNeeded()) {
         %orig(keyPath, object, change, context);
         return;
     }
-    if (context == kSCIDirectVisualInputAlphaObserverContext && [keyPath isEqualToString:@"alpha"]) {
+    if (context == kSPKDirectVisualInputAlphaObserverContext && [keyPath isEqualToString:@"alpha"]) {
         CGFloat alpha = 1.0;
         id newAlphaValue = change[NSKeyValueChangeNewKey];
         if ([newAlphaValue respondsToSelector:@selector(floatValue)]) {
@@ -585,7 +585,7 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
         } else if ([object isKindOfClass:[UIView class]]) {
             alpha = ((UIView *)object).alpha;
         }
-        SCIUpdateDirectVisualButtonsAlpha((UIViewController *)self, alpha);
+        SPKUpdateDirectVisualButtonsAlpha((UIViewController *)self, alpha);
         return;
     }
 
@@ -593,24 +593,24 @@ static void SCIInstallDirectSeenButton(UIViewController *controller) {
 }
 
 - (void)dealloc {
-    SCIRemoveDirectVisualInputAlphaObserverIfNeeded((UIViewController *)self);
+    SPKRemoveDirectVisualInputAlphaObserverIfNeeded((UIViewController *)self);
     %orig;
 }
 
-%new - (void)sci_didTapDirectSeenButton:(UIButton *)sender {
+%new - (void)spk_didTapDirectSeenButton:(UIButton *)sender {
     (void)sender;
-    SCIPlayButtonTappedHaptic();
-    SCIMarkDirectVisualMessageAsSeen((UIViewController *)self);
+    SPKPlayButtonTappedHaptic();
+    SPKMarkDirectVisualMessageAsSeen((UIViewController *)self);
 }
 %end
 
 %end
 
-void SCIInstallDirectVisualSeenButtonHooksIfNeeded(void) {
-    if (!SCIDirectSeenHooksNeeded()) return;
+void SPKInstallDirectVisualSeenButtonHooksIfNeeded(void) {
+    if (!SPKDirectSeenHooksNeeded()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIDirectVisualSeenButtonHooks);
+        %init(SPKDirectVisualSeenButtonHooks);
     });
 }

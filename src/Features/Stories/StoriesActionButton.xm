@@ -3,20 +3,20 @@
 
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
-#import "../../Shared/Stories/SCIStoryButtonPlacement.h"
-#import "../../Shared/Stories/SCIStoryContext.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
+#import "../../Shared/Stories/SPKStoryButtonPlacement.h"
+#import "../../Shared/Stories/SPKStoryContext.h"
 
-static NSInteger const kSCIStoriesActionButtonTag = 921343;
+static NSInteger const kSPKStoriesActionButtonTag = 921343;
 
-static id SCIStorySectionControllerFromOverlay(UIView *overlayView) {
-	SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+static id SPKStorySectionControllerFromOverlay(UIView *overlayView) {
+	SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
 	if (sharedContext.sectionController) return sharedContext.sectionController;
 	NSArray<NSString *> *delegateSelectors = @[@"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate"];
 	Class sectionControllerClass = NSClassFromString(@"IGStoryFullscreenSectionController");
 
 	for (NSString *selectorName in delegateSelectors) {
-		id delegate = SCIObjectForSelector(overlayView, selectorName);
+		id delegate = SPKObjectForSelector(overlayView, selectorName);
 		if (!delegate) continue;
 		if (!sectionControllerClass || [delegate isKindOfClass:sectionControllerClass]) return delegate;
 	}
@@ -24,38 +24,38 @@ static id SCIStorySectionControllerFromOverlay(UIView *overlayView) {
 	return nil;
 }
 
-static id SCIStoryMediaFromOverlay(UIView *overlayView) {
-	SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+static id SPKStoryMediaFromOverlay(UIView *overlayView) {
+	SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
 	if (sharedContext.media) return sharedContext.media;
-	id sectionController = SCIStorySectionControllerFromOverlay(overlayView);
-	id media = SCIObjectForSelector(sectionController, @"currentStoryItem");
+	id sectionController = SPKStorySectionControllerFromOverlay(overlayView);
+	id media = SPKObjectForSelector(sectionController, @"currentStoryItem");
 	if (media) return media;
 
-	UIViewController *ancestorController = [SCIUtils viewControllerForAncestralView:overlayView];
-	media = SCIObjectForSelector(ancestorController, @"currentStoryItem");
+	UIViewController *ancestorController = [SPKUtils viewControllerForAncestralView:overlayView];
+	media = SPKObjectForSelector(ancestorController, @"currentStoryItem");
 	return media;
 }
 
-static UIViewController *SCIStoryControllerFromOverlay(UIView *overlayView) {
-	SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+static UIViewController *SPKStoryControllerFromOverlay(UIView *overlayView) {
+	SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
 	if (sharedContext.viewerController) return sharedContext.viewerController;
 	if (!overlayView) return nil;
 
-	id ancestorController = SCIObjectForSelector(overlayView, @"_viewControllerForAncestor");
+	id ancestorController = SPKObjectForSelector(overlayView, @"_viewControllerForAncestor");
 	if ([ancestorController isKindOfClass:[UIViewController class]]) {
 		return (UIViewController *)ancestorController;
 	}
 
-	return [SCIUtils nearestViewControllerForView:overlayView];
+	return [SPKUtils nearestViewControllerForView:overlayView];
 }
 
-static NSArray *SCIStoryItemsFromCandidate(id candidate) {
+static NSArray *SPKStoryItemsFromCandidate(id candidate) {
     if (!candidate) return nil;
 
     for (NSString *selectorName in @[@"items", @"storyItems", @"reelItems", @"mediaItems", @"allItems"]) {
-        id value = SCIObjectForSelector(candidate, selectorName);
-        if (!value) value = SCIKVCObject(candidate, selectorName);
-        NSArray *items = SCIArrayFromCollection(value);
+        id value = SPKObjectForSelector(candidate, selectorName);
+        if (!value) value = SPKKVCObject(candidate, selectorName);
+        NSArray *items = SPKArrayFromCollection(value);
         if (items.count > 1) return items;
     }
 
@@ -63,7 +63,7 @@ static NSArray *SCIStoryItemsFromCandidate(id candidate) {
     if ([candidate respondsToSelector:cachedSelector]) {
         @try {
             id value = ((id (*)(id, SEL, BOOL))objc_msgSend)(candidate, cachedSelector, YES);
-            NSArray *items = SCIArrayFromCollection(value);
+            NSArray *items = SPKArrayFromCollection(value);
             if (items.count > 1) return items;
         } @catch (__unused NSException *exception) {
         }
@@ -77,9 +77,9 @@ static NSArray *SCIStoryItemsFromCandidate(id candidate) {
             const char *typeEncoding = ivar_getTypeEncoding(ivars[i]);
             if (typeEncoding && typeEncoding[0] == '@') {
                 const char *name = ivar_getName(ivars[i]);
-                id value = [SCIUtils getIvarForObj:candidate name:name];
+                id value = [SPKUtils getIvarForObj:candidate name:name];
                 if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
-                    NSArray *arr = SCIArrayFromCollection(value);
+                    NSArray *arr = SPKArrayFromCollection(value);
                     if (arr.count > 1) {
                         free(ivars);
                         return arr;
@@ -93,37 +93,37 @@ static NSArray *SCIStoryItemsFromCandidate(id candidate) {
     return nil;
 }
 
-static id SCIStoryMediaObjectFromCandidate(id candidate) {
+static id SPKStoryMediaObjectFromCandidate(id candidate) {
     if (!candidate) return nil;
     for (NSString *selectorName in @[@"media", @"storyItem", @"item", @"mediaItem", @"currentStoryItem"]) {
-        id value = SCIObjectForSelector(candidate, selectorName);
-        if (!value) value = SCIKVCObject(candidate, selectorName);
+        id value = SPKObjectForSelector(candidate, selectorName);
+        if (!value) value = SPKKVCObject(candidate, selectorName);
         if (value && value != candidate) return value;
     }
     return candidate;
 }
 
-static id SCIStoryBulkMediaFromOverlay(UIView *overlayView) {
-    SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+static id SPKStoryBulkMediaFromOverlay(UIView *overlayView) {
+    SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
     if (sharedContext.allMedia.count > 1) return sharedContext.allMedia;
-    id current = SCIStoryMediaFromOverlay(overlayView);
-    id sectionController = SCIStorySectionControllerFromOverlay(overlayView);
-    UIViewController *controller = SCIStoryControllerFromOverlay(overlayView);
-    id currentViewModel = SCIObjectForSelector(controller, @"currentViewModel") ?: SCIKVCObject(controller, @"currentViewModel");
+    id current = SPKStoryMediaFromOverlay(overlayView);
+    id sectionController = SPKStorySectionControllerFromOverlay(overlayView);
+    UIViewController *controller = SPKStoryControllerFromOverlay(overlayView);
+    id currentViewModel = SPKObjectForSelector(controller, @"currentViewModel") ?: SPKKVCObject(controller, @"currentViewModel");
 
-    NSString *currentUserPK = SCIStoryUserPKFromMediaObject(current);
+    NSString *currentUserPK = SPKStoryUserPKFromMediaObject(current);
 
     for (id candidate in @[sectionController ?: (id)NSNull.null, currentViewModel ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
         if (!candidate || candidate == (id)NSNull.null) continue;
-        NSArray *items = SCIStoryItemsFromCandidate(candidate);
+        NSArray *items = SPKStoryItemsFromCandidate(candidate);
         if (items.count <= 1) continue;
 
         NSMutableArray *resolvedMedia = [NSMutableArray array];
         for (id item in items) {
-            id media = SCIStoryMediaObjectFromCandidate(item);
+            id media = SPKStoryMediaObjectFromCandidate(item);
             if (media) {
                 if (currentUserPK) {
-                    NSString *itemUserPK = SCIStoryUserPKFromMediaObject(media);
+                    NSString *itemUserPK = SPKStoryUserPKFromMediaObject(media);
                     if ([itemUserPK isEqualToString:currentUserPK]) {
                         [resolvedMedia addObject:media];
                     }
@@ -140,27 +140,27 @@ static id SCIStoryBulkMediaFromOverlay(UIView *overlayView) {
     return current;
 }
 
-static SCIActionButtonContext *SCIStoriesActionContext(UIView *overlayView) {
-	SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
-	context.source = SCIActionButtonSourceStories;
+static SPKActionButtonContext *SPKStoriesActionContext(UIView *overlayView) {
+	SPKActionButtonContext *context = [[SPKActionButtonContext alloc] init];
+	context.source = SPKActionButtonSourceStories;
 	context.view = overlayView;
-	context.controller = SCIStoryControllerFromOverlay(overlayView);
-	context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceStories);
-	context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceStories);
-	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-		return SCIStoryMediaFromOverlay(resolvedContext.view);
+	context.controller = SPKStoryControllerFromOverlay(overlayView);
+	context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceStories);
+	context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceStories);
+	context.mediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+		return SPKStoryMediaFromOverlay(resolvedContext.view);
 	};
-	context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-        return SCIStoryBulkMediaFromOverlay(resolvedContext.view);
+	context.bulkMediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+        return SPKStoryBulkMediaFromOverlay(resolvedContext.view);
     };
-	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
-		SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(resolvedContext.view);
+	context.currentIndexResolver = ^NSInteger (SPKActionButtonContext *resolvedContext) {
+		SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(resolvedContext.view);
 		return sharedContext ? sharedContext.currentIndex : 0;
 	};
 	return context;
 }
 
-static BOOL SCIStoriesActionFrameMatches(UIButton *button, CGRect frame) {
+static BOOL SPKStoriesActionFrameMatches(UIButton *button, CGRect frame) {
 	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
 	return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
 	       ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
@@ -168,63 +168,63 @@ static BOOL SCIStoriesActionFrameMatches(UIButton *button, CGRect frame) {
 	       ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
 }
 
-static const void *kSCIStoriesActionButtonMediaKey = &kSCIStoriesActionButtonMediaKey;
+static const void *kSPKStoriesActionButtonMediaKey = &kSPKStoriesActionButtonMediaKey;
 
-static void SCIInstallStoriesActionButton(UIView *overlayView) {
+static void SPKInstallStoriesActionButton(UIView *overlayView) {
 	if (!overlayView) return;
 
-	if (SCIIsDirectVisualViewerAncestor(overlayView)) {
-		UIButton *existing = (UIButton *)[overlayView viewWithTag:kSCIStoriesActionButtonTag];
+	if (SPKIsDirectVisualViewerAncestor(overlayView)) {
+		UIButton *existing = (UIButton *)[overlayView viewWithTag:kSPKStoriesActionButtonTag];
 		[existing removeFromSuperview];
 		return;
 	}
 
-	UIButton *button = (UIButton *)[overlayView viewWithTag:kSCIStoriesActionButtonTag];
-	if (![SCIUtils getBoolPref:@"stories_action_btn"]) {
+	UIButton *button = (UIButton *)[overlayView viewWithTag:kSPKStoriesActionButtonTag];
+	if (![SPKUtils getBoolPref:@"stories_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
 
 	CGFloat size = 44.0;
-	CGRect expectedFrame = SCIStoryFloatingButtonFrame(overlayView, size);
+	CGRect expectedFrame = SPKStoryFloatingButtonFrame(overlayView, size);
 	if (CGRectIsEmpty(expectedFrame)) {
 		[button removeFromSuperview];
 		return;
 	}
 
-	id currentMedia = SCIStoryMediaFromOverlay(overlayView);
-	id lastMedia = button ? objc_getAssociatedObject(button, kSCIStoriesActionButtonMediaKey) : nil;
+	id currentMedia = SPKStoryMediaFromOverlay(overlayView);
+	id lastMedia = button ? objc_getAssociatedObject(button, kSPKStoriesActionButtonMediaKey) : nil;
 
-	if (SCIStoriesActionFrameMatches(button, expectedFrame) && lastMedia == currentMedia) return;
+	if (SPKStoriesActionFrameMatches(button, expectedFrame) && lastMedia == currentMedia) return;
 
-	button = SCIActionButtonWithTag(overlayView, kSCIStoriesActionButtonTag);
+	button = SPKActionButtonWithTag(overlayView, kSPKStoriesActionButtonTag);
 	button.translatesAutoresizingMaskIntoConstraints = YES;
-	SCIConfigureActionButton(button, SCIStoriesActionContext(overlayView));
-	objc_setAssociatedObject(button, kSCIStoriesActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	SPKConfigureActionButton(button, SPKStoriesActionContext(overlayView));
+	objc_setAssociatedObject(button, kSPKStoriesActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
 	if (button.hidden) return;
 
 	button.frame = expectedFrame;
-	SCIApplyButtonStyle(button, SCIActionButtonSourceStories);
+	SPKApplyButtonStyle(button, SPKActionButtonSourceStories);
 }
 
-%group SCIStoriesActionButtonHooks
+%group SPKStoriesActionButtonHooks
 
 %hook IGStoryFullscreenOverlayView
 - (void)layoutSubviews {
 	%orig;
-	SCIStorySetActiveOverlay((UIView *)self);
-	SCIInstallStoriesActionButton((UIView *)self);
+	SPKStorySetActiveOverlay((UIView *)self);
+	SPKInstallStoriesActionButton((UIView *)self);
 }
 %end
 
 %end
 
-extern "C" void SCIInstallStoriesActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"stories_action_btn"]) return;
+extern "C" void SPKInstallStoriesActionButtonHooksIfEnabled(void) {
+	if (![SPKUtils getBoolPref:@"stories_action_btn"]) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-	%init(SCIStoriesActionButtonHooks);
+	%init(SPKStoriesActionButtonHooks);
 	});
 }

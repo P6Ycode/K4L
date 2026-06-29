@@ -2,7 +2,7 @@
 
 #import <Foundation/Foundation.h>
 
-%group SCIHideTestFlightNagReceipt
+%group SPKHideTestFlightNagReceipt
 %hook NSBundle
 
 - (NSURL *)appStoreReceiptURL {
@@ -17,7 +17,7 @@
 %end
 
 %ctor {
-    if ([SCIUtils getBoolPref:@"tools_hide_testflight_popup"]) {
-        %init(SCIHideTestFlightNagReceipt);
+    if ([SPKUtils getBoolPref:@"tools_hide_testflight_popup"]) {
+        %init(SPKHideTestFlightNagReceipt);
     }
 }

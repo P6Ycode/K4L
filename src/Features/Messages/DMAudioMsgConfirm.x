@@ -3,55 +3,55 @@
 
 #import "../../Utils.h"
 
-static NSString * const kSCIDMVoiceMessageConfirmPref = @"msgs_confirm_voice_msg";
+static NSString * const kSPKDMVoiceMessageConfirmPref = @"msgs_confirm_voice_msg";
 
-typedef void (*SCIDMVoiceNoArgIMP)(id, SEL);
-typedef void (*SCIDMVoiceLegacyRecordedIMP)(id, SEL, id, id, id, double, long long);
-typedef void (*SCIDMVoiceRecordedIMP)(id, SEL, id, id, id, double, long long, id, id, long long);
-typedef void (*SCIDMVoicePreviewSendIMP)(id, SEL, id, id, double, long long, id, id);
+typedef void (*SPKDMVoiceNoArgIMP)(id, SEL);
+typedef void (*SPKDMVoiceLegacyRecordedIMP)(id, SEL, id, id, id, double, long long);
+typedef void (*SPKDMVoiceRecordedIMP)(id, SEL, id, id, id, double, long long, id, id, long long);
+typedef void (*SPKDMVoicePreviewSendIMP)(id, SEL, id, id, double, long long, id, id);
 
-static SCIDMVoiceLegacyRecordedIMP orig_threadViewLegacyRecordedAudioClip = NULL;
-static SCIDMVoiceRecordedIMP orig_threadViewRecordedAudioClip = NULL;
-static SCIDMVoiceRecordedIMP orig_voiceControllerRecordedAudioClip = NULL;
-static SCIDMVoicePreviewSendIMP orig_voiceRecordPreviewDidTapSend = NULL;
-static SCIDMVoiceNoArgIMP orig_voiceRecordPreviewSendButton = NULL;
-static SCIDMVoiceNoArgIMP orig_aiVoiceCompactBarDidTapSend = NULL;
+static SPKDMVoiceLegacyRecordedIMP orig_threadViewLegacyRecordedAudioClip = NULL;
+static SPKDMVoiceRecordedIMP orig_threadViewRecordedAudioClip = NULL;
+static SPKDMVoiceRecordedIMP orig_voiceControllerRecordedAudioClip = NULL;
+static SPKDMVoicePreviewSendIMP orig_voiceRecordPreviewDidTapSend = NULL;
+static SPKDMVoiceNoArgIMP orig_voiceRecordPreviewSendButton = NULL;
+static SPKDMVoiceNoArgIMP orig_aiVoiceCompactBarDidTapSend = NULL;
 
-static BOOL sSCIDMVoiceConfirmBypassing = NO;
-static BOOL sSCIDMVoiceConfirmVisible = NO;
+static BOOL sSPKDMVoiceConfirmBypassing = NO;
+static BOOL sSPKDMVoiceConfirmVisible = NO;
 
-static BOOL SCIDMShouldConfirmVoiceMessage(void) {
-    return [SCIUtils getBoolPref:kSCIDMVoiceMessageConfirmPref];
+static BOOL SPKDMShouldConfirmVoiceMessage(void) {
+    return [SPKUtils getBoolPref:kSPKDMVoiceMessageConfirmPref];
 }
 
-void SCIDMConfirmVoiceMessageIfNeeded(void (^confirmBlock)(void), void (^cancelBlock)(void)) {
-    if (sSCIDMVoiceConfirmBypassing || !SCIDMShouldConfirmVoiceMessage()) {
+void SPKDMConfirmVoiceMessageIfNeeded(void (^confirmBlock)(void), void (^cancelBlock)(void)) {
+    if (sSPKDMVoiceConfirmBypassing || !SPKDMShouldConfirmVoiceMessage()) {
         if (confirmBlock) confirmBlock();
         return;
     }
 
-    if (sSCIDMVoiceConfirmVisible) return;
+    if (sSPKDMVoiceConfirmVisible) return;
 
-    sSCIDMVoiceConfirmVisible = YES;
-    SCILog(@"General", @"[SCInsta] DM audio message confirm triggered");
-    [SCIUtils showConfirmation:^{
-        sSCIDMVoiceConfirmVisible = NO;
-        sSCIDMVoiceConfirmBypassing = YES;
+    sSPKDMVoiceConfirmVisible = YES;
+    SPKLog(@"General", @"[Sparkle] DM audio message confirm triggered");
+    [SPKUtils showConfirmation:^{
+        sSPKDMVoiceConfirmVisible = NO;
+        sSPKDMVoiceConfirmBypassing = YES;
         if (confirmBlock) confirmBlock();
-        sSCIDMVoiceConfirmBypassing = NO;
+        sSPKDMVoiceConfirmBypassing = NO;
     } cancelHandler:^{
-        sSCIDMVoiceConfirmVisible = NO;
+        sSPKDMVoiceConfirmVisible = NO;
         if (cancelBlock) cancelBlock();
     } title:@"Confirm Send Voice Message"
       message:@"Are you sure you want to send this voice message?"];
 }
 
-static void SCIDMConfirmVoiceMessage(void (^confirmBlock)(void)) {
-    SCIDMConfirmVoiceMessageIfNeeded(confirmBlock, nil);
+static void SPKDMConfirmVoiceMessage(void (^confirmBlock)(void)) {
+    SPKDMConfirmVoiceMessageIfNeeded(confirmBlock, nil);
 }
 
 static void replaced_threadViewLegacyRecordedAudioClip(id self, SEL _cmd, id controller, id url, id waveform, double duration, long long entryPoint) {
-    SCIDMConfirmVoiceMessage(^{
+    SPKDMConfirmVoiceMessage(^{
         if (orig_threadViewLegacyRecordedAudioClip) {
             orig_threadViewLegacyRecordedAudioClip(self, _cmd, controller, url, waveform, duration, entryPoint);
         }
@@ -59,7 +59,7 @@ static void replaced_threadViewLegacyRecordedAudioClip(id self, SEL _cmd, id con
 }
 
 static void replaced_threadViewRecordedAudioClip(id self, SEL _cmd, id controller, id url, id waveform, double duration, long long entryPoint, id aiVoiceEffectApplied, id aiVoiceEffectType, long long sendButtonTypeTapped) {
-    SCIDMConfirmVoiceMessage(^{
+    SPKDMConfirmVoiceMessage(^{
         if (orig_threadViewRecordedAudioClip) {
             orig_threadViewRecordedAudioClip(self, _cmd, controller, url, waveform, duration, entryPoint, aiVoiceEffectApplied, aiVoiceEffectType, sendButtonTypeTapped);
         }
@@ -67,7 +67,7 @@ static void replaced_threadViewRecordedAudioClip(id self, SEL _cmd, id controlle
 }
 
 static void replaced_voiceControllerRecordedAudioClip(id self, SEL _cmd, id controller, id url, id waveform, double duration, long long entryPoint, id aiVoiceEffectApplied, id aiVoiceEffectType, long long sendButtonTypeTapped) {
-    SCIDMConfirmVoiceMessage(^{
+    SPKDMConfirmVoiceMessage(^{
         if (orig_voiceControllerRecordedAudioClip) {
             orig_voiceControllerRecordedAudioClip(self, _cmd, controller, url, waveform, duration, entryPoint, aiVoiceEffectApplied, aiVoiceEffectType, sendButtonTypeTapped);
         }
@@ -75,7 +75,7 @@ static void replaced_voiceControllerRecordedAudioClip(id self, SEL _cmd, id cont
 }
 
 static void replaced_voiceRecordPreviewDidTapSend(id self, SEL _cmd, id url, id waveform, double duration, long long entryPoint, id aiVoiceEffectApplied, id aiVoiceEffectType) {
-    SCIDMConfirmVoiceMessage(^{
+    SPKDMConfirmVoiceMessage(^{
         if (orig_voiceRecordPreviewDidTapSend) {
             orig_voiceRecordPreviewDidTapSend(self, _cmd, url, waveform, duration, entryPoint, aiVoiceEffectApplied, aiVoiceEffectType);
         }
@@ -83,7 +83,7 @@ static void replaced_voiceRecordPreviewDidTapSend(id self, SEL _cmd, id url, id 
 }
 
 static void replaced_voiceRecordPreviewSendButton(id self, SEL _cmd) {
-    SCIDMConfirmVoiceMessage(^{
+    SPKDMConfirmVoiceMessage(^{
         if (orig_voiceRecordPreviewSendButton) {
             orig_voiceRecordPreviewSendButton(self, _cmd);
         }
@@ -91,46 +91,46 @@ static void replaced_voiceRecordPreviewSendButton(id self, SEL _cmd) {
 }
 
 static void replaced_aiVoiceCompactBarDidTapSend(id self, SEL _cmd) {
-    SCIDMConfirmVoiceMessage(^{
+    SPKDMConfirmVoiceMessage(^{
         if (orig_aiVoiceCompactBarDidTapSend) {
             orig_aiVoiceCompactBarDidTapSend(self, _cmd);
         }
     });
 }
 
-static void SCIHookDMVoiceInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
+static void SPKHookDMVoiceInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
     Class cls = objc_getClass(className);
     if (!cls || !class_getInstanceMethod(cls, selector)) return;
 
     MSHookMessageEx(cls, selector, replacement, original);
 }
 
-void SCIInstallDMAudioMsgConfirmHooksIfEnabled(void) {
-    if (!SCIDMShouldConfirmVoiceMessage()) return;
+void SPKInstallDMAudioMsgConfirmHooksIfEnabled(void) {
+    if (!SPKDMShouldConfirmVoiceMessage()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCIHookDMVoiceInstanceMethod("IGDirectThreadViewController",
+        SPKHookDMVoiceInstanceMethod("IGDirectThreadViewController",
                                      @selector(voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:),
                                      (IMP)replaced_threadViewLegacyRecordedAudioClip,
                                      (IMP *)&orig_threadViewLegacyRecordedAudioClip);
-        SCIHookDMVoiceInstanceMethod("IGDirectThreadViewController",
+        SPKHookDMVoiceInstanceMethod("IGDirectThreadViewController",
                                      @selector(voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:sendButtonTypeTapped:),
                                      (IMP)replaced_threadViewRecordedAudioClip,
                                      (IMP *)&orig_threadViewRecordedAudioClip);
-        SCIHookDMVoiceInstanceMethod("IGDirectThreadViewVoiceController",
+        SPKHookDMVoiceInstanceMethod("IGDirectThreadViewVoiceController",
                                      @selector(voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:sendButtonTypeTapped:),
                                      (IMP)replaced_voiceControllerRecordedAudioClip,
                                      (IMP *)&orig_voiceControllerRecordedAudioClip);
-        SCIHookDMVoiceInstanceMethod("_TtC24IGDirectVoiceRecordingUI33IGDirectVoiceRecordViewController",
+        SPKHookDMVoiceInstanceMethod("_TtC24IGDirectVoiceRecordingUI33IGDirectVoiceRecordViewController",
                                      @selector(voiceRecordPreviewContentViewControllerDidTapSendWithUrl:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:),
                                      (IMP)replaced_voiceRecordPreviewDidTapSend,
                                      (IMP *)&orig_voiceRecordPreviewDidTapSend);
-        SCIHookDMVoiceInstanceMethod("_TtC29IGDirectVoiceRecordingPreview40IGDirectVoiceRecordPreviewViewController",
+        SPKHookDMVoiceInstanceMethod("_TtC29IGDirectVoiceRecordingPreview40IGDirectVoiceRecordPreviewViewController",
                                      @selector(didTapSendButton),
                                      (IMP)replaced_voiceRecordPreviewSendButton,
                                      (IMP *)&orig_voiceRecordPreviewSendButton);
-        SCIHookDMVoiceInstanceMethod("_TtC20IGDirectAIVoiceUIKitP33_5754F7617E0D924F9A84EFA352BBD29A21CompactBarContentView",
+        SPKHookDMVoiceInstanceMethod("_TtC20IGDirectAIVoiceUIKitP33_5754F7617E0D924F9A84EFA352BBD29A21CompactBarContentView",
                                      @selector(didTapSend),
                                      (IMP)replaced_aiVoiceCompactBarDidTapSend,
                                      (IMP *)&orig_aiVoiceCompactBarDidTapSend);

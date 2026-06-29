@@ -7,11 +7,11 @@
 
 #import "../../Utils.h"
 
-static NSString * const kSCIHDRLogCategory = @"HDR";
+static NSString * const kSPKHDRLogCategory = @"HDR";
 
 // Surfaces whose EDR "glow" we want to remove. Matched as substrings against the
 // class name of the layer's owning view and its ancestors.
-static NSArray<NSString *> *SCIBlockedSurfaceNeedles(void) {
+static NSArray<NSString *> *SPKBlockedSurfaceNeedles(void) {
     static NSArray *needles;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -23,7 +23,7 @@ static NSArray<NSString *> *SCIBlockedSurfaceNeedles(void) {
 // Surfaces we explicitly leave alone (keep HDR). Takes precedence over the
 // blocked list, so e.g. the reels video follow button keeps its HDR even though
 // its class name contains "FollowButton".
-static NSArray<NSString *> *SCIAllowedSurfaceNeedles(void) {
+static NSArray<NSString *> *SPKAllowedSurfaceNeedles(void) {
     static NSArray *needles;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -36,7 +36,7 @@ static NSArray<NSString *> *SCIAllowedSurfaceNeedles(void) {
 
 // Walks up the superview chain (bounded) building "Cls > Super > ...". Used both
 // for matching and for diagnostics.
-static NSString *SCIViewChainDescription(UIView *view, NSUInteger maxDepth) {
+static NSString *SPKViewChainDescription(UIView *view, NSUInteger maxDepth) {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     UIView *cursor = view;
     NSUInteger depth = 0;
@@ -48,7 +48,7 @@ static NSString *SCIViewChainDescription(UIView *view, NSUInteger maxDepth) {
     return [parts componentsJoinedByString:@" > "];
 }
 
-static BOOL SCIChainMatchesAnyNeedle(UIView *view, NSArray<NSString *> *needles, NSUInteger maxDepth) {
+static BOOL SPKChainMatchesAnyNeedle(UIView *view, NSArray<NSString *> *needles, NSUInteger maxDepth) {
     UIView *cursor = view;
     NSUInteger depth = 0;
     while (cursor && depth < maxDepth) {
@@ -64,7 +64,7 @@ static BOOL SCIChainMatchesAnyNeedle(UIView *view, NSArray<NSString *> *needles,
 
 #pragma mark - CALayer EDR chokepoint
 
-static const NSUInteger kSCIMaxChainDepth = 10;
+static const NSUInteger kSPKMaxChainDepth = 10;
 
 static void (*orig_CALayer_ig_setWantsEDR)(id, SEL, BOOL);
 static void hooked_CALayer_ig_setWantsEDR(CALayer *self, SEL _cmd, BOOL wants) {
@@ -75,12 +75,12 @@ static void hooked_CALayer_ig_setWantsEDR(CALayer *self, SEL _cmd, BOOL wants) {
         UIView *view = [delegate isKindOfClass:[UIView class]] ? (UIView *)delegate : nil;
 
         if (view) {
-            BOOL allowed = SCIChainMatchesAnyNeedle(view, SCIAllowedSurfaceNeedles(), kSCIMaxChainDepth);
-            BOOL blocked = !allowed && SCIChainMatchesAnyNeedle(view, SCIBlockedSurfaceNeedles(), kSCIMaxChainDepth);
+            BOOL allowed = SPKChainMatchesAnyNeedle(view, SPKAllowedSurfaceNeedles(), kSPKMaxChainDepth);
+            BOOL blocked = !allowed && SPKChainMatchesAnyNeedle(view, SPKBlockedSurfaceNeedles(), kSPKMaxChainDepth);
 
             if (blocked) {
                 forced = NO;
-                SCILog(kSCIHDRLogCategory, @"Disabling EDR layer for %@", SCIViewChainDescription(view, kSCIMaxChainDepth));
+                SPKLog(kSPKHDRLogCategory, @"Disabling EDR layer for %@", SPKViewChainDescription(view, kSPKMaxChainDepth));
             }
         }
     }
@@ -92,7 +92,7 @@ static void hooked_CALayer_ig_setWantsEDR(CALayer *self, SEL _cmd, BOOL wants) {
 
 #pragma mark - Swift Follow Button EDR Hooks
 
-static BOOL SCIIsViewInFeedPost(UIView *view) {
+static BOOL SPKIsViewInFeedPost(UIView *view) {
     UIView *walker = view;
     NSInteger depth = 0;
     while (walker && depth < 20) {
@@ -110,8 +110,8 @@ static BOOL SCIIsViewInFeedPost(UIView *view) {
 
 static BOOL (*orig_swiftFollowButton_edr)(id, SEL);
 static BOOL hooked_swiftFollowButton_edr(id self, SEL _cmd) {
-    if ([SCIUtils getBoolPref:@"interface_disable_random_hdr"]) {
-        if ([self isKindOfClass:[UIView class]] && SCIIsViewInFeedPost((UIView *)self)) {
+    if ([SPKUtils getBoolPref:@"interface_disable_random_hdr"]) {
+        if ([self isKindOfClass:[UIView class]] && SPKIsViewInFeedPost((UIView *)self)) {
             return NO;
         }
     }
@@ -120,8 +120,8 @@ static BOOL hooked_swiftFollowButton_edr(id self, SEL _cmd) {
 
 static BOOL (*orig_swiftFollowButton_isEdr)(id, SEL);
 static BOOL hooked_swiftFollowButton_isEdr(id self, SEL _cmd) {
-    if ([SCIUtils getBoolPref:@"interface_disable_random_hdr"]) {
-        if ([self isKindOfClass:[UIView class]] && SCIIsViewInFeedPost((UIView *)self)) {
+    if ([SPKUtils getBoolPref:@"interface_disable_random_hdr"]) {
+        if ([self isKindOfClass:[UIView class]] && SPKIsViewInFeedPost((UIView *)self)) {
             return NO;
         }
     }
@@ -131,8 +131,8 @@ static BOOL hooked_swiftFollowButton_isEdr(id self, SEL _cmd) {
 static void (*orig_swiftFollowButton_setEdr)(id, SEL, BOOL);
 static void hooked_swiftFollowButton_setEdr(id self, SEL _cmd, BOOL edr) {
     BOOL forced = edr;
-    if (edr && [SCIUtils getBoolPref:@"interface_disable_random_hdr"]) {
-        if ([self isKindOfClass:[UIView class]] && SCIIsViewInFeedPost((UIView *)self)) {
+    if (edr && [SPKUtils getBoolPref:@"interface_disable_random_hdr"]) {
+        if ([self isKindOfClass:[UIView class]] && SPKIsViewInFeedPost((UIView *)self)) {
             forced = NO;
         }
     }
@@ -143,46 +143,46 @@ static void hooked_swiftFollowButton_setEdr(id self, SEL _cmd, BOOL edr) {
 
 #pragma mark - Install
 
-static void SCIHookSelector(Class cls, SEL selector, IMP replacement, IMP *original) {
+static void SPKHookSelector(Class cls, SEL selector, IMP replacement, IMP *original) {
     if (!cls || ![cls instancesRespondToSelector:selector]) return;
     MSHookMessageEx(cls, selector, replacement, original);
 }
 
-extern "C" void SCIInstallDisableRandomHDRHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"interface_disable_random_hdr"]) return;
+extern "C" void SPKInstallDisableRandomHDRHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"interface_disable_random_hdr"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         // 1. Foundational EDR toggle on CALayer
         Class layerCls = objc_getClass("CALayer");
         if (layerCls && [layerCls instancesRespondToSelector:@selector(ig_setWantsExtendedDynamicRangeContent:)]) {
-            SCIHookSelector(layerCls,
+            SPKHookSelector(layerCls,
                             @selector(ig_setWantsExtendedDynamicRangeContent:),
                             (IMP)hooked_CALayer_ig_setWantsEDR,
                             (IMP *)&orig_CALayer_ig_setWantsEDR);
-            SCILog(kSCIHDRLogCategory, @"Hooked CALayer ig_setWantsExtendedDynamicRangeContent:");
+            SPKLog(kSPKHDRLogCategory, @"Hooked CALayer ig_setWantsExtendedDynamicRangeContent:");
         } else {
-            SCIWarnLog(kSCIHDRLogCategory, @"CALayer ig_setWantsExtendedDynamicRangeContent: unavailable");
+            SPKWarnLog(kSPKHDRLogCategory, @"CALayer ig_setWantsExtendedDynamicRangeContent: unavailable");
         }
 
         // 2. Swift FollowButton EDR property hooks
         Class followButtonCls = objc_getClass("_TtC14IGFollowButton14IGFollowButton");
         if (followButtonCls) {
-            SCIHookSelector(followButtonCls, @selector(edr), (IMP)hooked_swiftFollowButton_edr, (IMP *)&orig_swiftFollowButton_edr);
-            SCIHookSelector(followButtonCls, @selector(isEdr), (IMP)hooked_swiftFollowButton_isEdr, (IMP *)&orig_swiftFollowButton_isEdr);
-            SCIHookSelector(followButtonCls, @selector(setEdr:), (IMP)hooked_swiftFollowButton_setEdr, (IMP *)&orig_swiftFollowButton_setEdr);
-            SCILog(kSCIHDRLogCategory, @"Hooked _TtC14IGFollowButton14IGFollowButton EDR properties");
+            SPKHookSelector(followButtonCls, @selector(edr), (IMP)hooked_swiftFollowButton_edr, (IMP *)&orig_swiftFollowButton_edr);
+            SPKHookSelector(followButtonCls, @selector(isEdr), (IMP)hooked_swiftFollowButton_isEdr, (IMP *)&orig_swiftFollowButton_isEdr);
+            SPKHookSelector(followButtonCls, @selector(setEdr:), (IMP)hooked_swiftFollowButton_setEdr, (IMP *)&orig_swiftFollowButton_setEdr);
+            SPKLog(kSPKHDRLogCategory, @"Hooked _TtC14IGFollowButton14IGFollowButton EDR properties");
         } else {
-            SCIWarnLog(kSCIHDRLogCategory, @"_TtC14IGFollowButton14IGFollowButton class unavailable");
+            SPKWarnLog(kSPKHDRLogCategory, @"_TtC14IGFollowButton14IGFollowButton class unavailable");
         }
 
         // 3. Legacy FollowButton EDR property hooks (fallback)
         Class legacyFollowButtonCls = objc_getClass("IGFollowButton");
         if (legacyFollowButtonCls) {
-            SCIHookSelector(legacyFollowButtonCls, @selector(edr), (IMP)hooked_swiftFollowButton_edr, (IMP *)&orig_swiftFollowButton_edr);
-            SCIHookSelector(legacyFollowButtonCls, @selector(isEdr), (IMP)hooked_swiftFollowButton_isEdr, (IMP *)&orig_swiftFollowButton_isEdr);
-            SCIHookSelector(legacyFollowButtonCls, @selector(setEdr:), (IMP)hooked_swiftFollowButton_setEdr, (IMP *)&orig_swiftFollowButton_setEdr);
-            SCILog(kSCIHDRLogCategory, @"Hooked IGFollowButton EDR properties");
+            SPKHookSelector(legacyFollowButtonCls, @selector(edr), (IMP)hooked_swiftFollowButton_edr, (IMP *)&orig_swiftFollowButton_edr);
+            SPKHookSelector(legacyFollowButtonCls, @selector(isEdr), (IMP)hooked_swiftFollowButton_isEdr, (IMP *)&orig_swiftFollowButton_isEdr);
+            SPKHookSelector(legacyFollowButtonCls, @selector(setEdr:), (IMP)hooked_swiftFollowButton_setEdr, (IMP *)&orig_swiftFollowButton_setEdr);
+            SPKLog(kSPKHDRLogCategory, @"Hooked IGFollowButton EDR properties");
         }
     });
 }

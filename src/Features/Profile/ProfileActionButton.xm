@@ -5,43 +5,43 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 
-#import "../../Shared/MediaPreview/SCIFullScreenMediaPlayer.h"
-#import "../../Shared/Gallery/SCIGalleryFile.h"
-#import "../../Shared/Gallery/SCIGalleryOriginController.h"
-#import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
+#import "../../Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
+#import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/Gallery/SPKGalleryOriginController.h"
+#import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "../../AssetUtils.h"
 
-static NSString * const kSCIProfileActionButtonDefaultKey = @"profile_action_btn_default_action";
-static NSString * const kSCIProfileActionButtonDefaultCopyInfoKey = @"profile_action_btn_default_copy_info_action";
-static NSString * const kSCIProfileActionNone = @"none";
-static NSString * const kSCIProfileActionCopyInfo = @"copy_info";
-static NSString * const kSCIProfileActionViewPicture = @"view_picture";
-static NSString * const kSCIProfileActionSharePicture = @"share_picture";
-static NSString * const kSCIProfileActionSavePictureToGallery = @"save_picture_gallery";
-static NSString * const kSCIProfileActionOpenSettings = @"profile_settings";
-static NSString * const kSCIProfileCopyInfoID = @"id";
-static NSString * const kSCIProfileCopyInfoUsername = @"username";
-static NSString * const kSCIProfileCopyInfoName = @"name";
-static NSString * const kSCIProfileCopyInfoBio = @"bio";
-static NSString * const kSCIProfileCopyInfoLink = @"link";
-static CGFloat const kSCIProfileActionButtonWidth = 44.0;
-static CGFloat const kSCIProfileActionButtonHeight = 44.0;
-static CGFloat const kSCIProfileActionIconPointSize = 24.0;
-static CGFloat const kSCIProfileActionMenuIconPointSize = 22.0;
-static const void *kSCIProfileHeaderActionButtonAssocKey = &kSCIProfileHeaderActionButtonAssocKey;
-static const void *kSCIProfileHeaderTitleViewKey = &kSCIProfileHeaderTitleViewKey;
-static const void *kSCIProfileLastExpectedFrameKey = &kSCIProfileLastExpectedFrameKey;
-static const void *kSCIProfileTitleIsCenteredKey = &kSCIProfileTitleIsCenteredKey;
-static NSInteger const kSCIProfileActionButtonMaxInstallAttempts = 6;
+static NSString * const kSPKProfileActionButtonDefaultKey = @"profile_action_btn_default_action";
+static NSString * const kSPKProfileActionButtonDefaultCopyInfoKey = @"profile_action_btn_default_copy_info_action";
+static NSString * const kSPKProfileActionNone = @"none";
+static NSString * const kSPKProfileActionCopyInfo = @"copy_info";
+static NSString * const kSPKProfileActionViewPicture = @"view_picture";
+static NSString * const kSPKProfileActionSharePicture = @"share_picture";
+static NSString * const kSPKProfileActionSavePictureToGallery = @"save_picture_gallery";
+static NSString * const kSPKProfileActionOpenSettings = @"profile_settings";
+static NSString * const kSPKProfileCopyInfoID = @"id";
+static NSString * const kSPKProfileCopyInfoUsername = @"username";
+static NSString * const kSPKProfileCopyInfoName = @"name";
+static NSString * const kSPKProfileCopyInfoBio = @"bio";
+static NSString * const kSPKProfileCopyInfoLink = @"link";
+static CGFloat const kSPKProfileActionButtonWidth = 44.0;
+static CGFloat const kSPKProfileActionButtonHeight = 44.0;
+static CGFloat const kSPKProfileActionIconPointSize = 24.0;
+static CGFloat const kSPKProfileActionMenuIconPointSize = 22.0;
+static const void *kSPKProfileHeaderActionButtonAssocKey = &kSPKProfileHeaderActionButtonAssocKey;
+static const void *kSPKProfileHeaderTitleViewKey = &kSPKProfileHeaderTitleViewKey;
+static const void *kSPKProfileLastExpectedFrameKey = &kSPKProfileLastExpectedFrameKey;
+static const void *kSPKProfileTitleIsCenteredKey = &kSPKProfileTitleIsCenteredKey;
+static NSInteger const kSPKProfileActionButtonMaxInstallAttempts = 6;
 
-static UIImage *SCIProfileMenuIcon(NSString *resourceName) {
-    return [SCIAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
-                                   pointSize:kSCIProfileActionMenuIconPointSize];
+static UIImage *SPKProfileMenuIcon(NSString *resourceName) {
+    return [SPKAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
+                                   pointSize:kSPKProfileActionMenuIconPointSize];
 }
 
-static id SCIProfileSafeValue(id target, NSString *key) {
+static id SPKProfileSafeValue(id target, NSString *key) {
     if (!target || key.length == 0) return nil;
     @try {
         return [target valueForKey:key];
@@ -50,7 +50,7 @@ static id SCIProfileSafeValue(id target, NSString *key) {
     return nil;
 }
 
-static NSString *SCIProfileStringValue(id value) {
+static NSString *SPKProfileStringValue(id value) {
     if (!value) return nil;
     if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] > 0 ? value : nil;
     if ([value respondsToSelector:@selector(stringValue)]) {
@@ -60,14 +60,14 @@ static NSString *SCIProfileStringValue(id value) {
     return nil;
 }
 
-static NSNumber *SCIProfileNumberValue(id value) {
+static NSNumber *SPKProfileNumberValue(id value) {
     if (!value) return nil;
     if ([value isKindOfClass:[NSNumber class]]) return value;
     if ([value respondsToSelector:@selector(integerValue)]) return @([value integerValue]);
     return nil;
 }
 
-static id SCIProfileResolvedUserFromObject(id object, NSInteger depth) {
+static id SPKProfileResolvedUserFromObject(id object, NSInteger depth) {
     if (!object || depth > 3) return nil;
 
     for (NSString *key in @[@"userGQL", @"profileUser", @"profileController.userGQL", @"profileController.profileUser", @"profileController.user", @"user"]) {
@@ -75,28 +75,28 @@ static id SCIProfileResolvedUserFromObject(id object, NSInteger depth) {
         if ([key containsString:@"."]) {
             id current = object;
             for (NSString *part in [key componentsSeparatedByString:@"."]) {
-                current = SCIProfileSafeValue(current, part);
+                current = SPKProfileSafeValue(current, part);
                 if (!current) break;
             }
             value = current;
         } else {
-            value = SCIProfileSafeValue(object, key);
+            value = SPKProfileSafeValue(object, key);
         }
         if (value) return value;
     }
 
     for (NSString *key in @[@"delegate", @"viewController", @"_viewController", @"nextResponder"]) {
-        id nested = SCIProfileSafeValue(object, key);
+        id nested = SPKProfileSafeValue(object, key);
         if (nested && nested != object) {
-            id resolved = SCIProfileResolvedUserFromObject(nested, depth + 1);
+            id resolved = SPKProfileResolvedUserFromObject(nested, depth + 1);
             if (resolved) return resolved;
         }
     }
 
     if ([object isKindOfClass:[UIView class]]) {
-        UIViewController *controller = [SCIUtils nearestViewControllerForView:(UIView *)object];
+        UIViewController *controller = [SPKUtils nearestViewControllerForView:(UIView *)object];
         if (controller && controller != object) {
-            id resolved = SCIProfileResolvedUserFromObject(controller, depth + 1);
+            id resolved = SPKProfileResolvedUserFromObject(controller, depth + 1);
             if (resolved) return resolved;
         }
     }
@@ -104,100 +104,100 @@ static id SCIProfileResolvedUserFromObject(id object, NSInteger depth) {
     return nil;
 }
 
-static NSString *SCIProfileUsername(id user) {
-    return SCIProfileStringValue(SCIProfileSafeValue(user, @"username"));
+static NSString *SPKProfileUsername(id user) {
+    return SPKProfileStringValue(SPKProfileSafeValue(user, @"username"));
 }
 
-static NSString *SCIProfileUserPK(id user) {
-    NSString *pk = SCIProfileStringValue(SCIProfileSafeValue(user, @"pk"));
-    if (pk.length == 0) pk = SCIProfileStringValue(SCIProfileSafeValue(user, @"id"));
-    if (pk.length == 0) pk = [SCIUtils pkFromIGUser:user];
+static NSString *SPKProfileUserPK(id user) {
+    NSString *pk = SPKProfileStringValue(SPKProfileSafeValue(user, @"pk"));
+    if (pk.length == 0) pk = SPKProfileStringValue(SPKProfileSafeValue(user, @"id"));
+    if (pk.length == 0) pk = [SPKUtils pkFromIGUser:user];
     return pk;
 }
 
-static NSString *SCIProfileFullName(id user) {
-    NSString *name = SCIProfileStringValue(SCIProfileSafeValue(user, @"fullName"));
-    if (name.length == 0) name = SCIProfileStringValue(SCIProfileSafeValue(user, @"full_name"));
-    if (name.length == 0) name = SCIProfileStringValue(SCIProfileSafeValue(user, @"name"));
+static NSString *SPKProfileFullName(id user) {
+    NSString *name = SPKProfileStringValue(SPKProfileSafeValue(user, @"fullName"));
+    if (name.length == 0) name = SPKProfileStringValue(SPKProfileSafeValue(user, @"full_name"));
+    if (name.length == 0) name = SPKProfileStringValue(SPKProfileSafeValue(user, @"name"));
     return name;
 }
 
-static NSString *SCIProfileBiography(id user) {
-    NSString *bio = SCIProfileStringValue(SCIProfileSafeValue(user, @"biography"));
-    if (bio.length == 0) bio = SCIProfileStringValue(SCIProfileSafeValue(user, @"bio"));
+static NSString *SPKProfileBiography(id user) {
+    NSString *bio = SPKProfileStringValue(SPKProfileSafeValue(user, @"biography"));
+    if (bio.length == 0) bio = SPKProfileStringValue(SPKProfileSafeValue(user, @"bio"));
     return bio;
 }
 
-static NSURL *SCIProfileURL(id user) {
-    NSString *username = SCIProfileUsername(user);
+static NSURL *SPKProfileURL(id user) {
+    NSString *username = SPKProfileUsername(user);
     if (username.length == 0) return nil;
     NSString *encoded = [username stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
     if (encoded.length == 0) return nil;
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/", encoded]];
 }
 
-static UIViewController *SCIProfileSourceController(id sourceObject, UIView *sourceView) {
+static UIViewController *SPKProfileSourceController(id sourceObject, UIView *sourceView) {
     if ([sourceObject isKindOfClass:[UIViewController class]]) {
         return (UIViewController *)sourceObject;
     }
     UIViewController *controller = nil;
-    id value = SCIProfileSafeValue(sourceObject, @"viewController");
+    id value = SPKProfileSafeValue(sourceObject, @"viewController");
     if ([value isKindOfClass:[UIViewController class]]) {
         controller = (UIViewController *)value;
     }
     if (!controller) {
-        value = SCIProfileSafeValue(sourceObject, @"_viewController");
+        value = SPKProfileSafeValue(sourceObject, @"_viewController");
         if ([value isKindOfClass:[UIViewController class]]) {
             controller = (UIViewController *)value;
         }
     }
     if (!controller && sourceView) {
-        controller = [SCIUtils nearestViewControllerForView:sourceView];
+        controller = [SPKUtils nearestViewControllerForView:sourceView];
     }
     return controller;
 }
 
-@interface SCIProfileHeaderActionButton : SCIActionMenuButton
+@interface SPKProfileHeaderActionButton : SPKActionMenuButton
 @property (nonatomic, weak) id sourceObject;
-@property (nonatomic, assign) BOOL sciDidConfigure;
+@property (nonatomic, assign) BOOL spkDidConfigure;
 @property (nonatomic, assign) BOOL fallbackToCurrentUser;
-@property (nonatomic, strong) UIVisualEffectView *sciGlassView;
-@property (nonatomic, assign) BOOL sciGlassUnavailable;
-@property (nonatomic, strong) CADisplayLink *sciGlassSyncLink;
+@property (nonatomic, strong) UIVisualEffectView *spkGlassView;
+@property (nonatomic, assign) BOOL spkGlassUnavailable;
+@property (nonatomic, strong) CADisplayLink *spkGlassSyncLink;
 @end
 
-static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button);
-static void SCIProfileUpdateGlass(SCIProfileHeaderActionButton *button, UIView *headerView);
+static void SPKConfigureProfileActionButton(SPKProfileHeaderActionButton *button);
+static void SPKProfileUpdateGlass(SPKProfileHeaderActionButton *button, UIView *headerView);
 
-@implementation SCIProfileHeaderActionButton
+@implementation SPKProfileHeaderActionButton
 
 - (CGSize)sizeThatFits:(CGSize)size {
     (void)size;
-    return CGSizeMake(kSCIProfileActionButtonWidth, kSCIProfileActionButtonHeight);
+    return CGSizeMake(kSPKProfileActionButtonWidth, kSPKProfileActionButtonHeight);
 }
 
 - (CGSize)intrinsicContentSize {
-    return CGSizeMake(kSCIProfileActionButtonWidth, kSCIProfileActionButtonHeight);
+    return CGSizeMake(kSPKProfileActionButtonWidth, kSPKProfileActionButtonHeight);
 }
 
 - (void)setFrame:(CGRect)frame {
-    frame.size.width = kSCIProfileActionButtonWidth;
-    frame.size.height = kSCIProfileActionButtonHeight;
+    frame.size.width = kSPKProfileActionButtonWidth;
+    frame.size.height = kSPKProfileActionButtonHeight;
     [super setFrame:frame];
 }
 
 - (void)setBounds:(CGRect)bounds {
-    bounds.size.width = kSCIProfileActionButtonWidth;
-    bounds.size.height = kSCIProfileActionButtonHeight;
+    bounds.size.width = kSPKProfileActionButtonWidth;
+    bounds.size.height = kSPKProfileActionButtonHeight;
     [super setBounds:bounds];
 }
 
 - (void)didMoveToWindow {
     [super didMoveToWindow];
-    if (self.window && !self.sciDidConfigure) {
-        self.sciDidConfigure = YES;
+    if (self.window && !self.spkDidConfigure) {
+        self.spkDidConfigure = YES;
         dispatch_async(dispatch_get_main_queue(), ^{
-            SCIConfigureProfileActionButton(self);
+            SPKConfigureProfileActionButton(self);
         });
     }
     // The Liquid Glass bubble fades with scroll offset, which doesn't always
@@ -205,92 +205,92 @@ static void SCIProfileUpdateGlass(SCIProfileHeaderActionButton *button, UIView *
     // display link keeps our bubble's alpha tracking IG's continuously while the
     // button is on screen; it's paused as soon as we leave the window.
     if (self.window) {
-        [self sciStartGlassSync];
+        [self spkStartGlassSync];
     } else {
-        [self sciStopGlassSync];
+        [self spkStopGlassSync];
     }
 }
 
-- (void)sciStartGlassSync {
-    if (self.sciGlassUnavailable || self.sciGlassSyncLink) return;
-    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(sciGlassSyncTick:)];
+- (void)spkStartGlassSync {
+    if (self.spkGlassUnavailable || self.spkGlassSyncLink) return;
+    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(spkGlassSyncTick:)];
     [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-    self.sciGlassSyncLink = link;
+    self.spkGlassSyncLink = link;
 }
 
-- (void)sciStopGlassSync {
-    [self.sciGlassSyncLink invalidate];
-    self.sciGlassSyncLink = nil;
+- (void)spkStopGlassSync {
+    [self.spkGlassSyncLink invalidate];
+    self.spkGlassSyncLink = nil;
 }
 
-- (void)sciGlassSyncTick:(CADisplayLink *)link {
+- (void)spkGlassSyncTick:(CADisplayLink *)link {
     UIView *header = self.superview;
     if (!self.window || ![header isKindOfClass:[UIView class]]) {
-        [self sciStopGlassSync];
+        [self spkStopGlassSync];
         return;
     }
-    if (self.sciGlassUnavailable) {
-        [self sciStopGlassSync];
+    if (self.spkGlassUnavailable) {
+        [self spkStopGlassSync];
         return;
     }
-    SCIProfileUpdateGlass(self, header);
+    SPKProfileUpdateGlass(self, header);
 }
 
 - (void)dealloc {
-    [_sciGlassSyncLink invalidate];
+    [_spkGlassSyncLink invalidate];
 }
 
 - (void)setSourceObject:(id)sourceObject {
     _sourceObject = sourceObject;
-    _sciDidConfigure = NO;
+    _spkDidConfigure = NO;
     if (self.window) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            SCIConfigureProfileActionButton(self);
+            SPKConfigureProfileActionButton(self);
         });
     }
 }
 
 - (void)setMenu:(UIMenu *)menu {
     [super setMenu:menu];
-    self.sciDidConfigure = YES;
+    self.spkDidConfigure = YES;
 }
 
 @end
 
-static SCIActionButtonContext *SCIProfileActionContext(SCIProfileHeaderActionButton *button) {
-    SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
-    __weak SCIProfileHeaderActionButton *weakButton = button;
-    context.source = SCIActionButtonSourceProfile;
+static SPKActionButtonContext *SPKProfileActionContext(SPKProfileHeaderActionButton *button) {
+    SPKActionButtonContext *context = [[SPKActionButtonContext alloc] init];
+    __weak SPKProfileHeaderActionButton *weakButton = button;
+    context.source = SPKActionButtonSourceProfile;
     context.view = button;
-    context.controller = SCIProfileSourceController(button.sourceObject ?: button, button);
-    context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceProfile);
-    context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceProfile);
-    context.mediaResolver = ^id (__unused SCIActionButtonContext *resolvedContext) {
-        SCIProfileHeaderActionButton *strongButton = weakButton;
-        id user = SCIProfileResolvedUserFromObject(strongButton.sourceObject ?: strongButton, 0);
+    context.controller = SPKProfileSourceController(button.sourceObject ?: button, button);
+    context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceProfile);
+    context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceProfile);
+    context.mediaResolver = ^id (__unused SPKActionButtonContext *resolvedContext) {
+        SPKProfileHeaderActionButton *strongButton = weakButton;
+        id user = SPKProfileResolvedUserFromObject(strongButton.sourceObject ?: strongButton, 0);
         if (!user && strongButton.fallbackToCurrentUser) {
-            user = SCIProfileSafeValue([SCIUtils activeUserSession], @"user");
+            user = SPKProfileSafeValue([SPKUtils activeUserSession], @"user");
         }
         return user;
     };
-    context.visibilityResolver = ^BOOL(__unused SCIActionButtonContext *resolvedContext,
+    context.visibilityResolver = ^BOOL(__unused SPKActionButtonContext *resolvedContext,
                                        NSString *identifier,
                                        __unused id media,
                                        NSArray *entries,
                                        __unused NSInteger currentIndex) {
-        if ([identifier isEqualToString:kSCIActionProfileCopyInfo]) return YES;
-        if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) return YES;
+        if ([identifier isEqualToString:kSPKActionProfileCopyInfo]) return YES;
+        if ([identifier isEqualToString:kSPKActionOpenTopicSettings]) return YES;
         return entries.count > 0;
     };
     return context;
 }
 
-static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button) {
+static void SPKConfigureProfileActionButton(SPKProfileHeaderActionButton *button) {
     if (!button) return;
 
-    id user = SCIProfileResolvedUserFromObject(button.sourceObject ?: button, 0);
+    id user = SPKProfileResolvedUserFromObject(button.sourceObject ?: button, 0);
     if (!user && button.fallbackToCurrentUser) {
-        user = SCIProfileSafeValue([SCIUtils activeUserSession], @"user");
+        user = SPKProfileSafeValue([SPKUtils activeUserSession], @"user");
     }
     if (!user) {
         button.hidden = YES;
@@ -298,34 +298,34 @@ static void SCIConfigureProfileActionButton(SCIProfileHeaderActionButton *button
     }
 
     button.hidden = NO;
-    SCIApplyButtonStyle(button, SCIActionButtonSourceProfile);
-    SCIConfigureActionButton(button, SCIProfileActionContext(button));
+    SPKApplyButtonStyle(button, SPKActionButtonSourceProfile);
+    SPKConfigureActionButton(button, SPKProfileActionContext(button));
 }
 
-static SCIProfileHeaderActionButton *SCIProfileBuildHeaderActionButton(id sourceObject) {
-    SCIProfileHeaderActionButton *button = [[SCIProfileHeaderActionButton alloc] initWithSymbol:@""
-                                                                                       pointSize:kSCIProfileActionIconPointSize
-                                                                                        diameter:kSCIProfileActionButtonWidth];
-    button.accessibilityIdentifier = @"scinsta-profile-action-button";
+static SPKProfileHeaderActionButton *SPKProfileBuildHeaderActionButton(id sourceObject) {
+    SPKProfileHeaderActionButton *button = [[SPKProfileHeaderActionButton alloc] initWithSymbol:@""
+                                                                                       pointSize:kSPKProfileActionIconPointSize
+                                                                                        diameter:kSPKProfileActionButtonWidth];
+    button.accessibilityIdentifier = @"sparkle-profile-action-button";
     button.translatesAutoresizingMaskIntoConstraints = YES;
-    button.frame = CGRectMake(0.0, 0.0, kSCIProfileActionButtonWidth, kSCIProfileActionButtonHeight);
-    button.bounds = CGRectMake(0.0, 0.0, kSCIProfileActionButtonWidth, kSCIProfileActionButtonHeight);
+    button.frame = CGRectMake(0.0, 0.0, kSPKProfileActionButtonWidth, kSPKProfileActionButtonHeight);
+    button.bounds = CGRectMake(0.0, 0.0, kSPKProfileActionButtonWidth, kSPKProfileActionButtonHeight);
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
     button.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
     button.contentEdgeInsets = UIEdgeInsetsZero;
     button.imageEdgeInsets = UIEdgeInsetsZero;
     button.tintColor = [UIColor labelColor];
-    SCIApplyButtonStyle(button, SCIActionButtonSourceProfile);
+    SPKApplyButtonStyle(button, SPKActionButtonSourceProfile);
     button.sourceObject = sourceObject;
     return button;
 }
 
-static SCIProfileHeaderActionButton *SCIProfileGetOrCreateActionButton(UIView *headerView) {
-    SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
-    if (![button isKindOfClass:[SCIProfileHeaderActionButton class]]) {
-        button = SCIProfileBuildHeaderActionButton(headerView);
+static SPKProfileHeaderActionButton *SPKProfileGetOrCreateActionButton(UIView *headerView) {
+    SPKProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSPKProfileHeaderActionButtonAssocKey);
+    if (![button isKindOfClass:[SPKProfileHeaderActionButton class]]) {
+        button = SPKProfileBuildHeaderActionButton(headerView);
         objc_setAssociatedObject(headerView,
-                                 kSCIProfileHeaderActionButtonAssocKey,
+                                 kSPKProfileHeaderActionButtonAssocKey,
                                  button,
                                  OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     } else if (button.sourceObject != headerView) {
@@ -334,12 +334,12 @@ static SCIProfileHeaderActionButton *SCIProfileGetOrCreateActionButton(UIView *h
     return button;
 }
 
-static void SCIProfileCollectTrailingControls(UIView *view, UIView *headerView, NSMutableArray<NSValue *> *out) {
+static void SPKProfileCollectTrailingControls(UIView *view, UIView *headerView, NSMutableArray<NSValue *> *out) {
     if (!view || !headerView) return;
-    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return;
+    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"]) return;
     if (view.hidden) return;
 
-    UIView *titleView = objc_getAssociatedObject(headerView, kSCIProfileHeaderTitleViewKey);
+    UIView *titleView = objc_getAssociatedObject(headerView, kSPKProfileHeaderTitleViewKey);
     if (titleView && (view == titleView || [view isDescendantOfView:titleView])) {
         return;
     }
@@ -385,7 +385,7 @@ static void SCIProfileCollectTrailingControls(UIView *view, UIView *headerView, 
     }
 
     for (UIView *subview in view.subviews) {
-        SCIProfileCollectTrailingControls(subview, headerView, out);
+        SPKProfileCollectTrailingControls(subview, headerView, out);
     }
 }
 
@@ -394,11 +394,11 @@ static void SCIProfileCollectTrailingControls(UIView *view, UIView *headerView, 
 // the rightmost edge (the verified badge sitting next to the username, a
 // re-centered title, etc.) are rejected so the button always tracks the real
 // "..." / bell trailing buttons.
-static CGRect SCIProfileGetTrailingAnchorFrame(UIView *headerView) {
+static CGRect SPKProfileGetTrailingAnchorFrame(UIView *headerView) {
     if (!headerView) return CGRectZero;
 
     NSMutableArray<NSValue *> *frames = [NSMutableArray array];
-    SCIProfileCollectTrailingControls(headerView, headerView, frames);
+    SPKProfileCollectTrailingControls(headerView, headerView, frames);
     if (frames.count == 0) return CGRectZero;
 
     CGFloat trailingEdge = -CGFLOAT_MAX;
@@ -418,12 +418,12 @@ static CGRect SCIProfileGetTrailingAnchorFrame(UIView *headerView) {
     return anchor;
 }
 
-static CGRect SCIProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRect currentFrame) {
+static CGRect SPKProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRect currentFrame) {
     if (!view || !headerView) return currentFrame;
-    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return currentFrame;
+    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"]) return currentFrame;
     if (view.hidden || view.alpha <= 0.01) return currentFrame;
 
-    UIView *titleView = objc_getAssociatedObject(headerView, kSCIProfileHeaderTitleViewKey);
+    UIView *titleView = objc_getAssociatedObject(headerView, kSPKProfileHeaderTitleViewKey);
     if (titleView && (view == titleView || [view isDescendantOfView:titleView])) {
         return currentFrame;
     }
@@ -442,17 +442,17 @@ static CGRect SCIProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRe
     }
 
     for (UIView *subview in view.subviews) {
-        CGRect found = SCIProfileGetAnyButtonFrame(subview, headerView, currentFrame);
+        CGRect found = SPKProfileGetAnyButtonFrame(subview, headerView, currentFrame);
         if (!CGRectIsEmpty(found)) return found;
     }
     return currentFrame;
 }
 
-static BOOL SCIProfileIsOwnProfile(id headerView) {
-    id user = SCIProfileResolvedUserFromObject(headerView, 0);
+static BOOL SPKProfileIsOwnProfile(id headerView) {
+    id user = SPKProfileResolvedUserFromObject(headerView, 0);
     if (!user) return NO;
-    NSString *profilePK = SCIProfileUserPK(user);
-    NSString *currentUserPK = [SCIUtils currentUserPK];
+    NSString *profilePK = SPKProfileUserPK(user);
+    NSString *currentUserPK = [SPKUtils currentUserPK];
     if (profilePK.length > 0 && currentUserPK.length > 0 && [profilePK isEqualToString:currentUserPK]) {
         return YES;
     }
@@ -465,27 +465,27 @@ static BOOL SCIProfileIsOwnProfile(id headerView) {
 // with scroll (alpha 0 flush -> 1 collapsed). That fade lives on the private
 // IGLiquidGlass *TouchForwardingVisualEffectView*. We mirror its alpha so our
 // overlay button matches. Returns < 0 when no glass exists (iOS < 26 / flush).
-static void SCIProfileAccumulateGlassAlpha(UIView *view, CGFloat *maxAlpha) {
+static void SPKProfileAccumulateGlassAlpha(UIView *view, CGFloat *maxAlpha) {
     if (!view) return;
     if ([NSStringFromClass([view class]) containsString:@"TouchForwardingVisualEffectView"]) {
         CGFloat alpha = view.alpha;
         if (alpha > *maxAlpha) *maxAlpha = alpha;
     }
     for (UIView *subview in view.subviews) {
-        SCIProfileAccumulateGlassAlpha(subview, maxAlpha);
+        SPKProfileAccumulateGlassAlpha(subview, maxAlpha);
     }
 }
 
-static CGFloat SCIProfileHeaderGlassProgress(UIView *headerView) {
+static CGFloat SPKProfileHeaderGlassProgress(UIView *headerView) {
     CGFloat maxAlpha = -1.0;
-    SCIProfileAccumulateGlassAlpha(headerView, &maxAlpha);
+    SPKProfileAccumulateGlassAlpha(headerView, &maxAlpha);
     return maxAlpha;
 }
 
 // A UIGlassEffect-backed circle. UIGlassEffect ships in the iOS 26 SDK only, so
 // we instantiate it at runtime; on older systems the class is absent and we
 // return nil (the button stays a bare icon, which already matches pre-26 IG).
-static UIVisualEffectView *SCIProfileMakeGlassBackground(void) {
+static UIVisualEffectView *SPKProfileMakeGlassBackground(void) {
     Class glassEffectClass = NSClassFromString(@"UIGlassEffect");
     if (!glassEffectClass) return nil;
 
@@ -499,7 +499,7 @@ static UIVisualEffectView *SCIProfileMakeGlassBackground(void) {
         // IG's fill) and is the exact opposite of the icon colour, keeping the glyph
         // legible. Opacity is easy to tune if it reads too strong/weak on device.
         UIColor *tint = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
-            UIColor *primary = [[SCIUtils SCIColor_InstagramPrimaryText] resolvedColorWithTraitCollection:traits];
+            UIColor *primary = [[SPKUtils SPKColor_InstagramPrimaryText] resolvedColorWithTraitCollection:traits];
             // Take only IG's hue; the primary text colour is fully opaque, so its
             // own alpha is ignored (NULL) in favour of our own light tint strength.
             CGFloat r = 0.0, g = 0.0, b = 0.0;
@@ -515,21 +515,21 @@ static UIVisualEffectView *SCIProfileMakeGlassBackground(void) {
     glassView.userInteractionEnabled = NO;
     glassView.clipsToBounds = YES;
     glassView.layer.cornerCurve = kCACornerCurveContinuous;
-    glassView.accessibilityIdentifier = @"scinsta-profile-action-glass";
+    glassView.accessibilityIdentifier = @"sparkle-profile-action-glass";
     return glassView;
 }
 
-static void SCIProfileUpdateGlass(SCIProfileHeaderActionButton *button, UIView *headerView) {
-    if (!button || button.sciGlassUnavailable) return;
+static void SPKProfileUpdateGlass(SPKProfileHeaderActionButton *button, UIView *headerView) {
+    if (!button || button.spkGlassUnavailable) return;
 
-    UIVisualEffectView *glassView = button.sciGlassView;
+    UIVisualEffectView *glassView = button.spkGlassView;
     if (!glassView) {
-        glassView = SCIProfileMakeGlassBackground();
+        glassView = SPKProfileMakeGlassBackground();
         if (!glassView) {
-            button.sciGlassUnavailable = YES; // iOS < 26: don't retry every layout
+            button.spkGlassUnavailable = YES; // iOS < 26: don't retry every layout
             return;
         }
-        button.sciGlassView = glassView;
+        button.spkGlassView = glassView;
     }
 
     // Host the glass INSIDE the chrome canvas (the same secure CanvasView the icon
@@ -545,30 +545,30 @@ static void SCIProfileUpdateGlass(SCIProfileHeaderActionButton *button, UIView *
     glassView.frame = bounds;
     glassView.layer.cornerRadius = MIN(bounds.size.width, bounds.size.height) / 2.0;
 
-    CGFloat progress = SCIProfileHeaderGlassProgress(headerView);
+    CGFloat progress = SPKProfileHeaderGlassProgress(headerView);
     glassView.alpha = progress > 0.0 ? MIN(progress, 1.0) : 0.0;
 }
 
 // MARK: - Long-username overlap
 
-static UIView *SCIProfileFindTitleView(UIView *view) {
-    if ([view.accessibilityIdentifier isEqualToString:@"scinsta-profile-action-button"]) return nil;
+static UIView *SPKProfileFindTitleView(UIView *view) {
+    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"]) return nil;
     if ([NSStringFromClass([view class]) containsString:@"TitleView"]) {
         return view;
     }
     for (UIView *subview in view.subviews) {
-        UIView *found = SCIProfileFindTitleView(subview);
+        UIView *found = SPKProfileFindTitleView(subview);
         if (found) return found;
     }
     return nil;
 }
 
-static UILabel *SCIProfileFindUsernameLabel(UIView *view) {
+static UILabel *SPKProfileFindUsernameLabel(UIView *view) {
     if ([view isKindOfClass:[UILabel class]] && [(UILabel *)view text].length > 0) {
         return (UILabel *)view;
     }
     for (UIView *subview in view.subviews) {
-        UILabel *found = SCIProfileFindUsernameLabel(subview);
+        UILabel *found = SPKProfileFindUsernameLabel(subview);
         if (found) return found;
     }
     return nil;
@@ -579,14 +579,14 @@ static UILabel *SCIProfileFindUsernameLabel(UIView *view) {
 // the title view (and its label) so it ends before us and truncates with "...",
 // mirroring IG's native behaviour when a trailing button is present. Runs after
 // IG's own layout each pass, so short names are left untouched / auto-reset.
-static void SCIProfileClampTitleToButton(UIView *headerView, SCIProfileHeaderActionButton *button) {
+static void SPKProfileClampTitleToButton(UIView *headerView, SPKProfileHeaderActionButton *button) {
     if (!headerView || !button || button.hidden) return;
 
     CGRect buttonInHeader = [button convertRect:button.bounds toView:headerView];
     if (CGRectGetMinX(buttonInHeader) <= 1.0) return; // not positioned yet
     CGFloat limitX = CGRectGetMinX(buttonInHeader) - 8.0; // clean gap before our button
 
-    UIView *titleView = SCIProfileFindTitleView(headerView);
+    UIView *titleView = SPKProfileFindTitleView(headerView);
     if (!titleView) return;
 
     CGRect titleInHeader = [titleView convertRect:titleView.bounds toView:headerView];
@@ -598,7 +598,7 @@ static void SCIProfileClampTitleToButton(UIView *headerView, SCIProfileHeaderAct
         titleView.clipsToBounds = YES;
     }
 
-    UILabel *label = SCIProfileFindUsernameLabel(titleView);
+    UILabel *label = SPKProfileFindUsernameLabel(titleView);
     if (label) {
         CGRect labelInHeader = [label convertRect:label.bounds toView:headerView];
         CGFloat labelOverflow = CGRectGetMaxX(labelInHeader) - limitX;
@@ -611,44 +611,44 @@ static void SCIProfileClampTitleToButton(UIView *headerView, SCIProfileHeaderAct
     }
 }
 
-static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered, BOOL reconfigure) {
-    if (![SCIUtils getBoolPref:@"profile_action_btn"]) {
-        SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
+static void SPKProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered, BOOL reconfigure) {
+    if (![SPKUtils getBoolPref:@"profile_action_btn"]) {
+        SPKProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSPKProfileHeaderActionButtonAssocKey);
         if (button) {
             button.hidden = YES;
             [button removeFromSuperview];
-            objc_setAssociatedObject(button, kSCIProfileLastExpectedFrameKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(button, kSPKProfileLastExpectedFrameKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }
         return;
     }
 
-    BOOL ownProfile = titleIsCentered || SCIProfileIsOwnProfile(headerView);
+    BOOL ownProfile = titleIsCentered || SPKProfileIsOwnProfile(headerView);
 
     // Completely remove the action button from the own profile
     if (ownProfile) {
-        SCIProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSCIProfileHeaderActionButtonAssocKey);
+        SPKProfileHeaderActionButton *button = objc_getAssociatedObject(headerView, kSPKProfileHeaderActionButtonAssocKey);
         if (button) {
             button.hidden = YES;
             [button removeFromSuperview];
-            objc_setAssociatedObject(button, kSCIProfileLastExpectedFrameKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(button, kSPKProfileLastExpectedFrameKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }
         return;
     }
 
     // For other profiles: manual positioning on the right side
-    SCIProfileHeaderActionButton *button = SCIProfileGetOrCreateActionButton(headerView);
+    SPKProfileHeaderActionButton *button = SPKProfileGetOrCreateActionButton(headerView);
     button.fallbackToCurrentUser = NO;
 
     // Rebuilding the menu/context is expensive; only do it when explicitly asked
     // (initial configure / source change) or before the button has ever been set
     // up. High-frequency triggers (layout, scroll-collapse) just reposition.
-    if (reconfigure || !button.sciDidConfigure) {
-        SCIConfigureProfileActionButton(button);
+    if (reconfigure || !button.spkDidConfigure) {
+        SPKConfigureProfileActionButton(button);
     }
 
     if (button.hidden) {
         [button removeFromSuperview];
-        objc_setAssociatedObject(button, kSCIProfileLastExpectedFrameKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(button, kSPKProfileLastExpectedFrameKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         return;
     }
 
@@ -659,24 +659,24 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
     // Keep the Liquid Glass bubble in sync with IG's buttons every layout pass.
     // Done before any early-return below so the bubble still fades while our
     // position is stable (the glass alpha changes with scroll, our frame may not).
-    SCIProfileUpdateGlass(button, headerView);
+    SPKProfileUpdateGlass(button, headerView);
 
     // Stop long usernames from running under the button (IG can't reserve space
     // for an overlay). Runs every pass since IG re-expands the title each layout.
-    SCIProfileClampTitleToButton(headerView, button);
+    SPKProfileClampTitleToButton(headerView, button);
 
     CGFloat w = CGRectGetWidth(headerView.bounds);
     CGFloat h = CGRectGetHeight(headerView.bounds);
     if (w < 60.0 || h < 20.0) return;
 
-    CGFloat btnW = kSCIProfileActionButtonWidth;
-    CGFloat btnH = kSCIProfileActionButtonHeight;
+    CGFloat btnW = kSPKProfileActionButtonWidth;
+    CGFloat btnH = kSPKProfileActionButtonHeight;
 
     CGFloat x;
     CGFloat centerY;
 
     // Other profiles: place on RIGHT side relative to existing buttons
-    CGRect anchorFrame = SCIProfileGetTrailingAnchorFrame(headerView);
+    CGRect anchorFrame = SPKProfileGetTrailingAnchorFrame(headerView);
     BOOL placedFromAnchor = NO;
 
     if (!CGRectIsEmpty(anchorFrame)) {
@@ -694,7 +694,7 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
         placedFromAnchor = (x >= w * 0.5);
     }
 
-    NSValue *lastVal = objc_getAssociatedObject(button, kSCIProfileLastExpectedFrameKey);
+    NSValue *lastVal = objc_getAssociatedObject(button, kSPKProfileLastExpectedFrameKey);
     CGRect lastFrame = lastVal ? [lastVal CGRectValue] : CGRectZero;
 
     if (!placedFromAnchor) {
@@ -706,7 +706,7 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
         if (lastVal) {
             return;
         }
-        CGRect anyBtnFrame = SCIProfileGetAnyButtonFrame(headerView, headerView, CGRectZero);
+        CGRect anyBtnFrame = SPKProfileGetAnyButtonFrame(headerView, headerView, CGRectZero);
         if (!CGRectIsEmpty(anyBtnFrame) && CGRectGetMidX(anyBtnFrame) >= w * 0.5) {
             centerY = CGRectGetMidY(anyBtnFrame);
         } else {
@@ -723,7 +723,7 @@ static void SCIProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
     }
 
     button.frame = expectedFrame;
-    objc_setAssociatedObject(button, kSCIProfileLastExpectedFrameKey, [NSValue valueWithCGRect:expectedFrame], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(button, kSPKProfileLastExpectedFrameKey, [NSValue valueWithCGRect:expectedFrame], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [headerView bringSubviewToFront:button];
 }
 
@@ -731,13 +731,13 @@ static void (*orig_profileHeaderConfigure)(id, SEL, id, id, id, BOOL);
 
 static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, id leftButtons, id rightButtons, BOOL titleIsCentered) {
     // For own profile, inject our button into leftButtons array
-    BOOL ownProfile = titleIsCentered || SCIProfileIsOwnProfile(self);
+    BOOL ownProfile = titleIsCentered || SPKProfileIsOwnProfile(self);
 
-    if (ownProfile && [SCIUtils getBoolPref:@"profile_action_btn"]) {
+    if (ownProfile && [SPKUtils getBoolPref:@"profile_action_btn"]) {
         // Create our button as a proper UIBarButtonItem or view for injection
-        SCIProfileHeaderActionButton *button = SCIProfileGetOrCreateActionButton((UIView *)self);
+        SPKProfileHeaderActionButton *button = SPKProfileGetOrCreateActionButton((UIView *)self);
         button.fallbackToCurrentUser = YES;
-        SCIConfigureProfileActionButton(button);
+        SPKConfigureProfileActionButton(button);
 
         if (!button.hidden) {
             // Inject into leftButtons array (after the + button)
@@ -754,38 +754,38 @@ static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, i
     orig_profileHeaderConfigure(self, _cmd, titleView, leftButtons, rightButtons, titleIsCentered);
 
     // Save titleView so our layout scanner can ignore it and its subviews
-    objc_setAssociatedObject(self, kSCIProfileHeaderTitleViewKey, titleView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, kSPKProfileHeaderTitleViewKey, titleView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     // Save titleIsCentered state for use in layoutSubviews
-    objc_setAssociatedObject(self, kSCIProfileTitleIsCenteredKey, @(titleIsCentered), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, kSPKProfileTitleIsCenteredKey, @(titleIsCentered), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     UIView *header = (UIView *)self;
     dispatch_async(dispatch_get_main_queue(), ^{
-        SCIProfilePlaceActionButton(header, titleIsCentered, YES);
+        SPKProfilePlaceActionButton(header, titleIsCentered, YES);
     });
 }
 
-static void SCIProfileReplaceActionButtonFromHeader(id headerSelf) {
+static void SPKProfileReplaceActionButtonFromHeader(id headerSelf) {
     if (![headerSelf isKindOfClass:[UIView class]]) return;
     // Use saved titleIsCentered state from configure hook
-    NSNumber *savedTitleIsCentered = objc_getAssociatedObject(headerSelf, kSCIProfileTitleIsCenteredKey);
+    NSNumber *savedTitleIsCentered = objc_getAssociatedObject(headerSelf, kSPKProfileTitleIsCenteredKey);
     BOOL titleIsCentered = savedTitleIsCentered ? savedTitleIsCentered.boolValue : NO;
-    SCIProfilePlaceActionButton((UIView *)headerSelf, titleIsCentered, NO);
+    SPKProfilePlaceActionButton((UIView *)headerSelf, titleIsCentered, NO);
 }
 
 static void (*orig_profileHeaderLayoutSubviews)(id, SEL);
 
 static void hooked_profileHeaderLayoutSubviews(id self, SEL _cmd) {
     if (orig_profileHeaderLayoutSubviews) orig_profileHeaderLayoutSubviews(self, _cmd);
-    SCIProfileReplaceActionButtonFromHeader(self);
+    SPKProfileReplaceActionButtonFromHeader(self);
 }
 
 static BOOL hooksInstalled = NO;
 static BOOL retryScheduled = NO;
 static NSInteger installAttempts = 0;
 
-extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"profile_action_btn"]) return;
+extern "C" void SPKInstallProfileActionButtonHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"profile_action_btn"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -796,15 +796,15 @@ extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
         if (!headerClass) headerClass = objc_getClass("_TtC24IGProfileNavigationSwift29IGProfileNavigationHeaderView");
         if (!headerClass) headerClass = objc_getClass("IGProfileNavigationHeaderView");
         if (!headerClass) {
-            SCILog(@"ProfileBtn", @"Install target unavailable attempt=%ld", (long)installAttempts);
-            if (!retryScheduled && installAttempts < kSCIProfileActionButtonMaxInstallAttempts) {
+            SPKLog(@"ProfileBtn", @"Install target unavailable attempt=%ld", (long)installAttempts);
+            if (!retryScheduled && installAttempts < kSPKProfileActionButtonMaxInstallAttempts) {
                 retryScheduled = YES;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.75 * NSEC_PER_SEC)),
                                dispatch_get_main_queue(), ^{
-                    @synchronized([SCIProfileHeaderActionButton class]) {
+                    @synchronized([SPKProfileHeaderActionButton class]) {
                         retryScheduled = NO;
                     }
-                    SCIInstallProfileActionButtonHooksIfEnabled();
+                    SPKInstallProfileActionButtonHooksIfEnabled();
                 });
             }
             return;
@@ -825,7 +825,7 @@ extern "C" void SCIInstallProfileActionButtonHooksIfEnabled(void) {
         }
 
         hooksInstalled = configureHooked || layoutHooked;
-        SCILog(@"ProfileBtn", @"Install class=%@ configure=%@ layout=%@ installed=%@",
+        SPKLog(@"ProfileBtn", @"Install class=%@ configure=%@ layout=%@ installed=%@",
                NSStringFromClass(headerClass),
                configureHooked ? @"YES" : @"NO",
                layoutHooked ? @"YES" : @"NO",

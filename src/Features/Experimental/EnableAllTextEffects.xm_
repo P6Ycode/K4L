@@ -5,7 +5,7 @@
 - (void)didMoveToSuperview {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"enable_hidden_texteffectsstyles"]) {
+    if ([SPKUtils getBoolPref:@"enable_hidden_texteffectsstyles"]) {
     
         // Clear previous option values
         [self.animationTypes removeAllObjects];
@@ -26,7 +26,7 @@
 
         // Refresh option picker
         if ([self respondsToSelector:@selector(reloadData)]) {
-            SCILog(@"General", @"[SCInsta] Enable all text effects: Reloading data...");
+            SPKLog(@"General", @"[Sparkle] Enable all text effects: Reloading data...");
             [self reloadData];
         }
 

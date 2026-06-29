@@ -1,44 +1,44 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 
-typedef NS_ENUM(NSInteger, SCIFeedFilterSurface) {
-    SCIFeedFilterSurfaceFeed,
-    SCIFeedFilterSurfaceReels,
-    SCIFeedFilterSurfaceExplore,
-    SCIFeedFilterSurfaceOther,
+typedef NS_ENUM(NSInteger, SPKFeedFilterSurface) {
+    SPKFeedFilterSurfaceFeed,
+    SPKFeedFilterSurfaceReels,
+    SPKFeedFilterSurfaceExplore,
+    SPKFeedFilterSurfaceOther,
 };
 
-static BOOL SCIShouldHideAdsForSurface(SCIFeedFilterSurface surface) {
+static BOOL SPKShouldHideAdsForSurface(SPKFeedFilterSurface surface) {
     switch (surface) {
-        case SCIFeedFilterSurfaceFeed:
-        case SCIFeedFilterSurfaceOther:
-            return [SCIUtils getBoolPref:@"general_hide_ads_feed"];
-        case SCIFeedFilterSurfaceReels:
-            return [SCIUtils getBoolPref:@"general_hide_ads_reels"];
-        case SCIFeedFilterSurfaceExplore:
-            return [SCIUtils getBoolPref:@"general_hide_ads_explore"];
+        case SPKFeedFilterSurfaceFeed:
+        case SPKFeedFilterSurfaceOther:
+            return [SPKUtils getBoolPref:@"general_hide_ads_feed"];
+        case SPKFeedFilterSurfaceReels:
+            return [SPKUtils getBoolPref:@"general_hide_ads_reels"];
+        case SPKFeedFilterSurfaceExplore:
+            return [SPKUtils getBoolPref:@"general_hide_ads_explore"];
     }
     return NO;
 }
 
-static BOOL SCIShouldHideSuggestedAccountsForSurface(SCIFeedFilterSurface surface) {
+static BOOL SPKShouldHideSuggestedAccountsForSurface(SPKFeedFilterSurface surface) {
     switch (surface) {
-        case SCIFeedFilterSurfaceFeed:
-            return [SCIUtils getBoolPref:@"general_hide_suggested_users_feed"];
-        case SCIFeedFilterSurfaceReels:
-            return [SCIUtils getBoolPref:@"general_hide_suggested_users_reels"];
-        case SCIFeedFilterSurfaceExplore:
-        case SCIFeedFilterSurfaceOther:
+        case SPKFeedFilterSurfaceFeed:
+            return [SPKUtils getBoolPref:@"general_hide_suggested_users_feed"];
+        case SPKFeedFilterSurfaceReels:
+            return [SPKUtils getBoolPref:@"general_hide_suggested_users_reels"];
+        case SPKFeedFilterSurfaceExplore:
+        case SPKFeedFilterSurfaceOther:
             return NO;
     }
     return NO;
 }
 
-static BOOL SCIShouldHideStoryAds(void) {
-    return [SCIUtils getBoolPref:@"general_hide_ads_stories"];
+static BOOL SPKShouldHideStoryAds(void) {
+    return [SPKUtils getBoolPref:@"general_hide_ads_stories"];
 }
 
-static void SCIStoryAdBlockingLogClassAvailability(void) {
+static void SPKStoryAdBlockingLogClassAvailability(void) {
     for (NSString *className in @[
         @"IGStoryAdPool",
         @"IGStoryAdsManager",
@@ -46,32 +46,32 @@ static void SCIStoryAdBlockingLogClassAvailability(void) {
         @"IGStoryAdsResponseParser",
         @"IGStoryAdsOptInTextView"
     ]) {
-        SCILog(@"Ads", @"Story ad hook target %@ %@", className, NSClassFromString(className) ? @"available" : @"missing");
+        SPKLog(@"Ads", @"Story ad hook target %@ %@", className, NSClassFromString(className) ? @"available" : @"missing");
     }
 }
 
-static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
-    BOOL isFeed = surface == SCIFeedFilterSurfaceFeed;
+static NSArray *removeItemsInList(NSArray *list, SPKFeedFilterSurface surface) {
+    BOOL isFeed = surface == SPKFeedFilterSurfaceFeed;
     NSArray *originalObjs = list;
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
 
     for (id obj in originalObjs) {
         // Remove suggested posts
-        if (isFeed && [SCIUtils getBoolPref:@"feed_hide_suggested_posts"]) {
+        if (isFeed && [SPKUtils getBoolPref:@"feed_hide_suggested_posts"]) {
 
             // Posts
             if (
                 ([obj isKindOfClass:%c(IGMedia)] && [((IGMedia *)obj).explorePostInFeed isEqual:@YES])
                 || ([obj isKindOfClass:%c(IGFeedGroupHeaderViewModel)] && [[obj title] isEqualToString:@"Suggested Posts"])
             ) {
-                SCILog(@"General", @"[SCInsta] Removing suggested posts");
+                SPKLog(@"General", @"[Sparkle] Removing suggested posts");
 
                 continue;
             }
 
             // Suggested stories (carousel)
             if ([obj isKindOfClass:%c(IGInFeedStoriesTrayModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested stories carousel");
+                SPKLog(@"General", @"[Sparkle] Hiding suggested stories carousel");
 
                 continue;
             }
@@ -79,39 +79,39 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
         }
 
         // Remove suggested reels (carousel)
-        if (isFeed && [SCIUtils getBoolPref:@"feed_hide_suggested_reels"]) {
+        if (isFeed && [SPKUtils getBoolPref:@"feed_hide_suggested_reels"]) {
             if ([obj isKindOfClass:%c(IGFeedScrollableClipsModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested reels carousel");
+                SPKLog(@"General", @"[Sparkle] Hiding suggested reels carousel");
 
                 continue;
             }
         }
         
         // Remove suggested for you (accounts)
-        if (SCIShouldHideSuggestedAccountsForSurface(surface)) {
+        if (SPKShouldHideSuggestedAccountsForSurface(surface)) {
             
             // Feed
             if (isFeed && [obj isKindOfClass:%c(IGHScrollAYMFModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding accounts suggested for you (feed)");
+                SPKLog(@"General", @"[Sparkle] Hiding accounts suggested for you (feed)");
 
                 continue;
             }
 
             // Reels
             if ([obj isKindOfClass:%c(IGSuggestedUserInReelsModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding accounts suggested for you (reels)");
+                SPKLog(@"General", @"[Sparkle] Hiding accounts suggested for you (reels)");
 
                 continue;
             }
         }
 
         // Remove suggested threads posts
-        if ([SCIUtils getBoolPref:@"feed_hide_suggested_threads"]) {
+        if ([SPKUtils getBoolPref:@"feed_hide_suggested_threads"]) {
 
             // Feed (carousel)
             if (isFeed) {
                 if ([obj isKindOfClass:%c(IGBloksFeedUnitModel)] || [obj isKindOfClass:objc_getClass("IGThreadsInFeedModels.IGThreadsInFeedModel")]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested threads posts (carousel)");
+                    SPKLog(@"General", @"[Sparkle] Hiding suggested threads posts (carousel)");
 
                     continue;
                 }
@@ -119,7 +119,7 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
 
             // Reels
             if ([obj isKindOfClass:%c(IGSundialNetegoItem)]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested threads posts (reels)");
+                SPKLog(@"General", @"[Sparkle] Hiding suggested threads posts (reels)");
 
                 continue;
             }
@@ -127,31 +127,31 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
         }        
 
         // Remove story tray
-        if (isFeed && [SCIUtils getBoolPref:@"feed_hide_stories_tray"]) {
+        if (isFeed && [SPKUtils getBoolPref:@"feed_hide_stories_tray"]) {
             if ([obj isKindOfClass:%c(IGStoryDataController)]) {
-                SCILog(@"General", @"[SCInsta] Hiding stories tray");
+                SPKLog(@"General", @"[Sparkle] Hiding stories tray");
 
                 continue;
             }
         }
 
         // Hide entire feed
-        if (isFeed && [SCIUtils getBoolPref:@"feed_hide_entire_feed"]) {
+        if (isFeed && [SPKUtils getBoolPref:@"feed_hide_entire_feed"]) {
             if ([obj isKindOfClass:%c(IGPostCreationManager)] || [obj isKindOfClass:%c(IGMedia)] || [obj isKindOfClass:%c(IGEndOfFeedDemarcatorModel)] || [obj isKindOfClass:%c(IGSpinnerLabelViewModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding entire feed");
+                SPKLog(@"General", @"[Sparkle] Hiding entire feed");
 
                 continue;
             }
         }
 
         // Remove ads
-        if (SCIShouldHideAdsForSurface(surface)) {
+        if (SPKShouldHideAdsForSurface(surface)) {
             if (
                 ([obj isKindOfClass:%c(IGFeedItem)] && ([obj isSponsored] || [obj isSponsoredApp]))
                 || ([obj isKindOfClass:%c(IGDiscoveryGridItem)] && [[obj model] isKindOfClass:%c(IGAdItem)])
                 || [obj isKindOfClass:%c(IGAdItem)]
             ) {
-                SCILog(@"General", @"[SCInsta] Removing ads");
+                SPKLog(@"General", @"[Sparkle] Removing ads");
 
                 continue;
             }
@@ -163,12 +163,12 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
     return [filteredObjs copy];
 }
 
-%group SCIFeedFilteringHooks
+%group SPKFeedFilteringHooks
 
 // Suggested posts/reels
 %hook IGMainFeedListAdapterDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    NSArray *filteredObjs = removeItemsInList(%orig, SCIFeedFilterSurfaceFeed);
+    NSArray *filteredObjs = removeItemsInList(%orig, SPKFeedFilterSurfaceFeed);
 
     // Remove loading spinner at end of feed (if 5 or less items in feed)
     NSUInteger arrayLength = [filteredObjs count];
@@ -187,13 +187,13 @@ static NSArray *removeItemsInList(NSArray *list, SCIFeedFilterSurface surface) {
 
 %end
 
-%group SCIFeedFilteringDeferredHooks
+%group SPKFeedFilteringDeferredHooks
 
-static NSArray *sciSundialFilterAndLimit(NSArray *list) {
-    NSArray *filteredList = removeItemsInList(list, SCIFeedFilterSurfaceReels);
+static NSArray *spkSundialFilterAndLimit(NSArray *list) {
+    NSArray *filteredList = removeItemsInList(list, SPKFeedFilterSurfaceReels);
 
-    if ([SCIUtils getBoolPref:@"reels_prevent_doom_scroll"]) {
-        double reelCount = [SCIUtils getDoublePref:@"reels_doom_scroll_limit"];
+    if ([SPKUtils getBoolPref:@"reels_prevent_doom_scroll"]) {
+        double reelCount = [SPKUtils getDoublePref:@"reels_doom_scroll_limit"];
         return [filteredList subarrayWithRange:NSMakeRange(0, MIN((NSUInteger)reelCount, filteredList.count))];
     }
 
@@ -202,25 +202,25 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %hook IGSundialFeedDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    return sciSundialFilterAndLimit(%orig);
+    return spkSundialFilterAndLimit(%orig);
 }
 %end
 
 // Demangled name: IGSundialFeed.IGSundialFeedDataSource
 %hook _TtC13IGSundialFeed23IGSundialFeedDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    return sciSundialFilterAndLimit(%orig);
+    return spkSundialFilterAndLimit(%orig);
 }
 %end
 
 %end
 
-%group SCIAdBlockingEarlyHooks
+%group SPKAdBlockingEarlyHooks
 
 %hook IGContextualFeedViewController
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_feed"]) {
-        return removeItemsInList(%orig, SCIFeedFilterSurfaceOther);
+    if ([SPKUtils getBoolPref:@"general_hide_ads_feed"]) {
+        return removeItemsInList(%orig, SPKFeedFilterSurfaceOther);
     }
 
     return %orig;
@@ -228,8 +228,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %end
 %hook IGVideoFeedViewController
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_feed"]) {
-        return removeItemsInList(%orig, SCIFeedFilterSurfaceOther);
+    if ([SPKUtils getBoolPref:@"general_hide_ads_feed"]) {
+        return removeItemsInList(%orig, SPKFeedFilterSurfaceOther);
     }
 
     return %orig;
@@ -237,8 +237,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %end
 %hook IGChainingFeedViewController
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_feed"]) {
-        return removeItemsInList(%orig, SCIFeedFilterSurfaceOther);
+    if ([SPKUtils getBoolPref:@"general_hide_ads_feed"]) {
+        return removeItemsInList(%orig, SPKFeedFilterSurfaceOther);
     }
 
     return %orig;
@@ -246,8 +246,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 %end
 %hook IGSundialAdsResponseParser
 - (id)parsedObjectFromResponse:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_reels"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
+    if ([SPKUtils getBoolPref:@"general_hide_ads_reels"]) {
+        SPKLog(@"General", @"[Sparkle] Removing ads");
 
         return nil;
     }
@@ -255,8 +255,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
     return %orig;
 }
 - (id)initWithMediaStore:(id)arg1 userStore:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_reels"]) {
-        SCILog(@"General", @"[SCInsta] Removing ads");
+    if ([SPKUtils getBoolPref:@"general_hide_ads_reels"]) {
+        SPKLog(@"General", @"[Sparkle] Removing ads");
         
         return nil;
     }
@@ -267,8 +267,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 // "Sponsored" posts on discover/search page
 %hook IGExploreListKitDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_explore"]) {
-        return removeItemsInList(%orig, SCIFeedFilterSurfaceExplore);
+    if ([SPKUtils getBoolPref:@"general_hide_ads_explore"]) {
+        return removeItemsInList(%orig, SPKFeedFilterSurfaceExplore);
     }
 
     return %orig;
@@ -277,8 +277,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 // Demangled name: IGExploreViewControllerSwift.IGExploreListKitDataSource
 %hook _TtC28IGExploreViewControllerSwift26IGExploreListKitDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_ads_explore"]) {
-        return removeItemsInList(%orig, SCIFeedFilterSurfaceExplore);
+    if ([SPKUtils getBoolPref:@"general_hide_ads_explore"]) {
+        return removeItemsInList(%orig, SPKFeedFilterSurfaceExplore);
     }
 
     return %orig;
@@ -289,7 +289,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 // Demangled name: IGCommentThreadCommerceCarouselPill.IGCommentThreadCommerceCarousel
 %hook _TtC35IGCommentThreadCommerceCarouselPill31IGCommentThreadCommerceCarousel
 - (id)initWithFrame:(CGRect)frame pillText:(id)text pillStyle:(NSInteger)style {
-    if ([SCIUtils getBoolPref:@"general_comments_hide_shopping"]) {
+    if ([SPKUtils getBoolPref:@"general_comments_hide_shopping"]) {
         return nil;
     }
 
@@ -302,7 +302,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 // Demangled name: IGShoppableEverythingCommon.IGRapEntrypointResolver
 %hook _TtC27IGShoppableEverythingCommon23IGRapEntrypointResolver
 - (id)initWithLauncherSet:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
+    if ([SPKUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
         return nil;
     }
 
@@ -314,7 +314,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 - (void)didMoveToWindow {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
+    if ([SPKUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
         [self removeFromSuperview];
     }
 }
@@ -323,12 +323,12 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %end
 
-%group SCIStoryAdBlockingHooks
+%group SPKStoryAdBlockingHooks
 
 %hook IGStoryAdPool
 - (id)initWithUserSession:(id)arg1 {
-    if (SCIShouldHideStoryAds()) {
-        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdPool initWithUserSession:");
+    if (SPKShouldHideStoryAds()) {
+        SPKLog(@"Ads", @"Story ad hook fired: IGStoryAdPool initWithUserSession:");
         return nil;
     }
 
@@ -338,8 +338,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %hook IGStoryAdsManager
 - (id)initWithUserSession:(id)arg1 storyViewerLoggingContext:(id)arg2 storyFullscreenSectionLoggingContext:(id)arg3 viewController:(id)arg4 {
-    if (SCIShouldHideStoryAds()) {
-        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsManager initWithUserSession:storyViewerLoggingContext:storyFullscreenSectionLoggingContext:viewController:");
+    if (SPKShouldHideStoryAds()) {
+        SPKLog(@"Ads", @"Story ad hook fired: IGStoryAdsManager initWithUserSession:storyViewerLoggingContext:storyFullscreenSectionLoggingContext:viewController:");
         return nil;
     }
 
@@ -349,8 +349,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %hook IGStoryAdsFetcher
 - (id)initWithUserSession:(id)arg1 delegate:(id)arg2 {
-    if (SCIShouldHideStoryAds()) {
-        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsFetcher initWithUserSession:delegate:");
+    if (SPKShouldHideStoryAds()) {
+        SPKLog(@"Ads", @"Story ad hook fired: IGStoryAdsFetcher initWithUserSession:delegate:");
         return nil;
     }
 
@@ -361,16 +361,16 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 // IG 148.0
 %hook IGStoryAdsResponseParser
 - (id)parsedObjectFromResponse:(id)arg1 {
-    if (SCIShouldHideStoryAds()) {
-        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsResponseParser parsedObjectFromResponse:");
+    if (SPKShouldHideStoryAds()) {
+        SPKLog(@"Ads", @"Story ad hook fired: IGStoryAdsResponseParser parsedObjectFromResponse:");
         return nil;
     }
 
     return %orig;
 }
 - (id)initWithReelStore:(id)arg1 {
-    if (SCIShouldHideStoryAds()) {
-        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsResponseParser initWithReelStore:");
+    if (SPKShouldHideStoryAds()) {
+        SPKLog(@"Ads", @"Story ad hook fired: IGStoryAdsResponseParser initWithReelStore:");
         return nil;
     }
 
@@ -380,8 +380,8 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %hook IGStoryAdsOptInTextView
 - (id)initWithBrandedContentStyledString:(id)arg1 sponsoredPostLabel:(id)arg2 {
-    if (SCIShouldHideStoryAds()) {
-        SCILog(@"Ads", @"Story ad hook fired: IGStoryAdsOptInTextView initWithBrandedContentStyledString:sponsoredPostLabel:");
+    if (SPKShouldHideStoryAds()) {
+        SPKLog(@"Ads", @"Story ad hook fired: IGStoryAdsOptInTextView initWithBrandedContentStyledString:sponsoredPostLabel:");
         return nil;
     }
 
@@ -391,15 +391,15 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %end
 
-%group SCIFeedEndDemarcatorHooks
+%group SPKFeedEndDemarcatorHooks
 
 // Hide "suggested for you" text at end of feed
 %hook IGEndOfFeedDemarcatorCellTopOfFeed
 - (void)configureWithViewConfig:(id)arg1 {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"feed_hide_suggested_posts"]) {
-        SCILog(@"General", @"[SCInsta] Hiding end of feed message");
+    if ([SPKUtils getBoolPref:@"feed_hide_suggested_posts"]) {
+        SPKLog(@"General", @"[Sparkle] Hiding end of feed message");
 
         // Hide suggested for you text
         UILabel *_titleLabel = MSHookIvar<UILabel *>(self, "_titleLabel");
@@ -415,7 +415,7 @@ static NSArray *sciSundialFilterAndLimit(NSArray *list) {
 
 %end
 
-static BOOL SCIAnyFeedFilteringPrefEnabled(void) {
+static BOOL SPKAnyFeedFilteringPrefEnabled(void) {
     for (NSString *key in @[
         @"general_hide_ads_feed",
         @"general_hide_ads_reels",
@@ -429,7 +429,7 @@ static BOOL SCIAnyFeedFilteringPrefEnabled(void) {
         @"feed_hide_entire_feed",
         @"reels_prevent_doom_scroll"
     ]) {
-        if ([SCIUtils getBoolPref:key]) {
+        if ([SPKUtils getBoolPref:key]) {
             return YES;
         }
     }
@@ -437,55 +437,55 @@ static BOOL SCIAnyFeedFilteringPrefEnabled(void) {
     return NO;
 }
 
-extern "C" void SCIInstallFeedFilteringFeedHooksIfEnabled(void) {
-    if (!SCIAnyFeedFilteringPrefEnabled()) {
+extern "C" void SPKInstallFeedFilteringFeedHooksIfEnabled(void) {
+    if (!SPKAnyFeedFilteringPrefEnabled()) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIFeedFilteringHooks);
+        %init(SPKFeedFilteringHooks);
     });
 }
 
-extern "C" void SCIInstallFeedFilteringHooksIfEnabled(void) {
-    if (!SCIAnyFeedFilteringPrefEnabled()) {
+extern "C" void SPKInstallFeedFilteringHooksIfEnabled(void) {
+    if (!SPKAnyFeedFilteringPrefEnabled()) {
         return;
     }
 
-    SCIInstallFeedFilteringFeedHooksIfEnabled();
+    SPKInstallFeedFilteringFeedHooksIfEnabled();
 
     static dispatch_once_t deferredOnceToken;
     dispatch_once(&deferredOnceToken, ^{
-        %init(SCIFeedFilteringDeferredHooks);
-        %init(SCIFeedEndDemarcatorHooks);
+        %init(SPKFeedFilteringDeferredHooks);
+        %init(SPKFeedEndDemarcatorHooks);
     });
 }
 
-extern "C" void SCIInstallAdBlockingEarlyHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"general_hide_ads_feed"] &&
-        ![SCIUtils getBoolPref:@"general_hide_ads_reels"] &&
-        ![SCIUtils getBoolPref:@"general_hide_ads_explore"] &&
-        ![SCIUtils getBoolPref:@"general_comments_hide_shopping"] &&
-        ![SCIUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
+extern "C" void SPKInstallAdBlockingEarlyHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"general_hide_ads_feed"] &&
+        ![SPKUtils getBoolPref:@"general_hide_ads_reels"] &&
+        ![SPKUtils getBoolPref:@"general_hide_ads_explore"] &&
+        ![SPKUtils getBoolPref:@"general_comments_hide_shopping"] &&
+        ![SPKUtils getBoolPref:@"general_hide_reels_shopping_cta"]) {
         return;
     }
 
     static dispatch_once_t earlyAdsOnceToken;
     dispatch_once(&earlyAdsOnceToken, ^{
-        %init(SCIAdBlockingEarlyHooks);
+        %init(SPKAdBlockingEarlyHooks);
     });
 }
 
-extern "C" void SCIInstallStoryAdBlockingHooksIfEnabled(void) {
-    if (!SCIShouldHideStoryAds()) {
+extern "C" void SPKInstallStoryAdBlockingHooksIfEnabled(void) {
+    if (!SPKShouldHideStoryAds()) {
         return;
     }
 
-    SCIStoryAdBlockingLogClassAvailability();
+    SPKStoryAdBlockingLogClassAvailability();
 
     static dispatch_once_t storyAdsOnceToken;
     dispatch_once(&storyAdsOnceToken, ^{
-        %init(SCIStoryAdBlockingHooks);
+        %init(SPKStoryAdBlockingHooks);
     });
 }

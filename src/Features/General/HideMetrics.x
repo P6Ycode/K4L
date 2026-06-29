@@ -1,22 +1,22 @@
 #import "../../Utils.h"
 
-%group SCIHideMetricsHooks
+%group SPKHideMetricsHooks
 
 %hook IGSundialViewerVerticalUFI
 - (void)setNumLikes:(NSInteger)num {
-    return %orig([SCIUtils getBoolPref:@"reels_hide_like_count"] ? 0 : num);
+    return %orig([SPKUtils getBoolPref:@"reels_hide_like_count"] ? 0 : num);
 }
 - (void)setNumReshares:(NSInteger)num {
-    return %orig([SCIUtils getBoolPref:@"reels_hide_reshare_count"] ? 0 : num);
+    return %orig([SPKUtils getBoolPref:@"reels_hide_reshare_count"] ? 0 : num);
 }
 - (void)setNumComments:(NSInteger)num {
-    return %orig([SCIUtils getBoolPref:@"reels_hide_comment_count"] ? 0 : num);
+    return %orig([SPKUtils getBoolPref:@"reels_hide_comment_count"] ? 0 : num);
 }
 - (void)setNumReposts:(NSInteger)num {
-    return %orig([SCIUtils getBoolPref:@"reels_hide_repost_count"] ? 0 : num);
+    return %orig([SPKUtils getBoolPref:@"reels_hide_repost_count"] ? 0 : num);
 }
 - (void)setNumSaves:(NSInteger)num {
-    return %orig([SCIUtils getBoolPref:@"reels_hide_save_count"] ? 0 : num);
+    return %orig([SPKUtils getBoolPref:@"reels_hide_save_count"] ? 0 : num);
 }
 %end
 
@@ -29,13 +29,13 @@
         UIView *repostView = [countsView valueForKey:@"_repostView"];
         UIView *sendView = [countsView valueForKey:@"_sendView"];
         
-        if (self == likesView && [SCIUtils getBoolPref:@"feed_hide_like_count"]) {
+        if (self == likesView && [SPKUtils getBoolPref:@"feed_hide_like_count"]) {
             return %orig(@"", showButton);
-        } else if (self == commentsView && [SCIUtils getBoolPref:@"feed_hide_comment_count"]) {
+        } else if (self == commentsView && [SPKUtils getBoolPref:@"feed_hide_comment_count"]) {
             return %orig(@"", showButton);
-        } else if (self == repostView && [SCIUtils getBoolPref:@"feed_hide_repost_count"]) {
+        } else if (self == repostView && [SPKUtils getBoolPref:@"feed_hide_repost_count"]) {
             return %orig(@"", showButton);
-        } else if (self == sendView && [SCIUtils getBoolPref:@"feed_hide_reshare_count"]) {
+        } else if (self == sendView && [SPKUtils getBoolPref:@"feed_hide_reshare_count"]) {
             return %orig(@"", showButton);
         }
     }
@@ -45,19 +45,19 @@
 
 %end
 
-void SCIInstallHideMetricsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"feed_hide_like_count"] &&
-        ![SCIUtils getBoolPref:@"feed_hide_comment_count"] &&
-        ![SCIUtils getBoolPref:@"feed_hide_repost_count"] &&
-        ![SCIUtils getBoolPref:@"feed_hide_reshare_count"] &&
-        ![SCIUtils getBoolPref:@"reels_hide_like_count"] &&
-        ![SCIUtils getBoolPref:@"reels_hide_reshare_count"] &&
-        ![SCIUtils getBoolPref:@"reels_hide_comment_count"] &&
-        ![SCIUtils getBoolPref:@"reels_hide_repost_count"] &&
-        ![SCIUtils getBoolPref:@"reels_hide_save_count"]) return;
+void SPKInstallHideMetricsHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"feed_hide_like_count"] &&
+        ![SPKUtils getBoolPref:@"feed_hide_comment_count"] &&
+        ![SPKUtils getBoolPref:@"feed_hide_repost_count"] &&
+        ![SPKUtils getBoolPref:@"feed_hide_reshare_count"] &&
+        ![SPKUtils getBoolPref:@"reels_hide_like_count"] &&
+        ![SPKUtils getBoolPref:@"reels_hide_reshare_count"] &&
+        ![SPKUtils getBoolPref:@"reels_hide_comment_count"] &&
+        ![SPKUtils getBoolPref:@"reels_hide_repost_count"] &&
+        ![SPKUtils getBoolPref:@"reels_hide_save_count"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideMetricsHooks);
+        %init(SPKHideMetricsHooks);
     });
 }

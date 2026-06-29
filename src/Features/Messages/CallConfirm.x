@@ -1,21 +1,21 @@
 #import "../../Utils.h"
 
-static NSString * const kSCIAudioCallConfirmKey = @"msgs_confirm_audio_call";
-static NSString * const kSCIVideoCallConfirmKey = @"msgs_confirm_video_call";
+static NSString * const kSPKAudioCallConfirmKey = @"msgs_confirm_audio_call";
+static NSString * const kSPKVideoCallConfirmKey = @"msgs_confirm_video_call";
 
-static BOOL SCIShouldConfirmCall(NSString *key) {
-    return [SCIUtils getBoolPref:key];
+static BOOL SPKShouldConfirmCall(NSString *key) {
+    return [SPKUtils getBoolPref:key];
 }
 
-%group SCICallConfirmHooks
+%group SPKCallConfirmHooks
 
 %hook IGDirectThreadCallButtonsCoordinator
 // Voice Call
 - (void)_didTapAudioButton {
-    if (SCIShouldConfirmCall(kSCIAudioCallConfirmKey)) {
-        SCILog(@"General", @"[SCInsta] Call confirm triggered");
+    if (SPKShouldConfirmCall(kSPKAudioCallConfirmKey)) {
+        SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Audio Call"
                                message:@"Are you sure you want to start an audio call?"];
     } else {
@@ -24,10 +24,10 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 }
 
 - (void)_didTapAudioButton:(id)arg1 {
-    if (SCIShouldConfirmCall(kSCIAudioCallConfirmKey)) {
-        SCILog(@"General", @"[SCInsta] Call confirm triggered");
+    if (SPKShouldConfirmCall(kSPKAudioCallConfirmKey)) {
+        SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Audio Call"
                                message:@"Are you sure you want to start an audio call?"];
     } else {
@@ -37,10 +37,10 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 
 // Video Call
 - (void)_didTapVideoButton {
-    if (SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) {
-        SCILog(@"General", @"[SCInsta] Call confirm triggered");
+    if (SPKShouldConfirmCall(kSPKVideoCallConfirmKey)) {
+        SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Video Call"
                                message:@"Are you sure you want to start a video call?"];
     } else {
@@ -49,10 +49,10 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 }
 
 - (void)_didTapVideoButton:(id)arg1 {
-    if (SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) {
-        SCILog(@"General", @"[SCInsta] Call confirm triggered");
+    if (SPKShouldConfirmCall(kSPKVideoCallConfirmKey)) {
+        SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Video Call"
                                message:@"Are you sure you want to start a video call?"];
     } else {
@@ -63,11 +63,11 @@ static BOOL SCIShouldConfirmCall(NSString *key) {
 
 %end
 
-void SCIInstallCallConfirmHooksIfEnabled(void) {
-    if (!SCIShouldConfirmCall(kSCIAudioCallConfirmKey) && !SCIShouldConfirmCall(kSCIVideoCallConfirmKey)) return;
+void SPKInstallCallConfirmHooksIfEnabled(void) {
+    if (!SPKShouldConfirmCall(kSPKAudioCallConfirmKey) && !SPKShouldConfirmCall(kSPKVideoCallConfirmKey)) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCICallConfirmHooks);
+        %init(SPKCallConfirmHooks);
     });
 }

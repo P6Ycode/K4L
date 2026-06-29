@@ -9,10 +9,10 @@ static void (*orig_inboxRefreshControlArg)(id, SEL, id) = NULL;
 static void (*orig_inboxRefreshNoArg)(id, SEL) = NULL;
 static void (*orig_networkingCoordinatorPullToRefreshIfPossible)(id, SEL) = NULL;
 static BOOL (*orig_executePullToRefreshWithParams)(id, SEL, id, BOOL) = NULL;
-static BOOL sSCIDMRefreshBypassing = NO;
-static BOOL sSCIDMRefreshAlertVisible = NO;
+static BOOL sSPKDMRefreshBypassing = NO;
+static BOOL sSPKDMRefreshAlertVisible = NO;
 
-static IGRefreshControl *SCIDMFindIGRefreshControl(id self, id arg) {
+static IGRefreshControl *SPKDMFindIGRefreshControl(id self, id arg) {
     // Check if arg is an IGRefreshControl
     Class igRefreshControlClass = NSClassFromString(@"IGRefreshControl");
     if (arg && igRefreshControlClass && [arg isKindOfClass:igRefreshControlClass]) return (IGRefreshControl *)arg;
@@ -29,8 +29,8 @@ static IGRefreshControl *SCIDMFindIGRefreshControl(id self, id arg) {
     return nil;
 }
 
-static void SCIDMEndRefreshIfNeeded(id self, id arg) {
-    IGRefreshControl *refreshControl = SCIDMFindIGRefreshControl(self, arg);
+static void SPKDMEndRefreshIfNeeded(id self, id arg) {
+    IGRefreshControl *refreshControl = SPKDMFindIGRefreshControl(self, arg);
     if (refreshControl) {
         [refreshControl finishLoading];
         return;
@@ -57,78 +57,78 @@ static void SCIDMEndRefreshIfNeeded(id self, id arg) {
     }
 }
 
-static void SCIConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
-    if (sSCIDMRefreshBypassing || ![SCIUtils getBoolPref:@"msgs_confirm_refresh"]) {
+static void SPKConfirmDMRefresh(id self, id arg, void (^confirmBlock)(void)) {
+    if (sSPKDMRefreshBypassing || ![SPKUtils getBoolPref:@"msgs_confirm_refresh"]) {
         if (confirmBlock) confirmBlock();
         return;
     }
-    if (sSCIDMRefreshAlertVisible) return;
-    sSCIDMRefreshAlertVisible = YES;
-    [SCIUtils showConfirmation:^{
-        sSCIDMRefreshAlertVisible = NO;
-        sSCIDMRefreshBypassing = YES;
+    if (sSPKDMRefreshAlertVisible) return;
+    sSPKDMRefreshAlertVisible = YES;
+    [SPKUtils showConfirmation:^{
+        sSPKDMRefreshAlertVisible = NO;
+        sSPKDMRefreshBypassing = YES;
         if (confirmBlock) confirmBlock();
-        sSCIDMRefreshBypassing = NO;
+        sSPKDMRefreshBypassing = NO;
     } cancelHandler:^{
-        sSCIDMRefreshAlertVisible = NO;
-        SCIDMEndRefreshIfNeeded(self, arg);
+        sSPKDMRefreshAlertVisible = NO;
+        SPKDMEndRefreshIfNeeded(self, arg);
     } title:@"Confirm Inbox Refresh"
       message:@"Refreshing your inbox reloads direct messages from the server. Any unsent messages kept in chats will be lost."];
 }
 
 static void replaced_inboxRefreshControlArg(id self, SEL _cmd, id arg) {
-    SCIConfirmDMRefresh(self, arg, ^{
+    SPKConfirmDMRefresh(self, arg, ^{
         if (orig_inboxRefreshControlArg) orig_inboxRefreshControlArg(self, _cmd, arg);
     });
 }
 
 static void replaced_inboxRefreshNoArg(id self, SEL _cmd) {
-    SCIConfirmDMRefresh(self, nil, ^{
+    SPKConfirmDMRefresh(self, nil, ^{
         if (orig_inboxRefreshNoArg) orig_inboxRefreshNoArg(self, _cmd);
     });
 }
 
 static void replaced_networkingCoordinatorPullToRefreshIfPossible(id self, SEL _cmd) {
-    SCIConfirmDMRefresh(self, nil, ^{
+    SPKConfirmDMRefresh(self, nil, ^{
         if (orig_networkingCoordinatorPullToRefreshIfPossible) orig_networkingCoordinatorPullToRefreshIfPossible(self, _cmd);
     });
 }
 
 static BOOL replaced_executePullToRefreshWithParams(id self, SEL _cmd, id params, BOOL rightNow) {
-    if (sSCIDMRefreshBypassing || ![SCIUtils getBoolPref:@"msgs_confirm_refresh"]) {
+    if (sSPKDMRefreshBypassing || ![SPKUtils getBoolPref:@"msgs_confirm_refresh"]) {
         return orig_executePullToRefreshWithParams ? orig_executePullToRefreshWithParams(self, _cmd, params, rightNow) : NO;
     }
 
-    if (sSCIDMRefreshAlertVisible) return NO;
+    if (sSPKDMRefreshAlertVisible) return NO;
 
-    sSCIDMRefreshAlertVisible = YES;
-    [SCIUtils showConfirmation:^{
-        sSCIDMRefreshAlertVisible = NO;
-        sSCIDMRefreshBypassing = YES;
+    sSPKDMRefreshAlertVisible = YES;
+    [SPKUtils showConfirmation:^{
+        sSPKDMRefreshAlertVisible = NO;
+        sSPKDMRefreshBypassing = YES;
         if (orig_executePullToRefreshWithParams) orig_executePullToRefreshWithParams(self, _cmd, params, rightNow);
-        sSCIDMRefreshBypassing = NO;
+        sSPKDMRefreshBypassing = NO;
     } cancelHandler:^{
-        sSCIDMRefreshAlertVisible = NO;
-        SCIDMEndRefreshIfNeeded(self, nil);
+        sSPKDMRefreshAlertVisible = NO;
+        SPKDMEndRefreshIfNeeded(self, nil);
     } title:@"Confirm Inbox Refresh"
       message:@"Refreshing your inbox reloads direct messages from the server. Any unsent messages kept in chats will be lost."];
 
     return NO;
 }
 
-static BOOL SCIHookDMRefreshArgSelector(Class cls, SEL selector) {
+static BOOL SPKHookDMRefreshArgSelector(Class cls, SEL selector) {
     if (!cls || !class_getInstanceMethod(cls, selector)) return NO;
     MSHookMessageEx(cls, selector, (IMP)replaced_inboxRefreshControlArg, (IMP *)&orig_inboxRefreshControlArg);
     return YES;
 }
 
-static BOOL SCIHookDMRefreshNoArgSelector(Class cls, SEL selector) {
+static BOOL SPKHookDMRefreshNoArgSelector(Class cls, SEL selector) {
     if (!cls || !class_getInstanceMethod(cls, selector)) return NO;
     MSHookMessageEx(cls, selector, (IMP)replaced_inboxRefreshNoArg, (IMP *)&orig_inboxRefreshNoArg);
     return YES;
 }
 
-extern "C" void SCIInstallDMRefreshConfirmHooksIfEnabled(void) {
+extern "C" void SPKInstallDMRefreshConfirmHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         NSMutableArray<Class> *classes = [NSMutableArray array];
@@ -143,13 +143,13 @@ extern "C" void SCIInstallDMRefreshConfirmHooksIfEnabled(void) {
         BOOL hookedArg = NO;
         for (Class cls in classes) {
             if (!hookedNoArg) {
-                hookedNoArg = SCIHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"pullToRefreshIfPossible")) ||
-                              SCIHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"_pullToRefreshIfPossible"));
+                hookedNoArg = SPKHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"pullToRefreshIfPossible")) ||
+                              SPKHookDMRefreshNoArgSelector(cls, NSSelectorFromString(@"_pullToRefreshIfPossible"));
             }
             if (!hookedArg) {
-                hookedArg = SCIHookDMRefreshArgSelector(cls, NSSelectorFromString(@"refreshControlDidRefresh:")) ||
-                            SCIHookDMRefreshArgSelector(cls, NSSelectorFromString(@"refreshControlValueChanged:")) ||
-                            SCIHookDMRefreshArgSelector(cls, NSSelectorFromString(@"_didPullToRefresh:"));
+                hookedArg = SPKHookDMRefreshArgSelector(cls, NSSelectorFromString(@"refreshControlDidRefresh:")) ||
+                            SPKHookDMRefreshArgSelector(cls, NSSelectorFromString(@"refreshControlValueChanged:")) ||
+                            SPKHookDMRefreshArgSelector(cls, NSSelectorFromString(@"_didPullToRefresh:"));
             }
         }
 

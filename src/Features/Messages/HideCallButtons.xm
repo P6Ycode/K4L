@@ -1,34 +1,34 @@
 #import "../../Utils.h"
 
-static BOOL SCIShouldHideDirectCallButton(UIView *button) {
+static BOOL SPKShouldHideDirectCallButton(UIView *button) {
     if (![button isKindOfClass:NSClassFromString(@"IGDirectCallButton")]) return NO;
     NSString *identifier = button.accessibilityIdentifier;
-    if ([identifier isEqualToString:@"audio-call"]) return [SCIUtils getBoolPref:@"msgs_hide_audio_call_btn"];
-    if ([identifier isEqualToString:@"video-chat"]) return [SCIUtils getBoolPref:@"msgs_hide_video_call_btn"];
+    if ([identifier isEqualToString:@"audio-call"]) return [SPKUtils getBoolPref:@"msgs_hide_audio_call_btn"];
+    if ([identifier isEqualToString:@"video-chat"]) return [SPKUtils getBoolPref:@"msgs_hide_video_call_btn"];
     return NO;
 }
 
-static BOOL SCIViewContainsHiddenDirectCallButton(UIView *rootView) {
+static BOOL SPKViewContainsHiddenDirectCallButton(UIView *rootView) {
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:rootView];
     while (queue.count > 0) {
         UIView *view = queue.firstObject;
         [queue removeObjectAtIndex:0];
-        if (SCIShouldHideDirectCallButton(view)) return YES;
+        if (SPKShouldHideDirectCallButton(view)) return YES;
         [queue addObjectsFromArray:view.subviews];
     }
     return NO;
 }
 
-static NSArray<UIBarButtonItem *> *SCIFilterHiddenDirectCallBarButtonItems(NSArray<UIBarButtonItem *> *items) {
+static NSArray<UIBarButtonItem *> *SPKFilterHiddenDirectCallBarButtonItems(NSArray<UIBarButtonItem *> *items) {
     if (items.count == 0) return items;
 
     return [items filteredArrayUsingPredicate:
         [NSPredicate predicateWithBlock:^BOOL(UIBarButtonItem *item, NSDictionary *_) {
-            return !SCIShouldHideDirectCallButton(item.customView);
+            return !SPKShouldHideDirectCallButton(item.customView);
         }]];
 }
 
-static void SCIRepackNavigationBarPlatters(UIView *container) {
+static void SPKRepackNavigationBarPlatters(UIView *container) {
     NSMutableArray<UIView *> *platters = [NSMutableArray array];
     for (UIView *subview in container.subviews) {
         if ([NSStringFromClass(subview.class) isEqualToString:@"_UINavigationBarPlatterView"]) {
@@ -39,7 +39,7 @@ static void SCIRepackNavigationBarPlatters(UIView *container) {
     CGFloat hiddenWidth = 0.0;
     NSMutableArray<UIView *> *visiblePlatters = [NSMutableArray array];
     for (UIView *platter in platters) {
-        if (SCIViewContainsHiddenDirectCallButton(platter)) {
+        if (SPKViewContainsHiddenDirectCallButton(platter)) {
             hiddenWidth += CGRectGetWidth(platter.frame);
             platter.hidden = YES;
         } else {
@@ -55,27 +55,27 @@ static void SCIRepackNavigationBarPlatters(UIView *container) {
     }
 }
 
-%group SCIHideDirectCallButtonsHooks
+%group SPKHideDirectCallButtonsHooks
 
 %hook IGDirectThreadCallButtonsCoordinator
 
 - (void)_didTapAudioButton {
-    if ([SCIUtils getBoolPref:@"msgs_hide_audio_call_btn"]) return;
+    if ([SPKUtils getBoolPref:@"msgs_hide_audio_call_btn"]) return;
     %orig;
 }
 
 - (void)_didTapAudioButton:(id)button {
-    if ([SCIUtils getBoolPref:@"msgs_hide_audio_call_btn"]) return;
+    if ([SPKUtils getBoolPref:@"msgs_hide_audio_call_btn"]) return;
     %orig;
 }
 
 - (void)_didTapVideoButton {
-    if ([SCIUtils getBoolPref:@"msgs_hide_video_call_btn"]) return;
+    if ([SPKUtils getBoolPref:@"msgs_hide_video_call_btn"]) return;
     %orig;
 }
 
 - (void)_didTapVideoButton:(id)button {
-    if ([SCIUtils getBoolPref:@"msgs_hide_video_call_btn"]) return;
+    if ([SPKUtils getBoolPref:@"msgs_hide_video_call_btn"]) return;
     %orig;
 }
 
@@ -86,7 +86,7 @@ static void SCIRepackNavigationBarPlatters(UIView *container) {
 - (void)didMoveToWindow {
     %orig;
     UIView *button = (UIView *)self;
-    if (button.window && SCIShouldHideDirectCallButton(button)) {
+    if (button.window && SPKShouldHideDirectCallButton(button)) {
         button.hidden = YES;
     }
 }
@@ -96,7 +96,7 @@ static void SCIRepackNavigationBarPlatters(UIView *container) {
 %hook IGTallNavigationBarView
 
 - (void)setRightBarButtonItems:(NSArray<UIBarButtonItem *> *)items {
-    %orig(SCIFilterHiddenDirectCallBarButtonItems(items));
+    %orig(SPKFilterHiddenDirectCallBarButtonItems(items));
 }
 
 %end
@@ -111,7 +111,7 @@ static void SCIRepackNavigationBarPlatters(UIView *container) {
         UIView *view = queue.firstObject;
         [queue removeObjectAtIndex:0];
         if ([NSStringFromClass(view.class) containsString:@"NavigationBarPlatterContainer"]) {
-            SCIRepackNavigationBarPlatters(view);
+            SPKRepackNavigationBarPlatters(view);
             break;
         }
         [queue addObjectsFromArray:view.subviews];
@@ -122,9 +122,9 @@ static void SCIRepackNavigationBarPlatters(UIView *container) {
 
 %end
 
-extern "C" void SCIInstallHideDirectCallButtonsHooksIfEnabled(void) {
+extern "C" void SPKInstallHideDirectCallButtonsHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideDirectCallButtonsHooks);
+        %init(SPKHideDirectCallButtonsHooks);
     });
 }

@@ -1,35 +1,35 @@
 #import "../../Utils.h"
 #import <objc/runtime.h>
 
-static NSString * const kSCIConfirmCreateGroupButtonPref = @"general_confirm_create_group";
-static NSString * const kSCIHideCreateGroupButtonPref = @"general_hide_create_group";
-static NSString * const kSCICreateGroupButtonRuntimeClassName = @"IGShareSheet.IGShareSheetCreateOrSendToGroupFacepileButton";
-static NSString * const kSCIBottomButtonsViewRuntimeClassName = @"IGShareSheet.IGSharesheetBottomButtonsView";
-static NSString * const kSCIBottomButtonsContainerRuntimeClassName = @"IGShareSheet.IGShareSheetBottomButtonsViewContainer";
+static NSString * const kSPKConfirmCreateGroupButtonPref = @"general_confirm_create_group";
+static NSString * const kSPKHideCreateGroupButtonPref = @"general_hide_create_group";
+static NSString * const kSPKCreateGroupButtonRuntimeClassName = @"IGShareSheet.IGShareSheetCreateOrSendToGroupFacepileButton";
+static NSString * const kSPKBottomButtonsViewRuntimeClassName = @"IGShareSheet.IGSharesheetBottomButtonsView";
+static NSString * const kSPKBottomButtonsContainerRuntimeClassName = @"IGShareSheet.IGShareSheetBottomButtonsViewContainer";
 
-static const void *kSCIGroupButtonBypassConfirmAssocKey = &kSCIGroupButtonBypassConfirmAssocKey;
-static const void *kSCIGroupButtonPendingActionAssocKey = &kSCIGroupButtonPendingActionAssocKey;
-static const void *kSCIGroupButtonPendingTargetAssocKey = &kSCIGroupButtonPendingTargetAssocKey;
-static const void *kSCICreateGroupButtonRemovedAssocKey = &kSCICreateGroupButtonRemovedAssocKey;
+static const void *kSPKGroupButtonBypassConfirmAssocKey = &kSPKGroupButtonBypassConfirmAssocKey;
+static const void *kSPKGroupButtonPendingActionAssocKey = &kSPKGroupButtonPendingActionAssocKey;
+static const void *kSPKGroupButtonPendingTargetAssocKey = &kSPKGroupButtonPendingTargetAssocKey;
+static const void *kSPKCreateGroupButtonRemovedAssocKey = &kSPKCreateGroupButtonRemovedAssocKey;
 
 @interface IGShareSheetCreateOrSendToGroupFacepileButton : UIControl
 @end
 
-static BOOL SCIShouldHideCreateGroupButton(void) {
-    return [SCIUtils getBoolPref:kSCIHideCreateGroupButtonPref];
+static BOOL SPKShouldHideCreateGroupButton(void) {
+    return [SPKUtils getBoolPref:kSPKHideCreateGroupButtonPref];
 }
 
-static BOOL SCIShouldConfirmCreateGroupButton(void) {
-    return !SCIShouldHideCreateGroupButton() && [SCIUtils getBoolPref:kSCIConfirmCreateGroupButtonPref];
+static BOOL SPKShouldConfirmCreateGroupButton(void) {
+    return !SPKShouldHideCreateGroupButton() && [SPKUtils getBoolPref:kSPKConfirmCreateGroupButtonPref];
 }
 
-static BOOL SCIClassMatchesNamedClass(id object, NSString *className) {
+static BOOL SPKClassMatchesNamedClass(id object, NSString *className) {
     if (!object || className.length == 0) return NO;
     Class cls = NSClassFromString(className);
     return cls ? [object isKindOfClass:cls] : NO;
 }
 
-static void SCICollapseConstraintForViewInArray(UIView *view, NSArray<NSLayoutConstraint *> *constraints) {
+static void SPKCollapseConstraintForViewInArray(UIView *view, NSArray<NSLayoutConstraint *> *constraints) {
     for (NSLayoutConstraint *constraint in constraints) {
         BOOL referencesView = (constraint.firstItem == view || constraint.secondItem == view);
         if (!referencesView) continue;
@@ -46,19 +46,19 @@ static void SCICollapseConstraintForViewInArray(UIView *view, NSArray<NSLayoutCo
     }
 }
 
-static UIView *SCIFindCreateGroupButtonSubview(UIView *view) {
+static UIView *SPKFindCreateGroupButtonSubview(UIView *view) {
     if (!view) return nil;
-    if (SCIClassMatchesNamedClass(view, kSCICreateGroupButtonRuntimeClassName)) {
+    if (SPKClassMatchesNamedClass(view, kSPKCreateGroupButtonRuntimeClassName)) {
         return view;
     }
     for (UIView *subview in view.subviews) {
-        UIView *match = SCIFindCreateGroupButtonSubview(subview);
+        UIView *match = SPKFindCreateGroupButtonSubview(subview);
         if (match) return match;
     }
     return nil;
 }
 
-static CGFloat SCIVisibleSubviewMaxY(UIView *view) {
+static CGFloat SPKVisibleSubviewMaxY(UIView *view) {
     CGFloat maxY = 0.0;
     for (UIView *subview in view.subviews) {
         if (subview.hidden || subview.alpha <= 0.0) continue;
@@ -70,10 +70,10 @@ static CGFloat SCIVisibleSubviewMaxY(UIView *view) {
     return maxY;
 }
 
-static void SCIApplyCreateGroupButtonVisibility(UIView *view) {
+static void SPKApplyCreateGroupButtonVisibility(UIView *view) {
     if (!view) return;
 
-    if (!SCIShouldHideCreateGroupButton()) {
+    if (!SPKShouldHideCreateGroupButton()) {
         view.hidden = NO;
         view.alpha = 1.0;
         view.userInteractionEnabled = YES;
@@ -91,34 +91,34 @@ static void SCIApplyCreateGroupButtonVisibility(UIView *view) {
     frame.size.height = 0.0;
     view.frame = frame;
 
-    SCICollapseConstraintForViewInArray(view, view.constraints);
+    SPKCollapseConstraintForViewInArray(view, view.constraints);
     if (view.superview) {
-        SCICollapseConstraintForViewInArray(view, view.superview.constraints);
+        SPKCollapseConstraintForViewInArray(view, view.superview.constraints);
     }
 }
 
-static void SCIRemoveCreateGroupButtonFromHierarchyIfNeeded(UIView *rootView) {
-    if (!SCIShouldHideCreateGroupButton() || !rootView) return;
+static void SPKRemoveCreateGroupButtonFromHierarchyIfNeeded(UIView *rootView) {
+    if (!SPKShouldHideCreateGroupButton() || !rootView) return;
 
-    UIView *button = SCIFindCreateGroupButtonSubview(rootView);
+    UIView *button = SPKFindCreateGroupButtonSubview(rootView);
     if (!button) return;
-    if ([objc_getAssociatedObject(button, kSCICreateGroupButtonRemovedAssocKey) boolValue]) return;
+    if ([objc_getAssociatedObject(button, kSPKCreateGroupButtonRemovedAssocKey) boolValue]) return;
 
-    objc_setAssociatedObject(button, kSCICreateGroupButtonRemovedAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(button, kSPKCreateGroupButtonRemovedAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [button removeFromSuperview];
 }
 
-static void SCIApplyBottomButtonsCollapse(UIView *view) {
-    if (!SCIShouldHideCreateGroupButton() || !view) return;
+static void SPKApplyBottomButtonsCollapse(UIView *view) {
+    if (!SPKShouldHideCreateGroupButton() || !view) return;
 
-    SCIRemoveCreateGroupButtonFromHierarchyIfNeeded(view);
+    SPKRemoveCreateGroupButtonFromHierarchyIfNeeded(view);
 
-    CGFloat maxY = SCIVisibleSubviewMaxY(view);
+    CGFloat maxY = SPKVisibleSubviewMaxY(view);
     if (maxY > 0.0) {
         CGRect frame = view.frame;
         frame.size.height = ceil(maxY);
         view.frame = frame;
-        SCICollapseConstraintForViewInArray(view, view.constraints);
+        SPKCollapseConstraintForViewInArray(view, view.constraints);
         if (view.superview) {
             for (NSLayoutConstraint *constraint in view.superview.constraints) {
                 if ((constraint.firstItem == view || constraint.secondItem == view)
@@ -130,93 +130,93 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
     }
 }
 
-%group SCICreateGroupButtonControls
+%group SPKCreateGroupButtonControls
 
-%hook SCICreateGroupButtonClass
+%hook SPKCreateGroupButtonClass
 
 - (void)didMoveToSuperview {
     %orig;
-    SCIApplyCreateGroupButtonVisibility(self);
+    SPKApplyCreateGroupButtonVisibility(self);
 }
 
 - (void)layoutSubviews {
     %orig;
-    if (SCIShouldHideCreateGroupButton()) {
-        SCIApplyCreateGroupButtonVisibility(self);
+    if (SPKShouldHideCreateGroupButton()) {
+        SPKApplyCreateGroupButtonVisibility(self);
     }
 }
 
 - (CGSize)intrinsicContentSize {
-    if (SCIShouldHideCreateGroupButton()) {
+    if (SPKShouldHideCreateGroupButton()) {
         return CGSizeZero;
     }
     return %orig;
 }
 
 - (CGSize)sizeThatFits:(CGSize)size {
-    if (SCIShouldHideCreateGroupButton()) {
+    if (SPKShouldHideCreateGroupButton()) {
         return CGSizeZero;
     }
     return %orig(size);
 }
 
 - (void)sendAction:(SEL)action to:(id)target forEvent:(UIEvent *)event {
-    if (!SCIShouldConfirmCreateGroupButton() || !action || !target) {
+    if (!SPKShouldConfirmCreateGroupButton() || !action || !target) {
         %orig(action, target, event);
         return;
     }
 
-    NSNumber *bypassConfirm = objc_getAssociatedObject(self, kSCIGroupButtonBypassConfirmAssocKey);
+    NSNumber *bypassConfirm = objc_getAssociatedObject(self, kSPKGroupButtonBypassConfirmAssocKey);
     if (bypassConfirm.boolValue) {
-        objc_setAssociatedObject(self, kSCIGroupButtonBypassConfirmAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(self, kSCIGroupButtonPendingActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
-        objc_setAssociatedObject(self, kSCIGroupButtonPendingTargetAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(self, kSPKGroupButtonBypassConfirmAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(self, kSPKGroupButtonPendingActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+        objc_setAssociatedObject(self, kSPKGroupButtonPendingTargetAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         %orig(action, target, event);
         return;
     }
 
-    objc_setAssociatedObject(self, kSCIGroupButtonPendingActionAssocKey, NSStringFromSelector(action), OBJC_ASSOCIATION_COPY_NONATOMIC);
-    objc_setAssociatedObject(self, kSCIGroupButtonPendingTargetAssocKey, target, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, kSPKGroupButtonPendingActionAssocKey, NSStringFromSelector(action), OBJC_ASSOCIATION_COPY_NONATOMIC);
+    objc_setAssociatedObject(self, kSPKGroupButtonPendingTargetAssocKey, target, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     __weak __typeof__(self) weakSelf = self;
-    [SCIUtils showConfirmation:^{
+    [SPKUtils showConfirmation:^{
         __strong __typeof__(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
-        NSString *pendingActionName = objc_getAssociatedObject(strongSelf, kSCIGroupButtonPendingActionAssocKey);
-        id pendingTarget = objc_getAssociatedObject(strongSelf, kSCIGroupButtonPendingTargetAssocKey);
+        NSString *pendingActionName = objc_getAssociatedObject(strongSelf, kSPKGroupButtonPendingActionAssocKey);
+        id pendingTarget = objc_getAssociatedObject(strongSelf, kSPKGroupButtonPendingTargetAssocKey);
         if (pendingActionName.length == 0 || !pendingTarget) {
             return;
         }
 
-        objc_setAssociatedObject(strongSelf, kSCIGroupButtonBypassConfirmAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(strongSelf, kSPKGroupButtonBypassConfirmAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         [strongSelf sendAction:NSSelectorFromString(pendingActionName) to:pendingTarget forEvent:nil];
     } cancelHandler:^{
         __strong __typeof__(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
-        objc_setAssociatedObject(strongSelf, kSCIGroupButtonPendingActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
-        objc_setAssociatedObject(strongSelf, kSCIGroupButtonPendingTargetAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(strongSelf, kSPKGroupButtonPendingActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+        objc_setAssociatedObject(strongSelf, kSPKGroupButtonPendingTargetAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     } title:@"Confirm Group Creation"
       message:@"Are you sure you want to create or send to a group with the selected recipients?"];
 }
 
 %end
 
-%hook SCIBottomButtonsViewClass
+%hook SPKBottomButtonsViewClass
 
 - (void)layoutSubviews {
     %orig;
-    SCIApplyBottomButtonsCollapse(self);
+    SPKApplyBottomButtonsCollapse(self);
 }
 
 - (CGSize)sizeThatFits:(CGSize)size {
     CGSize original = %orig(size);
-    if (!SCIShouldHideCreateGroupButton()) {
+    if (!SPKShouldHideCreateGroupButton()) {
         return original;
     }
-    CGFloat collapsedHeight = SCIVisibleSubviewMaxY(self);
-    if (collapsedHeight > 0.0 && SCIFindCreateGroupButtonSubview(self)) {
+    CGFloat collapsedHeight = SPKVisibleSubviewMaxY(self);
+    if (collapsedHeight > 0.0 && SPKFindCreateGroupButtonSubview(self)) {
         original.height = ceil(collapsedHeight);
     }
     return original;
@@ -224,11 +224,11 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
 
 - (CGSize)intrinsicContentSize {
     CGSize original = %orig;
-    if (!SCIShouldHideCreateGroupButton()) {
+    if (!SPKShouldHideCreateGroupButton()) {
         return original;
     }
-    CGFloat collapsedHeight = SCIVisibleSubviewMaxY(self);
-    if (collapsedHeight > 0.0 && SCIFindCreateGroupButtonSubview(self)) {
+    CGFloat collapsedHeight = SPKVisibleSubviewMaxY(self);
+    if (collapsedHeight > 0.0 && SPKFindCreateGroupButtonSubview(self)) {
         original.height = ceil(collapsedHeight);
     }
     return original;
@@ -236,17 +236,17 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
 
 %end
 
-%hook SCIBottomButtonsContainerClass
+%hook SPKBottomButtonsContainerClass
 
 - (void)layoutSubviews {
     %orig;
-    if (!SCIShouldHideCreateGroupButton()) return;
+    if (!SPKShouldHideCreateGroupButton()) return;
 
     UIView *view = (UIView *)self;
-    UIView *bottomButtonsView = SCIFindCreateGroupButtonSubview(self) ? self : nil;
+    UIView *bottomButtonsView = SPKFindCreateGroupButtonSubview(self) ? self : nil;
     if (!bottomButtonsView) {
         for (UIView *subview in view.subviews) {
-            if (SCIClassMatchesNamedClass(subview, kSCIBottomButtonsViewRuntimeClassName)) {
+            if (SPKClassMatchesNamedClass(subview, kSPKBottomButtonsViewRuntimeClassName)) {
                 bottomButtonsView = subview;
                 break;
             }
@@ -254,13 +254,13 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
     }
     if (!bottomButtonsView) return;
 
-    SCIApplyBottomButtonsCollapse(bottomButtonsView);
+    SPKApplyBottomButtonsCollapse(bottomButtonsView);
     CGFloat height = CGRectGetHeight(bottomButtonsView.frame);
     if (height > 0.0) {
         CGRect frame = view.frame;
         frame.size.height = height;
         view.frame = frame;
-        SCICollapseConstraintForViewInArray(view, view.constraints);
+        SPKCollapseConstraintForViewInArray(view, view.constraints);
         if (view.superview) {
             for (NSLayoutConstraint *constraint in view.superview.constraints) {
                 if ((constraint.firstItem == view || constraint.secondItem == view)
@@ -274,13 +274,13 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
 
 - (CGSize)sizeThatFits:(CGSize)size {
     CGSize original = %orig(size);
-    if (!SCIShouldHideCreateGroupButton()) {
+    if (!SPKShouldHideCreateGroupButton()) {
         return original;
     }
     UIView *view = (UIView *)self;
     for (UIView *subview in view.subviews) {
-        if (SCIClassMatchesNamedClass(subview, kSCIBottomButtonsViewRuntimeClassName)) {
-            CGFloat height = SCIVisibleSubviewMaxY(subview);
+        if (SPKClassMatchesNamedClass(subview, kSPKBottomButtonsViewRuntimeClassName)) {
+            CGFloat height = SPKVisibleSubviewMaxY(subview);
             if (height > 0.0) {
                 original.height = ceil(height);
             }
@@ -292,13 +292,13 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
 
 - (CGSize)intrinsicContentSize {
     CGSize original = %orig;
-    if (!SCIShouldHideCreateGroupButton()) {
+    if (!SPKShouldHideCreateGroupButton()) {
         return original;
     }
     UIView *view = (UIView *)self;
     for (UIView *subview in view.subviews) {
-        if (SCIClassMatchesNamedClass(subview, kSCIBottomButtonsViewRuntimeClassName)) {
-            CGFloat height = SCIVisibleSubviewMaxY(subview);
+        if (SPKClassMatchesNamedClass(subview, kSPKBottomButtonsViewRuntimeClassName)) {
+            CGFloat height = SPKVisibleSubviewMaxY(subview);
             if (height > 0.0) {
                 original.height = ceil(height);
             }
@@ -312,20 +312,20 @@ static void SCIApplyBottomButtonsCollapse(UIView *view) {
 
 %end
 
-extern "C" void SCIInstallCreateGroupButtonControlHooksIfEnabled(void) {
-    if (!SCIShouldHideCreateGroupButton() && !SCIShouldConfirmCreateGroupButton()) return;
+extern "C" void SPKInstallCreateGroupButtonControlHooksIfEnabled(void) {
+    if (!SPKShouldHideCreateGroupButton() && !SPKShouldConfirmCreateGroupButton()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    Class createGroupButtonClass = objc_getClass(kSCICreateGroupButtonRuntimeClassName.UTF8String);
-    Class bottomButtonsViewClass = objc_getClass(kSCIBottomButtonsViewRuntimeClassName.UTF8String);
-    Class bottomButtonsContainerClass = objc_getClass(kSCIBottomButtonsContainerRuntimeClassName.UTF8String);
+    Class createGroupButtonClass = objc_getClass(kSPKCreateGroupButtonRuntimeClassName.UTF8String);
+    Class bottomButtonsViewClass = objc_getClass(kSPKBottomButtonsViewRuntimeClassName.UTF8String);
+    Class bottomButtonsContainerClass = objc_getClass(kSPKBottomButtonsContainerRuntimeClassName.UTF8String);
 
     if (createGroupButtonClass && bottomButtonsViewClass && bottomButtonsContainerClass) {
-        %init(SCICreateGroupButtonControls,
-              SCICreateGroupButtonClass=createGroupButtonClass,
-              SCIBottomButtonsViewClass=bottomButtonsViewClass,
-              SCIBottomButtonsContainerClass=bottomButtonsContainerClass);
+        %init(SPKCreateGroupButtonControls,
+              SPKCreateGroupButtonClass=createGroupButtonClass,
+              SPKBottomButtonsViewClass=bottomButtonsViewClass,
+              SPKBottomButtonsContainerClass=bottomButtonsContainerClass);
     }
     });
 }

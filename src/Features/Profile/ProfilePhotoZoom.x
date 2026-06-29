@@ -2,10 +2,10 @@
 #import <objc/runtime.h>
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
-#import "../../Shared/MediaPreview/SCIFullScreenMediaPlayer.h"
-#import "../../Shared/Gallery/SCIGalleryFile.h"
-#import "../../Shared/Gallery/SCIGalleryOriginController.h"
-#import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
+#import "../../Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
+#import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/Gallery/SPKGalleryOriginController.h"
+#import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
 
 @interface IGProfileAvatarView : UIView
 @end
@@ -13,7 +13,7 @@
 @interface IGProfilePhotoView : UIView
 @end
 
-static id SCIObjectForSelector(id target, NSString *selectorName) {
+static id SPKObjectForSelector(id target, NSString *selectorName) {
     if (!target || !selectorName.length) return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
@@ -22,42 +22,42 @@ static id SCIObjectForSelector(id target, NSString *selectorName) {
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-static id SCIUserFromViewHierarchy(UIView *view) {
+static id SPKUserFromViewHierarchy(UIView *view) {
     if (!view) return nil;
 
-    id user = SCIObjectForSelector(view, @"user");
+    id user = SPKObjectForSelector(view, @"user");
     if (user && [user respondsToSelector:@selector(username)]) return user;
 
-    user = SCIObjectForSelector(view, @"userGQL");
+    user = SPKObjectForSelector(view, @"userGQL");
     if (user && [user respondsToSelector:@selector(username)]) return user;
 
-    id profilePicImageView = SCIObjectForSelector(view, @"profilePicImageView");
+    id profilePicImageView = SPKObjectForSelector(view, @"profilePicImageView");
     if (!profilePicImageView) {
-        profilePicImageView = [SCIUtils getIvarForObj:view name:"_profilePicImageView"];
+        profilePicImageView = [SPKUtils getIvarForObj:view name:"_profilePicImageView"];
     }
-    user = SCIObjectForSelector(profilePicImageView, @"user");
+    user = SPKObjectForSelector(profilePicImageView, @"user");
     if (user && [user respondsToSelector:@selector(username)]) return user;
 
-    UIViewController *ancestorController = [SCIUtils viewControllerForAncestralView:view];
-    user = SCIObjectForSelector(ancestorController, @"user");
+    UIViewController *ancestorController = [SPKUtils viewControllerForAncestralView:view];
+    user = SPKObjectForSelector(ancestorController, @"user");
     if (user && [user respondsToSelector:@selector(username)]) return user;
 
-    user = SCIObjectForSelector(ancestorController, @"userGQL");
+    user = SPKObjectForSelector(ancestorController, @"userGQL");
     if (user && [user respondsToSelector:@selector(username)]) return user;
 
     UIResponder *responder = view;
     while ((responder = [responder nextResponder])) {
-        user = SCIObjectForSelector(responder, @"user");
+        user = SPKObjectForSelector(responder, @"user");
         if (user && [user respondsToSelector:@selector(username)]) return user;
 
-        user = SCIObjectForSelector(responder, @"userGQL");
+        user = SPKObjectForSelector(responder, @"userGQL");
         if (user && [user respondsToSelector:@selector(username)]) return user;
     }
 
     return nil;
 }
 
-static NSString *SCIUsernameFromIGUser(id user) {
+static NSString *SPKUsernameFromIGUser(id user) {
     if (!user) {
         return nil;
     }
@@ -72,7 +72,7 @@ static NSString *SCIUsernameFromIGUser(id user) {
     return nil;
 }
 
-static NSURL *SCIImageURLFromViewHierarchy(UIView *view) {
+static NSURL *SPKImageURLFromViewHierarchy(UIView *view) {
     Class igImageViewClass = NSClassFromString(@"IGImageView");
     if (igImageViewClass && [view isKindOfClass:igImageViewClass]) {
         IGImageView *iv = (IGImageView *)view;
@@ -81,14 +81,14 @@ static NSURL *SCIImageURLFromViewHierarchy(UIView *view) {
         }
     }
     for (UIView *sub in view.subviews) {
-        NSURL *url = SCIImageURLFromViewHierarchy(sub);
+        NSURL *url = SPKImageURLFromViewHierarchy(sub);
         if (url) return url;
     }
     return nil;
 }
 
-static BOOL SCIShouldInterceptProfileLongPress(UILongPressGestureRecognizer *gesture) {
-    if (![SCIUtils getBoolPref:@"profile_photo_zoom"]) {
+static BOOL SPKShouldInterceptProfileLongPress(UILongPressGestureRecognizer *gesture) {
+    if (![SPKUtils getBoolPref:@"profile_photo_zoom"]) {
         return NO;
     }
 
@@ -101,24 +101,24 @@ static BOOL SCIShouldInterceptProfileLongPress(UILongPressGestureRecognizer *ges
         return NO;
     }
 
-    id user = SCIUserFromViewHierarchy(view);
-    NSURL *url = [SCIUtils getBestProfilePictureURLForUser:user];
+    id user = SPKUserFromViewHierarchy(view);
+    NSURL *url = [SPKUtils getBestProfilePictureURLForUser:user];
     if (!url) {
-        url = SCIImageURLFromViewHierarchy(view);
+        url = SPKImageURLFromViewHierarchy(view);
     }
     if (!url) {
         return NO;
     }
 
-    NSString *username = SCIUsernameFromIGUser(user);
-    SCIGallerySaveMetadata *meta = [[SCIGallerySaveMetadata alloc] init];
-    meta.source = (int16_t)SCIGallerySourceProfile;
-    [SCIGalleryOriginController populateProfileMetadata:meta username:username user:nil];
+    NSString *username = SPKUsernameFromIGUser(user);
+    SPKGallerySaveMetadata *meta = [[SPKGallerySaveMetadata alloc] init];
+    meta.source = (int16_t)SPKGallerySourceProfile;
+    [SPKGalleryOriginController populateProfileMetadata:meta username:username user:nil];
 
-    UIViewController *presentingController = [SCIUtils viewControllerForAncestralView:view];
-    [SCIFullScreenMediaPlayer showRemoteImageURL:url
+    UIViewController *presentingController = [SPKUtils viewControllerForAncestralView:view];
+    [SPKFullScreenMediaPlayer showRemoteImageURL:url
                                         metadata:meta
-                                  playbackSource:SCIFullScreenPlaybackSourceProfile
+                                  playbackSource:SPKFullScreenPlaybackSourceProfile
                                       sourceView:view
                                       controller:presentingController
                                    pausePlayback:nil
@@ -127,8 +127,8 @@ static BOOL SCIShouldInterceptProfileLongPress(UILongPressGestureRecognizer *ges
 }
 
 static void (*orig_coinFlipLongPress)(id, SEL, UILongPressGestureRecognizer *);
-static void SCIHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureRecognizer *gesture) {
-    if (SCIShouldInterceptProfileLongPress(gesture)) {
+static void SPKHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureRecognizer *gesture) {
+    if (SPKShouldInterceptProfileLongPress(gesture)) {
         return;
     }
 
@@ -138,11 +138,11 @@ static void SCIHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureReco
 }
 
 
-%group SCIProfilePhotoZoomHooks
+%group SPKProfilePhotoZoomHooks
 
 %hook IGProfileAvatarView
 - (void)_profilePictureLongPressed:(UILongPressGestureRecognizer *)gesture {
-    if (SCIShouldInterceptProfileLongPress(gesture)) {
+    if (SPKShouldInterceptProfileLongPress(gesture)) {
         return;
     }
 
@@ -152,7 +152,7 @@ static void SCIHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureReco
 
 %hook IGProfilePhotoView
 - (void)_profilePictureLongPress:(UILongPressGestureRecognizer *)gesture {
-    if (SCIShouldInterceptProfileLongPress(gesture)) {
+    if (SPKShouldInterceptProfileLongPress(gesture)) {
         return;
     }
 
@@ -162,12 +162,12 @@ static void SCIHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureReco
 
 %end
 
-void SCIInstallProfilePhotoZoomHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"profile_photo_zoom"]) return;
+void SPKInstallProfilePhotoZoomHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"profile_photo_zoom"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    %init(SCIProfilePhotoZoomHooks);
+    %init(SPKProfilePhotoZoomHooks);
 
     Class coinFlipClass = NSClassFromString(@"IGProfilePhotoCoinFlipUI.IGProfilePhotoCoinFlipView");
     SEL selector = NSSelectorFromString(@"viewLongPressedWithGesture:");
@@ -175,7 +175,7 @@ void SCIInstallProfilePhotoZoomHooksIfEnabled(void) {
     if (coinFlipClass && class_getInstanceMethod(coinFlipClass, selector)) {
         MSHookMessageEx(coinFlipClass,
                         selector,
-                        (IMP)SCIHookedCoinFlipLongPress,
+                        (IMP)SPKHookedCoinFlipLongPress,
                         (IMP *)&orig_coinFlipLongPress);
     }
     });

@@ -4,10 +4,10 @@
 ////////////////////////////////////////////////////////
 
 #define CONFIRMFOLLOW(orig)                            \
-    if ([SCIUtils getBoolPref:@"profile_confirm_follow"]) {             \
-        SCILog(@"General", @"[SCInsta] Confirm follow triggered");  \
+    if ([SPKUtils getBoolPref:@"profile_confirm_follow"]) {             \
+        SPKLog(@"General", @"[Sparkle] Confirm follow triggered");  \
                                                        \
-        [SCIUtils showConfirmation:^(void) { orig; }   \
+        [SPKUtils showConfirmation:^(void) { orig; }   \
                                  title:@"Confirm Follow"     \
                                message:@"Are you sure you want to follow this account?"]; \
     }                                                  \
@@ -18,7 +18,7 @@
 ////////////////////////////////////////////////////////
 
 // Follow button on profile page
-%group SCIFollowConfirmHooks
+%group SPKFollowConfirmHooks
 
 %hook IGFollowController
 - (void)_didPressFollowButton {
@@ -36,8 +36,8 @@
 
 // Unfollow from profile action sheet
 - (void)_performUnfollow {
-    if ([SCIUtils getBoolPref:@"profile_confirm_unfollow"]) {
-        [SCIUtils showConfirmation:^(void) { %orig; }
+    if ([SPKUtils getBoolPref:@"profile_confirm_unfollow"]) {
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Unfollow"
                                message:@"Are you sure you want to unfollow this account?"];
     } else {
@@ -93,9 +93,9 @@
 static void (*orig_listSectionController)(id, SEL, id, id);
 
 static void hooked_listSectionController(id self, SEL _cmd, id arg1, id arg2) {
-    if ([SCIUtils getBoolPref:@"profile_confirm_follow"]) {
+    if ([SPKUtils getBoolPref:@"profile_confirm_follow"]) {
 
-        [SCIUtils showConfirmation:^{
+        [SPKUtils showConfirmation:^{
             orig_listSectionController(self, _cmd, arg1, arg2);
         } title:@"Confirm Follow All"
           message:@"Are you sure you want to follow everyone in this list?"];
@@ -108,7 +108,7 @@ static void hooked_listSectionController(id self, SEL _cmd, id arg1, id arg2) {
 
 %end
 
-static void SCIInstallFollowAllConfirmHook(void) {
+static void SPKInstallFollowAllConfirmHook(void) {
     Class cls = objc_getClass("IGDirectDetailMembersKit.IGDirectThreadDetailsMembersListViewController");
     if (!cls) return;
 
@@ -120,12 +120,12 @@ static void SCIInstallFollowAllConfirmHook(void) {
     );
 }
 
-void SCIInstallFollowConfirmHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"profile_confirm_follow"] && ![SCIUtils getBoolPref:@"profile_confirm_unfollow"]) return;
+void SPKInstallFollowConfirmHooksIfNeeded(void) {
+    if (![SPKUtils getBoolPref:@"profile_confirm_follow"] && ![SPKUtils getBoolPref:@"profile_confirm_unfollow"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    %init(SCIFollowConfirmHooks);
-    SCIInstallFollowAllConfirmHook();
+    %init(SPKFollowConfirmHooks);
+    SPKInstallFollowAllConfirmHook();
     });
 }

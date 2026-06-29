@@ -1,12 +1,12 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 
-%group SCIHideExploreGridHooks
+%group SPKHideExploreGridHooks
 
 %hook IGExploreGridViewController
 - (void)viewDidLoad {
-    if ([SCIUtils getBoolPref:@"interface_hide_explore_grid"]) {
-        SCILog(@"General", @"[SCInsta] Hiding explore grid");
+    if ([SPKUtils getBoolPref:@"interface_hide_explore_grid"]) {
+        SPKLog(@"General", @"[Sparkle] Hiding explore grid");
 
         [[self view] removeFromSuperview];
 
@@ -21,8 +21,8 @@
 - (void)viewDidLoad {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"interface_hide_explore_grid"]) {
-        SCILog(@"General", @"[SCInsta] Hiding explore grid");
+    if ([SPKUtils getBoolPref:@"interface_hide_explore_grid"]) {
+        SPKLog(@"General", @"[Sparkle] Hiding explore grid");
 
         IGShimmeringGridView *shimmeringGridView = MSHookIvar<IGShimmeringGridView *>(self, "_shimmeringGridView");
         if (shimmeringGridView != nil) {
@@ -34,11 +34,11 @@
 
 %end
 
-extern "C" void SCIInstallHideExploreGridHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"interface_hide_explore_grid"]) return;
+extern "C" void SPKInstallHideExploreGridHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"interface_hide_explore_grid"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideExploreGridHooks);
+        %init(SPKHideExploreGridHooks);
     });
 }

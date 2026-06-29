@@ -1,17 +1,17 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SCIInstallMessageSeenButtonHooksIfNeeded(void);
-void SCIInstallStorySeenButtonHooksIfNeeded(void);
-void SCIInstallStoryMentionsButtonHooksIfNeeded(void);
-void SCIInstallDirectVisualSeenButtonHooksIfNeeded(void);
+void SPKInstallMessageSeenButtonHooksIfNeeded(void);
+void SPKInstallStorySeenButtonHooksIfNeeded(void);
+void SPKInstallStoryMentionsButtonHooksIfNeeded(void);
+void SPKInstallDirectVisualSeenButtonHooksIfNeeded(void);
 #ifdef __cplusplus
 }
 #endif
 
-void SCIInstallSeenButtonHooksIfNeeded(void) {
-    SCIInstallMessageSeenButtonHooksIfNeeded();
-    SCIInstallStorySeenButtonHooksIfNeeded();
-    SCIInstallStoryMentionsButtonHooksIfNeeded();
-    SCIInstallDirectVisualSeenButtonHooksIfNeeded();
+void SPKInstallSeenButtonHooksIfNeeded(void) {
+    SPKInstallMessageSeenButtonHooksIfNeeded();
+    SPKInstallStorySeenButtonHooksIfNeeded();
+    SPKInstallStoryMentionsButtonHooksIfNeeded();
+    SPKInstallDirectVisualSeenButtonHooksIfNeeded();
 }

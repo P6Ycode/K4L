@@ -2,95 +2,95 @@
 
 #import <UIKit/UIKit.h>
 #import "ActionButtonLookupUtils.h"
-#import "../UI/SCIChrome.h"
+#import "../UI/SPKChrome.h"
 
-typedef NS_ENUM(NSInteger, SCIActionButtonSource) {
-	SCIActionButtonSourceFeed = 1,
-	SCIActionButtonSourceReels = 2,
-	SCIActionButtonSourceStories = 3,
-	SCIActionButtonSourceDirect = 4,
-    SCIActionButtonSourceProfile = 5,
-    SCIActionButtonSourceInstants = 6
+typedef NS_ENUM(NSInteger, SPKActionButtonSource) {
+	SPKActionButtonSourceFeed = 1,
+	SPKActionButtonSourceReels = 2,
+	SPKActionButtonSourceStories = 3,
+	SPKActionButtonSourceDirect = 4,
+    SPKActionButtonSourceProfile = 5,
+    SPKActionButtonSourceInstants = 6
 };
 
-FOUNDATION_EXPORT NSString * const kSCIActionNone;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadLibrary;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadShare;
-FOUNDATION_EXPORT NSString * const kSCIActionCopyDownloadLink;
-FOUNDATION_EXPORT NSString * const kSCIActionCopyMedia;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadGallery;
-FOUNDATION_EXPORT NSString * const kSCIActionTrimSave;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAudio;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAudioShare;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAudioGallery;
-FOUNDATION_EXPORT NSString * const kSCIActionPlayAudio;
-FOUNDATION_EXPORT NSString * const kSCIActionCopyAudioURL;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAll;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAllLibrary;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAllShare;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAllGallery;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAllClipboard;
-FOUNDATION_EXPORT NSString * const kSCIActionDownloadAllLinks;
-FOUNDATION_EXPORT NSString * const kSCIActionExpand;
-FOUNDATION_EXPORT NSString * const kSCIActionViewThumbnail;
-FOUNDATION_EXPORT NSString * const kSCIActionCopyCaption;
-FOUNDATION_EXPORT NSString * const kSCIActionOpenTopicSettings;
-FOUNDATION_EXPORT NSString * const kSCIActionDeletedMessagesLog;
-FOUNDATION_EXPORT NSString * const kSCIActionRepost;
-FOUNDATION_EXPORT NSString * const kSCIActionToggleStorySeenUserRule;
-FOUNDATION_EXPORT NSString * const kSCIActionToggleProfileStorySeenUserRule;
-FOUNDATION_EXPORT NSString * const kSCIActionToggleProfileMessagesSeenUserRule;
-FOUNDATION_EXPORT NSString * const kSCIActionStoryMentionsSheet;
-FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyInfo;
-FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyID;
-FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyUsername;
-FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyName;
-FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyBio;
-FOUNDATION_EXPORT NSString * const kSCIActionProfileCopyLink;
-FOUNDATION_EXPORT NSString * const SCIActionButtonConfigurationDidChangeNotification;
+FOUNDATION_EXPORT NSString * const kSPKActionNone;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadLibrary;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadShare;
+FOUNDATION_EXPORT NSString * const kSPKActionCopyDownloadLink;
+FOUNDATION_EXPORT NSString * const kSPKActionCopyMedia;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadGallery;
+FOUNDATION_EXPORT NSString * const kSPKActionTrimSave;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAudio;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAudioShare;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAudioGallery;
+FOUNDATION_EXPORT NSString * const kSPKActionPlayAudio;
+FOUNDATION_EXPORT NSString * const kSPKActionCopyAudioURL;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAll;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAllLibrary;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAllShare;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAllGallery;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAllClipboard;
+FOUNDATION_EXPORT NSString * const kSPKActionDownloadAllLinks;
+FOUNDATION_EXPORT NSString * const kSPKActionExpand;
+FOUNDATION_EXPORT NSString * const kSPKActionViewThumbnail;
+FOUNDATION_EXPORT NSString * const kSPKActionCopyCaption;
+FOUNDATION_EXPORT NSString * const kSPKActionOpenTopicSettings;
+FOUNDATION_EXPORT NSString * const kSPKActionDeletedMessagesLog;
+FOUNDATION_EXPORT NSString * const kSPKActionRepost;
+FOUNDATION_EXPORT NSString * const kSPKActionToggleStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSPKActionToggleProfileStorySeenUserRule;
+FOUNDATION_EXPORT NSString * const kSPKActionToggleProfileMessagesSeenUserRule;
+FOUNDATION_EXPORT NSString * const kSPKActionStoryMentionsSheet;
+FOUNDATION_EXPORT NSString * const kSPKActionProfileCopyInfo;
+FOUNDATION_EXPORT NSString * const kSPKActionProfileCopyID;
+FOUNDATION_EXPORT NSString * const kSPKActionProfileCopyUsername;
+FOUNDATION_EXPORT NSString * const kSPKActionProfileCopyName;
+FOUNDATION_EXPORT NSString * const kSPKActionProfileCopyBio;
+FOUNDATION_EXPORT NSString * const kSPKActionProfileCopyLink;
+FOUNDATION_EXPORT NSString * const SPKActionButtonConfigurationDidChangeNotification;
 
-@interface SCIActionMenuButton : SCIChromeButton
+@interface SPKActionMenuButton : SPKChromeButton
 @end
 
-typedef id _Nullable (^SCIActionButtonMediaResolver)(id context);
-typedef NSInteger (^SCIActionButtonIndexResolver)(id context);
-typedef NSString * _Nullable (^SCIActionButtonCaptionResolver)(id context, id _Nullable media, NSArray *entries, NSInteger currentIndex);
-typedef BOOL (^SCIActionButtonRepostHandler)(id context);
-typedef BOOL (^SCIActionButtonVisibilityResolver)(id context, NSString *identifier, id _Nullable media, NSArray *entries, NSInteger currentIndex);
+typedef id _Nullable (^SPKActionButtonMediaResolver)(id context);
+typedef NSInteger (^SPKActionButtonIndexResolver)(id context);
+typedef NSString * _Nullable (^SPKActionButtonCaptionResolver)(id context, id _Nullable media, NSArray *entries, NSInteger currentIndex);
+typedef BOOL (^SPKActionButtonRepostHandler)(id context);
+typedef BOOL (^SPKActionButtonVisibilityResolver)(id context, NSString *identifier, id _Nullable media, NSArray *entries, NSInteger currentIndex);
 
-@interface SCIActionButtonContext : NSObject
-@property (nonatomic, assign) SCIActionButtonSource source;
+@interface SPKActionButtonContext : NSObject
+@property (nonatomic, assign) SPKActionButtonSource source;
 @property (nonatomic, weak, nullable) UIView *view;
 @property (nonatomic, weak, nullable) UIViewController *controller;
 @property (nonatomic, assign) NSInteger currentIndexOverride;
 @property (nonatomic, strong, nullable) id mediaOverride;
 @property (nonatomic, copy, nullable) NSString *settingsTitle;
 @property (nonatomic, copy, nullable) NSArray<NSString *> *supportedActions;
-@property (nonatomic, copy, nullable) SCIActionButtonMediaResolver mediaResolver;
-@property (nonatomic, copy, nullable) SCIActionButtonMediaResolver bulkMediaResolver;
-@property (nonatomic, copy, nullable) SCIActionButtonIndexResolver currentIndexResolver;
-@property (nonatomic, copy, nullable) SCIActionButtonCaptionResolver captionResolver;
-@property (nonatomic, copy, nullable) SCIActionButtonRepostHandler repostHandler;
-@property (nonatomic, copy, nullable) SCIActionButtonVisibilityResolver visibilityResolver;
+@property (nonatomic, copy, nullable) SPKActionButtonMediaResolver mediaResolver;
+@property (nonatomic, copy, nullable) SPKActionButtonMediaResolver bulkMediaResolver;
+@property (nonatomic, copy, nullable) SPKActionButtonIndexResolver currentIndexResolver;
+@property (nonatomic, copy, nullable) SPKActionButtonCaptionResolver captionResolver;
+@property (nonatomic, copy, nullable) SPKActionButtonRepostHandler repostHandler;
+@property (nonatomic, copy, nullable) SPKActionButtonVisibilityResolver visibilityResolver;
 @end
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag);
-void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source);
-BOOL SCIIsDirectVisualViewerAncestor(UIView *view);
-void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context);
-SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button);
-NSString *SCIActionButtonTitleForIdentifier(NSString *identifier);
-UIImage *SCIActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size);
-BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *context, BOOL isDefaultTap);
-NSArray<NSString *> *SCIConfiguredBulkActionIdentifiersForSource(SCIActionButtonSource source);
-NSArray *SCIActionButtonCarouselChildren(id _Nullable media);
-void SCIArmPendingRepostFeedback(SCIActionButtonContext *context);
-NSDictionary<NSString *, NSString *> * _Nullable SCIConsumePendingRepostFeedback(SCIActionButtonSource source);
-void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
-void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
+UIButton *SPKActionButtonWithTag(UIView *container, NSInteger tag);
+void SPKApplyButtonStyle(UIButton *button, SPKActionButtonSource source);
+BOOL SPKIsDirectVisualViewerAncestor(UIView *view);
+void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context);
+SPKActionButtonContext *SPKActionButtonContextFromButton(UIButton *button);
+NSString *SPKActionButtonTitleForIdentifier(NSString *identifier);
+UIImage *SPKActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size);
+BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *context, BOOL isDefaultTap);
+NSArray<NSString *> *SPKConfiguredBulkActionIdentifiersForSource(SPKActionButtonSource source);
+NSArray *SPKActionButtonCarouselChildren(id _Nullable media);
+void SPKArmPendingRepostFeedback(SPKActionButtonContext *context);
+NSDictionary<NSString *, NSString *> * _Nullable SPKConsumePendingRepostFeedback(SPKActionButtonSource source);
+void SPKPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
+void SPKResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
 #ifdef __cplusplus
 }
 #endif

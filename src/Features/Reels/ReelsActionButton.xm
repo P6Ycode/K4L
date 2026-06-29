@@ -4,21 +4,21 @@
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
 
-static NSInteger const kSCIReelsActionButtonTag = 921342;
-static const void *kSCIReelsActionBottomConstraintAssocKey = &kSCIReelsActionBottomConstraintAssocKey;
-static const void *kSCIReelsActionCenterXConstraintAssocKey = &kSCIReelsActionCenterXConstraintAssocKey;
-static const void *kSCIReelsActionWidthConstraintAssocKey = &kSCIReelsActionWidthConstraintAssocKey;
-static const void *kSCIReelsActionHeightConstraintAssocKey = &kSCIReelsActionHeightConstraintAssocKey;
-static const void *kSCIReelsActionButtonMediaKey = &kSCIReelsActionButtonMediaKey;
-static const void *kSCIReelsActionButtonCarouselIndexKey = &kSCIReelsActionButtonCarouselIndexKey;
-static CGFloat const kSCIReelsActionButtonSize = 44.0;
-static CGFloat const kSCIReelsActionButtonBottomOffset = -5.0;
+static NSInteger const kSPKReelsActionButtonTag = 921342;
+static const void *kSPKReelsActionBottomConstraintAssocKey = &kSPKReelsActionBottomConstraintAssocKey;
+static const void *kSPKReelsActionCenterXConstraintAssocKey = &kSPKReelsActionCenterXConstraintAssocKey;
+static const void *kSPKReelsActionWidthConstraintAssocKey = &kSPKReelsActionWidthConstraintAssocKey;
+static const void *kSPKReelsActionHeightConstraintAssocKey = &kSPKReelsActionHeightConstraintAssocKey;
+static const void *kSPKReelsActionButtonMediaKey = &kSPKReelsActionButtonMediaKey;
+static const void *kSPKReelsActionButtonCarouselIndexKey = &kSPKReelsActionButtonCarouselIndexKey;
+static CGFloat const kSPKReelsActionButtonSize = 44.0;
+static CGFloat const kSPKReelsActionButtonBottomOffset = -5.0;
 
 // MARK: - View hierarchy helpers
 
-static UIView *SCIReelsFindSuperviewOfClass(UIView *view, NSString *className) {
+static UIView *SPKReelsFindSuperviewOfClass(UIView *view, NSString *className) {
 	Class cls = NSClassFromString(className);
 	if (!cls) return nil;
 	UIView *current = view.superview;
@@ -32,7 +32,7 @@ static UIView *SCIReelsFindSuperviewOfClass(UIView *view, NSString *className) {
 // MARK: - Deterministic resolution from IGUnifiedVideoCollectionView (Layer 2)
 
 /// Walk up from `view` to find the paging collection view that holds all reel cells.
-static UICollectionView *SCIReelsFindPagingCollectionView(UIView *view) {
+static UICollectionView *SPKReelsFindPagingCollectionView(UIView *view) {
 	Class pagingClass = NSClassFromString(@"IGUnifiedVideoCollectionView");
 	if (!pagingClass) return nil;
 	UIView *current = view.superview;
@@ -46,7 +46,7 @@ static UICollectionView *SCIReelsFindPagingCollectionView(UIView *view) {
 /// Given the paging collection view, find the currently visible reel cell
 /// using contentOffset + cell height. Returns a UICollectionViewCell that is
 /// an IGSundialViewerVideoCell, CarouselCell, or PhotoCell.
-static UICollectionViewCell *SCIReelsCurrentCellFromPagingView(UICollectionView *pagingView) {
+static UICollectionViewCell *SPKReelsCurrentCellFromPagingView(UICollectionView *pagingView) {
 	if (!pagingView) return nil;
 
 	CGFloat pageHeight = pagingView.bounds.size.height;
@@ -74,7 +74,7 @@ static UICollectionViewCell *SCIReelsCurrentCellFromPagingView(UICollectionView 
 
 /// Read the media ivar (_mediaPassthrough) from a known cell type.
 /// Falls back to scanning all object-typed ivars for IGMedia.
-static id SCIReelsMediaFromCell(UICollectionViewCell *cell) {
+static id SPKReelsMediaFromCell(UICollectionViewCell *cell) {
 	if (!cell) return nil;
 
 	// Fast path: read _mediaPassthrough directly (present on both VideoCell and CarouselCell)
@@ -116,16 +116,16 @@ static id SCIReelsMediaFromCell(UICollectionViewCell *cell) {
 
 // MARK: - Carousel helpers
 
-static NSArray *SCIReelsCarouselChildren(id parentMedia) {
-	return SCIActionButtonCarouselChildren(parentMedia);
+static NSArray *SPKReelsCarouselChildren(id parentMedia) {
+	return SPKActionButtonCarouselChildren(parentMedia);
 }
 
 /// Read the carousel's current page index from a **specific** carousel cell.
 /// Only reads ivars from the cell we deterministically found — never from a BFS result.
-static NSInteger SCIReelsCarouselCurrentIndex(UICollectionViewCell *carouselCell, id parentMedia) {
+static NSInteger SPKReelsCarouselCurrentIndex(UICollectionViewCell *carouselCell, id parentMedia) {
 	if (!carouselCell || !parentMedia) return -1;
 
-	NSArray *children = SCIReelsCarouselChildren(parentMedia);
+	NSArray *children = SPKReelsCarouselChildren(parentMedia);
 	if (children.count == 0) return -1;
 	if (children.count == 1) return 0;
 
@@ -164,11 +164,11 @@ static NSInteger SCIReelsCarouselCurrentIndex(UICollectionViewCell *carouselCell
 	return currentIdx;
 }
 
-static id SCIReelsCurrentCarouselChildMedia(UICollectionViewCell *carouselCell, id parentMedia) {
+static id SPKReelsCurrentCarouselChildMedia(UICollectionViewCell *carouselCell, id parentMedia) {
 	if (!carouselCell || !parentMedia) return parentMedia;
 
-	NSArray *children = SCIReelsCarouselChildren(parentMedia);
-	NSInteger currentIdx = SCIReelsCarouselCurrentIndex(carouselCell, parentMedia);
+	NSArray *children = SPKReelsCarouselChildren(parentMedia);
+	NSInteger currentIdx = SPKReelsCarouselCurrentIndex(carouselCell, parentMedia);
 	if (currentIdx < 0) return parentMedia;
 	return (children.count > 0 && (NSUInteger)currentIdx < children.count) ? children[currentIdx] : parentMedia;
 }
@@ -178,7 +178,7 @@ static id SCIReelsCurrentCarouselChildMedia(UICollectionViewCell *carouselCell, 
 /// Walk UP the superview chain to find the cell that actually CONTAINS this UFI/button.
 /// This is the cell the button belongs to — independent of which cell is currently
 /// centered, so it doesn't drift with scroll timing.
-static UICollectionViewCell *SCIReelsOwnEnclosingCell(UIView *view) {
+static UICollectionViewCell *SPKReelsOwnEnclosingCell(UIView *view) {
 	Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
 	Class videoCellClass = NSClassFromString(@"IGSundialViewerVideoCell");
 	Class photoCellClass = NSClassFromString(@"IGSundialViewerPhotoCell");
@@ -196,22 +196,22 @@ static UICollectionViewCell *SCIReelsOwnEnclosingCell(UIView *view) {
 
 /// Primary resolution: the UFI's OWN enclosing cell (per-button correct, timing-independent).
 /// Fallback: globally-centered cell via the paging collection view, then the delegate chain.
-static id SCIReelsMediaProvider(UIView *sourceView) {
+static id SPKReelsMediaProvider(UIView *sourceView) {
 	// --- PRIMARY: resolve THIS UFI's own enclosing cell ---
-	UICollectionViewCell *ownCell = SCIReelsOwnEnclosingCell(sourceView);
+	UICollectionViewCell *ownCell = SPKReelsOwnEnclosingCell(sourceView);
 	if (ownCell) {
-		id media = SCIReelsMediaFromCell(ownCell);
+		id media = SPKReelsMediaFromCell(ownCell);
 		if (media) {
 			return media; // carousel parent returned as-is; currentIndexResolver picks the child
 		}
 	}
 
 	// --- FALLBACK: globally-centered cell via IGUnifiedVideoCollectionView ---
-	UICollectionView *pagingView = SCIReelsFindPagingCollectionView(sourceView);
+	UICollectionView *pagingView = SPKReelsFindPagingCollectionView(sourceView);
 	if (pagingView) {
-		UICollectionViewCell *currentCell = SCIReelsCurrentCellFromPagingView(pagingView);
+		UICollectionViewCell *currentCell = SPKReelsCurrentCellFromPagingView(pagingView);
 		if (currentCell) {
-			id media = SCIReelsMediaFromCell(currentCell);
+			id media = SPKReelsMediaFromCell(currentCell);
 			if (media) {
 				return media;
 			}
@@ -219,34 +219,34 @@ static id SCIReelsMediaProvider(UIView *sourceView) {
 	}
 
 	// Last resort: delegate chain
-	id delegate = SCIObjectForSelector(sourceView, @"delegate");
-	id media = SCIObjectForSelector(delegate, @"media");
-	if (!media) media = SCIKVCObject(delegate, @"media");
+	id delegate = SPKObjectForSelector(sourceView, @"delegate");
+	id media = SPKObjectForSelector(delegate, @"media");
+	if (!media) media = SPKKVCObject(delegate, @"media");
 	return media;
 }
 
-static id SCIReelsBulkMediaProvider(UIView *sourceView) {
-	UICollectionViewCell *ownCell = SCIReelsOwnEnclosingCell(sourceView);
+static id SPKReelsBulkMediaProvider(UIView *sourceView) {
+	UICollectionViewCell *ownCell = SPKReelsOwnEnclosingCell(sourceView);
 	if (ownCell) {
-		id media = SCIReelsMediaFromCell(ownCell);
+		id media = SPKReelsMediaFromCell(ownCell);
 		Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
 		if (media && carouselClass && [ownCell isKindOfClass:carouselClass]) {
-			NSArray *children = SCIReelsCarouselChildren(media);
+			NSArray *children = SPKReelsCarouselChildren(media);
 			if (children.count > 1) return media;
 		}
 	}
-	return SCIReelsMediaProvider(sourceView);
+	return SPKReelsMediaProvider(sourceView);
 }
 
 // MARK: - Current index resolution
 
-static NSInteger SCIReelsCurrentIndexFromVerticalUFI(UIView *verticalUFIView) {
+static NSInteger SPKReelsCurrentIndexFromVerticalUFI(UIView *verticalUFIView) {
 	if (!verticalUFIView) return -1;
 
 	for (NSString *selectorName in @[@"pageIndicator", @"pagingControl"]) {
-		id indicator = SCIObjectForSelector(verticalUFIView, selectorName);
+		id indicator = SPKObjectForSelector(verticalUFIView, selectorName);
 		if ([indicator isKindOfClass:[UIPageControl class]]) return (NSInteger)((UIPageControl *)indicator).currentPage;
-		NSNumber *currentPageNumber = [SCIUtils numericValueForObj:indicator selectorName:@"currentPage"];
+		NSNumber *currentPageNumber = [SPKUtils numericValueForObj:indicator selectorName:@"currentPage"];
 		if (currentPageNumber) return currentPageNumber.integerValue;
 	}
 
@@ -261,37 +261,37 @@ static NSInteger SCIReelsCurrentIndexFromVerticalUFI(UIView *verticalUFIView) {
 	return -1;
 }
 
-static NSInteger SCIReelsCurrentIndexForContext(UIView *sourceView) {
+static NSInteger SPKReelsCurrentIndexForContext(UIView *sourceView) {
 	// PRIMARY: this UFI's own enclosing carousel cell.
-	UICollectionViewCell *ownCell = SCIReelsOwnEnclosingCell(sourceView);
+	UICollectionViewCell *ownCell = SPKReelsOwnEnclosingCell(sourceView);
 	if (ownCell) {
-		id parentMedia = SCIReelsMediaFromCell(ownCell);
+		id parentMedia = SPKReelsMediaFromCell(ownCell);
 		Class carouselClass = NSClassFromString(@"IGSundialViewerCarouselCell");
 		if (carouselClass && [ownCell isKindOfClass:carouselClass] && parentMedia) {
-			NSInteger carouselIndex = SCIReelsCarouselCurrentIndex(ownCell, parentMedia);
+			NSInteger carouselIndex = SPKReelsCarouselCurrentIndex(ownCell, parentMedia);
 			if (carouselIndex >= 0) return carouselIndex;
 		}
 	}
 
 	// Fallback: UFI page indicator
-	NSInteger ufiIndex = SCIReelsCurrentIndexFromVerticalUFI(sourceView);
+	NSInteger ufiIndex = SPKReelsCurrentIndexFromVerticalUFI(sourceView);
 	return ufiIndex >= 0 ? ufiIndex : 0;
 }
 
 // MARK: - Caption & repost
 
-static NSString *SCIReelsCaptionForContext(SCIActionButtonContext *context, id media, NSArray *entries, NSInteger currentIndex) {
-	NSString *caption = SCICaptionFromMediaObject(media);
+static NSString *SPKReelsCaptionForContext(SPKActionButtonContext *context, id media, NSArray *entries, NSInteger currentIndex) {
+	NSString *caption = SPKCaptionFromMediaObject(media);
 	if (caption.length > 0) return caption;
 	NSInteger idx = MAX(0, MIN((NSInteger)entries.count - 1, currentIndex));
 	if (entries.count > 0) {
 		id entryMedia = [entries[idx] valueForKey:@"mediaObject"];
-		caption = SCICaptionFromMediaObject(entryMedia);
+		caption = SPKCaptionFromMediaObject(entryMedia);
 	}
 	return caption;
 }
 
-static BOOL SCIReelsTriggerRepost(SCIActionButtonContext *context) {
+static BOOL SPKReelsTriggerRepost(SPKActionButtonContext *context) {
 	if (!context.view) return NO;
 
 	SEL noArgSelector = NSSelectorFromString(@"_didTapRepostButton");
@@ -311,129 +311,129 @@ static BOOL SCIReelsTriggerRepost(SCIActionButtonContext *context) {
 
 // MARK: - Action context
 
-static SCIActionButtonContext *SCIReelsActionContext(UIView *verticalUFIView) {
-	SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
-	context.source = SCIActionButtonSourceReels;
+static SPKActionButtonContext *SPKReelsActionContext(UIView *verticalUFIView) {
+	SPKActionButtonContext *context = [[SPKActionButtonContext alloc] init];
+	context.source = SPKActionButtonSourceReels;
 	context.view = verticalUFIView;
-	context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceReels);
-	context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceReels);
-	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-		return SCIReelsMediaProvider(resolvedContext.view);
+	context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceReels);
+	context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceReels);
+	context.mediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+		return SPKReelsMediaProvider(resolvedContext.view);
 	};
-	context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-		return SCIReelsBulkMediaProvider(resolvedContext.view);
+	context.bulkMediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+		return SPKReelsBulkMediaProvider(resolvedContext.view);
 	};
-	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
-		return SCIReelsCurrentIndexForContext(resolvedContext.view);
+	context.currentIndexResolver = ^NSInteger (SPKActionButtonContext *resolvedContext) {
+		return SPKReelsCurrentIndexForContext(resolvedContext.view);
 	};
-	context.captionResolver = ^NSString * (SCIActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
-		return SCIReelsCaptionForContext(resolvedContext, media, entries, currentIndex);
+	context.captionResolver = ^NSString * (SPKActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
+		return SPKReelsCaptionForContext(resolvedContext, media, entries, currentIndex);
 	};
-	context.repostHandler = ^BOOL (SCIActionButtonContext *resolvedContext) {
-		return SCIReelsTriggerRepost(resolvedContext);
+	context.repostHandler = ^BOOL (SPKActionButtonContext *resolvedContext) {
+		return SPKReelsTriggerRepost(resolvedContext);
 	};
 	return context;
 }
 
 // MARK: - Layout check
 
-static BOOL SCIReelsConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
+static BOOL SPKReelsConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
 	return constraint && constraint.active && ABS(constraint.constant - constant) < 0.5;
 }
 
-static BOOL SCIReelsActionButtonLayoutIsCurrent(UIButton *button) {
+static BOOL SPKReelsActionButtonLayoutIsCurrent(UIButton *button) {
 	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
 
-	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIReelsActionBottomConstraintAssocKey);
-	NSLayoutConstraint *centerXConstraint = objc_getAssociatedObject(button, kSCIReelsActionCenterXConstraintAssocKey);
-	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIReelsActionWidthConstraintAssocKey);
-	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIReelsActionHeightConstraintAssocKey);
+	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSPKReelsActionBottomConstraintAssocKey);
+	NSLayoutConstraint *centerXConstraint = objc_getAssociatedObject(button, kSPKReelsActionCenterXConstraintAssocKey);
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSPKReelsActionWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSPKReelsActionHeightConstraintAssocKey);
 
-	return SCIReelsConstraintMatches(bottomConstraint, kSCIReelsActionButtonBottomOffset) &&
+	return SPKReelsConstraintMatches(bottomConstraint, kSPKReelsActionButtonBottomOffset) &&
 	       centerXConstraint && centerXConstraint.active &&
-	       SCIReelsConstraintMatches(widthConstraint, kSCIReelsActionButtonSize) &&
-	       SCIReelsConstraintMatches(heightConstraint, kSCIReelsActionButtonSize);
+	       SPKReelsConstraintMatches(widthConstraint, kSPKReelsActionButtonSize) &&
+	       SPKReelsConstraintMatches(heightConstraint, kSPKReelsActionButtonSize);
 }
 
 // MARK: - Installer (with media-change gate — Layer 1)
 
-void SCIInstallReelsActionButton(UIView *verticalUFIView) {
+void SPKInstallReelsActionButton(UIView *verticalUFIView) {
 	if (!verticalUFIView) return;
 
-	UIButton *button = (UIButton *)[verticalUFIView viewWithTag:kSCIReelsActionButtonTag];
-	if (![SCIUtils getBoolPref:@"reels_action_btn"]) {
+	UIButton *button = (UIButton *)[verticalUFIView viewWithTag:kSPKReelsActionButtonTag];
+	if (![SPKUtils getBoolPref:@"reels_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
 
 	// Resolve current media to detect whether we need to reconfigure
-	id currentMedia = SCIReelsMediaProvider(verticalUFIView);
-	NSInteger currentCarouselIdx = SCIReelsCurrentIndexForContext(verticalUFIView);
-	id lastMedia = button ? objc_getAssociatedObject(button, kSCIReelsActionButtonMediaKey) : nil;
-	NSNumber *lastCarouselIdx = button ? objc_getAssociatedObject(button, kSCIReelsActionButtonCarouselIndexKey) : nil;
+	id currentMedia = SPKReelsMediaProvider(verticalUFIView);
+	NSInteger currentCarouselIdx = SPKReelsCurrentIndexForContext(verticalUFIView);
+	id lastMedia = button ? objc_getAssociatedObject(button, kSPKReelsActionButtonMediaKey) : nil;
+	NSNumber *lastCarouselIdx = button ? objc_getAssociatedObject(button, kSPKReelsActionButtonCarouselIndexKey) : nil;
 
 	BOOL mediaChanged = (lastMedia != currentMedia) ||
 	                     (lastCarouselIdx && lastCarouselIdx.integerValue != currentCarouselIdx);
 
-	if (SCIReelsActionButtonLayoutIsCurrent(button) && !mediaChanged) {
+	if (SPKReelsActionButtonLayoutIsCurrent(button) && !mediaChanged) {
 		return;
 	}
 
-	button = SCIActionButtonWithTag(verticalUFIView, kSCIReelsActionButtonTag);
-	SCIConfigureActionButton(button, SCIReelsActionContext(verticalUFIView));
+	button = SPKActionButtonWithTag(verticalUFIView, kSPKReelsActionButtonTag);
+	SPKConfigureActionButton(button, SPKReelsActionContext(verticalUFIView));
 
 	// Store the resolved media + carousel index for change detection on next call
-	objc_setAssociatedObject(button, kSCIReelsActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	objc_setAssociatedObject(button, kSCIReelsActionButtonCarouselIndexKey, @(currentCarouselIdx), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKReelsActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKReelsActionButtonCarouselIndexKey, @(currentCarouselIdx), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
 	if (button.hidden) return;
 
 	button.translatesAutoresizingMaskIntoConstraints = NO;
 
-	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIReelsActionBottomConstraintAssocKey);
-	NSLayoutConstraint *centerXConstraint = objc_getAssociatedObject(button, kSCIReelsActionCenterXConstraintAssocKey);
-	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIReelsActionWidthConstraintAssocKey);
-	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIReelsActionHeightConstraintAssocKey);
+	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSPKReelsActionBottomConstraintAssocKey);
+	NSLayoutConstraint *centerXConstraint = objc_getAssociatedObject(button, kSPKReelsActionCenterXConstraintAssocKey);
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSPKReelsActionWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSPKReelsActionHeightConstraintAssocKey);
 
 	if (!bottomConstraint || !centerXConstraint || !widthConstraint || !heightConstraint) {
-		bottomConstraint = [button.bottomAnchor constraintEqualToAnchor:verticalUFIView.topAnchor constant:kSCIReelsActionButtonBottomOffset];
+		bottomConstraint = [button.bottomAnchor constraintEqualToAnchor:verticalUFIView.topAnchor constant:kSPKReelsActionButtonBottomOffset];
 		centerXConstraint = [button.centerXAnchor constraintEqualToAnchor:verticalUFIView.centerXAnchor];
-		widthConstraint = [button.widthAnchor constraintEqualToConstant:kSCIReelsActionButtonSize];
-		heightConstraint = [button.heightAnchor constraintEqualToConstant:kSCIReelsActionButtonSize];
+		widthConstraint = [button.widthAnchor constraintEqualToConstant:kSPKReelsActionButtonSize];
+		heightConstraint = [button.heightAnchor constraintEqualToConstant:kSPKReelsActionButtonSize];
 		[NSLayoutConstraint activateConstraints:@[bottomConstraint, centerXConstraint, widthConstraint, heightConstraint]];
 
-		objc_setAssociatedObject(button, kSCIReelsActionBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-		objc_setAssociatedObject(button, kSCIReelsActionCenterXConstraintAssocKey, centerXConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-		objc_setAssociatedObject(button, kSCIReelsActionWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-		objc_setAssociatedObject(button, kSCIReelsActionHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKReelsActionBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKReelsActionCenterXConstraintAssocKey, centerXConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKReelsActionWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKReelsActionHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
-	bottomConstraint.constant = kSCIReelsActionButtonBottomOffset;
-	widthConstraint.constant = kSCIReelsActionButtonSize;
-	heightConstraint.constant = kSCIReelsActionButtonSize;
+	bottomConstraint.constant = kSPKReelsActionButtonBottomOffset;
+	widthConstraint.constant = kSPKReelsActionButtonSize;
+	heightConstraint.constant = kSPKReelsActionButtonSize;
 
 	verticalUFIView.clipsToBounds = NO;
 	verticalUFIView.layer.masksToBounds = NO;
 	[verticalUFIView bringSubviewToFront:button];
-	SCIApplyButtonStyle(button, SCIActionButtonSourceReels);
+	SPKApplyButtonStyle(button, SPKActionButtonSourceReels);
 }
 
-%group SCIReelsActionButtonHooks
+%group SPKReelsActionButtonHooks
 
 %hook IGSundialViewerVerticalUFI
 - (void)layoutSubviews {
 	%orig;
-	SCIInstallReelsActionButton((UIView *)self);
+	SPKInstallReelsActionButton((UIView *)self);
 }
 %end
 
 %end
 
-extern "C" void SCIInstallReelsActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"reels_action_btn"]) return;
+extern "C" void SPKInstallReelsActionButtonHooksIfEnabled(void) {
+	if (![SPKUtils getBoolPref:@"reels_action_btn"]) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-	%init(SCIReelsActionButtonHooks);
+	%init(SPKReelsActionButtonHooks);
 	});
 }

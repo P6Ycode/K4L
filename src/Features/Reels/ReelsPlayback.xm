@@ -1,6 +1,6 @@
 #import "../../Utils.h"
 
-%group SCIReelsPlaybackHooks
+%group SPKReelsPlaybackHooks
 
 %hook IGSundialPlaybackControlsTestConfiguration
 - (id)initWithLauncherSet:(id)set
@@ -14,13 +14,13 @@
         isScrubberForShortVideoEnabled:(_Bool)shortScrubberEnabled
 {
     _Bool userTapPauseEnabled = tapPauseEnabled;
-    if ([[SCIUtils getStringPref:@"reels_tap_control"] isEqualToString:@"pause"]) userTapPauseEnabled = true;
-    else if ([[SCIUtils getStringPref:@"reels_tap_control"] isEqualToString:@"mute"]) userTapPauseEnabled = false;
+    if ([[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"pause"]) userTapPauseEnabled = true;
+    else if ([[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"mute"]) userTapPauseEnabled = false;
 
     long long userMinSec = minSec;
     long long userDuration = duration;
     _Bool userShortScrubberEnabled = shortScrubberEnabled;
-    if ([SCIUtils getBoolPref:@"reels_show_scrubber"]) {
+    if ([SPKUtils getBoolPref:@"reels_show_scrubber"]) {
         userMinSec = 0;
         userDuration = 0;
         userShortScrubberEnabled = true;
@@ -32,7 +32,7 @@
 
 %hook IGSundialFeedViewController
 - (void)_refreshReelsWithParamsForNetworkRequest:(NSInteger)arg1 userDidPullToRefresh:(BOOL)arg2 {
-    if ([SCIUtils getBoolPref:@"reels_prevent_doom_scroll"] && arg2) {
+    if ([SPKUtils getBoolPref:@"reels_prevent_doom_scroll"] && arg2) {
         IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
         [_refreshControl finishLoading];
         [self finishPullToRefreshLoading];
@@ -40,10 +40,10 @@
         return;
     }
 
-    if ([SCIUtils getBoolPref:@"reels_confirm_refresh"] && arg2) {
-        SCILog(@"General", @"[SCInsta] Reel refresh triggered");
+    if ([SPKUtils getBoolPref:@"reels_confirm_refresh"] && arg2) {
+        SPKLog(@"General", @"[Sparkle] Reel refresh triggered");
         
-        [SCIUtils showConfirmation:^(void) { %orig(arg1, arg2); }
+        [SPKUtils showConfirmation:^(void) { %orig(arg1, arg2); }
                      cancelHandler:^(void) {
                          IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
                          [_refreshControl finishLoading];
@@ -57,8 +57,8 @@
 }
 
 - (void)triggerRefreshFromTabTap {
-    if ([SCIUtils getBoolPref:@"reels_confirm_refresh"]) {
-        [SCIUtils showConfirmation:^(void) {
+    if ([SPKUtils getBoolPref:@"reels_confirm_refresh"]) {
+        [SPKUtils showConfirmation:^(void) {
             %orig;
         } cancelHandler:nil
             title:@"Confirm Reels Refresh"
@@ -72,17 +72,17 @@
 // * Disable volume/mute button triggering unmutes
 %hook IGAudioStatusAnnouncer
 - (void)_muteSwitchStateChanged:(id)changed {
-    if (![SCIUtils getBoolPref:@"reels_disable_auto_unmute"]) {
+    if (![SPKUtils getBoolPref:@"reels_disable_auto_unmute"]) {
         %orig(changed);
     }
 }
 - (void)_didPressVolumeButton:(id)button {
-    if (![SCIUtils getBoolPref:@"reels_disable_auto_unmute"]) {
+    if (![SPKUtils getBoolPref:@"reels_disable_auto_unmute"]) {
         %orig(button);
     }
 }
 - (void)_didUnplugHeadphones:(id)headphones {
-    if (![SCIUtils getBoolPref:@"reels_disable_auto_unmute"]) {
+    if (![SPKUtils getBoolPref:@"reels_disable_auto_unmute"]) {
         %orig(headphones);
     }
 }
@@ -90,16 +90,16 @@
 
 %end
 
-extern "C" void SCIInstallReelsPlaybackHooksIfNeeded(void) {
-    BOOL shouldInstall = ![[SCIUtils getStringPref:@"reels_tap_control"] isEqualToString:@"default"] ||
-                         [SCIUtils getBoolPref:@"reels_show_scrubber"] ||
-                         [SCIUtils getBoolPref:@"reels_prevent_doom_scroll"] ||
-                         [SCIUtils getBoolPref:@"reels_confirm_refresh"] ||
-                         [SCIUtils getBoolPref:@"reels_disable_auto_unmute"];
+extern "C" void SPKInstallReelsPlaybackHooksIfNeeded(void) {
+    BOOL shouldInstall = ![[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"default"] ||
+                         [SPKUtils getBoolPref:@"reels_show_scrubber"] ||
+                         [SPKUtils getBoolPref:@"reels_prevent_doom_scroll"] ||
+                         [SPKUtils getBoolPref:@"reels_confirm_refresh"] ||
+                         [SPKUtils getBoolPref:@"reels_disable_auto_unmute"];
     if (!shouldInstall) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIReelsPlaybackHooks);
+        %init(SPKReelsPlaybackHooks);
     });
 }

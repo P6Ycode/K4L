@@ -1,61 +1,61 @@
 #import "TweakSettings.h"
 
-#import "Topics/SCIAboutSettingsProvider.h"
-#import "Topics/SCIFeedSettingsProvider.h"
-#import "Topics/SCIGeneralSettingsProvider.h"
-#import "Topics/SCIInstantsSettingsProvider.h"
-#import "Topics/SCIInterfaceSettingsProvider.h"
-#import "Topics/SCIGallerySettingsProvider.h"
-#import "Topics/SCIDownloadsSettingsProvider.h"
-#import "Topics/SCIMessagesSettingsProvider.h"
-#import "Topics/SCIProfileSettingsProvider.h"
-#import "Topics/SCIProfileAnalyzerSettingsProvider.h"
-#import "Topics/SCIReelsSettingsProvider.h"
-#import "Topics/SCIStoriesSettingsProvider.h"
-#import "Topics/SCIToolsSettingsProvider.h"
+#import "Topics/SPKAboutSettingsProvider.h"
+#import "Topics/SPKFeedSettingsProvider.h"
+#import "Topics/SPKGeneralSettingsProvider.h"
+#import "Topics/SPKInstantsSettingsProvider.h"
+#import "Topics/SPKInterfaceSettingsProvider.h"
+#import "Topics/SPKGallerySettingsProvider.h"
+#import "Topics/SPKDownloadsSettingsProvider.h"
+#import "Topics/SPKMessagesSettingsProvider.h"
+#import "Topics/SPKProfileSettingsProvider.h"
+#import "Topics/SPKProfileAnalyzerSettingsProvider.h"
+#import "Topics/SPKReelsSettingsProvider.h"
+#import "Topics/SPKStoriesSettingsProvider.h"
+#import "Topics/SPKToolsSettingsProvider.h"
 
-@implementation SCITweakSettings
+@implementation SPKTweakSettings
 
 + (NSArray *)sections {
     return @[
         @{
             @"header": @"",
             @"rows": @[
-                [SCIGeneralSettingsProvider rootSetting],
-                [SCIInterfaceSettingsProvider rootSetting],
-                [SCIFeedSettingsProvider rootSetting],
-                [SCIStoriesSettingsProvider rootSetting],
-                [SCIReelsSettingsProvider rootSetting],
-                [SCIMessagesSettingsProvider rootSetting],
-                [SCIInstantsSettingsProvider rootSetting],
-                [SCIProfileSettingsProvider rootSetting]
+                [SPKGeneralSettingsProvider rootSetting],
+                [SPKInterfaceSettingsProvider rootSetting],
+                [SPKFeedSettingsProvider rootSetting],
+                [SPKStoriesSettingsProvider rootSetting],
+                [SPKReelsSettingsProvider rootSetting],
+                [SPKMessagesSettingsProvider rootSetting],
+                [SPKInstantsSettingsProvider rootSetting],
+                [SPKProfileSettingsProvider rootSetting]
             ]
         },
         @{
             @"header": @"",
             @"rows": @[
-                [SCIGallerySettingsProvider rootSetting],
-                [SCIDownloadsSettingsProvider rootSetting],
-                [SCIProfileAnalyzerSettingsProvider rootSetting]
+                [SPKGallerySettingsProvider rootSetting],
+                [SPKDownloadsSettingsProvider rootSetting],
+                [SPKProfileAnalyzerSettingsProvider rootSetting]
             ]
         },
         @{
             @"header": @"",
             @"rows": @[
-                [SCIToolsSettingsProvider rootSetting]
+                [SPKToolsSettingsProvider rootSetting]
             ]
         },
         @{
             @"header": @"",
             @"rows": @[
-                [SCIAboutSettingsProvider rootSetting]
+                [SPKAboutSettingsProvider rootSetting]
             ]
         }
     ];
 }
 
 + (NSString *)title {
-    return @"SCInsta Settings";
+    return @"Sparkle";
 }
 
 + (NSDictionary *)menus {

@@ -3,13 +3,13 @@
 
 #import <objc/message.h>
 
-static NSString * const kSCIHideCommentGiftsButtonPref = @"general_comments_hide_gifts_button";
+static NSString * const kSPKHideCommentGiftsButtonPref = @"general_comments_hide_gifts_button";
 
-static inline BOOL SCIHideCommentGiftsButtonEnabled(void) {
-    return [SCIUtils getBoolPref:kSCIHideCommentGiftsButtonPref];
+static inline BOOL SPKHideCommentGiftsButtonEnabled(void) {
+    return [SPKUtils getBoolPref:kSPKHideCommentGiftsButtonPref];
 }
 
-static BOOL SCIViewMatchesCommentGiftButton(UIView *view) {
+static BOOL SPKViewMatchesCommentGiftButton(UIView *view) {
     if (![view isKindOfClass:[UIControl class]]) return NO;
 
     NSString *label = view.accessibilityLabel;
@@ -21,50 +21,50 @@ static BOOL SCIViewMatchesCommentGiftButton(UIView *view) {
            [view isKindOfClass:[UIControl class]];
 }
 
-static UIView *SCICommentGiftButtonInView(UIView *view, NSUInteger depth) {
+static UIView *SPKCommentGiftButtonInView(UIView *view, NSUInteger depth) {
     if (!view || depth > 8) return nil;
-    if (SCIViewMatchesCommentGiftButton(view)) return view;
+    if (SPKViewMatchesCommentGiftButton(view)) return view;
 
     for (UIView *subview in view.subviews) {
-        UIView *candidate = SCICommentGiftButtonInView(subview, depth + 1);
+        UIView *candidate = SPKCommentGiftButtonInView(subview, depth + 1);
         if (candidate) return candidate;
     }
 
     return nil;
 }
 
-static UIView *SCICommentGiftButtonFromCandidate(id candidate) {
+static UIView *SPKCommentGiftButtonFromCandidate(id candidate) {
     if (![candidate isKindOfClass:[UIView class]]) return nil;
 
     UIView *view = (UIView *)candidate;
-    if (SCIViewMatchesCommentGiftButton(view)) return view;
+    if (SPKViewMatchesCommentGiftButton(view)) return view;
 
-    UIView *nested = SCICommentGiftButtonInView(view, 0);
+    UIView *nested = SPKCommentGiftButtonInView(view, 0);
     return nested ?: view;
 }
 
-static UIView *SCICommentComposerGiftButton(UIView *composerView) {
+static UIView *SPKCommentComposerGiftButton(UIView *composerView) {
     for (NSString *ivarName in @[@"_lazyGiftButton", @"_giftButton"]) {
-        UIView *candidate = SCICommentGiftButtonFromCandidate([SCIUtils getIvarForObj:composerView name:ivarName.UTF8String]);
+        UIView *candidate = SPKCommentGiftButtonFromCandidate([SPKUtils getIvarForObj:composerView name:ivarName.UTF8String]);
         if (candidate) return candidate;
     }
 
-    return SCICommentGiftButtonInView(composerView, 0);
+    return SPKCommentGiftButtonInView(composerView, 0);
 }
 
-static void SCISetCommentComposerGiftButtonEnabled(id composerView, BOOL enabled) {
+static void SPKSetCommentComposerGiftButtonEnabled(id composerView, BOOL enabled) {
     SEL selector = @selector(setGiftButtonEnabled:);
     if ([composerView respondsToSelector:selector]) {
         ((void (*)(id, SEL, BOOL))objc_msgSend)(composerView, selector, enabled);
     }
 }
 
-static void SCIHideCommentComposerGiftButton(UIView *composerView) {
-    if (!SCIHideCommentGiftsButtonEnabled()) return;
+static void SPKHideCommentComposerGiftButton(UIView *composerView) {
+    if (!SPKHideCommentGiftsButtonEnabled()) return;
 
-    SCISetCommentComposerGiftButtonEnabled(composerView, NO);
+    SPKSetCommentComposerGiftButtonEnabled(composerView, NO);
 
-    UIView *giftButton = SCICommentComposerGiftButton(composerView);
+    UIView *giftButton = SPKCommentComposerGiftButton(composerView);
     if (!giftButton) return;
 
     CGRect giftFrame = [giftButton.superview convertRect:giftButton.frame toView:composerView];
@@ -72,8 +72,8 @@ static void SCIHideCommentComposerGiftButton(UIView *composerView) {
     giftButton.userInteractionEnabled = NO;
     giftButton.alpha = 0.0;
 
-    UIView *textView = [SCIUtils getIvarForObj:composerView name:"_growingTextView"];
-    UIView *backgroundView = [SCIUtils getIvarForObj:composerView name:"_roundedBackgroundImageView"];
+    UIView *textView = [SPKUtils getIvarForObj:composerView name:"_growingTextView"];
+    UIView *backgroundView = [SPKUtils getIvarForObj:composerView name:"_roundedBackgroundImageView"];
     if (![textView isKindOfClass:[UIView class]]) return;
 
     CGRect textFrame = [textView.superview convertRect:textView.frame toView:composerView];
@@ -95,32 +95,32 @@ static void SCIHideCommentComposerGiftButton(UIView *composerView) {
     }
 }
 
-%group SCIHideCommentGiftsButtonHooks
+%group SPKHideCommentGiftsButtonHooks
 
 %hook IGCommentComposerView
 
 - (void)setGiftButtonEnabled:(BOOL)enabled {
-    %orig(SCIHideCommentGiftsButtonEnabled() ? NO : enabled);
+    %orig(SPKHideCommentGiftsButtonEnabled() ? NO : enabled);
 }
 
 - (BOOL)giftButtonEnabled {
-    if (SCIHideCommentGiftsButtonEnabled()) return NO;
+    if (SPKHideCommentGiftsButtonEnabled()) return NO;
     return %orig;
 }
 
 - (void)layoutSubviews {
-    if (SCIHideCommentGiftsButtonEnabled()) {
-        SCISetCommentComposerGiftButtonEnabled(self, NO);
+    if (SPKHideCommentGiftsButtonEnabled()) {
+        SPKSetCommentComposerGiftButtonEnabled(self, NO);
     }
 
     %orig;
 
-    SCIHideCommentComposerGiftButton((UIView *)self);
+    SPKHideCommentComposerGiftButton((UIView *)self);
 }
 
 - (CGSize)sizeThatFits:(CGSize)size {
-    if (SCIHideCommentGiftsButtonEnabled()) {
-        SCISetCommentComposerGiftButtonEnabled(self, NO);
+    if (SPKHideCommentGiftsButtonEnabled()) {
+        SPKSetCommentComposerGiftButtonEnabled(self, NO);
     }
 
     return %orig(size);
@@ -130,9 +130,9 @@ static void SCIHideCommentComposerGiftButton(UIView *composerView) {
 
 %end
 
-extern "C" void SCIInstallHideCommentGiftsButtonHooksIfEnabled(void) {
+extern "C" void SPKInstallHideCommentGiftsButtonHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideCommentGiftsButtonHooks);
+        %init(SPKHideCommentGiftsButtonHooks);
     });
 }

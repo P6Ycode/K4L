@@ -1,9 +1,9 @@
 #import "../../Utils.h"
-#import "../../Shared/UI/SCIIGAlertPresenter.h"
+#import "../../Shared/UI/SPKIGAlertPresenter.h"
 
 static char targetStaticRef[] = "target";
 
-%group SCINotesCustomizationHooks
+%group SPKNotesCustomizationHooks
 
 %hook IGDirectNotesCreationView
 - (id)initWithViewModel:(id)model
@@ -14,14 +14,14 @@ static char targetStaticRef[] = "target";
              layoutType:(long long)type
             userSession:(id)session
 {
-    if ([SCIUtils getBoolPref:@"msgs_notes_customization"]) {
+    if ([SPKUtils getBoolPref:@"msgs_notes_customization"]) {
 
         // enableAnimatedEmojisInCreation
         @try {
             [support setValue:@(YES) forKey:@"enableAnimatedEmojisInCreation"];
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
+            SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, support);
         }
 
         // enableBubbleCustomization
@@ -29,7 +29,7 @@ static char targetStaticRef[] = "target";
             [support setValue:@(YES) forKey:@"enableBubbleCustomization"];
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
+            SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, support);
         }
 
         // enableRandomThemeGenerator
@@ -37,7 +37,7 @@ static char targetStaticRef[] = "target";
             [support setValue:@(YES) forKey:@"enableRandomThemeGenerator"];
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, support);
+            SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, support);
         }
         
     }
@@ -55,7 +55,7 @@ static char targetStaticRef[] = "target";
 - (void)didMoveToWindow {
     %orig;
 
-    if (![SCIUtils getBoolPref:@"msgs_custom_note_themes"]) return;
+    if (![SPKUtils getBoolPref:@"msgs_custom_note_themes"]) return;
     
     // Inject buttons once in view lifecycle
     static char didInjectButtons;
@@ -86,7 +86,7 @@ static char targetStaticRef[] = "target";
         UIButton *leftButton = [UIButton buttonWithType:UIButtonTypeSystem];
         leftButton.configuration = config;
         leftButton.translatesAutoresizingMaskIntoConstraints = NO;
-        leftButton.tintColor = [SCIUtils SCIColor_InstagramBlue];
+        leftButton.tintColor = [SPKUtils SPKColor_InstagramBlue];
 
         NSMutableAttributedString *attrTitleLeft = [[NSMutableAttributedString alloc] initWithString:@"Background"];
         [attrTitleLeft addAttribute:NSFontAttributeName
@@ -104,7 +104,7 @@ static char targetStaticRef[] = "target";
         UIButton *middleButton = [UIButton buttonWithType:UIButtonTypeSystem];
         middleButton.configuration = config;
         middleButton.translatesAutoresizingMaskIntoConstraints = NO;
-        middleButton.tintColor = [SCIUtils SCIColor_InstagramBlue];
+        middleButton.tintColor = [SPKUtils SPKColor_InstagramBlue];
 
         NSMutableAttributedString *attrTitleMiddle = [[NSMutableAttributedString alloc] initWithString:@"Text"];
         [attrTitleMiddle addAttribute:NSFontAttributeName
@@ -122,7 +122,7 @@ static char targetStaticRef[] = "target";
         UIButton *rightButton = [UIButton buttonWithType:UIButtonTypeSystem];
         rightButton.configuration = config;
         rightButton.translatesAutoresizingMaskIntoConstraints = NO;
-        rightButton.tintColor = [SCIUtils SCIColor_InstagramBlue];
+        rightButton.tintColor = [SPKUtils SPKColor_InstagramBlue];
 
         NSMutableAttributedString *attrTitleRight = [[NSMutableAttributedString alloc] initWithString:@"Emoji"];
         [attrTitleRight addAttribute:NSFontAttributeName
@@ -133,8 +133,8 @@ static char targetStaticRef[] = "target";
         [rightButton sizeToFit];
 
         [rightButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-            UIViewController *vc = [SCIUtils nearestViewControllerForView:self];
-            [SCIIGAlertPresenter presentTextInputAlertFromViewController:vc
+            UIViewController *vc = [SPKUtils nearestViewControllerForView:self];
+            [SPKIGAlertPresenter presentTextInputAlertFromViewController:vc
                                                                    title:@"Enter Emoji Text"
                                                                  message:@"Click the Apply button after this to see the emoji"
                                                              placeholder:@"Type emoji..."
@@ -142,10 +142,10 @@ static char targetStaticRef[] = "target";
                                                         autocapitalized:NO
                                                             confirmTitle:@"OK"
                                                              cancelTitle:@"Cancel"
-                                                            confirmStyle:SCIIGAlertActionStyleDefault
+                                                            confirmStyle:SPKIGAlertActionStyleDefault
                                                             confirmBlock:^(NSString *text) {
                 self.emojiText = text;
-                [self applySCICustomTheme:@"Emoji"];
+                [self applySPKCustomTheme:@"Emoji"];
             }
                                                              cancelBlock:nil];
         }] forControlEvents:UIControlEventTouchUpInside];
@@ -201,7 +201,7 @@ static char targetStaticRef[] = "target";
         colorPickerController.selectedColor = self.textColor;
     }
     
-    UIViewController *presentingVC = [SCIUtils nearestViewControllerForView:self];
+    UIViewController *presentingVC = [SPKUtils nearestViewControllerForView:self];
     
     if (presentingVC != nil) {
         [presentingVC presentViewController:colorPickerController animated:YES completion:nil];
@@ -221,7 +221,7 @@ static char targetStaticRef[] = "target";
                         didSelectColor:(UIColor *)color
                           continuously:(BOOL)continuously
 {
-    _TtC20IGDirectNotesUISwift41IGDirectNotesBubbleEditorColorPaletteView *bubbleEditorVC = [SCIUtils nearestViewControllerForView:self];
+    _TtC20IGDirectNotesUISwift41IGDirectNotesBubbleEditorColorPaletteView *bubbleEditorVC = [SPKUtils nearestViewControllerForView:self];
     
     NSString *target = objc_getAssociatedObject(bubbleEditorVC, &targetStaticRef);
     if (!target) return;
@@ -234,12 +234,12 @@ static char targetStaticRef[] = "target";
         self.textColor = color;
     }
 
-    [self applySCICustomTheme:target];
+    [self applySPKCustomTheme:target];
 };
 
-%new - (void)applySCICustomTheme:(NSString *)target {
+%new - (void)applySPKCustomTheme:(NSString *)target {
     // Get notes composer vc
-    _TtC20IGDirectNotesUISwift39IGDirectNotesBubbleEditorViewController *parentVC = [SCIUtils nearestViewControllerForView:self];
+    _TtC20IGDirectNotesUISwift39IGDirectNotesBubbleEditorViewController *parentVC = [SPKUtils nearestViewControllerForView:self];
     if (!parentVC) return;
 
     IGDirectNotesComposerViewController *composerVC = parentVC.delegate;
@@ -253,7 +253,7 @@ static char targetStaticRef[] = "target";
         if (!model) return;
     }
 
-    //SCILog(@"Messages", @"Current note theme model: %@", model);
+    //SPKLog(@"Messages", @"Current note theme model: %@", model);
     [model setValue:[composerVC valueForKey:@"_composerText"] forKey:@"customEmoji"];
 
     // Update saved color target
@@ -268,7 +268,7 @@ static char targetStaticRef[] = "target";
     // Always set emoji to prevent it being overwritten
     [model setValue:self.emojiText forKey:@"customEmoji"];  
 
-    //SCILog(@"Messages", @"Updated note theme model: %@", model);
+    //SPKLog(@"Messages", @"Updated note theme model: %@", model);
 
     // Apply custom notes theme
     [composerVC notesBubbleEditorViewControllerDidUpdateWithCustomThemeCreationModel:model];
@@ -291,14 +291,14 @@ static char targetStaticRef[] = "target";
 
 %end
 
-void SCIInstallNotesCustomizationHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"msgs_notes_customization"] &&
-        ![SCIUtils getBoolPref:@"msgs_custom_note_themes"]) {
+void SPKInstallNotesCustomizationHooksIfNeeded(void) {
+    if (![SPKUtils getBoolPref:@"msgs_notes_customization"] &&
+        ![SPKUtils getBoolPref:@"msgs_custom_note_themes"]) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCINotesCustomizationHooks);
+        %init(SPKNotesCustomizationHooks);
     });
 }

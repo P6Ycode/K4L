@@ -3,29 +3,29 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SCIMarkDirectThreadSeenAfterReaction(id source);
+void SPKMarkDirectThreadSeenAfterReaction(id source);
 #ifdef __cplusplus
 }
 #endif
 
 #pragma mark - Hook group
 
-%group SCIDMInteractionConfirmHooks
+%group SPKDMInteractionConfirmHooks
 
 // ─── Double-tap like ────────────────────────────────────────────────
 
 %hook IGDirectMessageSectionController
 
 - (void)messageCellDidDoubleTap:(id)cell {
-    if (![SCIUtils getBoolPref:@"msgs_confirm_double_tap"]) {
+    if (![SPKUtils getBoolPref:@"msgs_confirm_double_tap"]) {
         %orig;
-        SCIMarkDirectThreadSeenAfterReaction(self);
+        SPKMarkDirectThreadSeenAfterReaction(self);
         return;
     }
 
-    [SCIUtils showConfirmation:^{
+    [SPKUtils showConfirmation:^{
         %orig;
-        SCIMarkDirectThreadSeenAfterReaction(self);
+        SPKMarkDirectThreadSeenAfterReaction(self);
     }
                          title:@"Confirm Message Double Tap"
                        message:@"Are you sure you want to double tap this message?"];
@@ -49,15 +49,15 @@ void SCIMarkDirectThreadSeenAfterReaction(id source);
 %hook IGDirectMessageReactionSelectionViewController
 
 - (void)reactionContainerView:(id)containerView didSelectEmojiAtIndex:(NSInteger)index {
-    if (![SCIUtils getBoolPref:@"msgs_confirm_reaction"]) {
+    if (![SPKUtils getBoolPref:@"msgs_confirm_reaction"]) {
         %orig;
-        SCIMarkDirectThreadSeenAfterReaction(self);
+        SPKMarkDirectThreadSeenAfterReaction(self);
         return;
     }
 
-    [SCIUtils showConfirmation:^{
+    [SPKUtils showConfirmation:^{
         %orig;
-        SCIMarkDirectThreadSeenAfterReaction(self);
+        SPKMarkDirectThreadSeenAfterReaction(self);
     }
                          title:@"Confirm Message Reaction"
                        message:@"Are you sure you want to react to this message?"];
@@ -65,13 +65,13 @@ void SCIMarkDirectThreadSeenAfterReaction(id source);
 
 %end
 
-%end // group SCIDMInteractionConfirmHooks
+%end // group SPKDMInteractionConfirmHooks
 
 #pragma mark - Entry point
 
-extern "C" void SCIInstallDMInteractionConfirmHooksIfEnabled(void) {
+extern "C" void SPKInstallDMInteractionConfirmHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIDMInteractionConfirmHooks);
+        %init(SPKDMInteractionConfirmHooks);
     });
 }

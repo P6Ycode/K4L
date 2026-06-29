@@ -450,7 +450,7 @@
 @property (nonatomic, copy) NSString *emojiText; // new
 
 - (void)presentColorPicker:(NSString *)target; // new
-- (void)applySCICustomTheme:(NSString *)target; // new
+- (void)applySPKCustomTheme:(NSString *)target; // new
 @end
 
 @interface _TtC20IGDirectNotesUISwift39IGDirectNotesBubbleEditorViewController : UIViewController

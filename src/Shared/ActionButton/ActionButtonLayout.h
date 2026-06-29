@@ -2,7 +2,7 @@
 
 #import <UIKit/UIKit.h>
 
-void SCIInstallFeedActionButton(UIView *barView);
-void SCIInstallReelsActionButton(UIView *verticalUFIView);
-void SCIInstallStoriesActionButton(UIView *overlayView);
-void SCIInstallDirectActionButton(UIViewController *controller);
+void SPKInstallFeedActionButton(UIView *barView);
+void SPKInstallReelsActionButton(UIView *verticalUFIView);
+void SPKInstallStoriesActionButton(UIView *overlayView);
+void SPKInstallDirectActionButton(UIViewController *controller);

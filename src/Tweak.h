@@ -1,12 +1,12 @@
 #import <Foundation/Foundation.h>
 
 // * Tweak version *
-extern NSString *SCIVersionString;
+extern NSString *SPKVersionString;
 
 // Variables that work across features
-extern __weak id SCIPendingDirectVisualMessageToMarkSeen;
-extern NSString *SCIForcedStorySeenMediaPK;
-extern BOOL SCIForceMarkStoryAsSeen;
-extern BOOL SCIForceStoryAutoAdvance;
+extern __weak id SPKPendingDirectVisualMessageToMarkSeen;
+extern NSString *SPKForcedStorySeenMediaPK;
+extern BOOL SPKForceMarkStoryAsSeen;
+extern BOOL SPKForceStoryAutoAdvance;
 
-NSString *SCIStoryMediaIdentifier(id media);
+NSString *SPKStoryMediaIdentifier(id media);

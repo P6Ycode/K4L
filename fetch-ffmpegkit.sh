@@ -9,7 +9,7 @@ SRC_ROOT="$CACHE_DIR/src"
 ARCHIVE_DIR="$CACHE_DIR/archive"
 ARCHIVE_FILE="$ARCHIVE_DIR/ffmpeg-kit-source"
 SITE_URL="https://arthenica.github.io/ffmpeg-kit/"
-MARKER_FILE="$MODULES_DIR/.scinsta-source-build"
+MARKER_FILE="$MODULES_DIR/.sparkle-source-build"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
 
 export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
@@ -74,7 +74,7 @@ REQUIRED_TOOLS=(
 
 usage() {
   cat <<'EOF'
-Usage: ./_scinsta_fetch_ffmpegkit.sh [--force]
+Usage: ./fetch-ffmpegkit.sh [--force]
 
 Builds iOS FFmpegKit frameworks from the archived Arthenica source archive and
 installs the ios-arm64 slices into modules/ffmpegkit.
@@ -93,13 +93,13 @@ check_prerequisites() {
     return 0
   fi
 
-  echo "[SCInsta] ERROR: Missing build tools required by ffmpeg-kit:" >&2
+  echo "[Sparkle] ERROR: Missing build tools required by ffmpeg-kit:" >&2
   printf '  - %s\n' "${missing[@]}" >&2
   echo >&2
-  echo "[SCInsta] Install them with Homebrew, then rerun:" >&2
+  echo "[Sparkle] Install them with Homebrew, then rerun:" >&2
   echo "  brew install autoconf automake cmake libtool meson nasm ninja pkgconf wget yasm" >&2
   echo >&2
-  echo "[SCInsta] If Homebrew tools are installed but not visible, ensure your shell exports:" >&2
+  echo "[Sparkle] If Homebrew tools are installed but not visible, ensure your shell exports:" >&2
   echo "  export PATH=\"$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:\$PATH\"" >&2
   exit 1
 }
@@ -158,7 +158,7 @@ extract_source() {
       unzip -q "$ARCHIVE_FILE" -d "$SRC_ROOT"
       ;;
     *)
-      echo "[SCInsta] ERROR: Unsupported archive format: $ARCHIVE_FILE" >&2
+      echo "[Sparkle] ERROR: Unsupported archive format: $ARCHIVE_FILE" >&2
       exit 1
       ;;
   esac
@@ -197,7 +197,7 @@ install_frameworks() {
         | head -n 1
     )"
     if [[ -z "$slice" || ! -d "$slice/$name.framework" ]]; then
-      echo "[SCInsta] ERROR: Missing ios-arm64 slice for $name in $xcfw" >&2
+      echo "[Sparkle] ERROR: Missing ios-arm64 slice for $name in $xcfw" >&2
       exit 1
     fi
     cp -R "$slice/$name.framework" "$MODULES_DIR/"
@@ -226,7 +226,7 @@ if [[ $# -eq 1 ]]; then
 fi
 
 if [[ "$force" -eq 0 ]] && have_complete_install; then
-  echo "[SCInsta] FFmpegKit frameworks already prepared."
+  echo "[Sparkle] FFmpegKit frameworks already prepared."
   exit 0
 fi
 
@@ -251,14 +251,14 @@ fi
 extract_source
 src_dir="$(source_dir)"
 if [[ -z "$src_dir" || ! -d "$src_dir" ]]; then
-  echo "[SCInsta] ERROR: Could not locate extracted ffmpeg-kit source directory." >&2
+  echo "[Sparkle] ERROR: Could not locate extracted ffmpeg-kit source directory." >&2
   exit 1
 fi
 
 if [[ "$force" -eq 1 ]] || ! build_output_ready "$src_dir"; then
-  echo "[SCInsta] Building FFmpegKit from source..."
+  echo "[Sparkle] Building FFmpegKit from source..."
   build_from_source "$src_dir"
 fi
 
 install_frameworks "$src_dir"
-echo "[SCInsta] FFmpegKit frameworks installed into modules/ffmpegkit."
+echo "[Sparkle] FFmpegKit frameworks installed into modules/ffmpegkit."

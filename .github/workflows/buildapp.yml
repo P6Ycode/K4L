@@ -3,7 +3,7 @@
 # https://github.com/ISnackable/YTCubePlus/blob/main/.github/workflows/Build.yml
 # https://github.com/BandarHL/BHTwitter/actions/workflows/build.yml
 
-name: Build and Package SCInsta
+name: Build and Package Sparkle
 
 on:
     workflow_dispatch:
@@ -39,7 +39,7 @@ concurrency:
     cancel-in-progress: true
 jobs:
     build:
-        name: Build SCInsta
+        name: Build Sparkle
         runs-on: macos-latest
         permissions:
             contents: write
@@ -99,13 +99,13 @@ jobs:
                 THEOS: ${{ github.workspace }}/theos
                 Instagram_URL: ${{ inputs.decrypted_instagram_url }}
 
-            - name: Get SCInsta Version
-              id: scinsta_version
+            - name: Get Sparkle Version
+              id: sparkle_version
               run: |
-                SCINSTA_VERSION=$(awk '/Version:/ {print $2}' main/control)
+                SPARKLE_VERSION=$(awk '/Version:/ {print $2}' main/control)
 
-                echo "SCINSTA_VERSION=${SCINSTA_VERSION}" >> "$GITHUB_ENV"
-                echo "version=${SCINSTA_VERSION}" >> "$GITHUB_OUTPUT"
+                echo "SPARKLE_VERSION=${SPARKLE_VERSION}" >> "$GITHUB_ENV"
+                echo "version=${SPARKLE_VERSION}" >> "$GITHUB_OUTPUT"
 
             - name: Cache FFmpeg frameworks
               id: ffmpeg_cache
@@ -122,7 +122,7 @@ jobs:
                 chmod +x ./fetch-ffmpegkit.sh
                 ./fetch-ffmpegkit.sh
             
-            - name: Build SCInsta tweak for sideloading (as IPA)
+            - name: Build Sparkle tweak for sideloading (as IPA)
               run: |
                 pip install --force-reinstall https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
                 
@@ -157,9 +157,9 @@ jobs:
                 fi
                 
                 if [ "${{ inputs.with_flex }}" = "true" ]; then
-                  IPA_NAME="SCInsta${SUFFIX}.ipa"
+                  IPA_NAME="Sparkle${SUFFIX}.ipa"
                 else
-                  IPA_NAME="SCInsta-no-flex${SUFFIX}.ipa"
+                  IPA_NAME="Sparkle-no-flex${SUFFIX}.ipa"
                 fi
                 
                 FINAL_SUFFIX=""
@@ -167,7 +167,7 @@ jobs:
                   FINAL_SUFFIX="_sidestore"
                 fi
                 
-                mv "$IPA_NAME" "SCInsta_sideloaded_v${SCINSTA_VERSION}${FINAL_SUFFIX}.ipa"
+                mv "$IPA_NAME" "Sparkle_sideloaded_v${SPARKLE_VERSION}${FINAL_SUFFIX}.ipa"
 
             - name: Pass package name to upload action
               id: package_name
@@ -176,21 +176,21 @@ jobs:
                 if [ "${{ inputs.for_sidestore }}" = "true" ]; then
                   FINAL_SUFFIX="_sidestore"
                 fi
-                echo "package=SCInsta_sideloaded_v${SCINSTA_VERSION}${FINAL_SUFFIX}.ipa" >> "$GITHUB_OUTPUT"
+                echo "package=Sparkle_sideloaded_v${SPARKLE_VERSION}${FINAL_SUFFIX}.ipa" >> "$GITHUB_OUTPUT"
 
             - name: Upload Artifact
               if: ${{ inputs.upload_artifact }}
               uses: actions/upload-artifact@v4
               with:
-                name: SCInsta_sideloaded_v${{ steps.scinsta_version.outputs.version }}
+                name: Sparkle_sideloaded_v${{ steps.sparkle_version.outputs.version }}
                 path: ${{ github.workspace }}/main/packages/${{ steps.package_name.outputs.package }}
                 if-no-files-found: error
 
             - name: Create Release
               uses: softprops/action-gh-release@v2.0.6
               with:
-                name: SCInsta_sideloaded_v${{ steps.scinsta_version.outputs.version }}
-                files: ${{ github.workspace }}/main/packages/SCInsta_sideloaded_v*.ipa
+                name: Sparkle_sideloaded_v${{ steps.sparkle_version.outputs.version }}
+                files: ${{ github.workspace }}/main/packages/Sparkle_sideloaded_v*.ipa
                 draft: true
 
             - name: Output Release URL

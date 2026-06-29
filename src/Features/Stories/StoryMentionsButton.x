@@ -6,32 +6,32 @@
 #import "../../AssetUtils.h"
 #import "../../Tweak.h"
 #import "../../Utils.h"
-#import "../../Shared/Messages/SCIDirectSeenContext.h"
-#import "../../Shared/Stories/SCIStoryContext.h"
-#import "../../Shared/UI/SCIChrome.h"
+#import "../../Shared/Messages/SPKDirectSeenContext.h"
+#import "../../Shared/Stories/SPKStoryContext.h"
+#import "../../Shared/UI/SPKChrome.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SCIApplyButtonStyle(UIButton *button, NSInteger source);
+void SPKApplyButtonStyle(UIButton *button, NSInteger source);
 #ifdef __cplusplus
 }
 #endif
 
-static NSString * const kSCIStoryMentionsBarIconResource = @"mention";
-static NSInteger const kSCIActionButtonSourceDirect = 4;
-static NSInteger const kSCIStoryMentionsButtonTag = 926002;
+static NSString * const kSPKStoryMentionsBarIconResource = @"mention";
+static NSInteger const kSPKActionButtonSourceDirect = 4;
+static NSInteger const kSPKStoryMentionsButtonTag = 926002;
 
-extern void SCIPresentStoryMentionsSheet(UIView *overlayView);
+extern void SPKPresentStoryMentionsSheet(UIView *overlayView);
 
-static id SCIKVCObject(id target, NSString *key);
-static id SCIObjectForSelector(id target, NSString *selectorName);
-static id SCIFirstObjectForSelectors(id target, NSArray<NSString *> *selectors);
+static id SPKKVCObject(id target, NSString *key);
+static id SPKObjectForSelector(id target, NSString *selectorName);
+static id SPKFirstObjectForSelectors(id target, NSArray<NSString *> *selectors);
 
-static inline BOOL SCIStoryMentionsButtonEnabled(void) {
-    return [SCIUtils getBoolPref:@"stories_mentions_btn"];
+static inline BOOL SPKStoryMentionsButtonEnabled(void) {
+    return [SPKUtils getBoolPref:@"stories_mentions_btn"];
 }
-static NSArray *SCIArrayFromCollection(id collection) {
+static NSArray *SPKArrayFromCollection(id collection) {
     if (!collection ||
         [collection isKindOfClass:[NSDictionary class]] ||
         [collection isKindOfClass:[NSString class]] ||
@@ -62,7 +62,7 @@ static NSArray *SCIArrayFromCollection(id collection) {
     return nil;
 }
 
-static id SCIKVCObject(id target, NSString *key) {
+static id SPKKVCObject(id target, NSString *key) {
     if (!target || key.length == 0) return nil;
 
     @try {
@@ -72,7 +72,7 @@ static id SCIKVCObject(id target, NSString *key) {
     }
 }
 
-static id SCIObjectForSelector(id target, NSString *selectorName) {
+static id SPKObjectForSelector(id target, NSString *selectorName) {
     if (!target || selectorName.length == 0) return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
@@ -81,27 +81,27 @@ static id SCIObjectForSelector(id target, NSString *selectorName) {
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-static id SCIFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
+static id SPKFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
     if (!target || selectors.count == 0) return nil;
     for (NSString *selectorName in selectors) {
-        id value = SCIObjectForSelector(target, selectorName);
+        id value = SPKObjectForSelector(target, selectorName);
         if (value) return value;
     }
     return nil;
 }
 
-static void SCIPlayButtonTappedHaptic(void) {
+static void SPKPlayButtonTappedHaptic(void) {
     UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
     [feedback selectionChanged];
 }
-static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
+static UIButton *SPKStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     UIView *existing = [container viewWithTag:tag];
-    if ([existing isKindOfClass:SCIChromeButton.class]) {
+    if ([existing isKindOfClass:SPKChromeButton.class]) {
         return (UIButton *)existing;
     }
     [existing removeFromSuperview];
 
-    SCIChromeButton *button = [[SCIChromeButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
+    SPKChromeButton *button = [[SPKChromeButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
     button.tag = tag;
     button.adjustsImageWhenHighlighted = YES;
     button.showsMenuAsPrimaryAction = NO;
@@ -110,10 +110,10 @@ static UIButton *SCIStorySeenButtonWithTag(UIView *container, NSInteger tag) {
     return button;
 }
 
-static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *logMessage) {
+static void SPKSetSeenButtonImage(UIButton *button, UIImage *image, NSString *logMessage) {
     UIImage *templatedImage = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    if ([button isKindOfClass:SCIChromeButton.class]) {
-        SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+    if ([button isKindOfClass:SPKChromeButton.class]) {
+        SPKChromeButton *chromeButton = (SPKChromeButton *)button;
         chromeButton.iconView.image = templatedImage;
         chromeButton.iconTint = UIColor.whiteColor;
         [button setImage:nil forState:UIControlStateNormal];
@@ -121,7 +121,7 @@ static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
         [button setImage:templatedImage forState:UIControlStateNormal];
     }
 
-    SCILog(@"Capture", @"%@ tag=%ld button=%@<%p> subviews=%@ imageView=%@<%p> imageSuperview=%@<%p>",
+    SPKLog(@"Capture", @"%@ tag=%ld button=%@<%p> subviews=%@ imageView=%@<%p> imageSuperview=%@<%p>",
            logMessage,
            (long)button.tag,
            NSStringFromClass(button.class),
@@ -133,7 +133,7 @@ static void SCISetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
            button.imageView.superview);
 }
 
-static id SCIStorySectionControllerFromOverlayView(UIView *overlayView) {
+static id SPKStorySectionControllerFromOverlayView(UIView *overlayView) {
     if (!overlayView) return nil;
 
     NSArray<NSString *> *delegateSelectors = @[@"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate"];
@@ -154,7 +154,7 @@ static id SCIStorySectionControllerFromOverlayView(UIView *overlayView) {
     return nil;
 }
 
-static NSString *SCIStringFromValue(id value) {
+static NSString *SPKStringFromValue(id value) {
     if (!value || value == (id)kCFNull) return nil;
     if ([value isKindOfClass:[NSString class]]) {
         NSString *string = (NSString *)value;
@@ -167,14 +167,14 @@ static NSString *SCIStringFromValue(id value) {
     return [[value description] length] > 0 ? [value description] : nil;
 }
 
-static id SCIStoryMediaFromAnyObject(id object) {
+static id SPKStoryMediaFromAnyObject(id object) {
     if (!object) return nil;
-    id candidate = SCIFirstObjectForSelectors(object, @[@"media", @"mediaItem", @"storyItem", @"item", @"model"]);
+    id candidate = SPKFirstObjectForSelectors(object, @[@"media", @"mediaItem", @"storyItem", @"item", @"model"]);
     return candidate ?: object;
 }
 
-static BOOL SCIResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTarget, id *outSectionController, id *outMedia) {
-    SCIStoryContext *sharedContext = SCIStoryContextFromOverlay(overlayView);
+static BOOL SPKResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTarget, id *outSectionController, id *outMedia) {
+    SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
     if (sharedContext) {
         if (outMarkTarget) *outMarkTarget = sharedContext.markSeenTarget;
         if (outSectionController) *outSectionController = sharedContext.sectionController;
@@ -185,33 +185,33 @@ static BOOL SCIResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTa
     if (!overlayView) return NO;
 
     SEL markSelector = NSSelectorFromString(@"fullscreenSectionController:didMarkItemAsSeen:");
-    UIViewController *viewerController = [SCIUtils nearestViewControllerForView:overlayView];
+    UIViewController *viewerController = [SPKUtils nearestViewControllerForView:overlayView];
 
-    id sectionController = SCIStorySectionControllerFromOverlayView(overlayView);
+    id sectionController = SPKStorySectionControllerFromOverlayView(overlayView);
     id markTarget = nil;
-    id sectionDelegate = SCIObjectForSelector(sectionController, @"delegate");
+    id sectionDelegate = SPKObjectForSelector(sectionController, @"delegate");
     if (sectionDelegate && [sectionDelegate respondsToSelector:markSelector]) {
         markTarget = sectionDelegate;
     } else if (viewerController && [viewerController respondsToSelector:markSelector]) {
         markTarget = viewerController;
     } else {
-        id overlayAncestor = SCIObjectForSelector(overlayView, @"_viewControllerForAncestor");
+        id overlayAncestor = SPKObjectForSelector(overlayView, @"_viewControllerForAncestor");
         if (overlayAncestor && [overlayAncestor respondsToSelector:markSelector]) {
             markTarget = overlayAncestor;
         }
     }
 
     if (!sectionController && markTarget) {
-        sectionController = SCIFirstObjectForSelectors(markTarget, @[@"currentSectionController"]);
+        sectionController = SPKFirstObjectForSelectors(markTarget, @[@"currentSectionController"]);
         if (!sectionController) {
-            sectionController = [SCIUtils getIvarForObj:markTarget name:"_currentSectionController"];
+            sectionController = [SPKUtils getIvarForObj:markTarget name:"_currentSectionController"];
         }
     }
 
-    id media = SCIFirstObjectForSelectors(sectionController, @[@"currentStoryItem", @"currentItem", @"item"]);
-    if (!media) media = SCIFirstObjectForSelectors(markTarget, @[@"currentStoryItem", @"currentItem", @"item"]);
-    if (!media && viewerController) media = SCIFirstObjectForSelectors(viewerController, @[@"currentStoryItem", @"currentItem", @"item"]);
-    media = SCIStoryMediaFromAnyObject(media);
+    id media = SPKFirstObjectForSelectors(sectionController, @[@"currentStoryItem", @"currentItem", @"item"]);
+    if (!media) media = SPKFirstObjectForSelectors(markTarget, @[@"currentStoryItem", @"currentItem", @"item"]);
+    if (!media && viewerController) media = SPKFirstObjectForSelectors(viewerController, @[@"currentStoryItem", @"currentItem", @"item"]);
+    media = SPKStoryMediaFromAnyObject(media);
 
     if (outMarkTarget) *outMarkTarget = markTarget;
     if (outSectionController) *outSectionController = sectionController;
@@ -220,28 +220,28 @@ static BOOL SCIResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTa
     return (media != nil);
 }
 
-static NSArray<NSDictionary *> *SCIStoryMentionsForOverlay(UIView *overlayView) {
+static NSArray<NSDictionary *> *SPKStoryMentionsForOverlay(UIView *overlayView) {
     id markTarget = nil;
     id sectionController = nil;
     id media = nil;
-    if (!SCIResolveStoryContextFromOverlay(overlayView, &markTarget, &sectionController, &media)) {
+    if (!SPKResolveStoryContextFromOverlay(overlayView, &markTarget, &sectionController, &media)) {
         return @[];
     }
 
-    id mentionsCollection = SCIObjectForSelector(media, @"reelMentions");
-    NSArray *mentions = SCIArrayFromCollection(mentionsCollection);
+    id mentionsCollection = SPKObjectForSelector(media, @"reelMentions");
+    NSArray *mentions = SPKArrayFromCollection(mentionsCollection);
     if (mentions.count == 0) return @[];
 
     NSMutableArray<NSDictionary *> *userInfos = [NSMutableArray array];
     for (id mention in mentions) {
-        id user = SCIKVCObject(mention, @"user");
-        if (!user) user = SCIObjectForSelector(mention, @"user");
+        id user = SPKKVCObject(mention, @"user");
+        if (!user) user = SPKObjectForSelector(mention, @"user");
         if (!user) continue;
 
-        NSString *username = SCIStringFromValue(SCIKVCObject(user, @"username"));
-        if (!username) username = SCIStringFromValue(SCIObjectForSelector(user, @"username"));
-        NSString *fullName = SCIStringFromValue(SCIKVCObject(user, @"fullName"));
-        if (!fullName) fullName = SCIStringFromValue(SCIKVCObject(user, @"full_name"));
+        NSString *username = SPKStringFromValue(SPKKVCObject(user, @"username"));
+        if (!username) username = SPKStringFromValue(SPKObjectForSelector(user, @"username"));
+        NSString *fullName = SPKStringFromValue(SPKKVCObject(user, @"fullName"));
+        if (!fullName) fullName = SPKStringFromValue(SPKKVCObject(user, @"full_name"));
 
         NSMutableDictionary *entry = [NSMutableDictionary dictionary];
         if (username.length > 0) entry[@"username"] = username;
@@ -252,53 +252,53 @@ static NSArray<NSDictionary *> *SCIStoryMentionsForOverlay(UIView *overlayView) 
     return userInfos;
 }
 
-static void SCIApplyStoryMentionsButtonStyle(UIButton *button) {
+static void SPKApplyStoryMentionsButtonStyle(UIButton *button) {
     if (!button) return;
-    SCIApplyButtonStyle(button, kSCIActionButtonSourceDirect);
+    SPKApplyButtonStyle(button, kSPKActionButtonSourceDirect);
 }
 
-void SCIRemoveStoryMentionsButton(UIView *overlayView) {
-    UIButton *mentionsButton = (UIButton *)[overlayView viewWithTag:kSCIStoryMentionsButtonTag];
+void SPKRemoveStoryMentionsButton(UIView *overlayView) {
+    UIButton *mentionsButton = (UIButton *)[overlayView viewWithTag:kSPKStoryMentionsButtonTag];
     [mentionsButton removeFromSuperview];
 }
 
-void SCIUpdateStoryMentionsButton(UIView *overlayView, CGFloat x, CGFloat y, CGFloat size) {
-    NSArray<NSDictionary *> *storyMentions = SCIStoryMentionsForOverlay(overlayView);
-    BOOL showMentionsButton = SCIStoryMentionsButtonEnabled() && storyMentions.count > 0;
-    UIButton *mentionsButton = (UIButton *)[overlayView viewWithTag:kSCIStoryMentionsButtonTag];
+void SPKUpdateStoryMentionsButton(UIView *overlayView, CGFloat x, CGFloat y, CGFloat size) {
+    NSArray<NSDictionary *> *storyMentions = SPKStoryMentionsForOverlay(overlayView);
+    BOOL showMentionsButton = SPKStoryMentionsButtonEnabled() && storyMentions.count > 0;
+    UIButton *mentionsButton = (UIButton *)[overlayView viewWithTag:kSPKStoryMentionsButtonTag];
 
     if (showMentionsButton && !mentionsButton) {
-        mentionsButton = SCIStorySeenButtonWithTag(overlayView, kSCIStoryMentionsButtonTag);
-        [mentionsButton addTarget:overlayView action:@selector(sci_storyMentionsButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        mentionsButton = SPKStorySeenButtonWithTag(overlayView, kSPKStoryMentionsButtonTag);
+        [mentionsButton addTarget:overlayView action:@selector(spk_storyMentionsButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
 
-        UIImage *mentionsImage = [SCIAssetUtils instagramIconNamed:kSCIStoryMentionsBarIconResource pointSize:24.0];
-        SCISetSeenButtonImage(mentionsButton, mentionsImage, @"Story mentions custom icon assigned");
+        UIImage *mentionsImage = [SPKAssetUtils instagramIconNamed:kSPKStoryMentionsBarIconResource pointSize:24.0];
+        SPKSetSeenButtonImage(mentionsButton, mentionsImage, @"Story mentions custom icon assigned");
     } else if (!showMentionsButton && mentionsButton) {
         [mentionsButton removeFromSuperview];
         mentionsButton = nil;
     }
 
     if (!showMentionsButton || !mentionsButton) return;
-    SCIApplyStoryMentionsButtonStyle(mentionsButton);
+    SPKApplyStoryMentionsButtonStyle(mentionsButton);
     mentionsButton.frame = CGRectMake(x, y, size, size);
     [overlayView bringSubviewToFront:mentionsButton];
 }
 
-%group SCIStoryMentionsButtonHooks
+%group SPKStoryMentionsButtonHooks
 
 %hook IGStoryFullscreenOverlayView
-%new - (void)sci_storyMentionsButtonTapped:(UIButton *)sender {
+%new - (void)spk_storyMentionsButtonTapped:(UIButton *)sender {
     (void)sender;
-    SCIPlayButtonTappedHaptic();
-    SCIPresentStoryMentionsSheet((UIView *)self);
+    SPKPlayButtonTappedHaptic();
+    SPKPresentStoryMentionsSheet((UIView *)self);
 }
 %end
 
 %end
 
-void SCIInstallStoryMentionsButtonHooksIfNeeded(void) {
+void SPKInstallStoryMentionsButtonHooksIfNeeded(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIStoryMentionsButtonHooks);
+        %init(SPKStoryMentionsButtonHooks);
     });
 }

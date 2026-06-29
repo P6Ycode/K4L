@@ -2,14 +2,14 @@
 #import "../../InstagramHeaders.h"
 
 // Channels dms tab (header)
-%group SCINoSuggestedChatsHooks
+%group SPKNoSuggestedChatsHooks
 
 %hook IGDirectInboxHeaderSectionController
 - (id)viewModel {
     if ([[%orig title] isEqualToString:@"Suggested"]) {
 
-        if ([SCIUtils getBoolPref:@"msgs_hide_suggested_chats"]) {
-            SCILog(@"General", @"[SCInsta] Hiding suggested chats (header: channels tab)");
+        if ([SPKUtils getBoolPref:@"msgs_hide_suggested_chats"]) {
+            SPKLog(@"General", @"[Sparkle] Hiding suggested chats (header: channels tab)");
 
             return nil;
         }
@@ -22,11 +22,11 @@
 
 %end
 
-void SCIInstallNoSuggestedChatsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"msgs_hide_suggested_chats"]) return;
+void SPKInstallNoSuggestedChatsHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"msgs_hide_suggested_chats"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCINoSuggestedChatsHooks);
+        %init(SPKNoSuggestedChatsHooks);
     });
 }

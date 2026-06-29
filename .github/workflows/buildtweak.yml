@@ -1,4 +1,4 @@
-name: Build SCInsta tweak for Rootless
+name: Build Sparkle tweak for Rootless
 
 on:
     push:
@@ -12,7 +12,7 @@ concurrency:
     cancel-in-progress: true
 jobs:
     build:
-        name: Build SCInsta Rootless
+        name: Build Sparkle Rootless
         runs-on: macos-latest
         permissions:
             contents: write
@@ -59,13 +59,13 @@ jobs:
               env:
                 THEOS: ${{ github.workspace }}/theos
 
-            - name: Get SCInsta Version
-              id: scinsta_version
+            - name: Get Sparkle Version
+              id: sparkle_version
               run: |
-                SCINSTA_VERSION=$(awk '/Version:/ {print $2}' main/control)
+                SPARKLE_VERSION=$(awk '/Version:/ {print $2}' main/control)
 
-                echo "SCINSTA_VERSION=${SCINSTA_VERSION}" >> "$GITHUB_ENV"
-                echo "version=${SCINSTA_VERSION}" >> "$GITHUB_OUTPUT"
+                echo "SPARKLE_VERSION=${SPARKLE_VERSION}" >> "$GITHUB_ENV"
+                echo "version=${SPARKLE_VERSION}" >> "$GITHUB_OUTPUT"
 
             - name: Cache FFmpeg frameworks
               id: ffmpeg_cache
@@ -82,7 +82,7 @@ jobs:
                 chmod +x ./fetch-ffmpegkit.sh
                 ./fetch-ffmpegkit.sh
             
-            - name: Build SCInsta tweak for Rootless
+            - name: Build Sparkle tweak for Rootless
               run: |                
                 cd main
                 ls -la
@@ -96,8 +96,8 @@ jobs:
             - name: Rename deb to include version info
               run: |
                 cd main/packages
-                DEB_FILE="$(ls -t com.socuul.scinsta_*.deb | head -n1)"
-                mv "$DEB_FILE" "com.socuul.scinsta_${SCINSTA_VERSION}+debug-rootless.deb"
+                DEB_FILE="$(ls -t com.sparkle.sparkle_*.deb | head -n1)"
+                mv "$DEB_FILE" "com.sparkle.sparkle_${SPARKLE_VERSION}+debug-rootless.deb"
 
             - name: Pass package name to upload action
               id: package_name

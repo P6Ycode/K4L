@@ -6,10 +6,10 @@
 #import "../../AssetUtils.h"
 #import "../../Tweak.h"
 #import "../../Utils.h"
-#import "../../Shared/Messages/SCIDirectSeenContext.h"
-#import "../../Shared/Stories/SCIStoryContext.h"
-#import "../../Shared/UI/SCIChrome.h"
-#import "DeletedMessagesLog/SCIDeletedMessagesViewController.h"
+#import "../../Shared/Messages/SPKDirectSeenContext.h"
+#import "../../Shared/Stories/SPKStoryContext.h"
+#import "../../Shared/UI/SPKChrome.h"
+#import "DeletedMessagesLog/SPKDeletedMessagesViewController.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,43 +18,43 @@ extern "C" {
 }
 #endif
 
-@interface UIViewController (SCIRefreshNavigationBar)
+@interface UIViewController (SPKRefreshNavigationBar)
 - (void)refreshRightBarButtonItems;
 - (void)updateThreadNavigationBar;
 @end
 
-static NSString * const kSCISeenMessagesBarIconResource = @"eye";
-static const void *kSCIDirectThreadIdAssocKey = &kSCIDirectThreadIdAssocKey;
-static NSInteger kSCISeenAutoBypassCount = 0;
-static NSMutableDictionary<NSString *, NSNumber *> *SCISeenAutoLastTriggerTimes = nil;
-static __weak id SCIDirectActiveMarkSeenTarget = nil;
-static NSString *SCIDirectActiveMarkSeenThreadId = nil;
+static NSString * const kSPKSeenMessagesBarIconResource = @"eye";
+static const void *kSPKDirectThreadIdAssocKey = &kSPKDirectThreadIdAssocKey;
+static NSInteger kSPKSeenAutoBypassCount = 0;
+static NSMutableDictionary<NSString *, NSNumber *> *SPKSeenAutoLastTriggerTimes = nil;
+static __weak id SPKDirectActiveMarkSeenTarget = nil;
+static NSString *SPKDirectActiveMarkSeenThreadId = nil;
 
-static id SCIKVCObject(id target, NSString *key);
-static id SCIFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited);
+static id SPKKVCObject(id target, NSString *key);
+static id SPKFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited);
 
-static inline BOOL SCIDirectManualSeenRulesEnabled(void) {
-    return [SCIUtils getBoolPref:@"msgs_manual_seen"] || SCIDirectManualSeenThreadCount(NO) > 0;
+static inline BOOL SPKDirectManualSeenRulesEnabled(void) {
+    return [SPKUtils getBoolPref:@"msgs_manual_seen"] || SPKDirectManualSeenThreadCount(NO) > 0;
 }
 
-static inline BOOL SCIDirectSeenHooksNeeded(void) {
-    return SCIDirectManualSeenRulesEnabled() ||
-           [SCIUtils getBoolPref:@"msgs_manual_visual_seen"] ||
-           [SCIUtils getBoolPref:@"msgs_advance_visual_on_seen"];
+static inline BOOL SPKDirectSeenHooksNeeded(void) {
+    return SPKDirectManualSeenRulesEnabled() ||
+           [SPKUtils getBoolPref:@"msgs_manual_visual_seen"] ||
+           [SPKUtils getBoolPref:@"msgs_advance_visual_on_seen"];
 }
-static inline BOOL SCIAutoSeenOnSendEnabled(void) {
-    return SCIDirectManualSeenRulesEnabled() && [SCIUtils getBoolPref:@"msgs_seen_on_send"];
-}
-
-static inline BOOL SCIAutoSeenOnReplyEnabled(void) {
-    return SCIDirectManualSeenRulesEnabled() && [SCIUtils getBoolPref:@"msgs_seen_on_reply"];
+static inline BOOL SPKAutoSeenOnSendEnabled(void) {
+    return SPKDirectManualSeenRulesEnabled() && [SPKUtils getBoolPref:@"msgs_seen_on_send"];
 }
 
-static inline BOOL SCIAutoSeenOnReactionEnabled(void) {
-    return SCIDirectManualSeenRulesEnabled() && [SCIUtils getBoolPref:@"msgs_seen_on_reaction"];
+static inline BOOL SPKAutoSeenOnReplyEnabled(void) {
+    return SPKDirectManualSeenRulesEnabled() && [SPKUtils getBoolPref:@"msgs_seen_on_reply"];
 }
 
-static BOOL SCIValueIsPresent(id value) {
+static inline BOOL SPKAutoSeenOnReactionEnabled(void) {
+    return SPKDirectManualSeenRulesEnabled() && [SPKUtils getBoolPref:@"msgs_seen_on_reaction"];
+}
+
+static BOOL SPKValueIsPresent(id value) {
     if (!value || value == (id)kCFNull) return NO;
     if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] > 0;
     if ([value isKindOfClass:[NSArray class]]) return [(NSArray *)value count] > 0;
@@ -62,7 +62,7 @@ static BOOL SCIValueIsPresent(id value) {
     return YES;
 }
 
-static id SCIFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited) {
+static id SPKFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited) {
     if (!root) return nil;
 
     NSValue *pointerValue = [NSValue valueWithNonretainedObject:root];
@@ -73,7 +73,7 @@ static id SCIFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited)
     if ([root respondsToSelector:markSelector]) return root;
 
     if ([root isKindOfClass:[UIView class]]) {
-        id target = SCIFindDirectMarkSeenTarget([SCIUtils nearestViewControllerForView:(UIView *)root], visited);
+        id target = SPKFindDirectMarkSeenTarget([SPKUtils nearestViewControllerForView:(UIView *)root], visited);
         if (target) return target;
     }
 
@@ -88,23 +88,23 @@ static id SCIFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited)
         if (![root respondsToSelector:selector]) continue;
 
         id candidate = ((id (*)(id, SEL))objc_msgSend)(root, selector);
-        id target = SCIFindDirectMarkSeenTarget(candidate, visited);
+        id target = SPKFindDirectMarkSeenTarget(candidate, visited);
         if (target) return target;
     }
 
     if ([root isKindOfClass:[UIViewController class]]) {
         UIViewController *viewController = (UIViewController *)root;
-        id parentTarget = SCIFindDirectMarkSeenTarget(viewController.parentViewController, visited);
+        id parentTarget = SPKFindDirectMarkSeenTarget(viewController.parentViewController, visited);
         if (parentTarget) return parentTarget;
 
-        id presentingTarget = SCIFindDirectMarkSeenTarget(viewController.presentingViewController, visited);
+        id presentingTarget = SPKFindDirectMarkSeenTarget(viewController.presentingViewController, visited);
         if (presentingTarget) return presentingTarget;
 
-        id navigationTarget = SCIFindDirectMarkSeenTarget(viewController.navigationController, visited);
+        id navigationTarget = SPKFindDirectMarkSeenTarget(viewController.navigationController, visited);
         if (navigationTarget) return navigationTarget;
 
         for (UIViewController *child in [(UIViewController *)root childViewControllers]) {
-            id target = SCIFindDirectMarkSeenTarget(child, visited);
+            id target = SPKFindDirectMarkSeenTarget(child, visited);
             if (target) return target;
         }
     }
@@ -135,25 +135,25 @@ static id SCIFindDirectMarkSeenTarget(id root, NSMutableSet<NSValue *> *visited)
         @"_messageList",
         @"messageList"
     ]) {
-        id candidate = [key hasPrefix:@"_"] ? [SCIUtils getIvarForObj:root name:key.UTF8String] : SCIKVCObject(root, key);
-        id target = SCIFindDirectMarkSeenTarget(candidate, visited);
+        id candidate = [key hasPrefix:@"_"] ? [SPKUtils getIvarForObj:root name:key.UTF8String] : SPKKVCObject(root, key);
+        id target = SPKFindDirectMarkSeenTarget(candidate, visited);
         if (target) return target;
     }
 
     return nil;
 }
 
-static BOOL SCIMarkDirectThreadMessagesAsSeen(id controller) {
-    id target = SCIFindDirectMarkSeenTarget(controller, [NSMutableSet set]);
-    SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(controller);
+static BOOL SPKMarkDirectThreadMessagesAsSeen(id controller) {
+    id target = SPKFindDirectMarkSeenTarget(controller, [NSMutableSet set]);
+    SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(controller);
     if (!target &&
-        SCIDirectActiveMarkSeenTarget &&
-        SCIDirectActiveMarkSeenThreadId.length > 0 &&
+        SPKDirectActiveMarkSeenTarget &&
+        SPKDirectActiveMarkSeenThreadId.length > 0 &&
         context.threadId.length > 0 &&
-        [SCIDirectActiveMarkSeenThreadId isEqualToString:context.threadId]) {
-        target = SCIFindDirectMarkSeenTarget(SCIDirectActiveMarkSeenTarget, [NSMutableSet set]);
+        [SPKDirectActiveMarkSeenThreadId isEqualToString:context.threadId]) {
+        target = SPKFindDirectMarkSeenTarget(SPKDirectActiveMarkSeenTarget, [NSMutableSet set]);
         if (target) {
-            SCILog(@"Messages", @"[SCInsta MessagesSeen] Using active mark target fallback threadId=%@ source=%@<%p> target=%@<%p>",
+            SPKLog(@"Messages", @"[Sparkle MessagesSeen] Using active mark target fallback threadId=%@ source=%@<%p> target=%@<%p>",
                    context.threadId ?: @"(unknown)",
                    NSStringFromClass([controller class]),
                    controller,
@@ -162,25 +162,25 @@ static BOOL SCIMarkDirectThreadMessagesAsSeen(id controller) {
         }
     }
     if (!target) {
-        SCILog(@"General", @"[SCInsta MessagesSeen] No markLastMessageAsSeen target for controller=%@<%p> threadId=%@ activeThreadId=%@",
+        SPKLog(@"General", @"[Sparkle MessagesSeen] No markLastMessageAsSeen target for controller=%@<%p> threadId=%@ activeThreadId=%@",
                NSStringFromClass([controller class]),
                controller,
                context.threadId ?: @"(unknown)",
-               SCIDirectActiveMarkSeenThreadId ?: @"(none)");
+               SPKDirectActiveMarkSeenThreadId ?: @"(none)");
         return NO;
     }
 
-    kSCISeenAutoBypassCount++;
+    kSPKSeenAutoBypassCount++;
     @try {
         ((void (*)(id, SEL))objc_msgSend)(target, @selector(markLastMessageAsSeen));
-        SCILog(@"General", @"[SCInsta MessagesSeen] Marked via target=%@<%p> controller=%@<%p>",
+        SPKLog(@"General", @"[Sparkle MessagesSeen] Marked via target=%@<%p> controller=%@<%p>",
                NSStringFromClass([target class]),
                target,
                NSStringFromClass([controller class]),
                controller);
     } @catch (NSException *exception) {
-        if (kSCISeenAutoBypassCount > 0) kSCISeenAutoBypassCount--;
-        SCILog(@"General", @"[SCInsta MessagesSeen] markLastMessageAsSeen failed target=%@<%p> exception=%@",
+        if (kSPKSeenAutoBypassCount > 0) kSPKSeenAutoBypassCount--;
+        SPKLog(@"General", @"[Sparkle MessagesSeen] markLastMessageAsSeen failed target=%@<%p> exception=%@",
                NSStringFromClass([target class]),
                target,
                exception);
@@ -188,45 +188,45 @@ static BOOL SCIMarkDirectThreadMessagesAsSeen(id controller) {
     }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (kSCISeenAutoBypassCount > 0) {
-            kSCISeenAutoBypassCount--;
+        if (kSPKSeenAutoBypassCount > 0) {
+            kSPKSeenAutoBypassCount--;
         }
     });
 
     return YES;
 }
 
-static BOOL SCISeenAutoShouldTrigger(id source, NSString *reason) {
+static BOOL SPKSeenAutoShouldTrigger(id source, NSString *reason) {
     if (!source || reason.length == 0) return NO;
 
     CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
-    if (!SCISeenAutoLastTriggerTimes) {
-        SCISeenAutoLastTriggerTimes = [NSMutableDictionary dictionary];
+    if (!SPKSeenAutoLastTriggerTimes) {
+        SPKSeenAutoLastTriggerTimes = [NSMutableDictionary dictionary];
     }
 
     NSString *key = [NSString stringWithFormat:@"%@:%p", reason, source];
-    NSNumber *lastTrigger = SCISeenAutoLastTriggerTimes[key];
+    NSNumber *lastTrigger = SPKSeenAutoLastTriggerTimes[key];
     if (lastTrigger && (now - lastTrigger.doubleValue) < 0.75) {
         return NO;
     }
 
-    SCISeenAutoLastTriggerTimes[key] = @(now);
+    SPKSeenAutoLastTriggerTimes[key] = @(now);
     return YES;
 }
 
-static void SCITriggerAutoSeenForSource(id source, NSString *reason) {
-    if (!SCIDirectManualSeenAppliesToSource(source)) {
-        SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(source);
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Auto seen skipped reason=%@ threadId=%@ source=%@<%p> manual seen does not apply",
+static void SPKTriggerAutoSeenForSource(id source, NSString *reason) {
+    if (!SPKDirectManualSeenAppliesToSource(source)) {
+        SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(source);
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Auto seen skipped reason=%@ threadId=%@ source=%@<%p> manual seen does not apply",
                reason,
                context.threadId ?: @"(unknown)",
                NSStringFromClass([source class]),
                source);
         return;
     }
-    if (!SCISeenAutoShouldTrigger(source, reason)) {
-        SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(source);
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Auto seen debounced reason=%@ threadId=%@ source=%@<%p>",
+    if (!SPKSeenAutoShouldTrigger(source, reason)) {
+        SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(source);
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Auto seen debounced reason=%@ threadId=%@ source=%@<%p>",
                reason,
                context.threadId ?: @"(unknown)",
                NSStringFromClass([source class]),
@@ -234,38 +234,38 @@ static void SCITriggerAutoSeenForSource(id source, NSString *reason) {
         return;
     }
 
-    SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(source);
-    SCILog(@"Messages", @"[SCInsta MessagesSeen] Auto seen scheduled reason=%@ threadId=%@ source=%@<%p>",
+    SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(source);
+    SPKLog(@"Messages", @"[Sparkle MessagesSeen] Auto seen scheduled reason=%@ threadId=%@ source=%@<%p>",
            reason,
            context.threadId ?: @"(unknown)",
            NSStringFromClass([source class]),
            source);
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        SCIMarkDirectThreadMessagesAsSeen(source);
+        SPKMarkDirectThreadMessagesAsSeen(source);
     });
 }
 
-void SCIMarkDirectThreadSeenAfterOutgoingMessage(id source, BOOL isReply) {
+void SPKMarkDirectThreadSeenAfterOutgoingMessage(id source, BOOL isReply) {
     if (isReply) {
-        if (!SCIAutoSeenOnReplyEnabled()) return;
-        SCITriggerAutoSeenForSource(source, @"reply");
+        if (!SPKAutoSeenOnReplyEnabled()) return;
+        SPKTriggerAutoSeenForSource(source, @"reply");
         return;
     }
 
-    if (!SCIAutoSeenOnSendEnabled()) return;
-    SCITriggerAutoSeenForSource(source, @"send");
+    if (!SPKAutoSeenOnSendEnabled()) return;
+    SPKTriggerAutoSeenForSource(source, @"send");
 }
 
-void SCIMarkDirectThreadSeenAfterReaction(id source) {
-    if (!SCIAutoSeenOnReactionEnabled()) return;
-    SCITriggerAutoSeenForSource(source, @"reaction");
+void SPKMarkDirectThreadSeenAfterReaction(id source) {
+    if (!SPKAutoSeenOnReactionEnabled()) return;
+    SPKTriggerAutoSeenForSource(source, @"reaction");
 }
 
 // Resolves the 1:1 chat partner from a thread context. Returns nil PK for
 // group chats or when the participant list can't be narrowed to a single
 // non-owner user — callers fall back to the full log in that case.
-static void SCIDirectResolveChatPartner(SCIDirectThreadContext *context, NSString **outPK, NSString **outName) {
+static void SPKDirectResolveChatPartner(SPKDirectThreadContext *context, NSString **outPK, NSString **outName) {
     if (outPK) *outPK = nil;
     if (outName) *outName = nil;
     if (!context || context.isGroup) return;
@@ -310,30 +310,30 @@ static void SCIDirectResolveChatPartner(SCIDirectThreadContext *context, NSStrin
     if (outName) *outName = username.length ? username : fullName;
 }
 
-static UIMenu *SCIDirectSeenButtonMenu(id source) {
+static UIMenu *SPKDirectSeenButtonMenu(id source) {
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
-    SCIDirectSeenDebugPrintEnabled = YES;
-    SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(source);
-    SCIDirectSeenDebugPrintEnabled = NO;
-    NSString *toggleTitle = SCIDirectCurrentThreadRuleActionTitle(context);
+    SPKDirectSeenDebugPrintEnabled = YES;
+    SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(source);
+    SPKDirectSeenDebugPrintEnabled = NO;
+    NSString *toggleTitle = SPKDirectCurrentThreadRuleActionTitle(context);
     if (toggleTitle.length > 0) {
-        BOOL applies = SCIDirectManualSeenAppliesToSource(context);
-        UIImage *toggleImage = [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:22.0];
+        BOOL applies = SPKDirectManualSeenAppliesToSource(context);
+        UIImage *toggleImage = [SPKAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:22.0];
         UIAction *toggleAction = [UIAction actionWithTitle:toggleTitle
                                                      image:toggleImage
                                                 identifier:nil
                                                    handler:^(__unused UIAction *action) {
             NSString *title = nil;
             NSString *subtitle = nil;
-            if (!SCIDirectToggleCurrentThreadRule(context, &title, &subtitle)) {
-                SCILog(@"Messages", @"[SCInsta MessagesSeen] Eye menu toggle failed threadId=%@ source=%@<%p>",
+            if (!SPKDirectToggleCurrentThreadRule(context, &title, &subtitle)) {
+                SPKLog(@"Messages", @"[Sparkle MessagesSeen] Eye menu toggle failed threadId=%@ source=%@<%p>",
                        context.threadId ?: @"(unknown)",
                        NSStringFromClass([source class]),
                        source);
-                SCINotify(kSCINotificationDirectThreadSeenRule, @"Chat not found", nil, @"error_filled", SCINotificationToneError);
+                SPKNotify(kSPKNotificationDirectThreadSeenRule, @"Chat not found", nil, @"error_filled", SPKNotificationToneError);
                 return;
             }
-            SCINotify(kSCINotificationDirectThreadSeenRule, title, subtitle, @"circle_check_filled", SCINotificationToneSuccess);
+            SPKNotify(kSPKNotificationDirectThreadSeenRule, title, subtitle, @"circle_check_filled", SPKNotificationToneSuccess);
             dispatch_async(dispatch_get_main_queue(), ^{
                 if ([source respondsToSelector:@selector(refreshRightBarButtonItems)]) {
                     [source refreshRightBarButtonItems];
@@ -345,10 +345,10 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
         [children addObject:toggleAction];
     }
 
-    UIImage *logImage = [SCIAssetUtils instagramIconNamed:@"channels" pointSize:22.0];
+    UIImage *logImage = [SPKAssetUtils instagramIconNamed:@"channels" pointSize:22.0];
     NSString *partnerPK = nil;
     NSString *partnerName = nil;
-    SCIDirectResolveChatPartner(context, &partnerPK, &partnerName);
+    SPKDirectResolveChatPartner(context, &partnerPK, &partnerName);
     // Pass threadId for groups too — presentForThreadId: resolves a group entry
     // via groupForThreadId:, so a group thread opens scoped to its own log.
     NSString *threadId = context.threadId;
@@ -357,45 +357,45 @@ static UIMenu *SCIDirectSeenButtonMenu(id source) {
                                          identifier:nil
                                             handler:^(__unused UIAction *action) {
         if (threadId.length || partnerPK.length) {
-            [SCIDeletedMessagesViewController presentForThreadId:threadId senderPK:partnerPK senderName:partnerName fromViewController:nil];
+            [SPKDeletedMessagesViewController presentForThreadId:threadId senderPK:partnerPK senderName:partnerName fromViewController:nil];
         } else {
             // Unresolved thread/participant — open the full list.
-            [SCIDeletedMessagesViewController presentFromViewController:nil];
+            [SPKDeletedMessagesViewController presentFromViewController:nil];
         }
     }];
     [children addObject:logAction];
 
-    UIImage *settingsImage = [SCIAssetUtils instagramIconNamed:@"settings" pointSize:22.0];
+    UIImage *settingsImage = [SPKAssetUtils instagramIconNamed:@"settings" pointSize:22.0];
     UIAction *settingsAction = [UIAction actionWithTitle:@"Messages Settings"
                                                    image:settingsImage
                                               identifier:nil
                                                  handler:^(__unused UIAction *action) {
-        SCINotify(kSCINotificationOpenTopicSettings, @"Opened settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
-        [SCIUtils showSettingsForTopicTitle:@"Messages"];
+        SPKNotify(kSPKNotificationOpenTopicSettings, @"Opened settings", nil, @"settings", SPKNotificationToneForIconResource(@"settings"));
+        [SPKUtils showSettingsForTopicTitle:@"Messages"];
     }];
     [children addObject:settingsAction];
 
     return [UIMenu menuWithTitle:@"" children:children];
 }
 
-static void SCIDirectRememberActiveThreadContextForController(id controller, NSString *eventName) {
-    SCIDirectThreadContext *context = SCIDirectThreadContextFromSource(controller);
+static void SPKDirectRememberActiveThreadContextForController(id controller, NSString *eventName) {
+    SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(controller);
     if (context.threadId.length == 0) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Active thread context not set event=%@ controller=%@<%p> missing threadId",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Active thread context not set event=%@ controller=%@<%p> missing threadId",
                eventName,
                NSStringFromClass([controller class]),
                controller);
         return;
     }
 
-    objc_setAssociatedObject(controller, kSCIDirectThreadIdAssocKey, context.threadId, OBJC_ASSOCIATION_COPY_NONATOMIC);
-    SCIDirectSetActiveThreadContext(context);
+    objc_setAssociatedObject(controller, kSPKDirectThreadIdAssocKey, context.threadId, OBJC_ASSOCIATION_COPY_NONATOMIC);
+    SPKDirectSetActiveThreadContext(context);
 
-    id markTarget = SCIFindDirectMarkSeenTarget(controller, [NSMutableSet set]);
+    id markTarget = SPKFindDirectMarkSeenTarget(controller, [NSMutableSet set]);
     if (markTarget) {
-        SCIDirectActiveMarkSeenTarget = markTarget;
-        SCIDirectActiveMarkSeenThreadId = [context.threadId copy];
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Active mark target set event=%@ threadId=%@ target=%@<%p>",
+        SPKDirectActiveMarkSeenTarget = markTarget;
+        SPKDirectActiveMarkSeenThreadId = [context.threadId copy];
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Active mark target set event=%@ threadId=%@ target=%@<%p>",
                eventName,
                context.threadId ?: @"(unknown)",
                NSStringFromClass([markTarget class]),
@@ -403,48 +403,48 @@ static void SCIDirectRememberActiveThreadContextForController(id controller, NSS
     }
 }
 
-static void SCIDirectClearActiveThreadContextForController(id controller, NSString *eventName) {
-    NSString *threadId = objc_getAssociatedObject(controller, kSCIDirectThreadIdAssocKey);
-    SCIDirectThreadContext *activeContext = SCIDirectActiveThreadContext();
+static void SPKDirectClearActiveThreadContextForController(id controller, NSString *eventName) {
+    NSString *threadId = objc_getAssociatedObject(controller, kSPKDirectThreadIdAssocKey);
+    SPKDirectThreadContext *activeContext = SPKDirectActiveThreadContext();
     if (threadId.length == 0) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Active thread context clear skipped event=%@ controller=%@<%p> no cached threadId",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Active thread context clear skipped event=%@ controller=%@<%p> no cached threadId",
                eventName,
                NSStringFromClass([controller class]),
                controller);
         return;
     }
     if (activeContext.threadId.length == 0) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Active thread context clear skipped event=%@ threadId=%@ no active context",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Active thread context clear skipped event=%@ threadId=%@ no active context",
                eventName,
                threadId);
         return;
     }
     if (![activeContext.threadId isEqualToString:threadId]) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Active thread context clear skipped event=%@ cachedThreadId=%@ activeThreadId=%@",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Active thread context clear skipped event=%@ cachedThreadId=%@ activeThreadId=%@",
                eventName,
                threadId,
                activeContext.threadId);
         return;
     }
 
-    SCIDirectSetActiveThreadContext(nil);
-    if ([SCIDirectActiveMarkSeenThreadId isEqualToString:threadId]) {
-        SCIDirectActiveMarkSeenTarget = nil;
-        SCIDirectActiveMarkSeenThreadId = nil;
+    SPKDirectSetActiveThreadContext(nil);
+    if ([SPKDirectActiveMarkSeenThreadId isEqualToString:threadId]) {
+        SPKDirectActiveMarkSeenTarget = nil;
+        SPKDirectActiveMarkSeenThreadId = nil;
     }
-    objc_setAssociatedObject(controller, kSCIDirectThreadIdAssocKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    objc_setAssociatedObject(controller, kSPKDirectThreadIdAssocKey, nil, OBJC_ASSOCIATION_ASSIGN);
 }
 
-static id (*SCIDirectOrigInboxContextMenuConfiguration)(id, SEL, id);
+static id (*SPKDirectOrigInboxContextMenuConfiguration)(id, SEL, id);
 
-static id SCIDirectInboxContextMenuConfiguration(id self, SEL _cmd, id indexPath) {
-    id configuration = SCIDirectOrigInboxContextMenuConfiguration(self, _cmd, indexPath);
+static id SPKDirectInboxContextMenuConfiguration(id self, SEL _cmd, id indexPath) {
+    id configuration = SPKDirectOrigInboxContextMenuConfiguration(self, _cmd, indexPath);
     if (![configuration isKindOfClass:[UIContextMenuConfiguration class]]) return configuration;
 
-    id adapter = SCIKVCObject(self, @"listAdapter");
-    if (!adapter) adapter = [SCIUtils getIvarForObj:self name:"_listAdapter"];
+    id adapter = SPKKVCObject(self, @"listAdapter");
+    if (!adapter) adapter = [SPKUtils getIvarForObj:self name:"_listAdapter"];
     if (!adapter || ![indexPath respondsToSelector:@selector(section)]) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu context skipped: missing adapter/indexPath controller=%@<%p>",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu context skipped: missing adapter/indexPath controller=%@<%p>",
                NSStringFromClass([self class]),
                self);
         return configuration;
@@ -452,7 +452,7 @@ static id SCIDirectInboxContextMenuConfiguration(id self, SEL _cmd, id indexPath
 
     SEL sectionControllerSelector = NSSelectorFromString(@"sectionControllerForSection:");
     if (![adapter respondsToSelector:sectionControllerSelector]) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu context skipped: adapter lacks sectionControllerForSection adapter=%@<%p>",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu context skipped: adapter lacks sectionControllerForSection adapter=%@<%p>",
                NSStringFromClass([adapter class]),
                adapter);
         return configuration;
@@ -460,64 +460,64 @@ static id SCIDirectInboxContextMenuConfiguration(id self, SEL _cmd, id indexPath
 
     NSInteger section = [(NSIndexPath *)indexPath section];
     id sectionController = ((id (*)(id, SEL, NSInteger))objc_msgSend)(adapter, sectionControllerSelector, section);
-    id viewModel = SCIKVCObject(sectionController, @"viewModel");
-    if (!viewModel) viewModel = [SCIUtils getIvarForObj:sectionController name:"_viewModel"];
-    if (!viewModel) viewModel = SCIKVCObject(sectionController, @"item");
-    if (!viewModel) viewModel = [SCIUtils getIvarForObj:sectionController name:"_item"];
+    id viewModel = SPKKVCObject(sectionController, @"viewModel");
+    if (!viewModel) viewModel = [SPKUtils getIvarForObj:sectionController name:"_viewModel"];
+    if (!viewModel) viewModel = SPKKVCObject(sectionController, @"item");
+    if (!viewModel) viewModel = [SPKUtils getIvarForObj:sectionController name:"_item"];
 
     if (!viewModel) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu context skipped: missing viewModel section=%ld sectionController=%@<%p>",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu context skipped: missing viewModel section=%ld sectionController=%@<%p>",
                (long)section,
                NSStringFromClass([sectionController class]),
                sectionController);
         return configuration;
     }
 
-    SCIDirectThreadContext *context = SCIDirectThreadContextFromInboxViewModel(viewModel);
-    NSString *toggleTitle = SCIDirectCurrentThreadRuleActionTitle(context);
+    SPKDirectThreadContext *context = SPKDirectThreadContextFromInboxViewModel(viewModel);
+    NSString *toggleTitle = SPKDirectCurrentThreadRuleActionTitle(context);
     if (toggleTitle.length == 0) {
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu context skipped: missing thread context viewModel=%@<%p>",
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu context skipped: missing thread context viewModel=%@<%p>",
                NSStringFromClass([viewModel class]),
                viewModel);
         return configuration;
     }
     UIContextMenuConfiguration *originalConfiguration = (UIContextMenuConfiguration *)configuration;
-    UIContextMenuActionProvider originalProvider = SCIKVCObject(originalConfiguration, @"actionProvider");
-    UIContextMenuContentPreviewProvider originalPreview = SCIKVCObject(originalConfiguration, @"previewProvider");
-    id<NSCopying> originalIdentifier = SCIKVCObject(originalConfiguration, @"identifier");
+    UIContextMenuActionProvider originalProvider = SPKKVCObject(originalConfiguration, @"actionProvider");
+    UIContextMenuContentPreviewProvider originalPreview = SPKKVCObject(originalConfiguration, @"previewProvider");
+    id<NSCopying> originalIdentifier = SPKKVCObject(originalConfiguration, @"identifier");
 
     UIContextMenuActionProvider wrappedProvider = ^UIMenu *(NSArray<UIMenuElement *> *suggestedActions) {
         UIMenu *baseMenu = nil;
         @try {
             baseMenu = originalProvider ? originalProvider(suggestedActions) : [UIMenu menuWithChildren:suggestedActions];
         } @catch (NSException *exception) {
-            SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu original provider failed threadId=%@ exception=%@ reason=%@",
+            SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu original provider failed threadId=%@ exception=%@ reason=%@",
                    context.threadId ?: @"(unknown)",
                    exception.name,
                    exception.reason);
             return [UIMenu menuWithChildren:suggestedActions ?: @[]];
         }
         if (![baseMenu isKindOfClass:[UIMenu class]]) {
-            SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu original provider returned invalid menu threadId=%@ menu=%@",
+            SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu original provider returned invalid menu threadId=%@ menu=%@",
                    context.threadId ?: @"(unknown)",
                    baseMenu);
             return [UIMenu menuWithChildren:suggestedActions ?: @[]];
         }
-        NSString *currentTitle = SCIDirectCurrentThreadRuleActionTitle(context) ?: toggleTitle;
-        BOOL applies = SCIDirectManualSeenAppliesToSource(context);
-        UIImage *image = [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye"];
+        NSString *currentTitle = SPKDirectCurrentThreadRuleActionTitle(context) ?: toggleTitle;
+        BOOL applies = SPKDirectManualSeenAppliesToSource(context);
+        UIImage *image = [SPKAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye"];
         UIAction *toggleAction = [UIAction actionWithTitle:currentTitle image:image identifier:nil handler:^(__unused UIAction *action) {
             NSString *notificationTitle = nil;
             NSString *notificationSubtitle = nil;
-            if (!SCIDirectToggleCurrentThreadRule(context, &notificationTitle, &notificationSubtitle)) {
-                SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox menu toggle failed threadId=%@ viewModel=%@<%p>",
+            if (!SPKDirectToggleCurrentThreadRule(context, &notificationTitle, &notificationSubtitle)) {
+                SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox menu toggle failed threadId=%@ viewModel=%@<%p>",
                        context.threadId ?: @"(unknown)",
                        NSStringFromClass([viewModel class]),
                        viewModel);
-                SCINotify(kSCINotificationDirectThreadSeenRule, @"Chat not found", nil, @"error_filled", SCINotificationToneError);
+                SPKNotify(kSPKNotificationDirectThreadSeenRule, @"Chat not found", nil, @"error_filled", SPKNotificationToneError);
                 return;
             }
-            SCINotify(kSCINotificationDirectThreadSeenRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
+            SPKNotify(kSPKNotificationDirectThreadSeenRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SPKNotificationToneSuccess);
         }];
         NSMutableArray *children = [baseMenu.children mutableCopy] ?: [NSMutableArray array];
         [children addObject:toggleAction];
@@ -529,19 +529,19 @@ static id SCIDirectInboxContextMenuConfiguration(id self, SEL _cmd, id indexPath
                                                     actionProvider:wrappedProvider];
 }
 
-static void SCIInstallDirectInboxSeenContextMenuHook(void) {
+static void SPKInstallDirectInboxSeenContextMenuHook(void) {
     SEL selector = NSSelectorFromString(@"networkingCoordinator_contextMenuConfigurationForThreadCellAtIndexPath:");
     for (NSString *className in @[@"IGDirectInboxViewController", @"IGDirectInboxViewControllerImpl"]) {
         Class inboxClass = NSClassFromString(className);
         if (!inboxClass || !class_getInstanceMethod(inboxClass, selector)) continue;
-        MSHookMessageEx(inboxClass, selector, (IMP)SCIDirectInboxContextMenuConfiguration, (IMP *)&SCIDirectOrigInboxContextMenuConfiguration);
-        SCILog(@"Messages", @"[SCInsta MessagesSeen] Installed inbox seen list context menu hook class=%@", className);
+        MSHookMessageEx(inboxClass, selector, (IMP)SPKDirectInboxContextMenuConfiguration, (IMP *)&SPKDirectOrigInboxContextMenuConfiguration);
+        SPKLog(@"Messages", @"[Sparkle MessagesSeen] Installed inbox seen list context menu hook class=%@", className);
         return;
     }
-    SCILog(@"Messages", @"[SCInsta MessagesSeen] Inbox seen list context menu hook not installed: selector not found");
+    SPKLog(@"Messages", @"[Sparkle MessagesSeen] Inbox seen list context menu hook not installed: selector not found");
 }
 
-static id SCIKVCObject(id target, NSString *key) {
+static id SPKKVCObject(id target, NSString *key) {
     if (!target || key.length == 0) return nil;
 
     @try {
@@ -551,21 +551,21 @@ static id SCIKVCObject(id target, NSString *key) {
     }
 }
 
-static void SCIPlayButtonTappedHaptic(void) {
+static void SPKPlayButtonTappedHaptic(void) {
     UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
     [feedback selectionChanged];
 }
 
-%group SCIMessageSeenButtonHooks
+%group SPKMessageSeenButtonHooks
 
 %hook IGTallNavigationBarView
 - (void)setRightBarButtonItems:(NSArray <UIBarButtonItem *> *)items {
     NSMutableArray *new_items = [[items filteredArrayUsingPredicate:
         [NSPredicate predicateWithBlock:^BOOL(UIBarButtonItem *value, NSDictionary *_) {
-            if ([value.accessibilityIdentifier isEqualToString:@"sci-seen-btn"]) {
+            if ([value.accessibilityIdentifier isEqualToString:@"spk-seen-btn"]) {
                 return false;
             }
-            if ([SCIUtils getBoolPref:@"msgs_hide_reels_blend"]) {
+            if ([SPKUtils getBoolPref:@"msgs_hide_reels_blend"]) {
                 return ![value.accessibilityIdentifier isEqualToString:@"blend-button"];
             }
 
@@ -574,17 +574,17 @@ static void SCIPlayButtonTappedHaptic(void) {
     ] mutableCopy];
 
     // Messages seen
-    if (SCIDirectManualSeenRulesEnabled()) {
-        UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:self];
+    if (SPKDirectManualSeenRulesEnabled()) {
+        UIViewController *nearestVC = [SPKUtils nearestViewControllerForView:self];
         Class directThreadClass = NSClassFromString(@"IGDirectThreadViewController");
-        if (directThreadClass && [nearestVC isKindOfClass:directThreadClass] && SCIDirectShouldShowSeenButtonForSource(nearestVC)) {
-            SCIChromeButton *chromeButton = nil;
-            UIBarButtonItem *seenButton = SCIChromeBarButtonItem(@"", 24.0, self, @selector(seenButtonHandler:), &chromeButton);
-            [chromeButton setIconResource:kSCISeenMessagesBarIconResource pointSize:24.0];
-            seenButton.accessibilityIdentifier = @"sci-seen-btn";
+        if (directThreadClass && [nearestVC isKindOfClass:directThreadClass] && SPKDirectShouldShowSeenButtonForSource(nearestVC)) {
+            SPKChromeButton *chromeButton = nil;
+            UIBarButtonItem *seenButton = SPKChromeBarButtonItem(@"", 24.0, self, @selector(seenButtonHandler:), &chromeButton);
+            [chromeButton setIconResource:kSPKSeenMessagesBarIconResource pointSize:24.0];
+            seenButton.accessibilityIdentifier = @"spk-seen-btn";
             chromeButton.bubbleColor = UIColor.clearColor;
             chromeButton.iconTint = UIColor.labelColor;
-            chromeButton.menu = SCIDirectSeenButtonMenu(nearestVC);
+            chromeButton.menu = SPKDirectSeenButtonMenu(nearestVC);
             chromeButton.showsMenuAsPrimaryAction = NO;
             [new_items addObject:seenButton];
         }
@@ -596,13 +596,13 @@ static void SCIPlayButtonTappedHaptic(void) {
 // Messages seen button
 %new - (void)seenButtonHandler:(UIBarButtonItem *)sender {
     (void)sender;
-    SCIPlayButtonTappedHaptic();
-    UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:self];
+    SPKPlayButtonTappedHaptic();
+    UIViewController *nearestVC = [SPKUtils nearestViewControllerForView:self];
     if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)]) {
-        if (SCIMarkDirectThreadMessagesAsSeen(nearestVC)) {
-            SCINotify(kSCINotificationThreadMessagesMarkSeen, @"Marked messages as seen", nil, @"circle_check_filled", SCINotificationToneSuccess);
+        if (SPKMarkDirectThreadMessagesAsSeen(nearestVC)) {
+            SPKNotify(kSPKNotificationThreadMessagesMarkSeen, @"Marked messages as seen", nil, @"circle_check_filled", SPKNotificationToneSuccess);
         } else {
-            SCINotify(kSCINotificationThreadMessagesMarkSeen, @"Unable to mark messages as seen", nil, @"error_filled", SCINotificationToneError);
+            SPKNotify(kSPKNotificationThreadMessagesMarkSeen, @"Unable to mark messages as seen", nil, @"error_filled", SPKNotificationToneError);
         }
     }
 }
@@ -611,27 +611,27 @@ static void SCIPlayButtonTappedHaptic(void) {
 %hook IGDirectThreadViewController
 - (void)viewWillAppear:(BOOL)animated {
     %orig;
-    if (!SCIDirectSeenHooksNeeded()) return;
-    SCIDirectRememberActiveThreadContextForController(self, @"viewWillAppear");
+    if (!SPKDirectSeenHooksNeeded()) return;
+    SPKDirectRememberActiveThreadContextForController(self, @"viewWillAppear");
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    if (!SCIDirectSeenHooksNeeded()) return;
-    SCIDirectRememberActiveThreadContextForController(self, @"viewDidAppear");
+    if (!SPKDirectSeenHooksNeeded()) return;
+    SPKDirectRememberActiveThreadContextForController(self, @"viewDidAppear");
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
-    if (!SCIDirectSeenHooksNeeded()) {
+    if (!SPKDirectSeenHooksNeeded()) {
         %orig;
         return;
     }
     if (self.isMovingFromParentViewController || self.isBeingDismissed || self.parentViewController == nil) {
-        SCIDirectClearActiveThreadContextForController(self, @"viewDidDisappear");
+        SPKDirectClearActiveThreadContextForController(self, @"viewDidDisappear");
     } else {
-        NSString *threadId = objc_getAssociatedObject(self, kSCIDirectThreadIdAssocKey);
-        if (threadId.length > 0 && [SCIDirectActiveThreadContext().threadId isEqualToString:threadId]) {
-            SCILog(@"Messages", @"[SCInsta MessagesSeen] Active thread context clear skipped event=viewDidDisappear threadId=%@ controller still retained",
+        NSString *threadId = objc_getAssociatedObject(self, kSPKDirectThreadIdAssocKey);
+        if (threadId.length > 0 && [SPKDirectActiveThreadContext().threadId isEqualToString:threadId]) {
+            SPKLog(@"Messages", @"[Sparkle MessagesSeen] Active thread context clear skipped event=viewDidDisappear threadId=%@ controller still retained",
                    threadId);
         }
     }
@@ -639,8 +639,8 @@ static void SCIPlayButtonTappedHaptic(void) {
 }
 
 - (void)dealloc {
-    if (SCIDirectSeenHooksNeeded()) {
-        SCIDirectClearActiveThreadContextForController(self, @"dealloc");
+    if (SPKDirectSeenHooksNeeded()) {
+        SPKDirectClearActiveThreadContextForController(self, @"dealloc");
     }
     %orig;
 }
@@ -649,9 +649,9 @@ static void SCIPlayButtonTappedHaptic(void) {
 // Messages seen logic
 %hook IGDirectThreadViewListAdapterDataSource
 - (BOOL)shouldUpdateLastSeenMessage {
-    if (!SCIDirectManualSeenRulesEnabled()) return %orig;
-    if (SCIDirectManualSeenAppliesToSource(self)) {
-        if (kSCISeenAutoBypassCount > 0) {
+    if (!SPKDirectManualSeenRulesEnabled()) return %orig;
+    if (SPKDirectManualSeenAppliesToSource(self)) {
+        if (kSPKSeenAutoBypassCount > 0) {
             return %orig;
         }
         return false;
@@ -663,9 +663,9 @@ static void SCIPlayButtonTappedHaptic(void) {
 
 %hook IGDirectMessageListViewController
 - (BOOL)messageListDataSourceShouldUpdateSeenState:(id)arg1 {
-    if (!SCIDirectManualSeenRulesEnabled()) return %orig;
-    if (SCIDirectManualSeenAppliesToSource(self)) {
-        if (kSCISeenAutoBypassCount > 0) {
+    if (!SPKDirectManualSeenRulesEnabled()) return %orig;
+    if (SPKDirectManualSeenAppliesToSource(self)) {
+        if (kSPKSeenAutoBypassCount > 0) {
             return %orig;
         }
         return false;
@@ -689,9 +689,9 @@ animatedEmojiCharacterRanges:(id)animatedEmojiCharacterRanges
              e2eloggerLogId:(id)e2eloggerLogId
 richTextFormatActionButtonsPressed:(id)richTextFormatActionButtonsPressed
     expressiveTextMetadata:(id)expressiveTextMetadata {
-    BOOL isReply = SCIValueIsPresent(quotedMessageId);
+    BOOL isReply = SPKValueIsPresent(quotedMessageId);
     %orig;
-    SCIMarkDirectThreadSeenAfterOutgoingMessage(self, isReply);
+    SPKMarkDirectThreadSeenAfterOutgoingMessage(self, isReply);
 }
 
 - (void)sendTextMessageWithText:(id)text
@@ -709,20 +709,20 @@ animatedEmojiCharacterRanges:(id)animatedEmojiCharacterRanges
 richTextFormatActionButtonsPressed:(id)richTextFormatActionButtonsPressed
              scheduledTimestamp:(id)scheduledTimestamp
         expressiveTextMetadata:(id)expressiveTextMetadata {
-    BOOL isReply = SCIValueIsPresent(quotedMessage);
+    BOOL isReply = SPKValueIsPresent(quotedMessage);
     %orig;
-    SCIMarkDirectThreadSeenAfterOutgoingMessage(self, isReply);
+    SPKMarkDirectThreadSeenAfterOutgoingMessage(self, isReply);
 }
 %end
 
 %end
 
-void SCIInstallMessageSeenButtonHooksIfNeeded(void) {
-    if (!SCIDirectManualSeenRulesEnabled() && ![SCIUtils getBoolPref:@"msgs_hide_reels_blend"]) return;
+void SPKInstallMessageSeenButtonHooksIfNeeded(void) {
+    if (!SPKDirectManualSeenRulesEnabled() && ![SPKUtils getBoolPref:@"msgs_hide_reels_blend"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIMessageSeenButtonHooks);
-        SCIInstallDirectInboxSeenContextMenuHook();
+        %init(SPKMessageSeenButtonHooks);
+        SPKInstallDirectInboxSeenContextMenuHook();
     });
 }

@@ -2,24 +2,24 @@
 
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
 
-static NSInteger const kSCIDirectActionButtonTag = 921344;
-static const void *kSCIDirectActionBottomConstraintAssocKey = &kSCIDirectActionBottomConstraintAssocKey;
-static const void *kSCIDirectActionTrailingConstraintAssocKey = &kSCIDirectActionTrailingConstraintAssocKey;
-static const void *kSCIDirectActionWidthConstraintAssocKey = &kSCIDirectActionWidthConstraintAssocKey;
-static const void *kSCIDirectActionHeightConstraintAssocKey = &kSCIDirectActionHeightConstraintAssocKey;
-static const void *kSCIDirectActionButtonMediaKey = &kSCIDirectActionButtonMediaKey;
+static NSInteger const kSPKDirectActionButtonTag = 921344;
+static const void *kSPKDirectActionBottomConstraintAssocKey = &kSPKDirectActionBottomConstraintAssocKey;
+static const void *kSPKDirectActionTrailingConstraintAssocKey = &kSPKDirectActionTrailingConstraintAssocKey;
+static const void *kSPKDirectActionWidthConstraintAssocKey = &kSPKDirectActionWidthConstraintAssocKey;
+static const void *kSPKDirectActionHeightConstraintAssocKey = &kSPKDirectActionHeightConstraintAssocKey;
+static const void *kSPKDirectActionButtonMediaKey = &kSPKDirectActionButtonMediaKey;
 
-static UIView *SCIDirectOverlayView(UIViewController *controller) {
+static UIView *SPKDirectOverlayView(UIViewController *controller) {
 	if (!controller) return nil;
-	id viewerContainer = [SCIUtils getIvarForObj:controller name:"_viewerContainerView"];
-	if (!viewerContainer) viewerContainer = SCIKVCObject(controller, @"viewerContainerView");
-	id overlay = SCIObjectForSelector(viewerContainer, @"overlayView");
+	id viewerContainer = [SPKUtils getIvarForObj:controller name:"_viewerContainerView"];
+	if (!viewerContainer) viewerContainer = SPKKVCObject(controller, @"viewerContainerView");
+	id overlay = SPKObjectForSelector(viewerContainer, @"overlayView");
 	return [overlay isKindOfClass:[UIView class]] ? (UIView *)overlay : nil;
 }
 
-static CGFloat SCIHeightFromFrameLikeObject(id object) {
+static CGFloat SPKHeightFromFrameLikeObject(id object) {
 	if (!object) return 0.0;
 	if ([object isKindOfClass:[UIView class]]) return ((UIView *)object).frame.size.height;
 
@@ -32,23 +32,23 @@ static CGFloat SCIHeightFromFrameLikeObject(id object) {
 	return 0.0;
 }
 
-static CGFloat SCIDirectBottomOffset(UIViewController *controller) {
-	id inputView = [SCIUtils getIvarForObj:controller name:"_inputView"];
+static CGFloat SPKDirectBottomOffset(UIViewController *controller) {
+	id inputView = [SPKUtils getIvarForObj:controller name:"_inputView"];
 	CGFloat offset = controller.view.safeAreaInsets.bottom + 12.0;
-	if (inputView) offset += SCIHeightFromFrameLikeObject(inputView);
+	if (inputView) offset += SPKHeightFromFrameLikeObject(inputView);
 	return offset;
 }
 
-static NSArray *SCIDirectVisualMessageItemsFromController(UIViewController *controller) {
+static NSArray *SPKDirectVisualMessageItemsFromController(UIViewController *controller) {
 	if (!controller) return nil;
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 	if (!dataSource) return nil;
 
 	for (NSString *key in @[@"visualMessages", @"messages", @"items", @"visualMessageItems", @"viewerItems"]) {
-		id value = SCIObjectForSelector(dataSource, key) ?: SCIKVCObject(dataSource, key);
+		id value = SPKObjectForSelector(dataSource, key) ?: SPKKVCObject(dataSource, key);
 		if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
-			NSArray *arr = SCIArrayFromCollection(value);
+			NSArray *arr = SPKArrayFromCollection(value);
 			if (arr.count > 0) return arr;
 		}
 	}
@@ -60,9 +60,9 @@ static NSArray *SCIDirectVisualMessageItemsFromController(UIViewController *cont
 			const char *typeEncoding = ivar_getTypeEncoding(ivars[i]);
 			if (typeEncoding && typeEncoding[0] == '@') {
 				const char *name = ivar_getName(ivars[i]);
-				id value = [SCIUtils getIvarForObj:dataSource name:name];
+				id value = [SPKUtils getIvarForObj:dataSource name:name];
 				if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSOrderedSet class]] || [value isKindOfClass:[NSSet class]]) {
-					NSArray *arr = SCIArrayFromCollection(value);
+					NSArray *arr = SPKArrayFromCollection(value);
 					if (arr.count > 1) {
 						free(ivars);
 						return arr;
@@ -76,76 +76,76 @@ static NSArray *SCIDirectVisualMessageItemsFromController(UIViewController *cont
 	return nil;
 }
 
-static SCIActionButtonContext *SCIMessagesActionContext(UIViewController *controller) {
-	SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
-	context.source = SCIActionButtonSourceDirect;
+static SPKActionButtonContext *SPKMessagesActionContext(UIViewController *controller) {
+	SPKActionButtonContext *context = [[SPKActionButtonContext alloc] init];
+	context.source = SPKActionButtonSourceDirect;
 	context.controller = controller;
-	context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceDirect);
-	context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceDirect);
-	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-		return SCIDirectResolvedMediaFromController(resolvedContext.controller);
+	context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceDirect);
+	context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceDirect);
+	context.mediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+		return SPKDirectResolvedMediaFromController(resolvedContext.controller);
 	};
-	context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-		return SCIDirectVisualMessageItemsFromController(resolvedContext.controller) ?: SCIDirectResolvedMediaFromController(resolvedContext.controller);
+	context.bulkMediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+		return SPKDirectVisualMessageItemsFromController(resolvedContext.controller) ?: SPKDirectResolvedMediaFromController(resolvedContext.controller);
 	};
-	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
-		return SCIDirectCurrentIndexFromController(resolvedContext.controller);
+	context.currentIndexResolver = ^NSInteger (SPKActionButtonContext *resolvedContext) {
+		return SPKDirectCurrentIndexFromController(resolvedContext.controller);
 	};
 	return context;
 }
 
-static BOOL SCIDirectConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
+static BOOL SPKDirectConstraintMatches(NSLayoutConstraint *constraint, CGFloat constant) {
 	return constraint && constraint.active && ABS(constraint.constant - constant) < 0.5;
 }
 
-static BOOL SCIDirectActionButtonLayoutIsCurrent(UIButton *button, CGFloat bottomOffset) {
+static BOOL SPKDirectActionButtonLayoutIsCurrent(UIButton *button, CGFloat bottomOffset) {
 	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
 
-	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIDirectActionBottomConstraintAssocKey);
-	NSLayoutConstraint *trailingConstraint = objc_getAssociatedObject(button, kSCIDirectActionTrailingConstraintAssocKey);
-	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIDirectActionWidthConstraintAssocKey);
-	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIDirectActionHeightConstraintAssocKey);
+	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSPKDirectActionBottomConstraintAssocKey);
+	NSLayoutConstraint *trailingConstraint = objc_getAssociatedObject(button, kSPKDirectActionTrailingConstraintAssocKey);
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSPKDirectActionWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSPKDirectActionHeightConstraintAssocKey);
 
-	return SCIDirectConstraintMatches(trailingConstraint, -10.0) &&
-	       SCIDirectConstraintMatches(bottomConstraint, -bottomOffset) &&
-	       SCIDirectConstraintMatches(widthConstraint, 44.0) &&
-	       SCIDirectConstraintMatches(heightConstraint, 44.0);
+	return SPKDirectConstraintMatches(trailingConstraint, -10.0) &&
+	       SPKDirectConstraintMatches(bottomConstraint, -bottomOffset) &&
+	       SPKDirectConstraintMatches(widthConstraint, 44.0) &&
+	       SPKDirectConstraintMatches(heightConstraint, 44.0);
 }
 
-static void SCIInstallDirectActionButton(UIViewController *controller) {
-	UIView *overlay = SCIDirectOverlayView(controller);
+static void SPKInstallDirectActionButton(UIViewController *controller) {
+	UIView *overlay = SPKDirectOverlayView(controller);
 	if (!overlay) return;
 
-	UIButton *button = (UIButton *)[overlay viewWithTag:kSCIDirectActionButtonTag];
-	if (![SCIUtils getBoolPref:@"msgs_action_btn"]) {
+	UIButton *button = (UIButton *)[overlay viewWithTag:kSPKDirectActionButtonTag];
+	if (![SPKUtils getBoolPref:@"msgs_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
 
-	CGFloat bottomOffset = SCIDirectBottomOffset(controller);
+	CGFloat bottomOffset = SPKDirectBottomOffset(controller);
 
 	// Layer 1 fix: detect media change to force reconfiguration even when layout is unchanged
-	id currentMedia = SCIDirectResolvedMediaFromController(controller);
-	id lastMedia = button ? objc_getAssociatedObject(button, kSCIDirectActionButtonMediaKey) : nil;
+	id currentMedia = SPKDirectResolvedMediaFromController(controller);
+	id lastMedia = button ? objc_getAssociatedObject(button, kSPKDirectActionButtonMediaKey) : nil;
 	BOOL mediaChanged = (lastMedia != currentMedia);
 
-	if (SCIDirectActionButtonLayoutIsCurrent(button, bottomOffset) && !mediaChanged) return;
+	if (SPKDirectActionButtonLayoutIsCurrent(button, bottomOffset) && !mediaChanged) return;
 
-	button = SCIActionButtonWithTag(overlay, kSCIDirectActionButtonTag);
-	SCIConfigureActionButton(button, SCIMessagesActionContext(controller));
+	button = SPKActionButtonWithTag(overlay, kSPKDirectActionButtonTag);
+	SPKConfigureActionButton(button, SPKMessagesActionContext(controller));
 
 	// Store the resolved media pointer for change detection on next call
-	objc_setAssociatedObject(button, kSCIDirectActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKDirectActionButtonMediaKey, currentMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
 	if (button.hidden) return;
 
 	CGFloat size = 44.0;
 	button.translatesAutoresizingMaskIntoConstraints = NO;
 
-	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSCIDirectActionBottomConstraintAssocKey);
-	NSLayoutConstraint *trailingConstraint = objc_getAssociatedObject(button, kSCIDirectActionTrailingConstraintAssocKey);
-	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSCIDirectActionWidthConstraintAssocKey);
-	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSCIDirectActionHeightConstraintAssocKey);
+	NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(button, kSPKDirectActionBottomConstraintAssocKey);
+	NSLayoutConstraint *trailingConstraint = objc_getAssociatedObject(button, kSPKDirectActionTrailingConstraintAssocKey);
+	NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(button, kSPKDirectActionWidthConstraintAssocKey);
+	NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(button, kSPKDirectActionHeightConstraintAssocKey);
 
 	if (!bottomConstraint || !trailingConstraint || !widthConstraint || !heightConstraint) {
 		trailingConstraint = [button.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor constant:-10.0];
@@ -154,10 +154,10 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 		heightConstraint = [button.heightAnchor constraintEqualToConstant:size];
 		[NSLayoutConstraint activateConstraints:@[trailingConstraint, bottomConstraint, widthConstraint, heightConstraint]];
 
-		objc_setAssociatedObject(button, kSCIDirectActionBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-		objc_setAssociatedObject(button, kSCIDirectActionTrailingConstraintAssocKey, trailingConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-		objc_setAssociatedObject(button, kSCIDirectActionWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-		objc_setAssociatedObject(button, kSCIDirectActionHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKDirectActionBottomConstraintAssocKey, bottomConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKDirectActionTrailingConstraintAssocKey, trailingConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKDirectActionWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKDirectActionHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
 	trailingConstraint.constant = -10.0;
@@ -165,28 +165,28 @@ static void SCIInstallDirectActionButton(UIViewController *controller) {
 	widthConstraint.constant = size;
 	heightConstraint.constant = size;
 
-	SCIApplyButtonStyle(button, SCIActionButtonSourceDirect);
+	SPKApplyButtonStyle(button, SPKActionButtonSourceDirect);
 	[overlay bringSubviewToFront:button];
 }
 
 // Reinstall now and once more on the next runloop, so the action button picks up
 // the new item after `_currentVisualMessageIndex` has settled.
-static void SCIDirectReinstallActionButtonSoon(UIViewController *controller) {
+static void SPKDirectReinstallActionButtonSoon(UIViewController *controller) {
 	if (!controller) return;
-	SCIInstallDirectActionButton(controller);
+	SPKInstallDirectActionButton(controller);
 	__weak UIViewController *weakController = controller;
 	dispatch_async(dispatch_get_main_queue(), ^{
 		UIViewController *strongController = weakController;
-		if (strongController) SCIInstallDirectActionButton(strongController);
+		if (strongController) SPKInstallDirectActionButton(strongController);
 	});
 }
 
-%group SCIMessagesActionButtonHooks
+%group SPKMessagesActionButtonHooks
 
 %hook IGDirectVisualMessageViewerController
 - (void)viewDidLayoutSubviews {
 	%orig;
-	SCIDirectReinstallActionButtonSoon((UIViewController *)self);
+	SPKDirectReinstallActionButtonSoon((UIViewController *)self);
 }
 
 // Swiping between visual messages doesn't relayout the controller's view, so the
@@ -194,22 +194,22 @@ static void SCIDirectReinstallActionButtonSoon(UIViewController *controller) {
 // so these callbacks fire on every item change — reconfigure for the new item.
 - (void)storyPlayerMediaViewDidLoad:(id)load loadSource:(id)source networkRequestSummary:(id)summary {
 	%orig;
-	SCIDirectReinstallActionButtonSoon((UIViewController *)self);
+	SPKDirectReinstallActionButtonSoon((UIViewController *)self);
 }
 
 - (void)storyPlayerMediaViewDidBeginPlayback:(id)playback {
 	%orig;
-	SCIDirectReinstallActionButtonSoon((UIViewController *)self);
+	SPKDirectReinstallActionButtonSoon((UIViewController *)self);
 }
 %end
 
 %end
 
-extern "C" void SCIInstallMessagesActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"msgs_action_btn"]) return;
+extern "C" void SPKInstallMessagesActionButtonHooksIfEnabled(void) {
+	if (![SPKUtils getBoolPref:@"msgs_action_btn"]) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-	%init(SCIMessagesActionButtonHooks);
+	%init(SPKMessagesActionButtonHooks);
 	});
 }

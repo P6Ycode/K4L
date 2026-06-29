@@ -1,14 +1,14 @@
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
 
-%group SCIChangeThemeConfirmHooks
+%group SPKChangeThemeConfirmHooks
 
 %hook IGDirectThreadThemePickerViewController
 - (void)themeNewPickerSectionController:(id)arg1 didSelectTheme:(id)arg2 atIndex:(NSInteger)arg3 {
-    if ([SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) {
-        SCILog(@"General", @"[SCInsta] Confirm change direct theme triggered");
+    if ([SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm change direct theme triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Change Chat Theme"
                                message:@"Are you sure you want to apply this theme to the chat?"];
     } else {
@@ -16,10 +16,10 @@
     }
 }
 - (void)themePickerSectionController:(id)arg1 didSelectThemeId:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) {
-        SCILog(@"General", @"[SCInsta] Confirm change direct theme triggered");
+    if ([SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm change direct theme triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Change Chat Theme"
                                message:@"Are you sure you want to apply this theme to the chat?"];
     } else {
@@ -30,10 +30,10 @@
 
 %hook IGDirectThreadThemeKitSwift.IGDirectThreadThemePreviewController
 - (void)primaryButtonTapped {
-    if ([SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) {
-        SCILog(@"General", @"[SCInsta] Confirm change direct theme triggered");
+    if ([SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm change direct theme triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Change Chat Theme"
                                message:@"Are you sure you want to apply this theme to the chat?"];
     } else {
@@ -44,11 +44,11 @@
 
 %end
 
-void SCIInstallChangeThemeConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"msgs_confirm_theme_change"]) return;
+void SPKInstallChangeThemeConfirmHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIChangeThemeConfirmHooks);
+        %init(SPKChangeThemeConfirmHooks);
     });
 }

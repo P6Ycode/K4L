@@ -1,26 +1,26 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 #import "../../Tweak.h"
-#import "../../Shared/Stories/SCIStoryContext.h"
+#import "../../Shared/Stories/SPKStoryContext.h"
 
-static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
-    return [SCIUtils getBoolPref:@"stories_stop_auto_advance"] && !SCIForceStoryAutoAdvance;
+static inline BOOL SPKShouldBlockStoryAutoAdvance(void) {
+    return [SPKUtils getBoolPref:@"stories_stop_auto_advance"] && !SPKForceStoryAutoAdvance;
 }
 
-%group SCIDisableStorySeenHooks
+%group SPKDisableStorySeenHooks
 
 %hook IGStoryViewerViewController
 - (void)fullscreenSectionController:(id)arg1 didMarkItemAsSeen:(id)arg2 {
     (void)arg1;
-    BOOL forcedStoryMatches = SCIForceMarkStoryAsSeen;
-    if (forcedStoryMatches && SCIForcedStorySeenMediaPK.length > 0) {
-        NSString *mediaPK = SCIStoryMediaIdentifier(arg2);
-        forcedStoryMatches = [mediaPK isEqualToString:SCIForcedStorySeenMediaPK];
+    BOOL forcedStoryMatches = SPKForceMarkStoryAsSeen;
+    if (forcedStoryMatches && SPKForcedStorySeenMediaPK.length > 0) {
+        NSString *mediaPK = SPKStoryMediaIdentifier(arg2);
+        forcedStoryMatches = [mediaPK isEqualToString:SPKForcedStorySeenMediaPK];
     }
 
-    BOOL shouldBlockSeen = SCIStoryManualSeenAppliesToContext(SCIStoryContextFromMedia(arg2));
+    BOOL shouldBlockSeen = SPKStoryManualSeenAppliesToContext(SPKStoryContextFromMedia(arg2));
     if (shouldBlockSeen && !forcedStoryMatches) {
-        SCILog(@"General", @"[SCInsta] Prevented automatic story seen marking");
+        SPKLog(@"General", @"[Sparkle] Prevented automatic story seen marking");
         return;
     }
 
@@ -30,7 +30,7 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
 
 %hook IGStoryFullscreenSectionController
 - (void)storyPlayerMediaViewDidPlayToEnd:(id)arg1 {
-    if (SCIShouldBlockStoryAutoAdvance()) {
+    if (SPKShouldBlockStoryAutoAdvance()) {
         return;
     }
 
@@ -38,7 +38,7 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
 }
 
 - (void)advanceToNextReelForAutoScroll {
-    if (SCIShouldBlockStoryAutoAdvance()) {
+    if (SPKShouldBlockStoryAutoAdvance()) {
         return;
     }
 
@@ -48,15 +48,15 @@ static inline BOOL SCIShouldBlockStoryAutoAdvance(void) {
 
 %end
 
-void SCIInstallDisableStorySeenHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"stories_manual_seen"] &&
-        SCIStoryManualSeenUserList(NO).count == 0 &&
-        ![SCIUtils getBoolPref:@"stories_stop_auto_advance"]) {
+void SPKInstallDisableStorySeenHooksIfNeeded(void) {
+    if (![SPKUtils getBoolPref:@"stories_manual_seen"] &&
+        SPKStoryManualSeenUserList(NO).count == 0 &&
+        ![SPKUtils getBoolPref:@"stories_stop_auto_advance"]) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIDisableStorySeenHooks);
+        %init(SPKDisableStorySeenHooks);
     });
 }

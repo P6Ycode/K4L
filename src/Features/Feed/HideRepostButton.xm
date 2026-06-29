@@ -1,37 +1,37 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 
-static inline BOOL SCIHideFeedRepostEnabled(void) {
-    return [SCIUtils getBoolPref:@"feed_hide_repost_btn"];
+static inline BOOL SPKHideFeedRepostEnabled(void) {
+    return [SPKUtils getBoolPref:@"feed_hide_repost_btn"];
 }
 
-static inline BOOL SCIHideReelsRepostEnabled(void) {
-    return [SCIUtils getBoolPref:@"reels_hide_repost_btn"];
+static inline BOOL SPKHideReelsRepostEnabled(void) {
+    return [SPKUtils getBoolPref:@"reels_hide_repost_btn"];
 }
 
-static void SCIHideFeedRepostButtons(id view) {
-    if (!SCIHideFeedRepostEnabled()) return;
+static void SPKHideFeedRepostButtons(id view) {
+    if (!SPKHideFeedRepostEnabled()) return;
 
     for (NSString *ivarName in @[@"_repostView", @"_undoRepostButton"]) {
-        id candidate = [SCIUtils getIvarForObj:view name:ivarName.UTF8String];
+        id candidate = [SPKUtils getIvarForObj:view name:ivarName.UTF8String];
         if ([candidate isKindOfClass:[UIView class]]) {
             ((UIView *)candidate).hidden = YES;
         }
     }
 }
 
-%group SCIHideRepostButtonHooks
+%group SPKHideRepostButtonHooks
 
 %hook IGUFIInteractionCountsView
 - (void)updateUFIWithButtonsConfig:(id)config interactionCountProvider:(id)provider {
     %orig(config, provider);
-    SCIHideFeedRepostButtons(self);
+    SPKHideFeedRepostButtons(self);
 }
 %end
 
 %hook IGSundialViewerUFIViewModel
 - (BOOL)shouldShowRepostButton {
-    if (SCIHideReelsRepostEnabled()) {
+    if (SPKHideReelsRepostEnabled()) {
         return NO;
     }
 
@@ -41,11 +41,11 @@ static void SCIHideFeedRepostButtons(id view) {
 
 %end
 
-extern "C" void SCIInstallHideRepostButtonHooksIfEnabled(void) {
-    if (!SCIHideFeedRepostEnabled() && !SCIHideReelsRepostEnabled()) return;
+extern "C" void SPKInstallHideRepostButtonHooksIfEnabled(void) {
+    if (!SPKHideFeedRepostEnabled() && !SPKHideReelsRepostEnabled()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideRepostButtonHooks);
+        %init(SPKHideRepostButtonHooks);
     });
 }

@@ -2,12 +2,12 @@
 #import "../../InstagramHeaders.h"
 
 // Remove suggested threads posts (carousel, under suggested posts in feed)
-%group SCIHideThreadsHooks
+%group SPKHideThreadsHooks
 
 %hook BKBloksViewHelper
 - (id)initWithObjectSet:(id)arg1 bloksData:(id)arg2 delegate:(id)arg3 {
-    if ([SCIUtils getBoolPref:@"feed_hide_suggested_threads"]) {
-        SCILog(@"General", @"[SCInsta] Hiding threads posts");
+    if ([SPKUtils getBoolPref:@"feed_hide_suggested_threads"]) {
+        SPKLog(@"General", @"[Sparkle] Hiding threads posts");
 
         return nil;
     }
@@ -18,11 +18,11 @@
 
 %end
 
-void SCIInstallHideThreadsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"feed_hide_suggested_threads"]) return;
+void SPKInstallHideThreadsHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"feed_hide_suggested_threads"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideThreadsHooks);
+        %init(SPKHideThreadsHooks);
     });
 }

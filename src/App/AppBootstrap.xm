@@ -1,98 +1,98 @@
 #import "../InstagramHeaders.h"
 #import "../Tweak.h"
 #import "../Utils.h"
-#import "SCICore.h"
-#import "SCIFlexLoader.h"
-#import "SCIStabilityGuard.h"
-#import "SCIStartupProfiler.h"
+#import "SPKCore.h"
+#import "SPKFlexLoader.h"
+#import "SPKStabilityGuard.h"
+#import "SPKStartupProfiler.h"
 
-static BOOL sSCIAppDidBecomeActive = NO;
-static BOOL sSCIStagedHooksFinished = NO;
-static BOOL sSCIStabilityCompletionScheduled = NO;
+static BOOL sSPKAppDidBecomeActive = NO;
+static BOOL sSPKStagedHooksFinished = NO;
+static BOOL sSPKStabilityCompletionScheduled = NO;
 
-static void SCIMarkLaunchStableIfReady(void) {
-    if (!sSCIAppDidBecomeActive || !sSCIStagedHooksFinished || sSCIStabilityCompletionScheduled) {
+static void SPKMarkLaunchStableIfReady(void) {
+    if (!sSPKAppDidBecomeActive || !sSPKStagedHooksFinished || sSPKStabilityCompletionScheduled) {
         return;
     }
-    sSCIStabilityCompletionScheduled = YES;
+    sSPKStabilityCompletionScheduled = YES;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        SCIStabilityGuardMarkHooksFinished();
+        SPKStabilityGuardMarkHooksFinished();
     });
 }
 
-static void SCIScheduleHookPhase(NSTimeInterval delay, NSString *name, dispatch_block_t block, BOOL finalPhase) {
+static void SPKScheduleHookPhase(NSTimeInterval delay, NSString *name, dispatch_block_t block, BOOL finalPhase) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        SCIStartupMark([NSString stringWithFormat:@"%@ hooks begin", name]);
+        SPKStartupMark([NSString stringWithFormat:@"%@ hooks begin", name]);
         if (block) block();
-        SCIStartupMark([NSString stringWithFormat:@"%@ hooks installed", name]);
+        SPKStartupMark([NSString stringWithFormat:@"%@ hooks installed", name]);
         if (finalPhase) {
-            sSCIStagedHooksFinished = YES;
-            SCIMarkLaunchStableIfReady();
+            sSPKStagedHooksFinished = YES;
+            SPKMarkLaunchStableIfReady();
         }
     });
 }
 
-static void SCIScheduleStagedFeatureHooks(void) {
+static void SPKScheduleStagedFeatureHooks(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCIScheduleHookPhase(0.25, @"general UI", ^{
-            SCICoreInstallSurfaceHooks(SCISurfaceGeneralUI);
+        SPKScheduleHookPhase(0.25, @"general UI", ^{
+            SPKCoreInstallSurfaceHooks(SPKSurfaceGeneralUI);
         }, NO);
-        SCIScheduleHookPhase(0.35, @"feed", ^{
-            SCICoreInstallSurfaceHooks(SCISurfaceFeed);
+        SPKScheduleHookPhase(0.35, @"feed", ^{
+            SPKCoreInstallSurfaceHooks(SPKSurfaceFeed);
         }, NO);
-        SCIScheduleHookPhase(0.45, @"stories", ^{
-            SCICoreInstallSurfaceHooks(SCISurfaceStories);
+        SPKScheduleHookPhase(0.45, @"stories", ^{
+            SPKCoreInstallSurfaceHooks(SPKSurfaceStories);
         }, NO);
-        SCIScheduleHookPhase(0.55, @"reels", ^{
-            SCICoreInstallSurfaceHooks(SCISurfaceReels);
+        SPKScheduleHookPhase(0.55, @"reels", ^{
+            SPKCoreInstallSurfaceHooks(SPKSurfaceReels);
         }, NO);
-        SCIScheduleHookPhase(0.65, @"messages", ^{
-            SCICoreInstallSurfaceHooks(SCISurfaceMessages);
+        SPKScheduleHookPhase(0.65, @"messages", ^{
+            SPKCoreInstallSurfaceHooks(SPKSurfaceMessages);
         }, NO);
-        SCIScheduleHookPhase(0.75, @"profile", ^{
-            SCICoreInstallSurfaceHooks(SCISurfaceProfile);
+        SPKScheduleHookPhase(0.75, @"profile", ^{
+            SPKCoreInstallSurfaceHooks(SPKSurfaceProfile);
         }, YES);
     });
 }
 
 %hook IGInstagramAppDelegate
 - (_Bool)application:(UIApplication *)application willFinishLaunchingWithOptions:(id)arg2 {
-    SCIStartupMark(@"willFinishLaunching begin");
-    SCICoreRegisterBootstrapDefaults();
-    SCIStabilityGuardBeginLaunch();
+    SPKStartupMark(@"willFinishLaunching begin");
+    SPKCoreRegisterBootstrapDefaults();
+    SPKStabilityGuardBeginLaunch();
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
-    [defaults setBool:[SCIUtils sci_isLiquidGlassEffectivelyEnabled]
+    [defaults setBool:[SPKUtils spk_isLiquidGlassEffectivelyEnabled]
                forKey:@"instagram.override.project.lucent.navigation"];
     [defaults removeObjectForKey:@"liquid_glass_override_enabled"];
     [defaults removeObjectForKey:@"IGLiquidGlassOverrideEnabled"];
-    SCICoreInstallLaunchCriticalHooks();
-    SCIStartupMark(@"launch critical hooks installed");
+    SPKCoreInstallLaunchCriticalHooks();
+    SPKStartupMark(@"launch critical hooks installed");
 
     return %orig;
 }
 
 - (_Bool)application:(UIApplication *)application didFinishLaunchingWithOptions:(id)arg2 {
-    SCIStartupMark(@"didFinishLaunching begin");
+    SPKStartupMark(@"didFinishLaunching begin");
     BOOL result = %orig;
-    SCIStartupMark(@"didFinishLaunching orig returned");
-    SCIScheduleStagedFeatureHooks();
+    SPKStartupMark(@"didFinishLaunching orig returned");
+    SPKScheduleStagedFeatureHooks();
 
-    double openDelay = [SCIUtils getBoolPref:@"tools_open_settings_on_launch"] ? 0.0 : 5.0;
+    double openDelay = [SPKUtils getBoolPref:@"tools_open_settings_on_launch"] ? 0.0 : 5.0;
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(openDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (
-            ![[[NSUserDefaults standardUserDefaults] objectForKey:@"app_first_run"] isEqualToString:SCIVersionString]
-            || [SCIUtils getBoolPref:@"tools_open_settings_on_launch"]
+            ![[[NSUserDefaults standardUserDefaults] objectForKey:@"app_first_run"] isEqualToString:SPKVersionString]
+            || [SPKUtils getBoolPref:@"tools_open_settings_on_launch"]
         ) {
-            SCILog(@"Bootstrap", @"First run, initializing");
-            SCILog(@"Bootstrap", @"Displaying SCInsta first-time settings modal");
-            SCICoreShowSettingsIfNeeded([self window]);
+            SPKLog(@"Bootstrap", @"First run, initializing");
+            SPKLog(@"Bootstrap", @"Displaying Sparkle first-time settings modal");
+            SPKCoreShowSettingsIfNeeded([self window]);
         }
     });
-    if ([SCIUtils getBoolPref:@"tools_flex_app_launch"]) {
-        SCIFlexShowExplorer(@"launch");
+    if ([SPKUtils getBoolPref:@"tools_flex_app_launch"]) {
+        SPKFlexShowExplorer(@"launch");
     }
 
     return result;
@@ -100,15 +100,15 @@ static void SCIScheduleStagedFeatureHooks(void) {
 
 - (void)applicationDidBecomeActive:(id)arg1 {
     %orig;
-    sSCIAppDidBecomeActive = YES;
-    SCIMarkLaunchStableIfReady();
+    sSPKAppDidBecomeActive = YES;
+    SPKMarkLaunchStableIfReady();
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        [SCIUtils evaluateAutomaticCacheClearIfNeeded];
+        [SPKUtils evaluateAutomaticCacheClearIfNeeded];
     });
 
-    if ([SCIUtils getBoolPref:@"tools_flex_app_start"]) {
-        SCIFlexShowExplorer(@"focus");
+    if ([SPKUtils getBoolPref:@"tools_flex_app_start"]) {
+        SPKFlexShowExplorer(@"focus");
     }
 }
 %end

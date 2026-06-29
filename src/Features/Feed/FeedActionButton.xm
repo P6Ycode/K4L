@@ -4,137 +4,137 @@
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
-#import "../../Shared/Gallery/SCIGalleryFile.h"
-#import "../../Shared/Gallery/SCIGalleryOriginController.h"
-#import "../../Shared/Gallery/SCIGallerySaveMetadata.h"
-#import "../../Shared/MediaPreview/SCIMediaItem.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
+#import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/Gallery/SPKGalleryOriginController.h"
+#import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
+#import "../../Shared/MediaPreview/SPKMediaItem.h"
 
 extern "C" void MSHookMessageEx(Class cls, SEL sel, IMP replacement, IMP *result);
 
-static NSInteger const kSCIFeedActionButtonTag = 921341;
-static const void *kSCIFeedExpandLongPressMarkerAssocKey = &kSCIFeedExpandLongPressMarkerAssocKey;
-static const void *kSCIFeedExpandLongPressDelegateAssocKey = &kSCIFeedExpandLongPressDelegateAssocKey;
+static NSInteger const kSPKFeedActionButtonTag = 921341;
+static const void *kSPKFeedExpandLongPressMarkerAssocKey = &kSPKFeedExpandLongPressMarkerAssocKey;
+static const void *kSPKFeedExpandLongPressDelegateAssocKey = &kSPKFeedExpandLongPressDelegateAssocKey;
 
 @interface IGFeedItemPageVideoCell : UICollectionViewCell
 @end
 
-static id SCIFeedMediaForZoomFromView(UIView *view);
-static BOOL SCIFeedLongPressExpandEnabled(void);
-static BOOL SCIFeedMediaHasExpandableAsset(id media);
-static BOOL SCIFeedViewHasExpandableAsset(UIView *view);
-static BOOL SCIFeedShouldSuppressNativeLongPress(UIGestureRecognizer *gestureRecognizer);
-static BOOL SCIFeedShouldSuppressNativeLongPressFromHandler(id handler, UIGestureRecognizer *gestureRecognizer);
+static id SPKFeedMediaForZoomFromView(UIView *view);
+static BOOL SPKFeedLongPressExpandEnabled(void);
+static BOOL SPKFeedMediaHasExpandableAsset(id media);
+static BOOL SPKFeedViewHasExpandableAsset(UIView *view);
+static BOOL SPKFeedShouldSuppressNativeLongPress(UIGestureRecognizer *gestureRecognizer);
+static BOOL SPKFeedShouldSuppressNativeLongPressFromHandler(id handler, UIGestureRecognizer *gestureRecognizer);
 
-@interface SCIFeedExpandLongPressDelegate : NSObject <UIGestureRecognizerDelegate>
+@interface SPKFeedExpandLongPressDelegate : NSObject <UIGestureRecognizerDelegate>
 @end
 
-@implementation SCIFeedExpandLongPressDelegate
+@implementation SPKFeedExpandLongPressDelegate
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-	return SCIFeedShouldSuppressNativeLongPress(gestureRecognizer);
+	return SPKFeedShouldSuppressNativeLongPress(gestureRecognizer);
 }
 @end
 
-static BOOL SCIFeedLongPressExpandEnabled(void) {
-	return [SCIUtils getBoolPref:@"feed_long_press_expand"];
+static BOOL SPKFeedLongPressExpandEnabled(void) {
+	return [SPKUtils getBoolPref:@"feed_long_press_expand"];
 }
 
-static UIPageControl *SCIPageControlInViewHierarchy(UIView *view) {
+static UIPageControl *SPKPageControlInViewHierarchy(UIView *view) {
 	if (!view) return nil;
 	if ([view isKindOfClass:[UIPageControl class]]) return (UIPageControl *)view;
 	for (UIView *subview in view.subviews) {
-		UIPageControl *pageControl = SCIPageControlInViewHierarchy(subview);
+		UIPageControl *pageControl = SPKPageControlInViewHierarchy(subview);
 		if (pageControl) return pageControl;
 	}
 	return nil;
 }
 
-static NSInteger SCIIndexFromPageIndicatorObject(id indicator) {
+static NSInteger SPKIndexFromPageIndicatorObject(id indicator) {
 	if (!indicator) return -1;
 	if ([indicator isKindOfClass:[UIPageControl class]]) {
 		return (NSInteger)((UIPageControl *)indicator).currentPage;
 	}
 
-	NSNumber *currentPageNumber = [SCIUtils numericValueForObj:indicator selectorName:@"currentPage"];
+	NSNumber *currentPageNumber = [SPKUtils numericValueForObj:indicator selectorName:@"currentPage"];
 	if (currentPageNumber) return currentPageNumber.integerValue;
 
-	id currentPage = SCIKVCObject(indicator, @"currentPage");
-	NSString *pageString = SCIStringFromValue(currentPage);
+	id currentPage = SPKKVCObject(indicator, @"currentPage");
+	NSString *pageString = SPKStringFromValue(currentPage);
 	return pageString.length > 0 ? pageString.integerValue : -1;
 }
 
-static NSInteger SCIFeedCurrentIndexFromBarView(UIView *barView) {
+static NSInteger SPKFeedCurrentIndexFromBarView(UIView *barView) {
 	if (!barView) return -1;
 
-	id delegate = SCIObjectForSelector(barView, @"delegate");
-	id nestedDelegate = SCIObjectForSelector(delegate, @"delegate");
+	id delegate = SPKObjectForSelector(barView, @"delegate");
+	id nestedDelegate = SPKObjectForSelector(delegate, @"delegate");
 	id target = nestedDelegate ?: delegate;
 
-	id pageCellState = [SCIUtils getIvarForObj:target name:"_pageCellState"];
-	NSNumber *stateIndex = [SCIUtils numericValueForObj:pageCellState selectorName:@"currentPageIndex"];
+	id pageCellState = [SPKUtils getIvarForObj:target name:"_pageCellState"];
+	NSNumber *stateIndex = [SPKUtils numericValueForObj:pageCellState selectorName:@"currentPageIndex"];
 	if (stateIndex && stateIndex.integerValue >= 0) return stateIndex.integerValue;
-	stateIndex = [SCIUtils numericValueForObj:pageCellState selectorName:@"currentIndex"];
+	stateIndex = [SPKUtils numericValueForObj:pageCellState selectorName:@"currentIndex"];
 	if (stateIndex && stateIndex.integerValue >= 0) return stateIndex.integerValue;
 
-	NSNumber *delegatePage = [SCIUtils numericValueForObj:delegate selectorName:@"pageControlCurrentPage"];
+	NSNumber *delegatePage = [SPKUtils numericValueForObj:delegate selectorName:@"pageControlCurrentPage"];
 	if (delegatePage && delegatePage.integerValue >= 0) return delegatePage.integerValue;
 
-	NSInteger pageControlIdx = SCIIndexFromPageIndicatorObject(SCIObjectForSelector(delegate, @"pageControl"));
+	NSInteger pageControlIdx = SPKIndexFromPageIndicatorObject(SPKObjectForSelector(delegate, @"pageControl"));
 	if (pageControlIdx >= 0) return pageControlIdx;
 
 	for (NSString *selectorName in @[@"pageControl", @"pageIndicator", @"carouselPageControl"]) {
-		NSInteger idx = SCIIndexFromPageIndicatorObject(SCIObjectForSelector(barView, selectorName));
+		NSInteger idx = SPKIndexFromPageIndicatorObject(SPKObjectForSelector(barView, selectorName));
 		if (idx >= 0) return idx;
 	}
 
-	UIPageControl *localPageControl = SCIPageControlInViewHierarchy(barView);
+	UIPageControl *localPageControl = SPKPageControlInViewHierarchy(barView);
 	if (localPageControl) return (NSInteger)localPageControl.currentPage;
 
-	UIPageControl *superPageControl = SCIPageControlInViewHierarchy(barView.superview);
+	UIPageControl *superPageControl = SPKPageControlInViewHierarchy(barView.superview);
 	return superPageControl ? (NSInteger)superPageControl.currentPage : -1;
 }
 
-static id SCIFeedMediaFromBarView(UIView *barView) {
+static id SPKFeedMediaFromBarView(UIView *barView) {
 	if (!barView) return nil;
 
-	id delegate = SCIObjectForSelector(barView, @"delegate");
-	id nestedDelegate = SCIObjectForSelector(delegate, @"delegate");
+	id delegate = SPKObjectForSelector(barView, @"delegate");
+	id nestedDelegate = SPKObjectForSelector(delegate, @"delegate");
 	id target = nestedDelegate ?: delegate;
 
-	id media = [SCIUtils getIvarForObj:target name:"_media"];
-	if (!media) media = SCIObjectForSelector(target, @"media");
-	if (!media) media = SCIKVCObject(target, @"media");
+	id media = [SPKUtils getIvarForObj:target name:"_media"];
+	if (!media) media = SPKObjectForSelector(target, @"media");
+	if (!media) media = SPKKVCObject(target, @"media");
 
-	id hierarchyMedia = SCIFeedMediaForZoomFromView(barView);
-	if (SCIActionButtonCarouselChildren(hierarchyMedia).count > 0) return hierarchyMedia;
-	if (SCIActionButtonCarouselChildren(media).count > 0) return media;
+	id hierarchyMedia = SPKFeedMediaForZoomFromView(barView);
+	if (SPKActionButtonCarouselChildren(hierarchyMedia).count > 0) return hierarchyMedia;
+	if (SPKActionButtonCarouselChildren(media).count > 0) return media;
 	return media ?: hierarchyMedia;
 }
 
-static UIView *SCIFeedAnyButtonFromBarView(UIView *barView) {
+static UIView *SPKFeedAnyButtonFromBarView(UIView *barView) {
 	if (!barView) return nil;
 
-	id saveIvar = [SCIUtils getIvarForObj:barView name:"_saveButton"];
+	id saveIvar = [SPKUtils getIvarForObj:barView name:"_saveButton"];
 	if ([saveIvar isKindOfClass:[UIView class]]) return (UIView *)saveIvar;
 
 	for (NSString *selectorName in @[@"sendButton", @"commentButton", @"likeButton", @"saveButton"]) {
-		id candidate = SCIObjectForSelector(barView, selectorName);
+		id candidate = SPKObjectForSelector(barView, selectorName);
 		if ([candidate isKindOfClass:[UIView class]]) return (UIView *)candidate;
 	}
 
 	return nil;
 }
 
-static CGRect SCIFeedAnyButtonFrameFromBarView(UIView *barView) {
-	UIView *anyButton = SCIFeedAnyButtonFromBarView(barView);
+static CGRect SPKFeedAnyButtonFrameFromBarView(UIView *barView) {
+	UIView *anyButton = SPKFeedAnyButtonFromBarView(barView);
 	return anyButton ? anyButton.frame : CGRectMake(0.0, 0.0, 40.0, 48.0);
 }
 
-static UIView *SCIFeedFirstRightButtonFromBarView(UIView *barView) {
+static UIView *SPKFeedFirstRightButtonFromBarView(UIView *barView) {
 	if (!barView) return nil;
 
 	for (NSString *selectorName in @[@"visualSearchButton", @"saveButton"]) {
-		id candidate = SCIObjectForSelector(barView, selectorName);
+		id candidate = SPKObjectForSelector(barView, selectorName);
 		if ([candidate isKindOfClass:[UIView class]]) {
 			UIView *view = (UIView *)candidate;
 			if (!view.hidden && view.superview) return view;
@@ -142,7 +142,7 @@ static UIView *SCIFeedFirstRightButtonFromBarView(UIView *barView) {
 	}
 
 	for (NSString *ivarName in @[@"_visualSearchButton", @"_saveButton"]) {
-		id candidate = [SCIUtils getIvarForObj:barView name:ivarName.UTF8String];
+		id candidate = [SPKUtils getIvarForObj:barView name:ivarName.UTF8String];
 		if ([candidate isKindOfClass:[UIView class]]) {
 			UIView *view = (UIView *)candidate;
 			if (!view.hidden && view.superview) return view;
@@ -152,7 +152,7 @@ static UIView *SCIFeedFirstRightButtonFromBarView(UIView *barView) {
 	return nil;
 }
 
-static UIView *SCIFeedCellAncestorForView(UIView *view) {
+static UIView *SPKFeedCellAncestorForView(UIView *view) {
 	UIView *walker = view;
 	NSInteger depth = 0;
 	while (walker && depth < 16) {
@@ -166,7 +166,7 @@ static UIView *SCIFeedCellAncestorForView(UIView *view) {
 	return nil;
 }
 
-static UICollectionView *SCIFeedOuterCollectionView(UIView *view) {
+static UICollectionView *SPKFeedOuterCollectionView(UIView *view) {
 	UIView *walker = view;
 	NSInteger depth = 0;
 	while (walker && depth < 16) {
@@ -182,7 +182,7 @@ static UICollectionView *SCIFeedOuterCollectionView(UIView *view) {
 	return nil;
 }
 
-static NSInteger SCIFeedSectionForViewInCollection(UIView *view, UICollectionView *collectionView) {
+static NSInteger SPKFeedSectionForViewInCollection(UIView *view, UICollectionView *collectionView) {
 	if (!view || !collectionView) return -1;
 	UIView *walker = view;
 	NSInteger depth = 0;
@@ -197,7 +197,7 @@ static NSInteger SCIFeedSectionForViewInCollection(UIView *view, UICollectionVie
 	return -1;
 }
 
-static id SCIFeedMediaFromCellByIntrospection(UICollectionViewCell *cell, Class mediaClass) {
+static id SPKFeedMediaFromCellByIntrospection(UICollectionViewCell *cell, Class mediaClass) {
 	if (!cell || !mediaClass) return nil;
 
 	unsigned int count = 0;
@@ -226,21 +226,21 @@ static id SCIFeedMediaFromCellByIntrospection(UICollectionViewCell *cell, Class 
 	}
 
 	for (NSString *selectorName in @[@"post", @"pagePhotoPost", @"pageVideoPost", @"media"]) {
-		id media = SCIObjectForSelector(cell, selectorName);
+		id media = SPKObjectForSelector(cell, selectorName);
 		if (media && [media isKindOfClass:mediaClass]) return media;
 	}
 
 	return nil;
 }
 
-static id SCIFeedMediaForZoomFromView(UIView *view) {
+static id SPKFeedMediaForZoomFromView(UIView *view) {
 	Class mediaClass = NSClassFromString(@"IGMedia");
 	if (!view || !mediaClass) return nil;
 
-	UICollectionView *collectionView = SCIFeedOuterCollectionView(view);
+	UICollectionView *collectionView = SPKFeedOuterCollectionView(view);
 	if (!collectionView) return nil;
 
-	NSInteger section = SCIFeedSectionForViewInCollection(view, collectionView);
+	NSInteger section = SPKFeedSectionForViewInCollection(view, collectionView);
 	if (section < 0) return nil;
 
 	for (UICollectionViewCell *cell in collectionView.visibleCells) {
@@ -255,18 +255,18 @@ static id SCIFeedMediaForZoomFromView(UIView *view) {
 			continue;
 		}
 
-		id media = SCIFeedMediaFromCellByIntrospection(cell, mediaClass);
+		id media = SPKFeedMediaFromCellByIntrospection(cell, mediaClass);
 		if (media) return media;
 	}
 
 	return nil;
 }
 
-static NSInteger SCIFeedCarouselPageIndexFromView(UIView *view) {
-	UICollectionView *collectionView = SCIFeedOuterCollectionView(view);
+static NSInteger SPKFeedCarouselPageIndexFromView(UIView *view) {
+	UICollectionView *collectionView = SPKFeedOuterCollectionView(view);
 	if (!collectionView) return 0;
 
-	NSInteger section = SCIFeedSectionForViewInCollection(view, collectionView);
+	NSInteger section = SPKFeedSectionForViewInCollection(view, collectionView);
 	if (section < 0) return 0;
 
 	for (UICollectionViewCell *cell in collectionView.visibleCells) {
@@ -298,11 +298,11 @@ static NSInteger SCIFeedCarouselPageIndexFromView(UIView *view) {
 	return 0;
 }
 
-static NSArray *SCIFeedCarouselChildren(id media) {
-	return SCIActionButtonCarouselChildren(media);
+static NSArray *SPKFeedCarouselChildren(id media) {
+	return SPKActionButtonCarouselChildren(media);
 }
 
-static BOOL SCIFeedIsCarouselMedia(id media) {
+static BOOL SPKFeedIsCarouselMedia(id media) {
 	if (!media) return NO;
 
 	if ([media respondsToSelector:@selector(isCarousel)]) {
@@ -323,78 +323,78 @@ static BOOL SCIFeedIsCarouselMedia(id media) {
 		}
 	}
 
-	return SCIFeedCarouselChildren(media).count > 0;
+	return SPKFeedCarouselChildren(media).count > 0;
 }
 
-static BOOL SCIFeedMediaHasExpandableAsset(id media) {
+static BOOL SPKFeedMediaHasExpandableAsset(id media) {
 	if (!media) return NO;
 
-	if (SCIFeedIsCarouselMedia(media)) {
-		for (id child in SCIFeedCarouselChildren(media)) {
-			NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)child];
-			NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)child];
+	if (SPKFeedIsCarouselMedia(media)) {
+		for (id child in SPKFeedCarouselChildren(media)) {
+			NSURL *videoURL = [SPKUtils getVideoUrlForMedia:(IGMedia *)child];
+			NSURL *photoURL = [SPKUtils getPhotoUrlForMedia:(IGMedia *)child];
 			if (videoURL || photoURL) return YES;
 		}
 	}
 
-	NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)media];
-	NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)media];
+	NSURL *videoURL = [SPKUtils getVideoUrlForMedia:(IGMedia *)media];
+	NSURL *photoURL = [SPKUtils getPhotoUrlForMedia:(IGMedia *)media];
 	return videoURL || photoURL;
 }
 
-static BOOL SCIFeedViewHasExpandableAsset(UIView *view) {
+static BOOL SPKFeedViewHasExpandableAsset(UIView *view) {
 	if (!view.window) return NO;
-	id media = SCIFeedMediaForZoomFromView(view);
-	return SCIFeedMediaHasExpandableAsset(media);
+	id media = SPKFeedMediaForZoomFromView(view);
+	return SPKFeedMediaHasExpandableAsset(media);
 }
 
-static BOOL SCIFeedShouldSuppressNativeLongPress(UIGestureRecognizer *gestureRecognizer) {
-	if (!SCIFeedLongPressExpandEnabled() || !gestureRecognizer) return NO;
-	return SCIFeedViewHasExpandableAsset(gestureRecognizer.view);
+static BOOL SPKFeedShouldSuppressNativeLongPress(UIGestureRecognizer *gestureRecognizer) {
+	if (!SPKFeedLongPressExpandEnabled() || !gestureRecognizer) return NO;
+	return SPKFeedViewHasExpandableAsset(gestureRecognizer.view);
 }
 
-static BOOL SCIFeedShouldSuppressNativeLongPressFromHandler(id handler, UIGestureRecognizer *gestureRecognizer) {
-	if (SCIFeedShouldSuppressNativeLongPress(gestureRecognizer)) return YES;
-	if (!SCIFeedLongPressExpandEnabled() || !handler) return NO;
+static BOOL SPKFeedShouldSuppressNativeLongPressFromHandler(id handler, UIGestureRecognizer *gestureRecognizer) {
+	if (SPKFeedShouldSuppressNativeLongPress(gestureRecognizer)) return YES;
+	if (!SPKFeedLongPressExpandEnabled() || !handler) return NO;
 
 	for (NSString *ivarName in @[@"eligibleView", @"cell", @"_eligibleView", @"_cell"]) {
-		id candidate = [SCIUtils getIvarForObj:handler name:ivarName.UTF8String];
+		id candidate = [SPKUtils getIvarForObj:handler name:ivarName.UTF8String];
 		if ([candidate isKindOfClass:[UIView class]] &&
-			SCIFeedViewHasExpandableAsset((UIView *)candidate)) {
+			SPKFeedViewHasExpandableAsset((UIView *)candidate)) {
 			return YES;
 		}
 	}
 	return NO;
 }
 
-static SCIGallerySaveMetadata *SCIFeedMetadataForMedia(id media) {
-	SCIGallerySaveMetadata *metadata = [[SCIGallerySaveMetadata alloc] init];
-	metadata.source = (int16_t)SCIGallerySourceFeed;
-	[SCIGalleryOriginController populateMetadata:metadata fromMedia:media];
+static SPKGallerySaveMetadata *SPKFeedMetadataForMedia(id media) {
+	SPKGallerySaveMetadata *metadata = [[SPKGallerySaveMetadata alloc] init];
+	metadata.source = (int16_t)SPKGallerySourceFeed;
+	[SPKGalleryOriginController populateMetadata:metadata fromMedia:media];
 	return metadata;
 }
 
-static SCIGallerySaveMetadata *SCIFeedMetadataForMediaWithUsernameFallback(id media, NSString *username) {
-	SCIGallerySaveMetadata *metadata = SCIFeedMetadataForMedia(media);
+static SPKGallerySaveMetadata *SPKFeedMetadataForMediaWithUsernameFallback(id media, NSString *username) {
+	SPKGallerySaveMetadata *metadata = SPKFeedMetadataForMedia(media);
 	if (metadata.sourceUsername.length == 0 && username.length > 0) {
 		metadata.sourceUsername = username;
-		[SCIGalleryOriginController populateProfileMetadata:metadata username:username user:nil];
+		[SPKGalleryOriginController populateProfileMetadata:metadata username:username user:nil];
 	}
 	return metadata;
 }
 
-static id SCIFeedPostObjectFromFeedCell(UIView *feedCell) {
+static id SPKFeedPostObjectFromFeedCell(UIView *feedCell) {
 	if (!feedCell) return nil;
-	id post = SCIObjectForSelector(feedCell, @"post");
+	id post = SPKObjectForSelector(feedCell, @"post");
 	if (post) return post;
-	post = SCIObjectForSelector(feedCell, @"mediaCellFeedItem");
+	post = SPKObjectForSelector(feedCell, @"mediaCellFeedItem");
 	if (post) return post;
-	post = SCIObjectForSelector(feedCell, @"media");
+	post = SPKObjectForSelector(feedCell, @"media");
 	if (post) return post;
-	return [SCIUtils getIvarForObj:feedCell name:"_post"];
+	return [SPKUtils getIvarForObj:feedCell name:"_post"];
 }
 
-static BOOL SCIFeedPostAndCellFromScrollContainers(UIView *view, UILongPressGestureRecognizer *sender, id *outPost, UIView **outCell) {
+static BOOL SPKFeedPostAndCellFromScrollContainers(UIView *view, UILongPressGestureRecognizer *sender, id *outPost, UIView **outCell) {
 	if (outPost) *outPost = nil;
 	if (outCell) *outCell = nil;
 	if (!view || !sender) return NO;
@@ -423,7 +423,7 @@ static BOOL SCIFeedPostAndCellFromScrollContainers(UIView *view, UILongPressGest
 			cell = [tv cellForRowAtIndexPath:ip];
 		}
 
-		id post = SCIFeedPostObjectFromFeedCell(cell);
+		id post = SPKFeedPostObjectFromFeedCell(cell);
 		if (!post) continue;
 		if (outPost) *outPost = post;
 		if (outCell) *outCell = cell;
@@ -433,25 +433,25 @@ static BOOL SCIFeedPostAndCellFromScrollContainers(UIView *view, UILongPressGest
 	return NO;
 }
 
-static UIView *SCIRecursiveSubviewMatchingClassNames(UIView *root, NSArray<NSString *> *classNames) {
+static UIView *SPKRecursiveSubviewMatchingClassNames(UIView *root, NSArray<NSString *> *classNames) {
 	if (!root) return nil;
 	for (NSString *className in classNames) {
 		Class cls = NSClassFromString(className);
 		if (cls && [root isKindOfClass:cls]) return root;
 	}
 	for (UIView *subview in root.subviews) {
-		UIView *match = SCIRecursiveSubviewMatchingClassNames(subview, classNames);
+		UIView *match = SPKRecursiveSubviewMatchingClassNames(subview, classNames);
 		if (match) return match;
 	}
 	return nil;
 }
 
-static UIView *SCIFeedActionContextViewFromMediaView(UIView *view) {
+static UIView *SPKFeedActionContextViewFromMediaView(UIView *view) {
 	NSArray<NSString *> *candidateClassNames = @[@"IGUFIButtonBarView", @"IGUFIInteractionCountsView", @"IGSocialUFIView.IGSocialUFIView"];
 	UIView *walker = view;
 	NSInteger depth = 0;
 	while (walker && depth < 8) {
-		UIView *match = SCIRecursiveSubviewMatchingClassNames(walker, candidateClassNames);
+		UIView *match = SPKRecursiveSubviewMatchingClassNames(walker, candidateClassNames);
 		if (match) return match;
 		walker = walker.superview;
 		depth++;
@@ -459,18 +459,18 @@ static UIView *SCIFeedActionContextViewFromMediaView(UIView *view) {
 	return nil;
 }
 
-static NSString *SCIFeedCaptionForContext(SCIActionButtonContext *context, id media, NSArray *entries, NSInteger currentIndex) {
-	NSString *caption = SCICaptionFromMediaObject(media);
+static NSString *SPKFeedCaptionForContext(SPKActionButtonContext *context, id media, NSArray *entries, NSInteger currentIndex) {
+	NSString *caption = SPKCaptionFromMediaObject(media);
 	if (caption.length > 0) return caption;
 	NSInteger idx = MAX(0, MIN((NSInteger)entries.count - 1, currentIndex));
 	if (entries.count > 0) {
 		id entryMedia = [entries[idx] valueForKey:@"mediaObject"];
-		caption = SCICaptionFromMediaObject(entryMedia);
+		caption = SPKCaptionFromMediaObject(entryMedia);
 	}
 	return caption;
 }
 
-static BOOL SCIFeedTriggerRepost(SCIActionButtonContext *context) {
+static BOOL SPKFeedTriggerRepost(SPKActionButtonContext *context) {
 	UIView *barView = context.view;
 	UIResponder *responder = barView;
 	Class feedCellClass = NSClassFromString(@"IGFeedItemUFICell");
@@ -484,31 +484,31 @@ static BOOL SCIFeedTriggerRepost(SCIActionButtonContext *context) {
 	return YES;
 }
 
-static SCIActionButtonContext *SCIFeedActionContext(UIView *barView) {
-	SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
-	context.source = SCIActionButtonSourceFeed;
+static SPKActionButtonContext *SPKFeedActionContext(UIView *barView) {
+	SPKActionButtonContext *context = [[SPKActionButtonContext alloc] init];
+	context.source = SPKActionButtonSourceFeed;
 	context.view = barView;
-	context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceFeed);
-	context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceFeed);
-	context.mediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-		return SCIFeedMediaFromBarView(resolvedContext.view);
+	context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceFeed);
+	context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceFeed);
+	context.mediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+		return SPKFeedMediaFromBarView(resolvedContext.view);
 	};
-    context.bulkMediaResolver = ^id (SCIActionButtonContext *resolvedContext) {
-        return SCIFeedMediaFromBarView(resolvedContext.view);
+    context.bulkMediaResolver = ^id (SPKActionButtonContext *resolvedContext) {
+        return SPKFeedMediaFromBarView(resolvedContext.view);
     };
-	context.currentIndexResolver = ^NSInteger (SCIActionButtonContext *resolvedContext) {
-		return SCIFeedCurrentIndexFromBarView(resolvedContext.view);
+	context.currentIndexResolver = ^NSInteger (SPKActionButtonContext *resolvedContext) {
+		return SPKFeedCurrentIndexFromBarView(resolvedContext.view);
 	};
-	context.captionResolver = ^NSString * (SCIActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
-		return SCIFeedCaptionForContext(resolvedContext, media, entries, currentIndex);
+	context.captionResolver = ^NSString * (SPKActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
+		return SPKFeedCaptionForContext(resolvedContext, media, entries, currentIndex);
 	};
-	context.repostHandler = ^BOOL (SCIActionButtonContext *resolvedContext) {
-		return SCIFeedTriggerRepost(resolvedContext);
+	context.repostHandler = ^BOOL (SPKActionButtonContext *resolvedContext) {
+		return SPKFeedTriggerRepost(resolvedContext);
 	};
 	return context;
 }
 
-static BOOL SCIFeedActionFrameMatches(UIButton *button, CGRect frame) {
+static BOOL SPKFeedActionFrameMatches(UIButton *button, CGRect frame) {
 	if (![button isKindOfClass:[UIButton class]] || button.hidden || !button.superview) return NO;
 	return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
 	       ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
@@ -516,17 +516,17 @@ static BOOL SCIFeedActionFrameMatches(UIButton *button, CGRect frame) {
 	       ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
 }
 
-static void SCIInstallFeedActionButton(UIView *barView) {
+static void SPKInstallFeedActionButton(UIView *barView) {
 	if (!barView) return;
 
-	UIButton *button = (UIButton *)[barView viewWithTag:kSCIFeedActionButtonTag];
-	if (![SCIUtils getBoolPref:@"feed_action_btn"]) {
+	UIButton *button = (UIButton *)[barView viewWithTag:kSPKFeedActionButtonTag];
+	if (![SPKUtils getBoolPref:@"feed_action_btn"]) {
 		[button removeFromSuperview];
 		return;
 	}
 
-	CGRect anyFrame = SCIFeedAnyButtonFrameFromBarView(barView);
-	UIView *firstRightButton = SCIFeedFirstRightButtonFromBarView(barView);
+	CGRect anyFrame = SPKFeedAnyButtonFrameFromBarView(barView);
+	UIView *firstRightButton = SPKFeedFirstRightButtonFromBarView(barView);
 	if (!firstRightButton) {
 		[button removeFromSuperview];
 		return;
@@ -537,18 +537,18 @@ static void SCIInstallFeedActionButton(UIView *barView) {
 	                                  CGRectGetMinY(anyFrame) + 2.0,
 	                                  width,
 	                                  CGRectGetHeight(anyFrame));
-	if (SCIFeedActionFrameMatches(button, expectedFrame)) return;
+	if (SPKFeedActionFrameMatches(button, expectedFrame)) return;
 
-	button = SCIActionButtonWithTag(barView, kSCIFeedActionButtonTag);
+	button = SPKActionButtonWithTag(barView, kSPKFeedActionButtonTag);
 	button.translatesAutoresizingMaskIntoConstraints = YES;
-	SCIConfigureActionButton(button, SCIFeedActionContext(barView));
+	SPKConfigureActionButton(button, SPKFeedActionContext(barView));
 	if (button.hidden) return;
 
 	button.frame = expectedFrame;
-	SCIApplyButtonStyle(button, SCIActionButtonSourceFeed);
+	SPKApplyButtonStyle(button, SPKActionButtonSourceFeed);
 }
 
-static BOOL SCIFeedViewIsNearbyMediaContainer(UIView *candidate, UIView *sourceView) {
+static BOOL SPKFeedViewIsNearbyMediaContainer(UIView *candidate, UIView *sourceView) {
 	if (!candidate || !sourceView) return NO;
 	if (candidate == sourceView) return YES;
 
@@ -559,18 +559,18 @@ static BOOL SCIFeedViewIsNearbyMediaContainer(UIView *candidate, UIView *sourceV
 	return NO;
 }
 
-static void SCIRequireNativeLongPressRecognizersToFail(UIView *view, UILongPressGestureRecognizer *sciLongPress) {
-	if (!view || !sciLongPress) return;
+static void SPKRequireNativeLongPressRecognizersToFail(UIView *view, UILongPressGestureRecognizer *spkLongPress) {
+	if (!view || !spkLongPress) return;
 
 	UIView *walker = view;
 	NSInteger depth = 0;
 	while (walker && depth < 10) {
-		if (SCIFeedViewIsNearbyMediaContainer(walker, view)) {
+		if (SPKFeedViewIsNearbyMediaContainer(walker, view)) {
 			for (UIGestureRecognizer *gesture in walker.gestureRecognizers) {
-				if (gesture == sciLongPress) continue;
+				if (gesture == spkLongPress) continue;
 				if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
-				if (objc_getAssociatedObject(gesture, kSCIFeedExpandLongPressMarkerAssocKey)) continue;
-				[gesture requireGestureRecognizerToFail:sciLongPress];
+				if (objc_getAssociatedObject(gesture, kSPKFeedExpandLongPressMarkerAssocKey)) continue;
+				[gesture requireGestureRecognizerToFail:spkLongPress];
 			}
 		}
 
@@ -582,13 +582,13 @@ static void SCIRequireNativeLongPressRecognizersToFail(UIView *view, UILongPress
 	}
 }
 
-static void SCIAddFeedExpandLongPressIfNeeded(UIView *view, SEL action) {
-	if (!SCIFeedLongPressExpandEnabled() || !view || !action) return;
+static void SPKAddFeedExpandLongPressIfNeeded(UIView *view, SEL action) {
+	if (!SPKFeedLongPressExpandEnabled() || !view || !action) return;
 
 	for (UIGestureRecognizer *gesture in view.gestureRecognizers) {
 		if ([gesture isKindOfClass:[UILongPressGestureRecognizer class]] &&
-			objc_getAssociatedObject(gesture, kSCIFeedExpandLongPressMarkerAssocKey)) {
-			SCIRequireNativeLongPressRecognizersToFail(view, (UILongPressGestureRecognizer *)gesture);
+			objc_getAssociatedObject(gesture, kSPKFeedExpandLongPressMarkerAssocKey)) {
+			SPKRequireNativeLongPressRecognizersToFail(view, (UILongPressGestureRecognizer *)gesture);
 			return;
 		}
 	}
@@ -596,43 +596,43 @@ static void SCIAddFeedExpandLongPressIfNeeded(UIView *view, SEL action) {
 	UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:view action:action];
 	longPress.minimumPressDuration = 0.3;
 	longPress.cancelsTouchesInView = NO;
-	SCIFeedExpandLongPressDelegate *delegate = [[SCIFeedExpandLongPressDelegate alloc] init];
+	SPKFeedExpandLongPressDelegate *delegate = [[SPKFeedExpandLongPressDelegate alloc] init];
 	longPress.delegate = delegate;
 	[view addGestureRecognizer:longPress];
-	objc_setAssociatedObject(longPress, kSCIFeedExpandLongPressMarkerAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	objc_setAssociatedObject(longPress, kSCIFeedExpandLongPressDelegateAssocKey, delegate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	SCIRequireNativeLongPressRecognizersToFail(view, longPress);
+	objc_setAssociatedObject(longPress, kSPKFeedExpandLongPressMarkerAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(longPress, kSPKFeedExpandLongPressDelegateAssocKey, delegate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	SPKRequireNativeLongPressRecognizersToFail(view, longPress);
 }
 
-static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecognizer *sender) {
-	if (!SCIFeedLongPressExpandEnabled() || !view || !sender || sender.state != UIGestureRecognizerStateBegan || !view.window) return;
+static void SPKHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecognizer *sender) {
+	if (!SPKFeedLongPressExpandEnabled() || !view || !sender || sender.state != UIGestureRecognizerStateBegan || !view.window) return;
 
-	id media = SCIFeedMediaForZoomFromView(view);
+	id media = SPKFeedMediaForZoomFromView(view);
 	if (!media) return;
 
-	NSString *username = SCIUsernameFromMediaObject(media);
-	SCIGallerySaveMetadata *metadata = SCIFeedMetadataForMediaWithUsernameFallback(media, username);
+	NSString *username = SPKUsernameFromMediaObject(media);
+	SPKGallerySaveMetadata *metadata = SPKFeedMetadataForMediaWithUsernameFallback(media, username);
 
-	if (SCIFeedIsCarouselMedia(media)) {
-		NSArray *children = SCIFeedCarouselChildren(media);
-		NSMutableArray<SCIMediaItem *> *items = [NSMutableArray array];
+	if (SPKFeedIsCarouselMedia(media)) {
+		NSArray *children = SPKFeedCarouselChildren(media);
+		NSMutableArray<SPKMediaItem *> *items = [NSMutableArray array];
 		NSInteger index = 0;
 		for (id child in children) {
-			NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)child];
-			NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)child];
+			NSURL *videoURL = [SPKUtils getVideoUrlForMedia:(IGMedia *)child];
+			NSURL *photoURL = [SPKUtils getPhotoUrlForMedia:(IGMedia *)child];
 			if (!videoURL && !photoURL) {
 				index++;
 				continue;
 			}
 
-			SCIMediaItem *item = [SCIMediaItem itemWithFileURL:(videoURL ?: photoURL)];
-			item.mediaType = videoURL ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
-			item.gallerySaveSource = SCIGallerySourceFeed;
-			item.galleryMetadata = SCIFeedMetadataForMediaWithUsernameFallback(child, username);
+			SPKMediaItem *item = [SPKMediaItem itemWithFileURL:(videoURL ?: photoURL)];
+			item.mediaType = videoURL ? SPKMediaItemTypeVideo : SPKMediaItemTypeImage;
+			item.gallerySaveSource = SPKGallerySourceFeed;
+			item.galleryMetadata = SPKFeedMetadataForMediaWithUsernameFallback(child, username);
 			if (child != media) {
-				[SCIGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
+				[SPKGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
 				if (children.count > 1) {
-					item.galleryMetadata.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
+					item.galleryMetadata.sourceMediaURLString = [SPKUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
 				}
 			}
 			item.sourceMediaObject = child;
@@ -642,51 +642,51 @@ static void SCIHandleFeedExpandLongPress(UIView *view, UILongPressGestureRecogni
 		}
 
 		if (items.count > 0) {
-			NSInteger index = SCIFeedCarouselPageIndexFromView(view);
+			NSInteger index = SPKFeedCarouselPageIndexFromView(view);
 			if (index < 0 || index >= (NSInteger)items.count) index = 0;
-			SCINotify(kSCIActionExpand, @"Expanded media", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
-			[SCIFullScreenMediaPlayer showMediaItems:items
+			SPKNotify(kSPKActionExpand, @"Expanded media", nil, @"expand", SPKNotificationToneForIconResource(@"expand"));
+			[SPKFullScreenMediaPlayer showMediaItems:items
 								startingAtIndex:index
 									   metadata:metadata
-								 playbackSource:SCIFullScreenPlaybackSourceFeed
+								 playbackSource:SPKFullScreenPlaybackSourceFeed
 									 sourceView:view
-									 controller:[SCIUtils viewControllerForAncestralView:view]
+									 controller:[SPKUtils viewControllerForAncestralView:view]
 								  pausePlayback:nil
 								 resumePlayback:nil];
 			return;
 		}
 	}
 
-	NSURL *videoURL = [SCIUtils getVideoUrlForMedia:(IGMedia *)media];
-	NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:(IGMedia *)media];
+	NSURL *videoURL = [SPKUtils getVideoUrlForMedia:(IGMedia *)media];
+	NSURL *photoURL = [SPKUtils getPhotoUrlForMedia:(IGMedia *)media];
 	if (!videoURL && !photoURL) return;
 
-	SCIMediaItem *item = [SCIMediaItem itemWithFileURL:(videoURL ?: photoURL)];
-	item.mediaType = videoURL ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
-	item.gallerySaveSource = SCIGallerySourceFeed;
+	SPKMediaItem *item = [SPKMediaItem itemWithFileURL:(videoURL ?: photoURL)];
+	item.mediaType = videoURL ? SPKMediaItemTypeVideo : SPKMediaItemTypeImage;
+	item.gallerySaveSource = SPKGallerySourceFeed;
 	item.galleryMetadata = metadata;
 	item.sourceMediaObject = media;
 	if (username.length > 0) item.title = username;
 
-	SCINotify(kSCIActionExpand, @"Expanded media", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
-	[SCIFullScreenMediaPlayer showMediaItems:@[item]
+	SPKNotify(kSPKActionExpand, @"Expanded media", nil, @"expand", SPKNotificationToneForIconResource(@"expand"));
+	[SPKFullScreenMediaPlayer showMediaItems:@[item]
 						startingAtIndex:0
 							   metadata:metadata
-						 playbackSource:SCIFullScreenPlaybackSourceFeed
+						 playbackSource:SPKFullScreenPlaybackSourceFeed
 							 sourceView:view
-							 controller:[SCIUtils viewControllerForAncestralView:view]
+							 controller:[SPKUtils viewControllerForAncestralView:view]
 							  pausePlayback:nil
 							  resumePlayback:nil];
 }
 
-static void SCIExpandFeedLongPressAction(id self, SEL _cmd, UILongPressGestureRecognizer *sender) {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+static void SPKExpandFeedLongPressAction(id self, SEL _cmd, UILongPressGestureRecognizer *sender) {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 
 static void (*orig_singleFeedMoreMenuLongPress)(id, SEL, UIGestureRecognizer *);
-static void SCIHookedSingleFeedMoreMenuLongPress(id self, SEL _cmd, UIGestureRecognizer *gestureRecognizer) {
+static void SPKHookedSingleFeedMoreMenuLongPress(id self, SEL _cmd, UIGestureRecognizer *gestureRecognizer) {
 	if (gestureRecognizer.state == UIGestureRecognizerStateBegan &&
-		SCIFeedShouldSuppressNativeLongPressFromHandler(self, gestureRecognizer)) {
+		SPKFeedShouldSuppressNativeLongPressFromHandler(self, gestureRecognizer)) {
 		return;
 	}
 	if (orig_singleFeedMoreMenuLongPress) {
@@ -694,7 +694,7 @@ static void SCIHookedSingleFeedMoreMenuLongPress(id self, SEL _cmd, UIGestureRec
 	}
 }
 
-static void SCIInstallNativeFeedLongPressSuppressionHooks(void) {
+static void SPKInstallNativeFeedLongPressSuppressionHooks(void) {
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
 		Class singleFeedHandler = objc_getClass("IGFeedLongPressOrchestrator.IGSingleFeedMoreMenuLongPressHandler");
@@ -702,7 +702,7 @@ static void SCIInstallNativeFeedLongPressSuppressionHooks(void) {
 		if (singleFeedHandler && class_getInstanceMethod(singleFeedHandler, handleLongPress)) {
 			MSHookMessageEx(singleFeedHandler,
 							handleLongPress,
-							(IMP)SCIHookedSingleFeedMoreMenuLongPress,
+							(IMP)SPKHookedSingleFeedMoreMenuLongPress,
 							(IMP *)&orig_singleFeedMoreMenuLongPress);
 		}
 	});
@@ -711,138 +711,138 @@ static void SCIInstallNativeFeedLongPressSuppressionHooks(void) {
 static void (*orig_swiftModernFeedVideo_didMove)(id, SEL);
 static void (*orig_swiftModernFeedVideo_layout)(id, SEL);
 
-static void SCIHookSwiftModernFeedVideoDidMove(id self, SEL _cmd) {
+static void SPKHookSwiftModernFeedVideoDidMove(id self, SEL _cmd) {
 	if (orig_swiftModernFeedVideo_didMove) orig_swiftModernFeedVideo_didMove(self, _cmd);
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-static void SCIHookSwiftModernFeedVideoLayout(id self, SEL _cmd) {
+static void SPKHookSwiftModernFeedVideoLayout(id self, SEL _cmd) {
 	if (orig_swiftModernFeedVideo_layout) orig_swiftModernFeedVideo_layout(self, _cmd);
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%group SCIFeedActionButtonHooks
+%group SPKFeedActionButtonHooks
 
 %hook IGFeedPhotoView
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%new - (void)sci_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGFeedItemVideoView
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%new - (void)sci_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGFeedItemMediaCell
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_mediaCell_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_mediaCell_handleExpandLongPress:));
 }
 
 - (void)layoutSubviews {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_mediaCell_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_mediaCell_handleExpandLongPress:));
 }
 
-%new - (void)sci_mediaCell_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_mediaCell_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGModernFeedVideoCell
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
 - (void)layoutSubviews {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%new - (void)sci_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGPageMediaView
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%new - (void)sci_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGFeedItemPagePhotoCell
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%new - (void)sci_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGFeedItemPageVideoCell
 - (void)didMoveToSuperview {
 	%orig;
-	SCIAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(sci_handleExpandLongPress:));
+	SPKAddFeedExpandLongPressIfNeeded((UIView *)self, @selector(spk_handleExpandLongPress:));
 }
 
-%new - (void)sci_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
-	SCIHandleFeedExpandLongPress((UIView *)self, sender);
+%new - (void)spk_handleExpandLongPress:(UILongPressGestureRecognizer *)sender {
+	SPKHandleFeedExpandLongPress((UIView *)self, sender);
 }
 %end
 
 %hook IGUFIButtonBarView
 - (void)layoutSubviews {
 	%orig;
-	SCIInstallFeedActionButton((UIView *)self);
+	SPKInstallFeedActionButton((UIView *)self);
 }
 %end
 
 %hook IGUFIInteractionCountsView
 - (void)layoutSubviews {
 	%orig;
-	SCIInstallFeedActionButton((UIView *)self);
+	SPKInstallFeedActionButton((UIView *)self);
 }
 %end
 
 %end
 
-extern "C" void SCIInstallFeedActionButtonHooksIfEnabled(void) {
-	if (![SCIUtils getBoolPref:@"feed_action_btn"] &&
-		![SCIUtils getBoolPref:@"feed_long_press_expand"]) {
+extern "C" void SPKInstallFeedActionButtonHooksIfEnabled(void) {
+	if (![SPKUtils getBoolPref:@"feed_action_btn"] &&
+		![SPKUtils getBoolPref:@"feed_long_press_expand"]) {
 		return;
 	}
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		%init(SCIFeedActionButtonHooks);
-		SCIInstallNativeFeedLongPressSuppressionHooks();
+		%init(SPKFeedActionButtonHooks);
+		SPKInstallNativeFeedLongPressSuppressionHooks();
 
 		Class modernObjCName = objc_getClass("IGModernFeedVideoCell");
 	Class modernSwiftRuntime = objc_getClass("IGModernFeedVideoCell.IGModernFeedVideoCell");
 	if (modernSwiftRuntime && modernSwiftRuntime != modernObjCName) {
-		class_addMethod(modernSwiftRuntime, @selector(sci_handleExpandLongPress:), (IMP)SCIExpandFeedLongPressAction, "v@:@");
-		MSHookMessageEx(modernSwiftRuntime, @selector(didMoveToSuperview), (IMP)SCIHookSwiftModernFeedVideoDidMove, (IMP *)&orig_swiftModernFeedVideo_didMove);
-		MSHookMessageEx(modernSwiftRuntime, @selector(layoutSubviews), (IMP)SCIHookSwiftModernFeedVideoLayout, (IMP *)&orig_swiftModernFeedVideo_layout);
+		class_addMethod(modernSwiftRuntime, @selector(spk_handleExpandLongPress:), (IMP)SPKExpandFeedLongPressAction, "v@:@");
+		MSHookMessageEx(modernSwiftRuntime, @selector(didMoveToSuperview), (IMP)SPKHookSwiftModernFeedVideoDidMove, (IMP *)&orig_swiftModernFeedVideo_didMove);
+		MSHookMessageEx(modernSwiftRuntime, @selector(layoutSubviews), (IMP)SPKHookSwiftModernFeedVideoLayout, (IMP *)&orig_swiftModernFeedVideo_layout);
 	}
 	});
 }

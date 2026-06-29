@@ -13,26 +13,26 @@
 // ---------------------------------------------------------------------------
 
 static id (*orig_feedAutoplayInit1)(id, SEL, BOOL);
-static id sci_feedAutoplayInit1(id self, SEL _cmd, BOOL shouldDisable) {
-    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
+static id spk_feedAutoplayInit1(id self, SEL _cmd, BOOL shouldDisable) {
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit1(self, _cmd, shouldDisable);
 }
 
 static id (*orig_feedAutoplayInit2)(id, SEL, BOOL, BOOL);
-static id sci_feedAutoplayInit2(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale) {
-    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
+static id spk_feedAutoplayInit2(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale) {
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit2(self, _cmd, shouldDisable, shouldClearStale);
 }
 
 static id (*orig_feedAutoplayInit3)(id, SEL, BOOL, BOOL, BOOL);
-static id sci_feedAutoplayInit3(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover) {
-    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
+static id spk_feedAutoplayInit3(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover) {
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit3(self, _cmd, shouldDisable, shouldClearStale, bypassForVoiceover);
 }
 
 static id (*orig_feedAutoplayInit5)(id, SEL, BOOL, BOOL, BOOL, BOOL, id);
-static id sci_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover, BOOL overrideThresholds, id launcherSet) {
-    if ([SCIUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
+static id spk_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover, BOOL overrideThresholds, id launcherSet) {
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
     return orig_feedAutoplayInit5(self, _cmd, shouldDisable, shouldClearStale, bypassForVoiceover, overrideThresholds, launcherSet);
 }
 
@@ -40,9 +40,9 @@ static id sci_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shou
 // this delegate callback, but the Swift implementation skips resume when the
 // cell sits inside a carousel. Force retryStartPlayback after orig.
 static void (*orig_feedVideoCellSingleTap)(id, SEL, id, id);
-static void sci_feedVideoCellSingleTap(id self, SEL _cmd, id overlay, id recognizer) {
+static void spk_feedVideoCellSingleTap(id self, SEL _cmd, id overlay, id recognizer) {
     if (orig_feedVideoCellSingleTap) orig_feedVideoCellSingleTap(self, _cmd, overlay, recognizer);
-    if (![SCIUtils getBoolPref:@"feed_disable_autoplay"]) return;
+    if (![SPKUtils getBoolPref:@"feed_disable_autoplay"]) return;
     UIView *superview = [(UIView *)self superview];
     if (!superview || !strstr(class_getName([superview class]), "Carousel")) return;
     SEL retrySelector = NSSelectorFromString(@"retryStartPlayback");
@@ -51,30 +51,30 @@ static void sci_feedVideoCellSingleTap(id self, SEL _cmd, id overlay, id recogni
     }
 }
 
-static void SCIHookFeedPlaybackStrategy(void) {
+static void SPKHookFeedPlaybackStrategy(void) {
     Class cls = objc_getClass("IGFeedPlayback.IGFeedPlaybackStrategy");
     if (!cls) cls = objc_getClass("_TtC14IGFeedPlayback22IGFeedPlaybackStrategy");
     if (!cls) return;
 
     SEL s1 = @selector(initWithShouldDisableAutoplay:);
     if (class_getInstanceMethod(cls, s1)) {
-        MSHookMessageEx(cls, s1, (IMP)sci_feedAutoplayInit1, (IMP *)&orig_feedAutoplayInit1);
+        MSHookMessageEx(cls, s1, (IMP)spk_feedAutoplayInit1, (IMP *)&orig_feedAutoplayInit1);
     }
     SEL s2 = @selector(initWithShouldDisableAutoplay:shouldClearStaleReservation:);
     if (class_getInstanceMethod(cls, s2)) {
-        MSHookMessageEx(cls, s2, (IMP)sci_feedAutoplayInit2, (IMP *)&orig_feedAutoplayInit2);
+        MSHookMessageEx(cls, s2, (IMP)spk_feedAutoplayInit2, (IMP *)&orig_feedAutoplayInit2);
     }
     SEL s3 = @selector(initWithShouldDisableAutoplay:shouldClearStaleReservation:shouldBypassDisabledAutoplayForVoiceover:);
     if (class_getInstanceMethod(cls, s3)) {
-        MSHookMessageEx(cls, s3, (IMP)sci_feedAutoplayInit3, (IMP *)&orig_feedAutoplayInit3);
+        MSHookMessageEx(cls, s3, (IMP)spk_feedAutoplayInit3, (IMP *)&orig_feedAutoplayInit3);
     }
     SEL s5 = @selector(initWithShouldDisableAutoplay:shouldClearStaleReservation:shouldBypassDisabledAutoplayForVoiceover:shouldOverrideDefaultThresholds:launcherSet:);
     if (class_getInstanceMethod(cls, s5)) {
-        MSHookMessageEx(cls, s5, (IMP)sci_feedAutoplayInit5, (IMP *)&orig_feedAutoplayInit5);
+        MSHookMessageEx(cls, s5, (IMP)spk_feedAutoplayInit5, (IMP *)&orig_feedAutoplayInit5);
     }
 }
 
-static void SCIHookFeedVideoCell(void) {
+static void SPKHookFeedVideoCell(void) {
     static BOOL hooked = NO;
     if (hooked) return;
     Class cls = objc_getClass("IGModernFeedVideoCell.IGModernFeedVideoCell");
@@ -82,7 +82,7 @@ static void SCIHookFeedVideoCell(void) {
     if (!cls) return;
     SEL selector = @selector(videoPlayerOverlayControllerDidSingleTap:gestureRecognizer:);
     if (class_getInstanceMethod(cls, selector)) {
-        MSHookMessageEx(cls, selector, (IMP)sci_feedVideoCellSingleTap, (IMP *)&orig_feedVideoCellSingleTap);
+        MSHookMessageEx(cls, selector, (IMP)spk_feedVideoCellSingleTap, (IMP *)&orig_feedVideoCellSingleTap);
         hooked = YES;
     }
 }
@@ -92,14 +92,14 @@ static void SCIHookFeedVideoCell(void) {
 // hook system (0.35s after didFinishLaunching) was also too late. %ctor
 // runs at dylib load, before any IG classes are instantiated.
 %ctor {
-    SCIHookFeedPlaybackStrategy();
-    SCIHookFeedVideoCell();
+    SPKHookFeedPlaybackStrategy();
+    SPKHookFeedVideoCell();
     // Swift cell class can load after dylib init; retry on main runloop.
-    dispatch_async(dispatch_get_main_queue(), ^{ SCIHookFeedVideoCell(); });
+    dispatch_async(dispatch_get_main_queue(), ^{ SPKHookFeedVideoCell(); });
 }
 
-// Kept for backward compat with SCIStartupHooks.m — now a no-op since
+// Kept for backward compat with SPKStartupHooks.m — now a no-op since
 // hooks are already installed by %ctor above.
-void SCIInstallDisableFeedAutoplayHooksIfEnabled(void) {
+void SPKInstallDisableFeedAutoplayHooksIfEnabled(void) {
     // Intentionally empty — hooks installed in %ctor.
 }

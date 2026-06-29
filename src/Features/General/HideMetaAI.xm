@@ -1,36 +1,36 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 
-static inline BOOL SCIHideMetaAIDirect(void) {
-    return [SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"];
+static inline BOOL SPKHideMetaAIDirect(void) {
+    return [SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"];
 }
 
-static inline BOOL SCIHideMetaAIExplore(void) {
-    return [SCIUtils getBoolPref:@"general_hide_meta_ai_explore"];
+static inline BOOL SPKHideMetaAIExplore(void) {
+    return [SPKUtils getBoolPref:@"general_hide_meta_ai_explore"];
 }
 
-static inline BOOL SCIHideMetaAIComments(void) {
-    return [SCIUtils getBoolPref:@"general_hide_meta_ai_comments"];
+static inline BOOL SPKHideMetaAIComments(void) {
+    return [SPKUtils getBoolPref:@"general_hide_meta_ai_comments"];
 }
 
-static inline BOOL SCIHideMetaAICreation(void) {
-    return [SCIUtils getBoolPref:@"general_hide_meta_ai_creation"];
+static inline BOOL SPKHideMetaAICreation(void) {
+    return [SPKUtils getBoolPref:@"general_hide_meta_ai_creation"];
 }
 
-static inline BOOL SCIHideMetaAIGlobal(void) {
-    return [SCIUtils getBoolPref:@"general_hide_meta_ai_global"];
+static inline BOOL SPKHideMetaAIGlobal(void) {
+    return [SPKUtils getBoolPref:@"general_hide_meta_ai_global"];
 }
 
-%group SCIHideMetaAIHooks
+%group SPKHideMetaAIHooks
 
 // Direct
 
 // Meta AI button functionality on direct search bar
 %hook IGDirectInboxViewController
 - (void)searchBarMetaAIButtonTappedOnSearchBar:(id)arg1 {
-    if (SCIHideMetaAIDirect())
+    if (SPKHideMetaAIDirect())
 {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: direct search bar functionality");
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: direct search bar functionality");
 
         return;
     }
@@ -42,9 +42,9 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
 // AI agents in direct new message view
 %hook IGDirectRecipientGenAIBotsResult
 - (id)initWithGenAIBots:(id)arg1 lastFetchedTimestamp:(id)arg2 {
-    if (SCIHideMetaAIDirect())
+    if (SPKHideMetaAIDirect())
 {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: direct recipient ai agents");
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: direct recipient ai agents");
 
         return nil;
     }
@@ -62,7 +62,7 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        if (SCIHideMetaAIDirect()) {
+        if (SPKHideMetaAIDirect()) {
 
             if ([obj isKindOfClass:%c(IGDirectCommandSystemViewModel)]) {
                 IGDirectCommandSystemViewModel *typedObj = (IGDirectCommandSystemViewModel *)obj;
@@ -74,14 +74,14 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
                     
                     // Meta AI
                     if ([[_commandResult_command title] isEqualToString:@"Meta AI"]) {
-                        SCILog(@"General", @"[SCInsta] Hiding meta ai: direct message composer suggestion");
+                        SPKLog(@"General", @"[Sparkle] Hiding meta ai: direct message composer suggestion");
 
                         shouldHide = YES;
                     }
 
                     // Meta AI (Imagine)
                     else if ([[_commandResult_command commandString] hasPrefix:@"/imagine"]) {
-                        SCILog(@"General", @"[SCInsta] Hiding meta ai: direct message composer /imagine suggestion");
+                        SPKLog(@"General", @"[Sparkle] Hiding meta ai: direct message composer /imagine suggestion");
 
                         shouldHide = YES;
                     }
@@ -110,14 +110,14 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
         userSession:(id)arg5
     loggingDelegate:(id)arg6
 {
-    if (SCIHideMetaAIDirect()) {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: suggested ai chats in direct inbox header");
+    if (SPKHideMetaAIDirect()) {
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: suggested ai chats in direct inbox header");
 
         @try {
             [config setValue:0 forKey:@"shouldShowAIChatsEntrypointButton"];
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+            SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
         }
     }
 
@@ -137,8 +137,8 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
      localSendSpeedLogger:(id)arg8
    sendAttributionFactory:(id)arg9 
 {
-    if (SCIHideMetaAIDirect()) {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: imagine tile in media picker");
+    if (SPKHideMetaAIDirect()) {
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: imagine tile in media picker");
 
         @try {
             IGDirectMediaPickerGalleryConfig *galleryConfig = [config valueForKey:@"galleryConfig"];
@@ -146,7 +146,7 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
             [galleryConfig setValue:0 forKey:@"isImagineEntryPointEnabled"];
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+            SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
         }
     }
 
@@ -195,16 +195,16 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
 }
 
 %new - (IGDirectComposerConfig *)patchConfig:(IGDirectComposerConfig *)config {
-    if (SCIHideMetaAIDirect()) {
+    if (SPKHideMetaAIDirect()) {
 
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: reconfiguring direct composer");
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: reconfiguring direct composer");
 
         // writeWithAIEnabled
         @try {
             [config setValue:0 forKey:@"writeWithAIEnabled"];
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+            SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
         }
 
     }
@@ -216,8 +216,8 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
 // Demangled name: IGAIRewrite.IGAIRewriteStoryRepliesPresenter
 %hook _TtC11IGAIRewrite32IGAIRewriteStoryRepliesPresenter
 - (BOOL)shouldShowAIRewriteButton:(id)arg1 input:(id)arg2 {
-    if (SCIHideMetaAIDirect()) {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: disable ai rewrite story reply presenter");
+    if (SPKHideMetaAIDirect()) {
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: disable ai rewrite story reply presenter");
 
         return NO;
     }
@@ -236,10 +236,10 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        if (SCIHideMetaAIDirect()) {
+        if (SPKHideMetaAIDirect()) {
 
             if ([obj isKindOfClass:%c(IGDirectUnifiedComposerAIStickerModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding meta ai: AI stickers option in sticker view");
+                SPKLog(@"General", @"[Sparkle] Hiding meta ai: AI stickers option in sticker view");
                 
                 shouldHide = YES;
             }
@@ -273,7 +273,7 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
     // 31: Restyle
     // 41: Make AI image
     NSArray *newOptions = options;
-    if (SCIHideMetaAIDirect()) {
+    if (SPKHideMetaAIDirect()) {
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"NOT (SELF IN %@)", @[ @(31), @(41) ]];
         newOptions = [options filteredArrayUsingPredicate:predicate];
     }
@@ -302,7 +302,7 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
                       entryPoint:(long long)arg15
                     canTapAuthor:(_Bool)arg16
 {
-    BOOL showAiRestyle = SCIHideMetaAIDirect() ? false : arg6;
+    BOOL showAiRestyle = SPKHideMetaAIDirect() ? false : arg6;
 
     return %orig(arg1, arg2, arg3, arg4, arg5, showAiRestyle, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16);
 }
@@ -317,13 +317,13 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        if (SCIHideMetaAIDirect()) {
+        if (SPKHideMetaAIDirect()) {
 
             if (
                 [obj isKindOfClass:%c(IGDirectThreadThemePickerOption)]
                 && [[obj valueForKey:@"themeId"] isEqualToString:@"direct_ai_theme_creation"]
             ) {
-                SCILog(@"General", @"[SCInsta] Hiding meta ai: AI generated DM channel themes");
+                SPKLog(@"General", @"[Sparkle] Hiding meta ai: AI generated DM channel themes");
                 
                 shouldHide = YES;
             }
@@ -343,7 +343,7 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
 // "Click to summarize" pill under DM navigation bar
 %hook IGDirectThreadViewMetaAISummaryFeatureController
 - (id)initWithUserSession:(id)arg1 mutableStateProvider:(id)arg2 threadViewControllerFeatureDelegate:(id)arg3 presentingViewController:(id)arg4 {
-    if (SCIHideMetaAIDirect()) {
+    if (SPKHideMetaAIDirect()) {
         return nil;
     }
 
@@ -367,8 +367,8 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
         // Meta AI summary
         if ([obj isKindOfClass:%c(IGSearchMetaAIHCMModel)]) {
             
-            if (SCIHideMetaAIExplore()) {
-                SCILog(@"General", @"[SCInsta] Hiding explore meta ai search summary");
+            if (SPKHideMetaAIExplore()) {
+                SPKLog(@"General", @"[Sparkle] Hiding explore meta ai search summary");
 
                 shouldHide = YES;
             }
@@ -391,7 +391,7 @@ static inline BOOL SCIHideMetaAIGlobal(void) {
 - (void)didMoveToWindow {
     %orig;
 
-    if (SCIHideMetaAIExplore()) {
+    if (SPKHideMetaAIExplore()) {
         [self removeFromSuperview];
     }
 }
@@ -412,7 +412,7 @@ sponsoredSupportConfiguration:(id)supportConfig
      presentingViewController:(id)vc
    childCommentThreadDelegate:(id)threadDelegate 
 {
-    if (SCIHideMetaAIComments()) {
+    if (SPKHideMetaAIComments()) {
         [threadConfig setValue:@(YES) forKey:@"disableMetaAICarousel"];
     }
     return %orig(session, threadConfig, supportConfig, context, text, loggingDelegate, vc, threadDelegate);
@@ -422,8 +422,8 @@ sponsoredSupportConfiguration:(id)supportConfig
 // Suggested AI searches in comment section (workaround if setting comment thread config fails)
 %hook IGCommentThreadAICarousel
 - (id)initWithLauncherSet:(id)arg1 hasSearchPrefix:(BOOL)arg2 {
-    if (SCIHideMetaAIComments()) {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: suggested ai searches comment carousel");
+    if (SPKHideMetaAIComments()) {
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: suggested ai searches comment carousel");
 
         return nil;
     }
@@ -434,8 +434,8 @@ sponsoredSupportConfiguration:(id)supportConfig
 
 %hook _TtC34IGCommentThreadAICarouselPillSwift30IGCommentThreadAICarouselSwift
 - (id)initWithLauncherSet:(id)arg1 hasSearchPrefix:(BOOL)arg2 {
-    if (SCIHideMetaAIComments()) {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: suggested ai searches comment carousel");
+    if (SPKHideMetaAIComments()) {
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: suggested ai searches comment carousel");
 
         return nil;
     }
@@ -454,8 +454,8 @@ sponsoredSupportConfiguration:(id)supportConfig
 - (void)setTools:(id)tools {
     NSArray *newTools = [tools copy];
 
-    if (SCIHideMetaAICreation()) {
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: ai images add to story suggestion");
+    if (SPKHideMetaAICreation()) {
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: ai images add to story suggestion");
 
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"NOT (SELF IN %@)", @[ @(9), @(10), @(11) ]];
         newTools = [tools filteredArrayUsingPredicate:predicate];
@@ -470,7 +470,7 @@ sponsoredSupportConfiguration:(id)supportConfig
 // AI generated fonts in text entry
 %hook IGCreationTextToolView
 - (id)initWithMenuConfiguration:(unsigned long long)configuration userSession:(id)session creationEntryPoint:(long long)point isAIFontsEnabled:(_Bool)enabled genAINuxManager:(id)manager showFontBadge:(_Bool)badge {
-    return %orig(configuration, session, point, SCIHideMetaAICreation() ? false : enabled, manager, badge);
+    return %orig(configuration, session, point, SPKHideMetaAICreation() ? false : enabled, manager, badge);
 }
 %end
 
@@ -483,8 +483,8 @@ sponsoredSupportConfiguration:(id)supportConfig
            isEnabledForFeedCaption:(_Bool)arg5
                   isFeedEntryPoint:(_Bool)arg6
 {
-    _Bool isTextRewriteEnabled = SCIHideMetaAICreation() ? false : arg1;
-    _Bool isImageRewriteEnabled = SCIHideMetaAICreation() ? false : arg2;
+    _Bool isTextRewriteEnabled = SPKHideMetaAICreation() ? false : arg1;
+    _Bool isImageRewriteEnabled = SPKHideMetaAICreation() ? false : arg2;
 
     return %orig(isTextRewriteEnabled, isImageRewriteEnabled, arg3, arg4, arg5, arg6);
 }
@@ -495,7 +495,7 @@ sponsoredSupportConfiguration:(id)supportConfig
 - (void)setButtons:(id)buttons maxItems:(NSInteger)max {
     NSArray *filteredObjs = buttons;
 
-    if (SCIHideMetaAICreation()) {
+    if (SPKHideMetaAICreation()) {
         filteredObjs = [filteredObjs filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(IGCreationActionBarLabeledButton *obj, NSDictionary *bindings) {
 
@@ -533,9 +533,9 @@ sponsoredSupportConfiguration:(id)supportConfig
 }
 
 %new - (IGSearchBarConfig *)sanitizePlaceholderForConfig:(IGSearchBarConfig *)config {
-    if (SCIHideMetaAIGlobal()) {
+    if (SPKHideMetaAIGlobal()) {
 
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: reconfiguring search bar");
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: reconfiguring search bar");
 
         NSString *placeholder = [config valueForKey:@"placeholder"];
 
@@ -546,7 +546,7 @@ sponsoredSupportConfiguration:(id)supportConfig
                 [config setValue:@"Search" forKey:@"placeholder"];
             }
             @catch (NSException *exception) {
-                SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+                SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
             }
 
             // shouldAnimatePlaceholder
@@ -554,17 +554,17 @@ sponsoredSupportConfiguration:(id)supportConfig
                 [config setValue:0 forKey:@"shouldAnimatePlaceholder"];
             }
             @catch (NSException *exception) {
-                SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+                SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
             }
 
-            SCILog(@"General", @"[SCInsta] Changed search bar placeholder from: \"%@\" to \"%@\"", placeholder, [config valueForKey:@"placeholder"]);
+            SPKLog(@"General", @"[Sparkle] Changed search bar placeholder from: \"%@\" to \"%@\"", placeholder, [config valueForKey:@"placeholder"]);
 
             // leftIconStyle
             @try {
                 [config setValue:0 forKey:@"leftIconStyle"];
             }
             @catch (NSException *exception) {
-                SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+                SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
             }
 
             // rightButtonStyle
@@ -572,7 +572,7 @@ sponsoredSupportConfiguration:(id)supportConfig
                 [config setValue:0 forKey:@"rightButtonStyle"];
             }
             @catch (NSException *exception) {
-                SCILog(@"General", @"[SCInsta] WARNING: %@\n\nFull object: %@", exception.reason, config);
+                SPKLog(@"General", @"[Sparkle] WARNING: %@\n\nFull object: %@", exception.reason, config);
             }
 
         }
@@ -590,7 +590,7 @@ sponsoredSupportConfiguration:(id)supportConfig
 - (void)setViewModel:(id)viewModel {
     %orig;
 
-    if (SCIHideMetaAIDirect() || SCIHideMetaAIGlobal()) {
+    if (SPKHideMetaAIDirect() || SPKHideMetaAIGlobal()) {
         @try {
             UIButton *iconButton = MSHookIvar<UIButton *>(self, "_iconButton");
             if (iconButton != nil) {
@@ -601,14 +601,14 @@ sponsoredSupportConfiguration:(id)supportConfig
                     [identifier containsString:@"restyle"] ||
                     [identifier containsString:@"meta_ai"]) {
                     
-                    SCILog(@"General", @"[SCInsta] Hiding IGDirectMessageCellShortcutView in setViewModel: (label: %@, id: %@)", label, identifier);
+                    SPKLog(@"General", @"[Sparkle] Hiding IGDirectMessageCellShortcutView in setViewModel: (label: %@, id: %@)", label, identifier);
                     self.hidden = YES;
                     [self removeFromSuperview];
                 }
             }
         }
         @catch (NSException *exception) {
-            SCILog(@"General", @"[SCInsta] WARNING: Exception in setViewModel: %@", exception.reason);
+            SPKLog(@"General", @"[Sparkle] WARNING: Exception in setViewModel: %@", exception.reason);
         }
     }
 }
@@ -616,7 +616,7 @@ sponsoredSupportConfiguration:(id)supportConfig
 - (void)layoutSubviews {
     %orig;
 
-    if (SCIHideMetaAIDirect() || SCIHideMetaAIGlobal()) {
+    if (SPKHideMetaAIDirect() || SPKHideMetaAIGlobal()) {
         @try {
             UIButton *iconButton = MSHookIvar<UIButton *>(self, "_iconButton");
             if (iconButton != nil) {
@@ -642,7 +642,7 @@ sponsoredSupportConfiguration:(id)supportConfig
 - (void)didMoveToWindow {
     %orig;
 
-    if (SCIHideMetaAIDirect() || SCIHideMetaAICreation() || SCIHideMetaAIGlobal()) {
+    if (SPKHideMetaAIDirect() || SPKHideMetaAICreation() || SPKHideMetaAIGlobal()) {
         NSString *accessibilityID = self.accessibilityIdentifier;
         if ([accessibilityID containsString:@"meta_ai"] ||
             [accessibilityID containsString:@"restyle"] ||
@@ -650,7 +650,7 @@ sponsoredSupportConfiguration:(id)supportConfig
             [accessibilityID containsString:@"ai_restyle"] ||
             [accessibilityID containsString:@"imagine"]) {
             
-            SCILog(@"General", @"[SCInsta] Hiding UIButton: %@", accessibilityID);
+            SPKLog(@"General", @"[Sparkle] Hiding UIButton: %@", accessibilityID);
             self.hidden = YES;
             [self removeFromSuperview];
         }
@@ -660,14 +660,14 @@ sponsoredSupportConfiguration:(id)supportConfig
 - (void)setAccessibilityIdentifier:(NSString *)accessibilityIdentifier {
     %orig;
 
-    if (SCIHideMetaAIDirect() || SCIHideMetaAICreation() || SCIHideMetaAIGlobal()) {
+    if (SPKHideMetaAIDirect() || SPKHideMetaAICreation() || SPKHideMetaAIGlobal()) {
         if ([accessibilityIdentifier containsString:@"meta_ai"] ||
             [accessibilityIdentifier containsString:@"restyle"] ||
             [accessibilityIdentifier containsString:@"magic_mod"] ||
             [accessibilityIdentifier containsString:@"ai_restyle"] ||
             [accessibilityIdentifier containsString:@"imagine"]) {
             
-            SCILog(@"General", @"[SCInsta] Hiding UIButton via setAccessibilityIdentifier: %@", accessibilityIdentifier);
+            SPKLog(@"General", @"[Sparkle] Hiding UIButton via setAccessibilityIdentifier: %@", accessibilityIdentifier);
             self.hidden = YES;
             [self removeFromSuperview];
         }
@@ -679,9 +679,9 @@ sponsoredSupportConfiguration:(id)supportConfig
 %hook IGFloatingActionButton.IGFloatingActionButton
 - (void)didMoveToSuperview {
     %orig;
-    if (SCIHideMetaAIGlobal()) {
+    if (SPKHideMetaAIGlobal()) {
         [self removeFromSuperview];
-        SCILog(@"General", @"[SCInsta] Hiding meta ai: home feed meta ai button");
+        SPKLog(@"General", @"[Sparkle] Hiding meta ai: home feed meta ai button");
     }
 }
 %end
@@ -695,12 +695,12 @@ sponsoredSupportConfiguration:(id)supportConfig
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        if (SCIHideMetaAIDirect()) {
+        if (SPKHideMetaAIDirect()) {
             if ([obj isKindOfClass:%c(IGDirectRecipientCellViewModel)]) {
 
                 // Meta AI (catch-all)
                 if ([[[obj recipient] threadName] isEqualToString:@"Meta AI"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding meta ai suggested as recipient (share menu)");
+                    SPKLog(@"General", @"[Sparkle] Hiding meta ai suggested as recipient (share menu)");
 
                     shouldHide = YES;
                 }
@@ -721,17 +721,17 @@ sponsoredSupportConfiguration:(id)supportConfig
 
 %end
 
-extern "C" void SCIInstallHideMetaAIHooksIfEnabled(void) {
-    if (!SCIHideMetaAIDirect() &&
-        !SCIHideMetaAIExplore() &&
-        !SCIHideMetaAIComments() &&
-        !SCIHideMetaAICreation() &&
-        !SCIHideMetaAIGlobal()) {
+extern "C" void SPKInstallHideMetaAIHooksIfEnabled(void) {
+    if (!SPKHideMetaAIDirect() &&
+        !SPKHideMetaAIExplore() &&
+        !SPKHideMetaAIComments() &&
+        !SPKHideMetaAICreation() &&
+        !SPKHideMetaAIGlobal()) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideMetaAIHooks);
+        %init(SPKHideMetaAIHooks);
     });
 }

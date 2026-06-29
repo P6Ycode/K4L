@@ -1,13 +1,13 @@
 #import "../../Utils.h"
 
-%group SCIStickerInteractConfirmHooks
+%group SPKStickerInteractConfirmHooks
 
 %hook IGStoryViewerTapTarget
 - (void)_didTap:(id)arg1 forEvent:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"stories_confirm_sticker"]) {
-        SCILog(@"General", @"[SCInsta] Confirm sticker interact triggered");
+    if ([SPKUtils getBoolPref:@"stories_confirm_sticker"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm sticker interact triggered");
 
-        [SCIUtils showConfirmation:^(void) { %orig; }
+        [SPKUtils showConfirmation:^(void) { %orig; }
                                  title:@"Confirm Sticker Interaction"
                                message:@"Are you sure you want to interact with this story sticker?"];
     } else {
@@ -18,11 +18,11 @@
 
 %end
 
-void SCIInstallStickerInteractConfirmHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"stories_confirm_sticker"]) return;
+void SPKInstallStickerInteractConfirmHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"stories_confirm_sticker"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIStickerInteractConfirmHooks);
+        %init(SPKStickerInteractConfirmHooks);
     });
 }

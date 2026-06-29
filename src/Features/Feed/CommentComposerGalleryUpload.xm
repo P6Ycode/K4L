@@ -3,36 +3,36 @@
 
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
-#import "../../Shared/Gallery/SCIGalleryPickerViewController.h"
-#import "../../Shared/Gallery/SCIGalleryFile.h"
-#import "../../Shared/UI/SCINotificationCenter.h"
+#import "../../Shared/Gallery/SPKGalleryPickerViewController.h"
+#import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/UI/SPKNotificationCenter.h"
 
 // Long-press the comment composer's photo entry button to attach an image from the
-// in-app SCInsta Gallery (Vault). A normal tap still opens Instagram's own photo
+// in-app Sparkle Gallery (Vault). A normal tap still opens Instagram's own photo
 // gallery; the long-press routes through our gallery picker sheet instead and feeds
 // the chosen image into the composer via the same entry point IG uses internally
 // (-setupImageBeforeCommentComposingBeginWithSelectedPhoto:, which takes a UIImage).
 
-static NSString * const kSCICommentGalleryUploadPref = @"general_comments_gallery_upload";
-static const void *kSCICommentGalleryGestureKey = &kSCICommentGalleryGestureKey;
+static NSString * const kSPKCommentGalleryUploadPref = @"general_comments_gallery_upload";
+static const void *kSPKCommentGalleryGestureKey = &kSPKCommentGalleryGestureKey;
 
-static inline BOOL SCICommentGalleryUploadEnabled(void) {
-    return [SCIUtils getBoolPref:kSCICommentGalleryUploadPref];
+static inline BOOL SPKCommentGalleryUploadEnabled(void) {
+    return [SPKUtils getBoolPref:kSPKCommentGalleryUploadPref];
 }
 
 // _lazyPhotoEntryButton / _lazyPhotoCommentButton are IGLazyView wrappers (NOT UIViews).
 // The real button view is created lazily and retrieved via -viewIfLoaded.
-static UIView *SCICommentComposerLoadedView(id lazyView) {
+static UIView *SPKCommentComposerLoadedView(id lazyView) {
     if (![lazyView respondsToSelector:@selector(viewIfLoaded)]) return nil;
     id view = ((id (*)(id, SEL))objc_msgSend)(lazyView, @selector(viewIfLoaded));
     return [view isKindOfClass:[UIView class]] ? (UIView *)view : nil;
 }
 
-static UIView *SCICommentComposerPhotoEntryButton(UIView *composerView) {
+static UIView *SPKCommentComposerPhotoEntryButton(UIView *composerView) {
     for (NSString *ivar in @[@"_lazyPhotoEntryButton", @"_lazyPhotoCommentButton"]) {
-        id lazyView = [SCIUtils getIvarForObj:composerView name:ivar.UTF8String];
+        id lazyView = [SPKUtils getIvarForObj:composerView name:ivar.UTF8String];
         if (!lazyView) continue;
-        UIView *button = SCICommentComposerLoadedView(lazyView);
+        UIView *button = SPKCommentComposerLoadedView(lazyView);
         if (button && button.window) {
             return button;
         }
@@ -42,7 +42,7 @@ static UIView *SCICommentComposerPhotoEntryButton(UIView *composerView) {
 
 // The composer view's delegate is the IGCommentComposerController, which exposes the
 // public attach entry point used here. Walk up from the button to find the composer.
-static UIView *SCICommentComposerViewForView(UIView *view) {
+static UIView *SPKCommentComposerViewForView(UIView *view) {
     UIView *candidate = view;
     while (candidate && ![candidate isKindOfClass:NSClassFromString(@"IGCommentComposerView")]) {
         candidate = candidate.superview;
@@ -50,7 +50,7 @@ static UIView *SCICommentComposerViewForView(UIView *view) {
     return candidate;
 }
 
-static void SCICommentComposerAttachImage(UIView *composerView, UIImage *image) {
+static void SPKCommentComposerAttachImage(UIView *composerView, UIImage *image) {
     if (!composerView || !image) return;
     id controller = nil;
     if ([composerView respondsToSelector:@selector(delegate)]) {
@@ -58,22 +58,22 @@ static void SCICommentComposerAttachImage(UIView *composerView, UIImage *image) 
     }
     SEL setup = @selector(setupImageBeforeCommentComposingBeginWithSelectedPhoto:);
     if (![controller respondsToSelector:setup]) {
-        SCINotify(kSCINotificationDownloadGallery, @"Couldn't attach photo", nil, @"error", SCINotificationToneError);
+        SPKNotify(kSPKNotificationDownloadGallery, @"Couldn't attach photo", nil, @"error", SPKNotificationToneError);
         return;
     }
     @try {
         ((void (*)(id, SEL, id))objc_msgSend)(controller, setup, image);
     } @catch (NSException *exception) {
-        SCILog(@"Comments", @"[SCInsta] attach photo threw: %@", exception);
+        SPKLog(@"Comments", @"[Sparkle] attach photo threw: %@", exception);
     }
 }
 
-static void SCICommentComposerPresentGalleryPicker(UIView *composerView) {
+static void SPKCommentComposerPresentGalleryPicker(UIView *composerView) {
     if (!composerView) return;
 
-    NSSet<NSNumber *> *imageTypes = [NSSet setWithObject:@(SCIGalleryMediaTypeImage)];
-    if (![SCIGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:imageTypes]) {
-        SCINotify(kSCINotificationDownloadGallery, @"No photos in Gallery", nil, @"media", SCINotificationToneError);
+    NSSet<NSNumber *> *imageTypes = [NSSet setWithObject:@(SPKGalleryMediaTypeImage)];
+    if (![SPKGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:imageTypes]) {
+        SPKNotify(kSPKNotificationDownloadGallery, @"No photos in Gallery", nil, @"media", SPKNotificationToneError);
         return;
     }
 
@@ -81,69 +81,69 @@ static void SCICommentComposerPresentGalleryPicker(UIView *composerView) {
     [feedback impactOccurred];
 
     __weak UIView *weakComposer = composerView;
-    [SCIGalleryPickerViewController presentFromViewController:topMostController()
+    [SPKGalleryPickerViewController presentFromViewController:topMostController()
                                                        title:@"Choose Photo"
                                            allowedMediaTypes:imageTypes
                                      allowsMultipleSelection:NO
-                                                  completion:^(NSArray<SCIGalleryFile *> *selectedFiles) {
-        SCIGalleryFile *file = selectedFiles.firstObject;
+                                                  completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
+        SPKGalleryFile *file = selectedFiles.firstObject;
         UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
-        if (image) SCICommentComposerAttachImage(weakComposer, image);
+        if (image) SPKCommentComposerAttachImage(weakComposer, image);
     }];
 }
 
-@interface SCICommentGalleryUploadTarget : NSObject
+@interface SPKCommentGalleryUploadTarget : NSObject
 + (instancetype)shared;
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture;
 @end
 
-@implementation SCICommentGalleryUploadTarget
+@implementation SPKCommentGalleryUploadTarget
 + (instancetype)shared {
-    static SCICommentGalleryUploadTarget *target;
+    static SPKCommentGalleryUploadTarget *target;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        target = [[SCICommentGalleryUploadTarget alloc] init];
+        target = [[SPKCommentGalleryUploadTarget alloc] init];
     });
     return target;
 }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateBegan) return;
-    if (!SCICommentGalleryUploadEnabled()) return;
-    SCICommentComposerPresentGalleryPicker(SCICommentComposerViewForView(gesture.view));
+    if (!SPKCommentGalleryUploadEnabled()) return;
+    SPKCommentComposerPresentGalleryPicker(SPKCommentComposerViewForView(gesture.view));
 }
 @end
 
-static void SCICommentComposerInstallLongPress(UIView *composerView) {
-    if (!SCICommentGalleryUploadEnabled()) return;
+static void SPKCommentComposerInstallLongPress(UIView *composerView) {
+    if (!SPKCommentGalleryUploadEnabled()) return;
 
-    UIView *photoButton = SCICommentComposerPhotoEntryButton(composerView);
+    UIView *photoButton = SPKCommentComposerPhotoEntryButton(composerView);
     if (!photoButton) return;
-    if (objc_getAssociatedObject(photoButton, kSCICommentGalleryGestureKey)) return;
+    if (objc_getAssociatedObject(photoButton, kSPKCommentGalleryGestureKey)) return;
 
     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc]
-        initWithTarget:[SCICommentGalleryUploadTarget shared]
+        initWithTarget:[SPKCommentGalleryUploadTarget shared]
                 action:@selector(handleLongPress:)];
     [photoButton addGestureRecognizer:longPress];
-    objc_setAssociatedObject(photoButton, kSCICommentGalleryGestureKey, longPress, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(photoButton, kSPKCommentGalleryGestureKey, longPress, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-%group SCICommentComposerGalleryUploadHooks
+%group SPKCommentComposerGalleryUploadHooks
 
 %hook IGCommentComposerView
 
 - (void)layoutSubviews {
     %orig;
-    SCICommentComposerInstallLongPress((UIView *)self);
+    SPKCommentComposerInstallLongPress((UIView *)self);
 }
 
 %end
 
 %end
 
-extern "C" void SCIInstallCommentComposerGalleryUploadHooksIfEnabled(void) {
+extern "C" void SPKInstallCommentComposerGalleryUploadHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCICommentComposerGalleryUploadHooks);
+        %init(SPKCommentComposerGalleryUploadHooks);
     });
 }

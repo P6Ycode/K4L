@@ -4,28 +4,28 @@
 #import "InstagramHeaders.h"
 #import "Tweak.h"
 #import "Utils.h"
-#import "App/SCIFlexLoader.h"
+#import "App/SPKFlexLoader.h"
 #import "Shared/ActionButton/ActionButtonCore.h"
 
 ///////////////////////////////////////////////////////////
 
 // Screenshot handlers
 
-#define VOID_HANDLESCREENSHOT(orig) [SCIUtils getBoolPref:@"msgs_disable_screenshot_detection"] ? nil : orig;
+#define VOID_HANDLESCREENSHOT(orig) [SPKUtils getBoolPref:@"msgs_disable_screenshot_detection"] ? nil : orig;
 #define NONVOID_HANDLESCREENSHOT(orig) return VOID_HANDLESCREENSHOT(orig)
 
 ///////////////////////////////////////////////////////////
 
 // * Tweak version *
-NSString *SCIVersionString = @"v1.2.0-dev";
+NSString *SPKVersionString = @"v1.0.0";
 
 // Variables that work across features
-__weak id SCIPendingDirectVisualMessageToMarkSeen = nil;
-NSString *SCIForcedStorySeenMediaPK = nil;
-BOOL SCIForceMarkStoryAsSeen = NO;
-BOOL SCIForceStoryAutoAdvance = NO;
+__weak id SPKPendingDirectVisualMessageToMarkSeen = nil;
+NSString *SPKForcedStorySeenMediaPK = nil;
+BOOL SPKForceMarkStoryAsSeen = NO;
+BOOL SPKForceStoryAutoAdvance = NO;
 
-static NSString *SCIIdentifierStringFromValue(id value) {
+static NSString *SPKIdentifierStringFromValue(id value) {
     if (!value || value == (id)kCFNull) return nil;
     if ([value isKindOfClass:[NSString class]]) {
         NSString *string = (NSString *)value;
@@ -38,7 +38,7 @@ static NSString *SCIIdentifierStringFromValue(id value) {
     return nil;
 }
 
-static id SCIValueForSelectorOrKey(id object, NSString *name) {
+static id SPKValueForSelectorOrKey(id object, NSString *name) {
     if (!object || name.length == 0) return nil;
 
     SEL selector = NSSelectorFromString(name);
@@ -53,13 +53,13 @@ static id SCIValueForSelectorOrKey(id object, NSString *name) {
     }
 }
 
-static BOOL SCIObjectIsKindOfClassNamed(id object, NSString *className) {
+static BOOL SPKObjectIsKindOfClassNamed(id object, NSString *className) {
     if (!object || className.length == 0) return NO;
     Class cls = NSClassFromString(className);
     return cls && [object isKindOfClass:cls];
 }
 
-static NSArray *SCIFilterDirectInboxObjects(NSArray *originalObjs) {
+static NSArray *SPKFilterDirectInboxObjects(NSArray *originalObjs) {
     if (![originalObjs isKindOfClass:[NSArray class]]) return originalObjs;
 
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
@@ -68,47 +68,47 @@ static NSArray *SCIFilterDirectInboxObjects(NSArray *originalObjs) {
         BOOL shouldHide = NO;
 
         // Section header
-        if (SCIObjectIsKindOfClassNamed(obj, @"IGDirectInboxHeaderCellViewModel")) {
-            NSString *title = SCIValueForSelectorOrKey(obj, @"title");
+        if (SPKObjectIsKindOfClassNamed(obj, @"IGDirectInboxHeaderCellViewModel")) {
+            NSString *title = SPKValueForSelectorOrKey(obj, @"title");
 
             // "Suggestions" header
             if ([title isEqualToString:@"Suggestions"]) {
-                if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested chats (header: messages tab)");
+                if ([SPKUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                    SPKLog(@"General", @"[Sparkle] Hiding suggested chats (header: messages tab)");
                     shouldHide = YES;
                 }
             }
 
             // "Accounts to follow/message" header
             else if ([title hasPrefix:@"Accounts to"]) {
-                if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested users: (header: inbox view)");
+                if ([SPKUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                    SPKLog(@"General", @"[Sparkle] Hiding suggested users: (header: inbox view)");
                     shouldHide = YES;
                 }
             }
         }
 
         // Suggested recipients
-        else if (SCIObjectIsKindOfClassNamed(obj, @"IGDirectInboxSuggestedThreadCellViewModel")) {
-            if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested chats (recipients: channels tab)");
+        else if (SPKObjectIsKindOfClassNamed(obj, @"IGDirectInboxSuggestedThreadCellViewModel")) {
+            if ([SPKUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                SPKLog(@"General", @"[Sparkle] Hiding suggested chats (recipients: channels tab)");
                 shouldHide = YES;
             }
         }
 
         // "Accounts to follow" recipients
-        else if (SCIObjectIsKindOfClassNamed(obj, @"IGDiscoverPeopleItemConfiguration") ||
-                 SCIObjectIsKindOfClassNamed(obj, @"IGDiscoverPeopleConnectionItemConfiguration")) {
-            if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested chats: (recipients: inbox view)");
+        else if (SPKObjectIsKindOfClassNamed(obj, @"IGDiscoverPeopleItemConfiguration") ||
+                 SPKObjectIsKindOfClassNamed(obj, @"IGDiscoverPeopleConnectionItemConfiguration")) {
+            if ([SPKUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+                SPKLog(@"General", @"[Sparkle] Hiding suggested chats: (recipients: inbox view)");
                 shouldHide = YES;
             }
         }
 
         // Hide notes tray
-        else if (SCIObjectIsKindOfClassNamed(obj, @"IGDirectNotesTrayRowViewModel")) {
-            if ([SCIUtils getBoolPref:@"msgs_hide_notes_tray"]) {
-                SCILog(@"General", @"[SCInsta] Hiding notes tray");
+        else if (SPKObjectIsKindOfClassNamed(obj, @"IGDirectNotesTrayRowViewModel")) {
+            if ([SPKUtils getBoolPref:@"msgs_hide_notes_tray"]) {
+                SPKLog(@"General", @"[Sparkle] Hiding notes tray");
                 shouldHide = YES;
             }
         }
@@ -121,18 +121,18 @@ static NSArray *SCIFilterDirectInboxObjects(NSArray *originalObjs) {
     return [filteredObjs copy];
 }
 
-static NSString *SCIStoryMediaIdentifierFromObject(id object, NSInteger depth) {
+static NSString *SPKStoryMediaIdentifierFromObject(id object, NSInteger depth) {
     if (!object || depth > 3) return nil;
 
     for (NSString *name in @[@"pk", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"id", @"itemID", @"itemId"]) {
-        NSString *identifier = SCIIdentifierStringFromValue(SCIValueForSelectorOrKey(object, name));
+        NSString *identifier = SPKIdentifierStringFromValue(SPKValueForSelectorOrKey(object, name));
         if (identifier.length > 0) return identifier;
     }
 
     for (NSString *name in @[@"media", @"mediaItem", @"storyItem", @"item", @"model"]) {
-        id nested = SCIValueForSelectorOrKey(object, name);
+        id nested = SPKValueForSelectorOrKey(object, name);
         if (nested && nested != object) {
-            NSString *identifier = SCIStoryMediaIdentifierFromObject(nested, depth + 1);
+            NSString *identifier = SPKStoryMediaIdentifierFromObject(nested, depth + 1);
             if (identifier.length > 0) return identifier;
         }
     }
@@ -140,15 +140,15 @@ static NSString *SCIStoryMediaIdentifierFromObject(id object, NSInteger depth) {
     return nil;
 }
 
-NSString *SCIStoryMediaIdentifier(id media) {
-    return SCIStoryMediaIdentifierFromObject(media, 0);
+NSString *SPKStoryMediaIdentifier(id media) {
+    return SPKStoryMediaIdentifierFromObject(media, 0);
 }
 
-static void SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSource source) {
-    NSDictionary<NSString *, NSString *> *feedback = SCIConsumePendingRepostFeedback(source);
+static void SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSource source) {
+    NSDictionary<NSString *, NSString *> *feedback = SPKConsumePendingRepostFeedback(source);
     if (!feedback) return;
     NSString *iconResource = feedback[@"iconResource"] ?: @"ig_icon_reshare_outline_24";
-    SCINotify(kSCINotificationRepost, feedback[@"title"] ?: @"Tapped repost button", nil, iconResource, SCINotificationToneForIconResource(iconResource));
+    SPKNotify(kSPKNotificationRepost, feedback[@"title"] ?: @"Tapped repost button", nil, iconResource, SPKNotificationToneForIconResource(iconResource));
 }
 
 @interface _UISheetDetent : NSObject
@@ -164,30 +164,30 @@ static void SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSource source) {
 @property (nonatomic, assign, setter=_setIndexOfLastUndimmedDetent:) NSInteger _indexOfLastUndimmedDetent;
 @end
 
-static const void *kSCIFlexThreeFingerGestureKey = &kSCIFlexThreeFingerGestureKey;
+static const void *kSPKFlexThreeFingerGestureKey = &kSPKFlexThreeFingerGestureKey;
 
 // MARK: Liquid glass
 
-%group SCITweakLaunchCriticalHooks
+%group SPKTweakLaunchCriticalHooks
 
 %hook IGDSLauncherConfig
 - (_Bool)isLiquidGlassInAppNotificationEnabled {
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
+    return [SPKUtils spk_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
 - (_Bool)isLiquidGlassContextMenuEnabled{
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
+    return [SPKUtils spk_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
 - (_Bool)isLiquidGlassToastEnabled {
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
+    return [SPKUtils spk_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
 - (_Bool)isLiquidGlassToastPeekEnabled {
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
+    return [SPKUtils spk_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
 - (_Bool)isLiquidGlassAlertDialogEnabled {
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
+    return [SPKUtils spk_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
 - (_Bool)isLiquidGlassIconBarButtonEnabled {
-    return [SCIUtils sci_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
+    return [SPKUtils spk_liquidGlassLauncherPrefKey:@"interface_liquid_glass" orig:%orig];
 }
 %end
 
@@ -216,7 +216,7 @@ shouldPersistLastBugReportId:(id)arg6
 
 // MARK: Screenshots
 
-%group SCITweakPrivacyHooks
+%group SPKTweakPrivacyHooks
 
 // Disable anti-screenshot feature on visual messages
 %hook IGStoryViewerContainerView
@@ -238,8 +238,8 @@ shouldPersistLastBugReportId:(id)arg6
 
 %hook IGDirectVisualMessageScreenshotSafetyLogger
 - (id)initWithUserSession:(id)arg1 entryPoint:(NSInteger)arg2 {
-    if ([SCIUtils getBoolPref:@"msgs_disable_screenshot_detection"]) {
-        SCILog(@"General", @"[SCInsta] Disable visual message screenshot safety logger");
+    if ([SPKUtils getBoolPref:@"msgs_disable_screenshot_detection"]) {
+        SPKLog(@"General", @"[Sparkle] Disable visual message screenshot safety logger");
         return nil;
     }
 
@@ -285,10 +285,10 @@ shouldPersistLastBugReportId:(id)arg6
 // Direct suggested chats (in search bar)
 BOOL showSearchSectionLabelForTag(NSInteger tag) {
     if (
-        (tag == 18 && [SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"]) // AI
-        || (tag == 20 && [SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"]) // Ask Meta AI
-        || (tag == 2 && [SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) // More suggestions
-        || (tag == 13 && [SCIUtils getBoolPref:@"msgs_hide_suggested_chats"]) // Suggested channels
+        (tag == 18 && [SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"]) // AI
+        || (tag == 20 && [SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"]) // Ask Meta AI
+        || (tag == 2 && [SPKUtils getBoolPref:@"general_hide_suggested_users_msgs"]) // More suggestions
+        || (tag == 13 && [SPKUtils getBoolPref:@"msgs_hide_suggested_chats"]) // Suggested channels
     ) {
         return false;
     }
@@ -296,7 +296,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
     return true;
 }
 
-%group SCITweakMessagesHooks
+%group SPKTweakMessagesHooks
 
 %hook IGDirectInboxSearchSectionPartitioningComponent
 - (id)initWithSectionTitle:(id)arg1
@@ -341,8 +341,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
          || [obj isKindOfClass:%c(IGDirectInboxSearchAIAgentsSuggestedPromptLoggingViewModel)]
         ) {
 
-            if ([SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested chats (ai agents)");
+            if ([SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
+                SPKLog(@"General", @"[Sparkle] Hiding suggested chats (ai agents)");
 
                 shouldHide = YES;
             }
@@ -354,8 +354,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
             // Broadcast channels
             if ([[obj recipient] isBroadcastChannel]) {
-                if ([SCIUtils getBoolPref:@"msgs_hide_suggested_chats"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested chats (broadcast channels recipient)");
+                if ([SPKUtils getBoolPref:@"msgs_hide_suggested_chats"]) {
+                    SPKLog(@"General", @"[Sparkle] Hiding suggested chats (broadcast channels recipient)");
 
                     shouldHide = YES;
                 }
@@ -363,8 +363,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
             
             // Meta AI (special section types)
             else if (([obj sectionType] == 20) || [obj sectionType] == 18) {
-                if ([SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding meta ai suggested chats (meta ai recipient)");
+                if ([SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
+                    SPKLog(@"General", @"[Sparkle] Hiding meta ai suggested chats (meta ai recipient)");
 
                     shouldHide = YES;
                 }
@@ -372,8 +372,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
             // Meta AI (catch-all)
             else if ([[[obj recipient] threadName] isEqualToString:@"Meta AI"]) {
-                if ([SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding meta ai suggested chats (meta ai recipient)");
+                if ([SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
+                    SPKLog(@"General", @"[Sparkle] Hiding meta ai suggested chats (meta ai recipient)");
 
                     shouldHide = YES;
                 }
@@ -401,13 +401,13 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
         BOOL shouldHide = NO;
 
         // Meta AI suggested user in direct new message view
-        if ([SCIUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
+        if ([SPKUtils getBoolPref:@"general_hide_meta_ai_msgs"]) {
             
             if ([obj isKindOfClass:%c(IGDirectCreateChatCellViewModel)]) {
 
                 // "AI Chats"
                 if ([[obj valueForKey:@"title"] isEqualToString:@"AI chats"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding meta ai: direct thread creation ai chats section");
+                    SPKLog(@"General", @"[Sparkle] Hiding meta ai: direct thread creation ai chats section");
 
                     shouldHide = YES;
                 }
@@ -418,7 +418,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
                 // Meta AI suggested user
                 if ([[[obj recipient] threadName] isEqualToString:@"Meta AI"]) {
-                    SCILog(@"General", @"[SCInsta] Hiding meta ai: direct thread creation ai suggestion");
+                    SPKLog(@"General", @"[Sparkle] Hiding meta ai: direct thread creation ai suggestion");
 
                     shouldHide = YES;
                 }
@@ -428,9 +428,9 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
         }
 
         // Invite friends to insta contacts upsell
-        if ([SCIUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
+        if ([SPKUtils getBoolPref:@"general_hide_suggested_users_msgs"]) {
             if ([obj isKindOfClass:%c(IGContactInvitesSearchUpsellViewModel)]) {
-                SCILog(@"General", @"[SCInsta] Hiding suggested users: invite contacts upsell");
+                SPKLog(@"General", @"[Sparkle] Hiding suggested users: invite contacts upsell");
 
                 shouldHide = YES;
             }
@@ -449,20 +449,20 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 // Direct suggested chats (inbox view)
 %hook IGDirectInboxListAdapterDataSource
 - (id)objectsForListAdapter:(id)arg1 {
-    return SCIFilterDirectInboxObjects(%orig());
+    return SPKFilterDirectInboxObjects(%orig());
 }
 %end
 
 // Direct suggested chats (inbox view, latest Swift data source)
 %hook _TtC34IGDirectInboxListAdapterDataSource34IGDirectInboxListAdapterDataSource
 - (id)objectsForListAdapter:(id)arg1 {
-    return SCIFilterDirectInboxObjects(%orig());
+    return SPKFilterDirectInboxObjects(%orig());
 }
 %end
 
 %end
 
-%group SCITweakGeneralUIHooks
+%group SPKTweakGeneralUIHooks
 
 // Explore page results
 %hook IGSearchListKitDataSource
@@ -474,7 +474,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
         BOOL shouldHide = NO;
 
         // Meta AI
-        if ([SCIUtils getBoolPref:@"general_hide_meta_ai_explore"]) {
+        if ([SPKUtils getBoolPref:@"general_hide_meta_ai_explore"]) {
 
             // Section header 
             if ([obj isKindOfClass:%c(IGLabelItemViewModel)]) {
@@ -501,7 +501,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
                 // itemType 6 is meta ai suggestions
                 if ([obj itemType] == 6) {
-                    if ([SCIUtils getBoolPref:@"general_hide_meta_ai_explore"]) {
+                    if ([SPKUtils getBoolPref:@"general_hide_meta_ai_explore"]) {
                         shouldHide = YES;
                     }
                     
@@ -509,7 +509,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
                 // Meta AI user account in search results
                 else if ([[[obj title] string] isEqualToString:@"meta.ai"]) {
-                    if ([SCIUtils getBoolPref:@"general_hide_meta_ai_explore"]) {
+                    if ([SPKUtils getBoolPref:@"general_hide_meta_ai_explore"]) {
                         shouldHide = YES;
                     }
                 }
@@ -519,7 +519,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
         }
 
         // No suggested users
-        if ([SCIUtils getBoolPref:@"general_hide_suggested_users_search"]) {
+        if ([SPKUtils getBoolPref:@"general_hide_suggested_users_search"]) {
 
             // Section header 
             if ([obj isKindOfClass:%c(IGLabelItemViewModel)]) {
@@ -556,7 +556,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 %end
 
-%group SCITweakFeedHooks
+%group SPKTweakFeedHooks
 
 // Story tray
 %hook IGMainStoryTrayDataSource
@@ -567,13 +567,13 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
     for (IGStoryTrayViewModel *obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        if ([SCIUtils getBoolPref:@"general_hide_suggested_users_feed"]) {
+        if ([SPKUtils getBoolPref:@"general_hide_suggested_users_feed"]) {
             if ([obj isKindOfClass:%c(IGStoryTrayViewModel)]) {
                 NSNumber *type = [((IGStoryTrayViewModel *)obj) valueForKey:@"type"];
                 
                 // 8/9 looks to be the types for recommended stories
                 if ([type isEqual:@(8)] || [type isEqual:@(9)]) {
-                    SCILog(@"General", @"[SCInsta] Hiding suggested users: story tray");
+                    SPKLog(@"General", @"[Sparkle] Hiding suggested users: story tray");
 
                     shouldHide = YES;
 
@@ -581,10 +581,10 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
             }
         }
 
-        if ([SCIUtils getBoolPref:@"general_hide_ads_feed"]) {
+        if ([SPKUtils getBoolPref:@"general_hide_ads_feed"]) {
             // "New!" account id is 3538572169
             if ([obj isKindOfClass:%c(IGStoryTrayViewModel)] && (obj.isUnseenNux == YES || [obj.pk isEqualToString:@"3538572169"])) {
-                SCILog(@"General", @"[SCInsta] Removing ads: story tray");
+                SPKLog(@"General", @"[Sparkle] Removing ads: story tray");
 
                 shouldHide = YES;
             }
@@ -603,7 +603,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 // Story tray expanded footer (Suggested accounts to follow)
 %hook IGStoryTraySectionController
 - (void)storyTrayControllerShowSUPOGEducationBump {
-    if ([SCIUtils getBoolPref:@"general_hide_suggested_users_feed"]) return;
+    if ([SPKUtils getBoolPref:@"general_hide_suggested_users_feed"]) return;
 
     return %orig();
 }
@@ -611,7 +611,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 %end
 
-%group SCITweakGeneralMenuHooks
+%group SPKTweakGeneralMenuHooks
 
 // Modern IGDS app menus
 %hook IGDSMenu
@@ -627,8 +627,8 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
             || [[obj valueForKey:@"title"] isEqualToString:@"Meta AI"]
         ) {
             
-            if ([SCIUtils getBoolPref:@"general_hide_meta_ai_global"]) {
-                SCILog(@"General", @"[SCInsta] Hiding meta ai from IGDS menu");
+            if ([SPKUtils getBoolPref:@"general_hide_meta_ai_global"]) {
+                SPKLog(@"General", @"[Sparkle] Hiding meta ai from IGDS menu");
 
                 shouldHide = YES;
             }
@@ -652,7 +652,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 // MARK: Confirm buttons
 
-%group SCITweakFeedConfirmHooks
+%group SPKTweakFeedConfirmHooks
 
 %hook IGFeedItemUFICell
 - (void)UFIButtonBarDidTapOnLike:(id)arg1 {
@@ -660,35 +660,35 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 }
 
 - (void)UFIButtonBarDidTapOnRepost:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"feed_confirm_repost"]) {
-        SCILog(@"General", @"[SCInsta] Confirm repost triggered");
+    if ([SPKUtils getBoolPref:@"feed_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered");
 
-        [SCIUtils showConfirmation:^(void) {
+        [SPKUtils showConfirmation:^(void) {
             %orig;
-            SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSourceFeed);
+            SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceFeed);
         } cancelHandler:^{
-            SCIConsumePendingRepostFeedback(SCIActionButtonSourceFeed);
+            SPKConsumePendingRepostFeedback(SPKActionButtonSourceFeed);
         } title:@"Confirm Repost"
           message:@"Are you sure you want to repost this post?"];
     }
     else {
         %orig;
-        SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSourceFeed);
+        SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceFeed);
         return;
     }
 }
 
 - (void)UFIButtonBarDidLongPressOnRepost:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"feed_confirm_repost"]) {
-        SCILog(@"General", @"[SCInsta] Confirm repost triggered (long press ignored)");
+    if ([SPKUtils getBoolPref:@"feed_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered (long press ignored)");
     }
     else {
         return %orig;
     }
 }
 - (void)UFIButtonBarDidLongPressOnRepost:(id)arg1 withGestureRecognizer:(id)arg2 {
-    if ([SCIUtils getBoolPref:@"feed_confirm_repost"]) {
-        SCILog(@"General", @"[SCInsta] Confirm repost triggered (long press ignored)");
+    if ([SPKUtils getBoolPref:@"feed_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered (long press ignored)");
     }
     else {
         return %orig;
@@ -698,7 +698,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 %end
 
-%group SCITweakReelsConfirmHooks
+%group SPKTweakReelsConfirmHooks
 
 %hook IGSundialViewerVerticalUFI
 - (void)_didTapLikeButton:(id)arg1 {
@@ -710,46 +710,46 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 }
 
 - (void)_didTapRepostButton {
-    if ([SCIUtils getBoolPref:@"reels_confirm_repost"]) {
-        SCILog(@"General", @"[SCInsta] Confirm repost triggered");
+    if ([SPKUtils getBoolPref:@"reels_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered");
 
-        [SCIUtils showConfirmation:^(void) {
+        [SPKUtils showConfirmation:^(void) {
             %orig;
-            SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSourceReels);
+            SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceReels);
         } cancelHandler:^{
-            SCIConsumePendingRepostFeedback(SCIActionButtonSourceReels);
+            SPKConsumePendingRepostFeedback(SPKActionButtonSourceReels);
         } title:@"Confirm Reel Repost"
           message:@"Are you sure you want to repost this reel?"];
     }
     else {
         %orig;
-        SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSourceReels);
+        SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceReels);
         return;
     }
 }
 
 - (void)_didTapRepostButton:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"reels_confirm_repost"]) {
-        SCILog(@"General", @"[SCInsta] Confirm repost triggered");
+    if ([SPKUtils getBoolPref:@"reels_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered");
 
-        [SCIUtils showConfirmation:^(void) {
+        [SPKUtils showConfirmation:^(void) {
             %orig;
-            SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSourceReels);
+            SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceReels);
         } cancelHandler:^{
-            SCIConsumePendingRepostFeedback(SCIActionButtonSourceReels);
+            SPKConsumePendingRepostFeedback(SPKActionButtonSourceReels);
         } title:@"Confirm Reel Repost"
           message:@"Are you sure you want to repost this reel?"];
     }
     else {
         %orig;
-        SCIShowPendingRepostFeedbackIfNeeded(SCIActionButtonSourceReels);
+        SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceReels);
         return;
     }
 }
 
 - (void)_didLongPressRepostButton:(id)arg1 {
-    if ([SCIUtils getBoolPref:@"reels_confirm_repost"]) {
-        SCILog(@"General", @"[SCInsta] Confirm repost triggered (long press ignored)");
+    if ([SPKUtils getBoolPref:@"reels_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered (long press ignored)");
     }
     else {
         return %orig;
@@ -761,11 +761,11 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 /////////////////////////////////////////////////////////////////////////////
 
-%group SCITweakFlexEarlyCompatibilityHooks
+%group SPKTweakFlexEarlyCompatibilityHooks
 
 %hook UIWindow
 - (BOOL)_shouldCreateContextAsSecure {
-    Class flexWindowClass = SCIFlexWindowClass();
+    Class flexWindowClass = SPKFlexWindowClass();
     if (flexWindowClass && [self isKindOfClass:flexWindowClass]) {
         return YES;
     }
@@ -775,30 +775,30 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 - (void)becomeKeyWindow {
     %orig;
 
-    if (objc_getAssociatedObject(self, kSCIFlexThreeFingerGestureKey)) {
+    if (objc_getAssociatedObject(self, kSPKFlexThreeFingerGestureKey)) {
         return;
     }
 
-    Class flexWindowClass = SCIFlexWindowClass();
+    Class flexWindowClass = SPKFlexWindowClass();
     if (flexWindowClass && [self isKindOfClass:flexWindowClass]) {
         return;
     }
 
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(sci_handleFlexGesture:)];
+    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(spk_handleFlexGesture:)];
     longPress.minimumPressDuration = 1.0;
     longPress.numberOfTouchesRequired = 3;
     longPress.cancelsTouchesInView = NO;
     longPress.delaysTouchesBegan = NO;
     longPress.delaysTouchesEnded = NO;
     [self addGestureRecognizer:longPress];
-    objc_setAssociatedObject(self, kSCIFlexThreeFingerGestureKey, longPress, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, kSPKFlexThreeFingerGestureKey, longPress, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-%new - (void)sci_handleFlexGesture:(UILongPressGestureRecognizer *)sender {
+%new - (void)spk_handleFlexGesture:(UILongPressGestureRecognizer *)sender {
     if (sender.state != UIGestureRecognizerStateBegan) return;
 
-    if ([SCIUtils getBoolPref:@"tools_flex_instagram"]) {
-        SCIFlexShowExplorer(@"three_finger");
+    if ([SPKUtils getBoolPref:@"tools_flex_instagram"]) {
+        SPKFlexShowExplorer(@"three_finger");
     }
 }
 %end
@@ -823,7 +823,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 %end
 
-%group SCITweakFlexLoadedCompatibilityHooks
+%group SPKTweakFlexLoadedCompatibilityHooks
 
 %hook FLEXExplorerViewController
 - (BOOL)_canShowWhileLocked {
@@ -834,16 +834,16 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 %end
 
 // Disable safe mode (defaults reset upon subsequent crashes)
-%group SCITweakSafeModeHooks
+%group SPKTweakSafeModeHooks
 
 %hook IGSafeModeChecker
 - (id)initWithInstacrashCounterProvider:(void *)provider crashThreshold:(unsigned long long)threshold {
-    if ([SCIUtils getBoolPref:@"tools_disable_safe_mode"]) return nil;
+    if ([SPKUtils getBoolPref:@"tools_disable_safe_mode"]) return nil;
 
     return %orig(provider, threshold);
 }
 - (unsigned long long)crashCount {
-    if ([SCIUtils getBoolPref:@"tools_disable_safe_mode"]) {
+    if ([SPKUtils getBoolPref:@"tools_disable_safe_mode"]) {
         return 0;
     }
 
@@ -853,13 +853,13 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 
 %end
 
-static BOOL SCIPrefEnabled(NSString *key) {
-    return [SCIUtils getBoolPref:key];
+static BOOL SPKPrefEnabled(NSString *key) {
+    return [SPKUtils getBoolPref:key];
 }
 
-static BOOL SCIAnyPrefEnabled(NSArray<NSString *> *keys) {
+static BOOL SPKAnyPrefEnabled(NSArray<NSString *> *keys) {
     for (NSString *key in keys) {
-        if (SCIPrefEnabled(key)) {
+        if (SPKPrefEnabled(key)) {
             return YES;
         }
     }
@@ -867,80 +867,80 @@ static BOOL SCIAnyPrefEnabled(NSArray<NSString *> *keys) {
     return NO;
 }
 
-static void SCIInstallTweakPrivacyHooksIfNeeded(void) {
-    if (!SCIPrefEnabled(@"msgs_disable_screenshot_detection")) {
+static void SPKInstallTweakPrivacyHooksIfNeeded(void) {
+    if (!SPKPrefEnabled(@"msgs_disable_screenshot_detection")) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCITweakPrivacyHooks);
+        %init(SPKTweakPrivacyHooks);
     });
 }
 
 
-static void SCIInstallTweakFlexSupportHooksIfNeeded(void) {
-    if (!SCIFlexIsBundled()) {
+static void SPKInstallTweakFlexSupportHooksIfNeeded(void) {
+    if (!SPKFlexIsBundled()) {
         return;
     }
 
     static dispatch_once_t flexEarlyOnceToken;
     dispatch_once(&flexEarlyOnceToken, ^{
-        %init(SCITweakFlexEarlyCompatibilityHooks);
+        %init(SPKTweakFlexEarlyCompatibilityHooks);
     });
 }
 
-void SCIInstallFlexLoadedCompatibilityHooksIfNeeded(void) {
+void SPKInstallFlexLoadedCompatibilityHooksIfNeeded(void) {
     static dispatch_once_t flexLoadedOnceToken;
     dispatch_once(&flexLoadedOnceToken, ^{
-        %init(SCITweakFlexLoadedCompatibilityHooks);
+        %init(SPKTweakFlexLoadedCompatibilityHooks);
     });
 }
 
-void SCIInstallTweakLaunchCriticalHooks(void) {
+void SPKInstallTweakLaunchCriticalHooks(void) {
     static dispatch_once_t launchOnceToken;
     dispatch_once(&launchOnceToken, ^{
-        %init(SCITweakLaunchCriticalHooks);
+        %init(SPKTweakLaunchCriticalHooks);
     });
 
     static dispatch_once_t safeModeOnceToken;
     dispatch_once(&safeModeOnceToken, ^{
-        %init(SCITweakSafeModeHooks);
+        %init(SPKTweakSafeModeHooks);
     });
 
-    SCIInstallTweakFlexSupportHooksIfNeeded();
+    SPKInstallTweakFlexSupportHooksIfNeeded();
 }
 
-void SCIInstallTweakFeedHooksIfNeeded(void) {
-    if (SCIAnyPrefEnabled(@[
+void SPKInstallTweakFeedHooksIfNeeded(void) {
+    if (SPKAnyPrefEnabled(@[
         @"general_hide_ads_feed",
         @"general_hide_suggested_users_feed"
     ])) {
         static dispatch_once_t feedOnceToken;
         dispatch_once(&feedOnceToken, ^{
-            %init(SCITweakFeedHooks);
+            %init(SPKTweakFeedHooks);
         });
     }
 
-    if (SCIAnyPrefEnabled(@[
+    if (SPKAnyPrefEnabled(@[
         @"feed_confirm_repost"
     ])) {
         static dispatch_once_t confirmOnceToken;
         dispatch_once(&confirmOnceToken, ^{
-            %init(SCITweakFeedConfirmHooks);
+            %init(SPKTweakFeedConfirmHooks);
         });
     }
 }
 
-void SCIInstallTweakStoryHooksIfNeeded(void) {
-    SCIInstallTweakPrivacyHooksIfNeeded();
-    SCIInstallTweakFeedHooksIfNeeded();
+void SPKInstallTweakStoryHooksIfNeeded(void) {
+    SPKInstallTweakPrivacyHooksIfNeeded();
+    SPKInstallTweakFeedHooksIfNeeded();
 }
 
-void SCIInstallTweakReelsHooksIfNeeded(void) {
-    SCIInstallTweakPrivacyHooksIfNeeded();
+void SPKInstallTweakReelsHooksIfNeeded(void) {
+    SPKInstallTweakPrivacyHooksIfNeeded();
 
-    if (!SCIAnyPrefEnabled(@[
+    if (!SPKAnyPrefEnabled(@[
         @"reels_confirm_repost"
     ])) {
         return;
@@ -948,14 +948,14 @@ void SCIInstallTweakReelsHooksIfNeeded(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCITweakReelsConfirmHooks);
+        %init(SPKTweakReelsConfirmHooks);
     });
 }
 
-void SCIInstallTweakMessagesHooksIfNeeded(void) {
-    SCIInstallTweakPrivacyHooksIfNeeded();
+void SPKInstallTweakMessagesHooksIfNeeded(void) {
+    SPKInstallTweakPrivacyHooksIfNeeded();
 
-    if (!SCIAnyPrefEnabled(@[
+    if (!SPKAnyPrefEnabled(@[
         @"general_hide_meta_ai_msgs",
         @"general_hide_suggested_users_msgs",
         @"msgs_hide_suggested_chats",
@@ -966,27 +966,27 @@ void SCIInstallTweakMessagesHooksIfNeeded(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCITweakMessagesHooks);
+        %init(SPKTweakMessagesHooks);
     });
 }
 
-void SCIInstallTweakGeneralUIHooksIfNeeded(void) {
-    if (SCIAnyPrefEnabled(@[
+void SPKInstallTweakGeneralUIHooksIfNeeded(void) {
+    if (SPKAnyPrefEnabled(@[
         @"general_hide_meta_ai_explore",
         @"general_hide_suggested_users_search"
     ])) {
         static dispatch_once_t generalOnceToken;
         dispatch_once(&generalOnceToken, ^{
-            %init(SCITweakGeneralUIHooks);
+            %init(SPKTweakGeneralUIHooks);
         });
     }
 
-    if (SCIPrefEnabled(@"general_hide_meta_ai_global")) {
+    if (SPKPrefEnabled(@"general_hide_meta_ai_global")) {
         static dispatch_once_t menuOnceToken;
         dispatch_once(&menuOnceToken, ^{
-            %init(SCITweakGeneralMenuHooks);
+            %init(SPKTweakGeneralMenuHooks);
         });
     }
 
-    SCIInstallTweakFlexSupportHooksIfNeeded();
+    SPKInstallTweakFlexSupportHooksIfNeeded();
 }

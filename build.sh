@@ -32,7 +32,7 @@ inject_ffmpeg_frameworks() {
     local input_ipa="$1"
     local output_ipa="$2"
     local temp_dir
-    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/scinsta-ffmpeg-ipa.XXXXXX")"
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-ffmpeg-ipa.XXXXXX")"
 
     unzip -q "$input_ipa" -d "$temp_dir"
 
@@ -75,8 +75,8 @@ build_flex_library() {
 }
 
 build_sideload_fix_library() {
-    echo -e '\033[1m\033[32mBuilding SCISideloadFix.dylib...\033[0m'
-    make -C "$ROOT_DIR/modules/SCISideloadFix" DEBUG=0 FINALPACKAGE=1
+    echo -e '\033[1m\033[32mBuilding SPKSideloadFix.dylib...\033[0m'
+    make -C "$ROOT_DIR/modules/SPKSideloadFix" DEBUG=0 FINALPACKAGE=1
 }
 
 theos_dylib_path() {
@@ -136,8 +136,8 @@ select_input_ipa() {
 sideload_fix_dylib_path() {
     local path
     for path in \
-        "$ROOT_DIR/modules/SCISideloadFix/.theos/obj/SCISideloadFix.dylib" \
-        "$ROOT_DIR/modules/SCISideloadFix/.theos/obj/debug/SCISideloadFix.dylib"; do
+        "$ROOT_DIR/modules/SPKSideloadFix/.theos/obj/SPKSideloadFix.dylib" \
+        "$ROOT_DIR/modules/SPKSideloadFix/.theos/obj/debug/SPKSideloadFix.dylib"; do
         if [ -f "$path" ]; then
             echo "$path"
             return 0
@@ -151,7 +151,7 @@ copy_flex_library_into_ipa() {
     local output_ipa="$2"
     local libflex_path="$3"
     local temp_dir
-    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/scinsta-flex-ipa.XXXXXX")"
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-flex-ipa.XXXXXX")"
 
     unzip -q "$input_ipa" -d "$temp_dir"
 
@@ -180,7 +180,7 @@ strip_appex_bundles() {
     local temp_dir
     local app_dir
     local appex_count
-    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/scinsta-strip-appex.XXXXXX")"
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-strip-appex.XXXXXX")"
 
     unzip -q "$input_ipa" -d "$temp_dir"
 
@@ -204,11 +204,11 @@ strip_appex_bundles() {
 }
 
 # Args: instagram ipa basename without .ipa; globals OPT_* must be set
-scinsta_sideload_output_ipa() {
+sparkle_sideload_output_ipa() {
     local ig_base="$1"
     local suffix=""
     if [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ]; then
-        if [ "${OPT_SIDESTORE:-0}" -eq 1 ] && [[ "$ig_base" == SCInsta* ]]; then
+        if [ "${OPT_SIDESTORE:-0}" -eq 1 ] && [[ "$ig_base" == Sparkle* ]]; then
             suffix="-sidestore"
         else
             suffix="-no-ext"
@@ -217,15 +217,15 @@ scinsta_sideload_output_ipa() {
     if [ "${OPT_INJECT:-0}" -eq 1 ] && [ "${OPT_FFMPEG:-0}" -eq 1 ] && [ "${OPT_PATCH:-0}" -eq 1 ]; then
         if [ "${OPT_DEV:-0}" -eq 1 ]; then
             if [ "${OPT_FLEX:-0}" -eq 1 ]; then
-                echo "SCInsta-dev${suffix}.ipa"
+                echo "Sparkle-dev${suffix}.ipa"
             else
-                echo "SCInsta-dev-no-flex${suffix}.ipa"
+                echo "Sparkle-dev-no-flex${suffix}.ipa"
             fi
         else
             if [ "${OPT_FLEX:-0}" -eq 1 ]; then
-                echo "SCInsta${suffix}.ipa"
+                echo "Sparkle${suffix}.ipa"
             else
-                echo "SCInsta-no-flex${suffix}.ipa"
+                echo "Sparkle-no-flex${suffix}.ipa"
             fi
         fi
         return
@@ -353,12 +353,12 @@ then
         exit 0
     fi
 
-    SCINSTAPATH=""
+    SPARKLEPATH=""
     LIBFLEXPATH=""
     SIDELOADFIXPATH=""
     if [ "$OPT_INJECT" -eq 1 ]; then
-        SCINSTAPATH="$(theos_dylib_path SCInsta)" || {
-            echo -e '\033[1m\033[0;31mCould not find built SCInsta.dylib.\033[0m'
+        SPARKLEPATH="$(theos_dylib_path Sparkle)" || {
+            echo -e '\033[1m\033[0;31mCould not find built Sparkle.dylib.\033[0m'
             exit 1
         }
     fi
@@ -370,7 +370,7 @@ then
     fi
     if [ "$OPT_PATCH" -eq 1 ]; then
         SIDELOADFIXPATH="$(sideload_fix_dylib_path)" || {
-            echo -e '\033[1m\033[0;31mCould not find built SCISideloadFix.dylib.\033[0m'
+            echo -e '\033[1m\033[0;31mCould not find built SPKSideloadFix.dylib.\033[0m'
             exit 1
         }
     fi
@@ -379,12 +379,12 @@ then
     fi
 
     ig_base="$(basename "$ipaFile" .ipa)"
-    OUTPUT_IPA="$(scinsta_sideload_output_ipa "$ig_base")"
+    OUTPUT_IPA="$(sparkle_sideload_output_ipa "$ig_base")"
     ipa_out="$ROOT_DIR/packages/${OUTPUT_IPA}"
-    ipa_ffmpeg_tmp="$ROOT_DIR/packages/.scinsta-build-tmp-ffmpeg.ipa"
-    ipa_stage_input="$ROOT_DIR/packages/.scinsta-build-stage-input.ipa"
-    ipa_flex_tmp="$ROOT_DIR/packages/.scinsta-build-tmp-flex.ipa"
-    ipa_strip_tmp="$ROOT_DIR/packages/.scinsta-build-tmp-strip.ipa"
+    ipa_ffmpeg_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-ffmpeg.ipa"
+    ipa_stage_input="$ROOT_DIR/packages/.sparkle-build-stage-input.ipa"
+    ipa_flex_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-flex.ipa"
+    ipa_strip_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-strip.ipa"
     rm -f "$ipa_out" "$ipa_ffmpeg_tmp" "$ipa_stage_input" "$ipa_flex_tmp" "$ipa_strip_tmp"
 
     if [ "$OPT_FFMPEG" -eq 1 ]; then
@@ -410,7 +410,7 @@ then
     echo -e '\033[1m\033[32mCreating the IPA file...\033[0m'
     CYAN_FILES=()
     if [ "$OPT_INJECT" -eq 1 ]; then
-        CYAN_FILES+=("$SCINSTAPATH")
+        CYAN_FILES+=("$SPARKLEPATH")
     fi
     if [ "$OPT_PATCH" -eq 1 ] && [ "$OPT_STRIP_EXTENSIONS" -eq 1 ]; then
         CYAN_FILES+=("$SIDELOADFIXPATH")
@@ -435,7 +435,7 @@ then
         echo -e '\033[1m\033[32mSkipping ipapatch\033[0m'
     fi
 
-    echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nOutput IPA: $ipa_out"
+    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nOutput IPA: $ipa_out"
 
 elif [ "$1" == "rootless" ];
 then
@@ -444,14 +444,14 @@ then
     make clean
     rm -rf .theos
 
-    echo -e '\033[1m\033[32mBuilding SCInsta tweak for rootless\033[0m'
+    echo -e '\033[1m\033[32mBuilding Sparkle tweak for rootless\033[0m'
 
     export THEOS_PACKAGE_SCHEME=rootless
     make package
 
     ensure_ffmpeg_frameworks
 
-    echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
+    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
 
 elif [ "$1" == "rootful" ];
 then
@@ -460,18 +460,18 @@ then
     make clean
     rm -rf .theos
 
-    echo -e '\033[1m\033[32mBuilding SCInsta tweak for rootful\033[0m'
+    echo -e '\033[1m\033[32mBuilding Sparkle tweak for rootful\033[0m'
 
     unset THEOS_PACKAGE_SCHEME
     make package
 
     ensure_ffmpeg_frameworks
 
-    echo -e "\033[1m\033[32mDone, we hope you enjoy SCInsta!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
+    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
 
 else
     echo '+--------------------+'
-    echo '|SCInsta Build Script|'
+    echo '|Sparkle Build Script|'
     echo '+--------------------+'
     echo
     echo 'Usage: ./build.sh <rootless|rootful|sideload>'
@@ -482,7 +482,7 @@ else
     echo
     echo 'When building an IPA, use at least one of the following flags:'
     echo '  --release         equivalent to --inject --ffmpeg --patch'
-    echo '  --inject          include SCInsta.dylib'
+    echo '  --inject          include Sparkle.dylib'
     echo '  --ffmpeg          include FFmpegKit frameworks'
     echo '  --flex            include libFLEX.dylib'
     echo '  --patch           run ipapatch'

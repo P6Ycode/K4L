@@ -4,43 +4,43 @@
 #import <objc/message.h>
 
 #import "InstagramHeaders.h"
-#import "Shared/MediaPreview/SCIFullScreenMediaPlayer.h"
-#import "Shared/UI/SCINotificationCenter.h"
+#import "Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
+#import "Shared/UI/SPKNotificationCenter.h"
 
-#import "Settings/SCISettingsViewController.h"
+#import "Settings/SPKSettingsViewController.h"
 
-FOUNDATION_EXPORT void SCILogMessage(NSString *category,
+FOUNDATION_EXPORT void SPKLogMessage(NSString *category,
                                      os_log_type_t type,
                                      NSString *format, ...) NS_FORMAT_FUNCTION(3, 4);
 
 /// Master toggle for per-account preferences (global, default off).
-FOUNDATION_EXPORT NSString * const kSCIPrefPerAccountSettings;
+FOUNDATION_EXPORT NSString * const kSPKPrefPerAccountSettings;
 
 /// Maps a preference key to the key actually stored/read. When per-account mode
 /// is on and the key isn't forced-global, returns a `u_<accountPK>_<key>`
 /// namespaced key; otherwise returns `key` unchanged. Writers MUST route through
 /// this so reads and writes stay in sync.
-FOUNDATION_EXPORT NSString *SCIEffectivePreferenceKey(NSString *key);
+FOUNDATION_EXPORT NSString *SPKEffectivePreferenceKey(NSString *key);
 
 /// Namespaced NSUserDefaults access for code that reads/writes preferences
 /// directly (not via getBoolPref:/getStringPref:/...). Applies the same
 /// per-account → global inheritance as the accessors.
-FOUNDATION_EXPORT id SCIPreferenceObjectForKey(NSString *key);
-FOUNDATION_EXPORT void SCIPreferenceSetObject(id _Nullable value, NSString *key);
+FOUNDATION_EXPORT id SPKPreferenceObjectForKey(NSString *key);
+FOUNDATION_EXPORT void SPKPreferenceSetObject(id _Nullable value, NSString *key);
 
 /// Canonical "per-account mode is active" gate: the global toggle is on AND an
 /// account PK is resolved. Single source of truth for whether per-account scoping
 /// applies (export prompt, gallery/downloads filtering, etc.).
-FOUNDATION_EXPORT BOOL SCIPerAccountModeActive(void);
+FOUNDATION_EXPORT BOOL SPKPerAccountModeActive(void);
 
 /// YES when `key` is forced device-global (app icon, appearance, tab layout, ...) and
 /// therefore never stored per-account. Used to decide what a per-account export carries.
-FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
+FOUNDATION_EXPORT BOOL SPKPreferenceKeyIsGlobal(NSString *key);
 
-#define SCILog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
-#define SCIWarnLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
-#define SCIErrorLog(category, fmt, ...) SCILogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)
-#define SCILogId(category, obj) SCILog((category), @"%@", (obj))
+#define SPKLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
+#define SPKWarnLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
+#define SPKErrorLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)
+#define SPKLogId(category, obj) SPKLog((category), @"%@", (obj))
 
 /*
  *  System Versioning Preprocessor Macros
@@ -52,7 +52,7 @@ FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
 #define SYSTEM_VERSION_LESS_THAN(v)                 ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
 #define SYSTEM_VERSION_LESS_THAN_OR_EQUAL_TO(v)     ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedDescending)
 
-@interface SCIUtils : NSObject
+@interface SPKUtils : NSObject
 
 // Preferences
 + (BOOL)getBoolPref:(NSString *)key;
@@ -76,10 +76,10 @@ FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
 + (BOOL)existingLongPressGestureRecognizerForView:(UIView *)view;
 
 /// IGDSLauncherConfig hooks: when Liquid Glass is on, returns YES; otherwise returns `fallback` (stock).
-+ (_Bool)sci_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback;
++ (_Bool)spk_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback;
 
 /// True when Liquid Glass is enabled and runtime suppression is inactive.
-+ (BOOL)sci_isLiquidGlassEffectivelyEnabled;
++ (BOOL)spk_isLiquidGlassEffectivelyEnabled;
 
 + (void)cleanCache;
 + (unsigned long long)cacheSizeBytes;
@@ -97,23 +97,23 @@ FOUNDATION_EXPORT BOOL SCIPreferenceKeyIsGlobal(NSString *key);
 + (void)presentViewControllerInSheet:(UIViewController *)vc;
 
 // Colours
-+ (UIColor *)SCIColor_InstagramBlue;
-+ (UIColor *)SCIColor_InstagramBackground;
-+ (UIColor *)SCIColor_InstagramSecondaryBackground;
-+ (UIColor *)SCIColor_InstagramTertiaryBackground;
-+ (UIColor *)SCIColor_InstagramGroupedBackground;
-+ (UIColor *)SCIColor_InstagramPrimaryText;
-+ (UIColor *)SCIColor_InstagramSecondaryText;
-+ (UIColor *)SCIColor_InstagramTertiaryText;
-+ (UIColor *)SCIColor_InstagramSeparator;
-+ (UIColor *)SCIColor_InstagramFavorite;
-+ (UIColor *)SCIColor_InstagramDestructive;
-+ (UIColor *)SCIColor_InstagramPressedBackground;
-+ (UIColor *)SCIColor_ListRowPressedOverlay;
-+ (UIColor *)SCIColor_SettingsSwitchOnTint;
-+ (UIColor *)SCIColor_SettingsSwitchThumbTint;
-+ (UIColor *)SCIColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection;
-+ (UIColor *)SCIColor_SettingsSwitchThumbTintForTraitCollection:(UITraitCollection *)traitCollection;
++ (UIColor *)SPKColor_InstagramBlue;
++ (UIColor *)SPKColor_InstagramBackground;
++ (UIColor *)SPKColor_InstagramSecondaryBackground;
++ (UIColor *)SPKColor_InstagramTertiaryBackground;
++ (UIColor *)SPKColor_InstagramGroupedBackground;
++ (UIColor *)SPKColor_InstagramPrimaryText;
++ (UIColor *)SPKColor_InstagramSecondaryText;
++ (UIColor *)SPKColor_InstagramTertiaryText;
++ (UIColor *)SPKColor_InstagramSeparator;
++ (UIColor *)SPKColor_InstagramFavorite;
++ (UIColor *)SPKColor_InstagramDestructive;
++ (UIColor *)SPKColor_InstagramPressedBackground;
++ (UIColor *)SPKColor_ListRowPressedOverlay;
++ (UIColor *)SPKColor_SettingsSwitchOnTint;
++ (UIColor *)SPKColor_SettingsSwitchThumbTint;
++ (UIColor *)SPKColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection;
++ (UIColor *)SPKColor_SettingsSwitchThumbTintForTraitCollection:(UITraitCollection *)traitCollection;
 
 // Errors
 + (NSError *)errorWithDescription:(NSString *)errorDesc;

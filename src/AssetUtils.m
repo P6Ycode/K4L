@@ -2,11 +2,11 @@
 
 #import <math.h>
 
-typedef NSDictionary<NSString *, id> SCIAssetDescriptor;
+typedef NSDictionary<NSString *, id> SPKAssetDescriptor;
 
-static NSString * const kSCIAssetFallbackSystemName = @"questionmark.square.dashed";
+static NSString * const kSPKAssetFallbackSystemName = @"questionmark.square.dashed";
 
-static UIImage *SCIAssetScaleImage(UIImage *image, CGFloat maxPointSize) {
+static UIImage *SPKAssetScaleImage(UIImage *image, CGFloat maxPointSize) {
     if (!image || maxPointSize <= 0) {
         return image;
     }
@@ -34,7 +34,7 @@ static UIImage *SCIAssetScaleImage(UIImage *image, CGFloat maxPointSize) {
     return scaled;
 }
 
-static UIImage *SCIAssetRotateImage(UIImage *image, CGFloat radians) {
+static UIImage *SPKAssetRotateImage(UIImage *image, CGFloat radians) {
     if (!image) {
         return nil;
     }
@@ -58,7 +58,7 @@ static UIImage *SCIAssetRotateImage(UIImage *image, CGFloat radians) {
     return rotated;
 }
 
-static NSArray<NSNumber *> *SCIAssetCandidateSizes(CGFloat pointSize) {
+static NSArray<NSNumber *> *SPKAssetCandidateSizes(CGFloat pointSize) {
     NSInteger rounded = (NSInteger)lround(MAX(pointSize, 0.0));
     NSMutableOrderedSet<NSNumber *> *sizes = [NSMutableOrderedSet orderedSet];
     if (rounded > 0) {
@@ -70,7 +70,7 @@ static NSArray<NSNumber *> *SCIAssetCandidateSizes(CGFloat pointSize) {
     return sizes.array;
 }
 
-static NSString *SCIAssetNormalizeInternalName(NSString *name) {
+static NSString *SPKAssetNormalizeInternalName(NSString *name) {
     NSString *normalized = [[name ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
     while ([normalized containsString:@"__"]) {
         normalized = [normalized stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
@@ -78,7 +78,7 @@ static NSString *SCIAssetNormalizeInternalName(NSString *name) {
     return normalized;
 }
 
-static NSBundle *SCIAssetFrameworkBundle(void) {
+static NSBundle *SPKAssetFrameworkBundle(void) {
     static NSBundle *bundle;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -88,32 +88,32 @@ static NSBundle *SCIAssetFrameworkBundle(void) {
     return bundle;
 }
 
-static NSBundle *SCIAssetBundleForSource(SCIAssetCatalogSource source) {
+static NSBundle *SPKAssetBundleForSource(SPKAssetCatalogSource source) {
     switch (source) {
-        case SCIAssetCatalogSourceFBSharedFramework:
-            return SCIAssetFrameworkBundle();
-        case SCIAssetCatalogSourceMainApp:
+        case SPKAssetCatalogSourceFBSharedFramework:
+            return SPKAssetFrameworkBundle();
+        case SPKAssetCatalogSourceMainApp:
             return [NSBundle mainBundle];
-        case SCIAssetCatalogSourceAutomatic:
+        case SPKAssetCatalogSourceAutomatic:
         default:
             return nil;
     }
 }
 
-static NSArray<NSNumber *> *SCIAssetSearchOrderForSource(SCIAssetCatalogSource requestedSource, SCIAssetCatalogSource defaultSource) {
+static NSArray<NSNumber *> *SPKAssetSearchOrderForSource(SPKAssetCatalogSource requestedSource, SPKAssetCatalogSource defaultSource) {
     NSMutableOrderedSet<NSNumber *> *sources = [NSMutableOrderedSet orderedSet];
-    if (requestedSource != SCIAssetCatalogSourceAutomatic) {
+    if (requestedSource != SPKAssetCatalogSourceAutomatic) {
         [sources addObject:@(requestedSource)];
     } else {
         [sources addObject:@(defaultSource)];
     }
-    [sources addObject:@(SCIAssetCatalogSourceFBSharedFramework)];
-    [sources addObject:@(SCIAssetCatalogSourceMainApp)];
+    [sources addObject:@(SPKAssetCatalogSourceFBSharedFramework)];
+    [sources addObject:@(SPKAssetCatalogSourceMainApp)];
     return sources.array;
 }
 
-static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
-    static NSDictionary<NSString *, SCIAssetDescriptor *> *overrides;
+static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
+    static NSDictionary<NSString *, SPKAssetDescriptor *> *overrides;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         overrides = @{
@@ -297,12 +297,12 @@ static NSDictionary<NSString *, SCIAssetDescriptor *> *SCIAssetOverrides(void) {
     return overrides;
 }
 
-static SCIAssetDescriptor *SCIAssetResolvedDescriptor(NSString *name) {
-    SCIAssetDescriptor *descriptor = SCIAssetOverrides()[name];
+static SPKAssetDescriptor *SPKAssetResolvedDescriptor(NSString *name) {
+    SPKAssetDescriptor *descriptor = SPKAssetOverrides()[name];
     if (!descriptor) return nil;
     NSString *alias = descriptor[@"alias"];
     if (alias.length > 0) {
-        SCIAssetDescriptor *aliasDescriptor = SCIAssetOverrides()[alias];
+        SPKAssetDescriptor *aliasDescriptor = SPKAssetOverrides()[alias];
         if (aliasDescriptor) {
             NSMutableDictionary *merged = [aliasDescriptor mutableCopy];
             for (NSString *key in descriptor) {
@@ -320,12 +320,12 @@ static SCIAssetDescriptor *SCIAssetResolvedDescriptor(NSString *name) {
     return descriptor;
 }
 
-static CGFloat SCIAssetResolvedPointSize(NSString *name, CGFloat pointSize) {
+static CGFloat SPKAssetResolvedPointSize(NSString *name, CGFloat pointSize) {
     if (pointSize <= 0) {
         return pointSize;
     }
 
-    SCIAssetDescriptor *descriptor = SCIAssetResolvedDescriptor(SCIAssetNormalizeInternalName(name));
+    SPKAssetDescriptor *descriptor = SPKAssetResolvedDescriptor(SPKAssetNormalizeInternalName(name));
     NSDictionary *sizeMap = descriptor[@"size_map"];
     if (![sizeMap isKindOfClass:[NSDictionary class]]) {
         return pointSize;
@@ -339,8 +339,8 @@ static CGFloat SCIAssetResolvedPointSize(NSString *name, CGFloat pointSize) {
     return pointSize;
 }
 
-static NSArray<NSString *> *SCIAssetHeuristicCandidates(NSString *name, CGFloat pointSize) {
-    NSString *normalized = SCIAssetNormalizeInternalName(name);
+static NSArray<NSString *> *SPKAssetHeuristicCandidates(NSString *name, CGFloat pointSize) {
+    NSString *normalized = SPKAssetNormalizeInternalName(name);
     if (normalized.length == 0) {
         return @[];
     }
@@ -363,7 +363,7 @@ static NSArray<NSString *> *SCIAssetHeuristicCandidates(NSString *name, CGFloat 
     [candidates addObject:normalized];
     [candidates addObject:[NSString stringWithFormat:@"ig_icon_%@", normalized]];
 
-    for (NSNumber *sizeValue in SCIAssetCandidateSizes(pointSize)) {
+    for (NSNumber *sizeValue in SPKAssetCandidateSizes(pointSize)) {
         NSInteger size = sizeValue.integerValue;
         if (variant.length > 0) {
             [candidates addObject:[NSString stringWithFormat:@"ig_icon_%@_%@_%ld", baseName, variant, (long)size]];
@@ -378,48 +378,48 @@ static NSArray<NSString *> *SCIAssetHeuristicCandidates(NSString *name, CGFloat 
     return candidates.array;
 }
 
-static NSArray<NSString *> *SCIAssetCandidatesForInternalName(NSString *name, CGFloat pointSize) {
-    NSString *normalized = SCIAssetNormalizeInternalName(name);
-    SCIAssetDescriptor *descriptor = SCIAssetResolvedDescriptor(normalized);
+static NSArray<NSString *> *SPKAssetCandidatesForInternalName(NSString *name, CGFloat pointSize) {
+    NSString *normalized = SPKAssetNormalizeInternalName(name);
+    SPKAssetDescriptor *descriptor = SPKAssetResolvedDescriptor(normalized);
     NSMutableOrderedSet<NSString *> *candidates = [NSMutableOrderedSet orderedSet];
 
     NSArray<NSString *> *explicitCandidates = descriptor[@"candidates"];
     if ([explicitCandidates isKindOfClass:[NSArray class]]) {
         [candidates addObjectsFromArray:explicitCandidates];
     }
-    [candidates addObjectsFromArray:SCIAssetHeuristicCandidates(normalized, pointSize)];
+    [candidates addObjectsFromArray:SPKAssetHeuristicCandidates(normalized, pointSize)];
     return candidates.array;
 }
 
-static SCIAssetCatalogSource SCIAssetDefaultSourceForInternalName(NSString *name) {
-    SCIAssetDescriptor *descriptor = SCIAssetResolvedDescriptor(SCIAssetNormalizeInternalName(name));
+static SPKAssetCatalogSource SPKAssetDefaultSourceForInternalName(NSString *name) {
+    SPKAssetDescriptor *descriptor = SPKAssetResolvedDescriptor(SPKAssetNormalizeInternalName(name));
     NSNumber *sourceValue = descriptor[@"source"];
     if ([sourceValue isKindOfClass:[NSNumber class]]) {
-        return (SCIAssetCatalogSource)sourceValue.integerValue;
+        return (SPKAssetCatalogSource)sourceValue.integerValue;
     }
-    return SCIAssetCatalogSourceFBSharedFramework;
+    return SPKAssetCatalogSourceFBSharedFramework;
 }
 
-static UIImage *SCIAssetApplyRenderingMode(UIImage *image, UIImageRenderingMode renderingMode) {
+static UIImage *SPKAssetApplyRenderingMode(UIImage *image, UIImageRenderingMode renderingMode) {
     if (!image || renderingMode == UIImageRenderingModeAutomatic) {
         return image;
     }
     return [image imageWithRenderingMode:renderingMode];
 }
 
-static UIImage *SCIAssetFallbackImage(CGFloat pointSize, UIImageRenderingMode renderingMode) {
+static UIImage *SPKAssetFallbackImage(CGFloat pointSize, UIImageRenderingMode renderingMode) {
     UIImageConfiguration *configuration = nil;
     if (pointSize > 0) {
         configuration = [UIImageSymbolConfiguration configurationWithPointSize:pointSize];
     }
 
     UIImage *image = configuration
-        ? [UIImage systemImageNamed:kSCIAssetFallbackSystemName withConfiguration:configuration]
-        : [UIImage systemImageNamed:kSCIAssetFallbackSystemName];
-    return SCIAssetApplyRenderingMode(image, renderingMode);
+        ? [UIImage systemImageNamed:kSPKAssetFallbackSystemName withConfiguration:configuration]
+        : [UIImage systemImageNamed:kSPKAssetFallbackSystemName];
+    return SPKAssetApplyRenderingMode(image, renderingMode);
 }
 
-static UIImage *SCIAssetSystemSymbolImage(NSString *name, CGFloat pointSize, UIImageSymbolWeight weight, UIImageRenderingMode renderingMode) {
+static UIImage *SPKAssetSystemSymbolImage(NSString *name, CGFloat pointSize, UIImageSymbolWeight weight, UIImageRenderingMode renderingMode) {
     if (name.length == 0) {
         return nil;
     }
@@ -434,26 +434,26 @@ static UIImage *SCIAssetSystemSymbolImage(NSString *name, CGFloat pointSize, UII
     UIImage *image = configuration
         ? [UIImage systemImageNamed:name withConfiguration:configuration]
         : [UIImage systemImageNamed:name];
-    return SCIAssetApplyRenderingMode(image, renderingMode);
+    return SPKAssetApplyRenderingMode(image, renderingMode);
 }
 
-static BOOL SCIAssetHasExplicitOverride(NSString *name) {
-    return SCIAssetResolvedDescriptor(SCIAssetNormalizeInternalName(name)) != nil;
+static BOOL SPKAssetHasExplicitOverride(NSString *name) {
+    return SPKAssetResolvedDescriptor(SPKAssetNormalizeInternalName(name)) != nil;
 }
 
-static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, SCIAssetCatalogSource source, UIImageRenderingMode renderingMode) {
-    NSString *normalizedName = SCIAssetNormalizeInternalName(name);
+static UIImage *SPKAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, SPKAssetCatalogSource source, UIImageRenderingMode renderingMode) {
+    NSString *normalizedName = SPKAssetNormalizeInternalName(name);
     if (normalizedName.length == 0) {
         return nil;
     }
 
-    CGFloat resolvedPointSize = SCIAssetResolvedPointSize(normalizedName, pointSize);
-    SCIAssetCatalogSource defaultSource = SCIAssetDefaultSourceForInternalName(normalizedName);
-    NSArray<NSNumber *> *sourceOrder = SCIAssetSearchOrderForSource(source, defaultSource);
-    NSArray<NSString *> *candidates = SCIAssetCandidatesForInternalName(normalizedName, resolvedPointSize);
+    CGFloat resolvedPointSize = SPKAssetResolvedPointSize(normalizedName, pointSize);
+    SPKAssetCatalogSource defaultSource = SPKAssetDefaultSourceForInternalName(normalizedName);
+    NSArray<NSNumber *> *sourceOrder = SPKAssetSearchOrderForSource(source, defaultSource);
+    NSArray<NSString *> *candidates = SPKAssetCandidatesForInternalName(normalizedName, resolvedPointSize);
 
     for (NSNumber *sourceValue in sourceOrder) {
-        NSBundle *bundle = SCIAssetBundleForSource((SCIAssetCatalogSource)sourceValue.integerValue);
+        NSBundle *bundle = SPKAssetBundleForSource((SPKAssetCatalogSource)sourceValue.integerValue);
         if (!bundle) {
             continue;
         }
@@ -464,38 +464,38 @@ static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
                 continue;
             }
 
-            image = SCIAssetScaleImage(image, resolvedPointSize);
-            return SCIAssetApplyRenderingMode(image, renderingMode);
+            image = SPKAssetScaleImage(image, resolvedPointSize);
+            return SPKAssetApplyRenderingMode(image, renderingMode);
         }
     }
 
     return nil;
 }
 
-@implementation SCIAssetUtils
+@implementation SPKAssetUtils
 
 + (UIImage *)instagramIconNamed:(NSString *)name {
     return [self instagramIconNamed:name
                           pointSize:0
-                             source:SCIAssetCatalogSourceAutomatic
+                             source:SPKAssetCatalogSourceAutomatic
                       renderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
 + (UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize {
     return [self instagramIconNamed:name
                           pointSize:pointSize
-                             source:SCIAssetCatalogSourceAutomatic
+                             source:SPKAssetCatalogSourceAutomatic
                       renderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
 + (UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize renderingMode:(UIImageRenderingMode)renderingMode {
     return [self instagramIconNamed:name
                           pointSize:pointSize
-                             source:SCIAssetCatalogSourceAutomatic
+                             source:SPKAssetCatalogSourceAutomatic
                       renderingMode:renderingMode];
 }
 
-+ (UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize source:(SCIAssetCatalogSource)source {
++ (UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize source:(SPKAssetCatalogSource)source {
     return [self instagramIconNamed:name
                           pointSize:pointSize
                              source:source
@@ -504,19 +504,19 @@ static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
 
 + (UIImage *)instagramIconNamed:(NSString *)name
                       pointSize:(CGFloat)pointSize
-                         source:(SCIAssetCatalogSource)source
+                         source:(SPKAssetCatalogSource)source
                   renderingMode:(UIImageRenderingMode)renderingMode {
-    UIImage *image = SCIAssetLookupInstagramIcon(name, pointSize, source, renderingMode);
+    UIImage *image = SPKAssetLookupInstagramIcon(name, pointSize, source, renderingMode);
     if (image) {
         return image;
     }
-    return SCIAssetFallbackImage(pointSize, renderingMode);
+    return SPKAssetFallbackImage(pointSize, renderingMode);
 }
 
 + (UIImage *)resolvedImageNamed:(NSString *)name
                       pointSize:(CGFloat)pointSize
                          weight:(UIImageSymbolWeight)weight
-                         source:(SCIResolvedImageSource)source
+                         source:(SPKResolvedImageSource)source
                   renderingMode:(UIImageRenderingMode)renderingMode {
     return [self resolvedImageNamed:name
                  fallbackSystemName:nil
@@ -530,7 +530,7 @@ static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
              fallbackSystemName:(NSString *)fallbackSystemName
                       pointSize:(CGFloat)pointSize
                          weight:(UIImageSymbolWeight)weight
-                         source:(SCIResolvedImageSource)source
+                         source:(SPKResolvedImageSource)source
                   renderingMode:(UIImageRenderingMode)renderingMode {
     if (name.length == 0 && fallbackSystemName.length == 0) {
         return nil;
@@ -539,32 +539,32 @@ static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
     UIImage *image = nil;
 
     switch (source) {
-        case SCIResolvedImageSourceInstagramIcon:
-            image = SCIAssetLookupInstagramIcon(name, pointSize, SCIAssetCatalogSourceAutomatic, renderingMode);
+        case SPKResolvedImageSourceInstagramIcon:
+            image = SPKAssetLookupInstagramIcon(name, pointSize, SPKAssetCatalogSourceAutomatic, renderingMode);
             if (!image && fallbackSystemName.length > 0) {
-                image = SCIAssetSystemSymbolImage(fallbackSystemName, pointSize, weight, renderingMode);
+                image = SPKAssetSystemSymbolImage(fallbackSystemName, pointSize, weight, renderingMode);
             }
             break;
-        case SCIResolvedImageSourceSystemSymbol:
-            image = SCIAssetSystemSymbolImage(name, pointSize, weight, renderingMode);
+        case SPKResolvedImageSourceSystemSymbol:
+            image = SPKAssetSystemSymbolImage(name, pointSize, weight, renderingMode);
             if (!image && fallbackSystemName.length > 0) {
-                image = SCIAssetSystemSymbolImage(fallbackSystemName, pointSize, weight, renderingMode);
+                image = SPKAssetSystemSymbolImage(fallbackSystemName, pointSize, weight, renderingMode);
             }
             break;
-        case SCIResolvedImageSourceAutomatic:
+        case SPKResolvedImageSourceAutomatic:
         default: {
-            BOOL shouldTryInstagramFirst = [name hasPrefix:@"ig_icon_"] || SCIAssetHasExplicitOverride(name);
+            BOOL shouldTryInstagramFirst = [name hasPrefix:@"ig_icon_"] || SPKAssetHasExplicitOverride(name);
             if (shouldTryInstagramFirst) {
-                image = SCIAssetLookupInstagramIcon(name, pointSize, SCIAssetCatalogSourceAutomatic, renderingMode);
+                image = SPKAssetLookupInstagramIcon(name, pointSize, SPKAssetCatalogSourceAutomatic, renderingMode);
             }
             if (!image) {
-                image = SCIAssetSystemSymbolImage(name, pointSize, weight, renderingMode);
+                image = SPKAssetSystemSymbolImage(name, pointSize, weight, renderingMode);
             }
             if (!image && !shouldTryInstagramFirst) {
-                image = SCIAssetLookupInstagramIcon(name, pointSize, SCIAssetCatalogSourceAutomatic, renderingMode);
+                image = SPKAssetLookupInstagramIcon(name, pointSize, SPKAssetCatalogSourceAutomatic, renderingMode);
             }
             if (!image && fallbackSystemName.length > 0) {
-                image = SCIAssetSystemSymbolImage(fallbackSystemName, pointSize, weight, renderingMode);
+                image = SPKAssetSystemSymbolImage(fallbackSystemName, pointSize, weight, renderingMode);
             }
             break;
         }
@@ -574,7 +574,7 @@ static UIImage *SCIAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
         return image;
     }
     if (fallbackSystemName.length > 0) {
-        return SCIAssetFallbackImage(pointSize, renderingMode);
+        return SPKAssetFallbackImage(pointSize, renderingMode);
     }
     return nil;
 }

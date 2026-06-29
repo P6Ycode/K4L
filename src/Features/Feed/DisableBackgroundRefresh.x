@@ -6,21 +6,21 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-static BOOL sciDisableBgRefresh(void) {
-    return [SCIUtils getBoolPref:@"feed_disable_bg_refresh"];
+static BOOL spkDisableBgRefresh(void) {
+    return [SPKUtils getBoolPref:@"feed_disable_bg_refresh"];
 }
 
-static BOOL sciDisableHomeRefresh(void) {
-    return [SCIUtils getBoolPref:@"feed_disable_home_refresh"];
+static BOOL spkDisableHomeRefresh(void) {
+    return [SPKUtils getBoolPref:@"feed_disable_home_refresh"];
 }
 
-static BOOL sciDisableReelsRefresh(void) {
-    return [SCIUtils getBoolPref:@"reels_disable_tab_refresh"];
+static BOOL spkDisableReelsRefresh(void) {
+    return [SPKUtils getBoolPref:@"reels_disable_tab_refresh"];
 }
 
 // Returns a very large interval when disabled, -1 to keep Instagram's value.
-static double sciOverrideInterval(void) {
-    if (sciDisableBgRefresh()) return 999999.0;
+static double spkOverrideInterval(void) {
+    if (spkDisableBgRefresh()) return 999999.0;
     return -1.0;
 }
 
@@ -29,29 +29,29 @@ static double sciOverrideInterval(void) {
 
 static double (*orig_wsRefresh)(id, SEL, id, id);
 static double new_wsRefresh(id self, SEL _cmd, id launcherSet, id store) {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : orig_wsRefresh(self, _cmd, launcherSet, store);
 }
 
 static double (*orig_wsBgRefresh)(id, SEL, id, id);
 static double new_wsBgRefresh(id self, SEL _cmd, id launcherSet, id store) {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : orig_wsBgRefresh(self, _cmd, launcherSet, store);
 }
 
 static double (*orig_peakWsRefresh)(id, SEL, double, id, id);
 static double new_peakWsRefresh(id self, SEL _cmd, double interval, id launcherSet, id store) {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : orig_peakWsRefresh(self, _cmd, interval, launcherSet, store);
 }
 
 static double (*orig_peakWsBgRefresh)(id, SEL, id, id);
 static double new_peakWsBgRefresh(id self, SEL _cmd, id launcherSet, id store) {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : orig_peakWsBgRefresh(self, _cmd, launcherSet, store);
 }
 
-static void SCIInstallRefreshUtilityHooks(void) {
+static void SPKInstallRefreshUtilityHooks(void) {
     Class refreshUtilityClass = NSClassFromString(@"IGMainFeedViewModelUtility.IGMainFeedRefreshUtility");
     if (refreshUtilityClass) {
         Class metaClass = object_getClass(refreshUtilityClass);
@@ -80,7 +80,7 @@ static void SCIInstallRefreshUtilityHooks(void) {
 
 // MARK: - Background refresh network source hooks
 
-%group SCIBackgroundRefreshHooks
+%group SPKBackgroundRefreshHooks
 
 %hook IGMainFeedNetworkSource
 
@@ -110,8 +110,8 @@ supplementalFeedHoistedMediaID:(id)a22
              isInFollowingTab:(BOOL)a24
 useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 
-    double override = sciOverrideInterval();
-    if (sciDisableBgRefresh()) disable = YES;
+    double override = spkOverrideInterval();
+    if (spkDisableBgRefresh()) disable = YES;
     if (override > 0.0) {
         a18 = override;
         a19 = override;
@@ -123,22 +123,22 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 }
 
 - (double)minWarmStartFetchInterval {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : %orig;
 }
 
 - (double)peakMinWarmStartFetchInterval {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : %orig;
 }
 
 - (double)minimumWarmStartBackgroundedInterval {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : %orig;
 }
 
 - (double)peakMinimumWarmStartBackgroundedInterval {
-    double override = sciOverrideInterval();
+    double override = spkOverrideInterval();
     return override > 0.0 ? override : %orig;
 }
 
@@ -147,7 +147,7 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 %hook IGMainFeedViewController
 
 - (void)hotStartRefresh {
-    if (sciDisableBgRefresh()) return;
+    if (spkDisableBgRefresh()) return;
     %orig;
 }
 
@@ -158,7 +158,7 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 %hook IGTabBarController
 
 - (void)_timelineButtonPressed {
-    if (!sciDisableHomeRefresh()) {
+    if (!spkDisableHomeRefresh()) {
         %orig;
         return;
     }
@@ -197,7 +197,7 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 }
 
 - (void)_discoverVideoButtonPressed {
-    if (!sciDisableReelsRefresh()) {
+    if (!spkDisableReelsRefresh()) {
         %orig;
         return;
     }
@@ -224,12 +224,12 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 
 %end
 
-void SCIInstallBackgroundRefreshHooksIfEnabled(void) {
-    if (!sciDisableBgRefresh() && !sciDisableHomeRefresh() && !sciDisableReelsRefresh()) return;
+void SPKInstallBackgroundRefreshHooksIfEnabled(void) {
+    if (!spkDisableBgRefresh() && !spkDisableHomeRefresh() && !spkDisableReelsRefresh()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    %init(SCIBackgroundRefreshHooks);
-    SCIInstallRefreshUtilityHooks();
+    %init(SPKBackgroundRefreshHooks);
+    SPKInstallRefreshUtilityHooks();
     });
 }

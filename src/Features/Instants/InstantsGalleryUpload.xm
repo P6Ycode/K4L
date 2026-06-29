@@ -8,49 +8,49 @@
 
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
-#import "../../Shared/Gallery/SCIGalleryPickerViewController.h"
-#import "../../Shared/Gallery/SCIGalleryFile.h"
-#import "../../Shared/UI/SCIIGAlertPresenter.h"
-#import "../../Shared/UI/SCIChrome.h"
-#import "../../Settings/Topics/SCIInstantsSettingsProvider.h"
-#import "../../Shared/Instants/SCIInstantsFrameInjector.h"
+#import "../../Shared/Gallery/SPKGalleryPickerViewController.h"
+#import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/UI/SPKIGAlertPresenter.h"
+#import "../../Shared/UI/SPKChrome.h"
+#import "../../Settings/Topics/SPKInstantsSettingsProvider.h"
+#import "../../Shared/Instants/SPKInstantsFrameInjector.h"
 
-static NSString * const kSCIInstantsUploadFromGalleryPref = @"instants_upload_from_gallery";
+static NSString * const kSPKInstantsUploadFromGalleryPref = @"instants_upload_from_gallery";
 
-static BOOL SCIInstantsUploadFromGalleryEnabled(void) {
-    return [SCIUtils getBoolPref:kSCIInstantsUploadFromGalleryPref];
+static BOOL SPKInstantsUploadFromGalleryEnabled(void) {
+    return [SPKUtils getBoolPref:kSPKInstantsUploadFromGalleryPref];
 }
 
-static UIImage *sSCIInstantsPendingImage = nil;
-static CVPixelBufferRef sSCIInstantsCachedPixelBuffer = NULL;
-static __weak UIImage *sSCIInstantsCachedImage = nil;
-static int32_t sSCIInstantsCachedWidth = 0;
-static int32_t sSCIInstantsCachedHeight = 0;
-static OSType sSCIInstantsCachedFormat = 0;
+static UIImage *sSPKInstantsPendingImage = nil;
+static CVPixelBufferRef sSPKInstantsCachedPixelBuffer = NULL;
+static __weak UIImage *sSPKInstantsCachedImage = nil;
+static int32_t sSPKInstantsCachedWidth = 0;
+static int32_t sSPKInstantsCachedHeight = 0;
+static OSType sSPKInstantsCachedFormat = 0;
 
 // Confirm-capture freeze: the injector keeps the most recent live pixel buffer so
 // freezeNow can snapshot it instantly. While frozen, that frame is replayed
 // downstream so the preview (and the resulting capture) is the exact frame the
 // user pressed the shutter on.
-static CVPixelBufferRef sSCIInstantsLatestLivePixelBuffer = NULL;
-static CVPixelBufferRef sSCIInstantsFrozenPixelBuffer = NULL;
-static BOOL sSCIInstantsIsFrozen = NO;
-static dispatch_queue_t SCIInstantsFreezeQueue(void) {
+static CVPixelBufferRef sSPKInstantsLatestLivePixelBuffer = NULL;
+static CVPixelBufferRef sSPKInstantsFrozenPixelBuffer = NULL;
+static BOOL sSPKInstantsIsFrozen = NO;
+static dispatch_queue_t SPKInstantsFreezeQueue(void) {
     static dispatch_queue_t queue;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        queue = dispatch_queue_create("com.socuul.scinsta.instants.freeze", DISPATCH_QUEUE_SERIAL);
+        queue = dispatch_queue_create("com.sparkle.sparkle.instants.freeze", DISPATCH_QUEUE_SERIAL);
     });
     return queue;
 }
 
-static const void *kSCIInstantsGalleryButtonKey = &kSCIInstantsGalleryButtonKey;
-static const void *kSCIInstantsGalleryFrameKey = &kSCIInstantsGalleryFrameKey;
-static const void *kSCIInstantsVideoInjectorKey = &kSCIInstantsVideoInjectorKey;
-static NSInteger const kSCIInstantsGalleryButtonTag = 921401;
-static __weak UIView *sSCIInstantsVisibleCreationView = nil;
+static const void *kSPKInstantsGalleryButtonKey = &kSPKInstantsGalleryButtonKey;
+static const void *kSPKInstantsGalleryFrameKey = &kSPKInstantsGalleryFrameKey;
+static const void *kSPKInstantsVideoInjectorKey = &kSPKInstantsVideoInjectorKey;
+static NSInteger const kSPKInstantsGalleryButtonTag = 921401;
+static __weak UIView *sSPKInstantsVisibleCreationView = nil;
 
-static void SCIInstantsPinEdges(UIView *view, UIView *host) {
+static void SPKInstantsPinEdges(UIView *view, UIView *host) {
     if (!view || !host) return;
     view.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
@@ -61,18 +61,18 @@ static void SCIInstantsPinEdges(UIView *view, UIView *host) {
     ]];
 }
 
-static void SCIInstantsClearFrameCache(void) {
-    if (sSCIInstantsCachedPixelBuffer) {
-        CVPixelBufferRelease(sSCIInstantsCachedPixelBuffer);
-        sSCIInstantsCachedPixelBuffer = NULL;
+static void SPKInstantsClearFrameCache(void) {
+    if (sSPKInstantsCachedPixelBuffer) {
+        CVPixelBufferRelease(sSPKInstantsCachedPixelBuffer);
+        sSPKInstantsCachedPixelBuffer = NULL;
     }
-    sSCIInstantsCachedImage = nil;
-    sSCIInstantsCachedWidth = 0;
-    sSCIInstantsCachedHeight = 0;
-    sSCIInstantsCachedFormat = 0;
+    sSPKInstantsCachedImage = nil;
+    sSPKInstantsCachedWidth = 0;
+    sSPKInstantsCachedHeight = 0;
+    sSPKInstantsCachedFormat = 0;
 }
 
-static UIImage *SCIInstantsNormalizedImage(UIImage *image) {
+static UIImage *SPKInstantsNormalizedImage(UIImage *image) {
     if (!image || image.imageOrientation == UIImageOrientationUp) return image;
     UIGraphicsBeginImageContextWithOptions(image.size, YES, image.scale);
     [image drawInRect:(CGRect){CGPointZero, image.size}];
@@ -81,19 +81,19 @@ static UIImage *SCIInstantsNormalizedImage(UIImage *image) {
     return normalized ?: image;
 }
 
-static void SCIInstantsSetPendingImage(UIImage *image) {
-    sSCIInstantsPendingImage = SCIInstantsNormalizedImage(image);
-    SCIInstantsClearFrameCache();
-    UIImage *capturedImage = sSCIInstantsPendingImage;
+static void SPKInstantsSetPendingImage(UIImage *image) {
+    sSPKInstantsPendingImage = SPKInstantsNormalizedImage(image);
+    SPKInstantsClearFrameCache();
+    UIImage *capturedImage = sSPKInstantsPendingImage;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(30.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (sSCIInstantsPendingImage == capturedImage) {
-            sSCIInstantsPendingImage = nil;
-            SCIInstantsClearFrameCache();
+        if (sSPKInstantsPendingImage == capturedImage) {
+            sSPKInstantsPendingImage = nil;
+            SPKInstantsClearFrameCache();
         }
     });
 }
 
-static UIViewController *SCIInstantsTopPresenter(void) {
+static UIViewController *SPKInstantsTopPresenter(void) {
     UIViewController *presenter = topMostController();
     while (presenter.presentedViewController) {
         presenter = presenter.presentedViewController;
@@ -101,7 +101,7 @@ static UIViewController *SCIInstantsTopPresenter(void) {
     return presenter;
 }
 
-static UIWindow *SCIInstantsWindowForView(UIView *view) {
+static UIWindow *SPKInstantsWindowForView(UIView *view) {
     if (view.window) return view.window;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class]) continue;
@@ -112,7 +112,7 @@ static UIWindow *SCIInstantsWindowForView(UIView *view) {
     return nil;
 }
 
-static void SCIInstantsWalkViews(UIView *root, void (^visitor)(UIView *view, BOOL *stop)) {
+static void SPKInstantsWalkViews(UIView *root, void (^visitor)(UIView *view, BOOL *stop)) {
     if (!root || !visitor) return;
     BOOL stop = NO;
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:root];
@@ -127,21 +127,21 @@ static void SCIInstantsWalkViews(UIView *root, void (^visitor)(UIView *view, BOO
     }
 }
 
-static BOOL SCIInstantsViewIsVisible(UIView *view) {
+static BOOL SPKInstantsViewIsVisible(UIView *view) {
     return view && view.window && !view.hidden && view.alpha >= 0.05 && view.bounds.size.width > 1.0 && view.bounds.size.height > 1.0;
 }
 
-static BOOL SCIInstantsHeaderHasVisibleCreationView(UIView *header) {
-    if (SCIInstantsViewIsVisible(sSCIInstantsVisibleCreationView) &&
-        SCIInstantsWindowForView(sSCIInstantsVisibleCreationView) == SCIInstantsWindowForView(header)) {
+static BOOL SPKInstantsHeaderHasVisibleCreationView(UIView *header) {
+    if (SPKInstantsViewIsVisible(sSPKInstantsVisibleCreationView) &&
+        SPKInstantsWindowForView(sSPKInstantsVisibleCreationView) == SPKInstantsWindowForView(header)) {
         return YES;
     }
 
-    UIWindow *window = SCIInstantsWindowForView(header);
+    UIWindow *window = SPKInstantsWindowForView(header);
     if (!window) return NO;
     __block BOOL found = NO;
-    SCIInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
-        if (!SCIInstantsViewIsVisible(view)) return;
+    SPKInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
+        if (!SPKInstantsViewIsVisible(view)) return;
         if ([NSStringFromClass(view.class) containsString:@"IGQuickSnapCreationView"]) {
             found = YES;
             *stop = YES;
@@ -150,12 +150,12 @@ static BOOL SCIInstantsHeaderHasVisibleCreationView(UIView *header) {
     return found;
 }
 
-static BOOL SCIInstantsHeaderHasVisibleSnapView(UIView *header) {
-    UIWindow *window = SCIInstantsWindowForView(header);
+static BOOL SPKInstantsHeaderHasVisibleSnapView(UIView *header) {
+    UIWindow *window = SPKInstantsWindowForView(header);
     if (!window) return NO;
     __block BOOL found = NO;
-    SCIInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
-        if (!SCIInstantsViewIsVisible(view)) return;
+    SPKInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
+        if (!SPKInstantsViewIsVisible(view)) return;
         if ([NSStringFromClass(view.class) containsString:@"IGQuickSnapImmersiveViewerSingleSnapView"]) {
             found = YES;
             *stop = YES;
@@ -164,7 +164,7 @@ static BOOL SCIInstantsHeaderHasVisibleSnapView(UIView *header) {
     return found;
 }
 
-static UIView *SCIInstantsHeaderOwnedView(UIView *header, NSString *key) {
+static UIView *SPKInstantsHeaderOwnedView(UIView *header, NSString *key) {
     if (!header || key.length == 0) return nil;
     id view = nil;
     @try { view = [header valueForKey:key]; } @catch (__unused NSException *exception) {}
@@ -177,19 +177,19 @@ static UIView *SCIInstantsHeaderOwnedView(UIView *header, NSString *key) {
     return [view isKindOfClass:UIView.class] ? (UIView *)view : nil;
 }
 
-static UIView *SCIInstantsHeaderArchiveButton(UIView *header) {
-    UIView *archiveButton = SCIInstantsHeaderOwnedView(header, @"archiveButton");
+static UIView *SPKInstantsHeaderArchiveButton(UIView *header) {
+    UIView *archiveButton = SPKInstantsHeaderOwnedView(header, @"archiveButton");
     if (archiveButton && archiveButton.superview == header && !archiveButton.hidden && archiveButton.alpha >= 0.01) {
         return archiveButton;
     }
     return nil;
 }
 
-static UIView *SCIInstantsHeaderInWindow(UIWindow *window) {
+static UIView *SPKInstantsHeaderInWindow(UIWindow *window) {
     if (!window) return nil;
     __block UIView *header = nil;
-    SCIInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
-        if (!SCIInstantsViewIsVisible(view)) return;
+    SPKInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
+        if (!SPKInstantsViewIsVisible(view)) return;
         if ([NSStringFromClass(view.class) containsString:@"IGQuickSnapNavigationV3HeaderButtonView"]) {
             header = view;
             *stop = YES;
@@ -198,7 +198,7 @@ static UIView *SCIInstantsHeaderInWindow(UIWindow *window) {
     return header;
 }
 
-static NSString *SCIInstantsControlText(UIView *view) {
+static NSString *SPKInstantsControlText(UIView *view) {
     if ([view isKindOfClass:UIButton.class]) {
         UIButton *button = (UIButton *)view;
         return [button titleForState:UIControlStateNormal] ?: button.accessibilityLabel;
@@ -210,12 +210,12 @@ static NSString *SCIInstantsControlText(UIView *view) {
     return view.accessibilityLabel;
 }
 
-static BOOL SCIInstantsCreationViewIsPostCapture(UIView *creationView) {
+static BOOL SPKInstantsCreationViewIsPostCapture(UIView *creationView) {
     if (!creationView) return NO;
     __block BOOL foundUndo = NO;
-    SCIInstantsWalkViews(creationView, ^(UIView *view, BOOL *stop) {
-        if (!SCIInstantsViewIsVisible(view)) return;
-        NSString *text = [SCIInstantsControlText(view) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    SPKInstantsWalkViews(creationView, ^(UIView *view, BOOL *stop) {
+        if (!SPKInstantsViewIsVisible(view)) return;
+        NSString *text = [SPKInstantsControlText(view) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if ([text caseInsensitiveCompare:@"Undo"] == NSOrderedSame) {
             foundUndo = YES;
             *stop = YES;
@@ -224,18 +224,18 @@ static BOOL SCIInstantsCreationViewIsPostCapture(UIView *creationView) {
     return foundUndo;
 }
 
-static void SCIInstantsClearPendingImageForCreationView(UIView *creationView) {
+static void SPKInstantsClearPendingImageForCreationView(UIView *creationView) {
     (void)creationView;
-    sSCIInstantsPendingImage = nil;
-    SCIInstantsClearFrameCache();
+    sSPKInstantsPendingImage = nil;
+    SPKInstantsClearFrameCache();
 }
 
-@interface SCIInstantsCropViewController : UIViewController <UIScrollViewDelegate>
+@interface SPKInstantsCropViewController : UIViewController <UIScrollViewDelegate>
 @property (nonatomic, strong) UIImage *sourceImage;
 @property (nonatomic, copy) void (^completion)(UIImage *image);
 @end
 
-@implementation SCIInstantsCropViewController {
+@implementation SPKInstantsCropViewController {
     UIScrollView *_scrollView;
     UIImageView *_imageView;
     UIView *_overlayView;
@@ -418,21 +418,21 @@ static void SCIInstantsClearPendingImageForCreationView(UIView *creationView) {
 
 @end
 
-static void SCIInstantsPresentImageForPositioning(UIImage *image) {
+static void SPKInstantsPresentImageForPositioning(UIImage *image) {
     if (!image) return;
-    SCIInstantsCropViewController *crop = [[SCIInstantsCropViewController alloc] init];
-    crop.sourceImage = SCIInstantsNormalizedImage(image);
+    SPKInstantsCropViewController *crop = [[SPKInstantsCropViewController alloc] init];
+    crop.sourceImage = SPKInstantsNormalizedImage(image);
     crop.completion = ^(UIImage *croppedImage) {
-        SCIInstantsSetPendingImage(croppedImage);
+        SPKInstantsSetPendingImage(croppedImage);
     };
-    [SCIInstantsTopPresenter() presentViewController:crop animated:YES completion:nil];
+    [SPKInstantsTopPresenter() presentViewController:crop animated:YES completion:nil];
 }
 
-static CVPixelBufferRef SCIInstantsRenderImageToPixelBuffer(UIImage *image,
+static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
                                                             int32_t width,
                                                             int32_t height,
                                                             OSType format) CF_RETURNS_RETAINED;
-static CVPixelBufferRef SCIInstantsRenderImageToPixelBuffer(UIImage *image,
+static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
                                                             int32_t width,
                                                             int32_t height,
                                                             OSType format) {
@@ -554,9 +554,9 @@ static CVPixelBufferRef SCIInstantsRenderImageToPixelBuffer(UIImage *image,
 // Wrap an existing pixel buffer (a snapshotted live frame) into a fresh sample
 // buffer that carries the template's timing/format, so it can be replayed
 // downstream as if it were the current camera frame.
-static CMSampleBufferRef SCIInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
+static CMSampleBufferRef SPKInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
                                                                CMSampleBufferRef templateBuffer) CF_RETURNS_RETAINED;
-static CMSampleBufferRef SCIInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
+static CMSampleBufferRef SPKInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
                                                                CMSampleBufferRef templateBuffer) {
     if (!pixelBuffer || !templateBuffer) return NULL;
 
@@ -583,9 +583,9 @@ static CMSampleBufferRef SCIInstantsSampleBufferForPixelBuffer(CVPixelBufferRef 
     return output;
 }
 
-static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
+static CMSampleBufferRef SPKInstantsSampleBufferForImage(UIImage *image,
                                                          CMSampleBufferRef templateBuffer) CF_RETURNS_RETAINED;
-static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
+static CMSampleBufferRef SPKInstantsSampleBufferForImage(UIImage *image,
                                                          CMSampleBufferRef templateBuffer) {
     if (!image.CGImage || !templateBuffer) return NULL;
     CMFormatDescriptionRef templateFormat = CMSampleBufferGetFormatDescription(templateBuffer);
@@ -593,23 +593,23 @@ static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
 
     CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(templateFormat);
     OSType format = CMFormatDescriptionGetMediaSubType(templateFormat);
-    if (!sSCIInstantsCachedPixelBuffer ||
-        sSCIInstantsCachedImage != image ||
-        sSCIInstantsCachedWidth != dimensions.width ||
-        sSCIInstantsCachedHeight != dimensions.height ||
-        sSCIInstantsCachedFormat != format) {
-        SCIInstantsClearFrameCache();
-        sSCIInstantsCachedPixelBuffer = SCIInstantsRenderImageToPixelBuffer(image, dimensions.width, dimensions.height, format);
-        sSCIInstantsCachedImage = image;
-        sSCIInstantsCachedWidth = dimensions.width;
-        sSCIInstantsCachedHeight = dimensions.height;
-        sSCIInstantsCachedFormat = format;
+    if (!sSPKInstantsCachedPixelBuffer ||
+        sSPKInstantsCachedImage != image ||
+        sSPKInstantsCachedWidth != dimensions.width ||
+        sSPKInstantsCachedHeight != dimensions.height ||
+        sSPKInstantsCachedFormat != format) {
+        SPKInstantsClearFrameCache();
+        sSPKInstantsCachedPixelBuffer = SPKInstantsRenderImageToPixelBuffer(image, dimensions.width, dimensions.height, format);
+        sSPKInstantsCachedImage = image;
+        sSPKInstantsCachedWidth = dimensions.width;
+        sSPKInstantsCachedHeight = dimensions.height;
+        sSPKInstantsCachedFormat = format;
     }
-    if (!sSCIInstantsCachedPixelBuffer) return NULL;
+    if (!sSPKInstantsCachedPixelBuffer) return NULL;
 
     CMVideoFormatDescriptionRef formatDescription = NULL;
     if (CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault,
-                                                     sSCIInstantsCachedPixelBuffer,
+                                                     sSPKInstantsCachedPixelBuffer,
                                                      &formatDescription) != noErr || !formatDescription) {
         return NULL;
     }
@@ -619,7 +619,7 @@ static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
 
     CMSampleBufferRef output = NULL;
     CMSampleBufferCreateForImageBuffer(kCFAllocatorDefault,
-                                       sSCIInstantsCachedPixelBuffer,
+                                       sSPKInstantsCachedPixelBuffer,
                                        true,
                                        NULL,
                                        NULL,
@@ -630,11 +630,11 @@ static CMSampleBufferRef SCIInstantsSampleBufferForImage(UIImage *image,
     return output;
 }
 
-@interface SCIInstantsVideoBufferInjector : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface SPKInstantsVideoBufferInjector : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 @property (nonatomic, strong) id realDelegate;
 @end
 
-@implementation SCIInstantsVideoBufferInjector
+@implementation SPKInstantsVideoBufferInjector
 - (BOOL)respondsToSelector:(SEL)selector {
     return [super respondsToSelector:selector] || [self.realDelegate respondsToSelector:selector];
 }
@@ -654,20 +654,20 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     CVPixelBufferRef livePixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (livePixelBuffer) {
         CVPixelBufferRetain(livePixelBuffer);
-        dispatch_sync(SCIInstantsFreezeQueue(), ^{
-            if (sSCIInstantsLatestLivePixelBuffer) {
-                CVPixelBufferRelease(sSCIInstantsLatestLivePixelBuffer);
+        dispatch_sync(SPKInstantsFreezeQueue(), ^{
+            if (sSPKInstantsLatestLivePixelBuffer) {
+                CVPixelBufferRelease(sSPKInstantsLatestLivePixelBuffer);
             }
-            sSCIInstantsLatestLivePixelBuffer = livePixelBuffer;
+            sSPKInstantsLatestLivePixelBuffer = livePixelBuffer;
         });
     }
 
     // Gallery/files upload: when the user has positioned and cropped an image to send,
     // this pending image MUST take priority over everything else — including the
     // confirm-capture frozen frame. The pending image is the user's intended content.
-    UIImage *pendingImage = SCIInstantsUploadFromGalleryEnabled() ? sSCIInstantsPendingImage : nil;
+    UIImage *pendingImage = SPKInstantsUploadFromGalleryEnabled() ? sSPKInstantsPendingImage : nil;
     if (pendingImage) {
-        CMSampleBufferRef replacement = SCIInstantsSampleBufferForImage(pendingImage, sampleBuffer);
+        CMSampleBufferRef replacement = SPKInstantsSampleBufferForImage(pendingImage, sampleBuffer);
         if (replacement) {
             [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
                                                                    didOutputSampleBuffer:replacement
@@ -680,15 +680,15 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     // While frozen (confirm-capture), replay the snapshotted frame so the preview
     // and the eventual capture are the exact frame the user pressed the shutter on.
     __block CVPixelBufferRef frozen = NULL;
-    if (sSCIInstantsIsFrozen) {
-        dispatch_sync(SCIInstantsFreezeQueue(), ^{
-            if (sSCIInstantsFrozenPixelBuffer) {
-                frozen = CVPixelBufferRetain(sSCIInstantsFrozenPixelBuffer);
+    if (sSPKInstantsIsFrozen) {
+        dispatch_sync(SPKInstantsFreezeQueue(), ^{
+            if (sSPKInstantsFrozenPixelBuffer) {
+                frozen = CVPixelBufferRetain(sSPKInstantsFrozenPixelBuffer);
             }
         });
     }
     if (frozen) {
-        CMSampleBufferRef replacement = SCIInstantsSampleBufferForPixelBuffer(frozen, sampleBuffer);
+        CMSampleBufferRef replacement = SPKInstantsSampleBufferForPixelBuffer(frozen, sampleBuffer);
         CVPixelBufferRelease(frozen);
         if (replacement) {
             [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
@@ -707,52 +707,52 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 }
 @end
 
-@implementation SCIInstantsFrameInjector
+@implementation SPKInstantsFrameInjector
 
 + (BOOL)hasLiveFrame {
     __block BOOL has = NO;
-    dispatch_sync(SCIInstantsFreezeQueue(), ^{
-        has = (sSCIInstantsLatestLivePixelBuffer != NULL);
+    dispatch_sync(SPKInstantsFreezeQueue(), ^{
+        has = (sSPKInstantsLatestLivePixelBuffer != NULL);
     });
     return has;
 }
 
 + (void)freezeNow {
-    dispatch_sync(SCIInstantsFreezeQueue(), ^{
-        if (!sSCIInstantsLatestLivePixelBuffer) return;
-        if (sSCIInstantsFrozenPixelBuffer) {
-            CVPixelBufferRelease(sSCIInstantsFrozenPixelBuffer);
+    dispatch_sync(SPKInstantsFreezeQueue(), ^{
+        if (!sSPKInstantsLatestLivePixelBuffer) return;
+        if (sSPKInstantsFrozenPixelBuffer) {
+            CVPixelBufferRelease(sSPKInstantsFrozenPixelBuffer);
         }
-        sSCIInstantsFrozenPixelBuffer = CVPixelBufferRetain(sSCIInstantsLatestLivePixelBuffer);
-        sSCIInstantsIsFrozen = YES;
+        sSPKInstantsFrozenPixelBuffer = CVPixelBufferRetain(sSPKInstantsLatestLivePixelBuffer);
+        sSPKInstantsIsFrozen = YES;
     });
 }
 
 + (void)clearFrozen {
-    dispatch_sync(SCIInstantsFreezeQueue(), ^{
-        sSCIInstantsIsFrozen = NO;
-        if (sSCIInstantsFrozenPixelBuffer) {
-            CVPixelBufferRelease(sSCIInstantsFrozenPixelBuffer);
-            sSCIInstantsFrozenPixelBuffer = NULL;
+    dispatch_sync(SPKInstantsFreezeQueue(), ^{
+        sSPKInstantsIsFrozen = NO;
+        if (sSPKInstantsFrozenPixelBuffer) {
+            CVPixelBufferRelease(sSPKInstantsFrozenPixelBuffer);
+            sSPKInstantsFrozenPixelBuffer = NULL;
         }
     });
 }
 
 + (BOOL)isFrozen {
-    return sSCIInstantsIsFrozen;
+    return sSPKInstantsIsFrozen;
 }
 
 @end
 
-@interface SCIInstantsImagePickerDelegate : NSObject <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
+@interface SPKInstantsImagePickerDelegate : NSObject <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @end
 
-@implementation SCIInstantsImagePickerDelegate
+@implementation SPKInstantsImagePickerDelegate
 + (instancetype)shared {
-    static SCIInstantsImagePickerDelegate *delegate;
+    static SPKInstantsImagePickerDelegate *delegate;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        delegate = [[SCIInstantsImagePickerDelegate alloc] init];
+        delegate = [[SPKInstantsImagePickerDelegate alloc] init];
     });
     return delegate;
 }
@@ -760,7 +760,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey, id> *)info {
     UIImage *image = info[UIImagePickerControllerOriginalImage];
     [picker dismissViewControllerAnimated:YES completion:^{
-        if (image) SCIInstantsPresentImageForPositioning(image);
+        if (image) SPKInstantsPresentImageForPositioning(image);
     }];
 }
 
@@ -769,15 +769,15 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 }
 @end
 
-@interface SCIInstantsDocumentPickerDelegate : NSObject <UIDocumentPickerDelegate>
+@interface SPKInstantsDocumentPickerDelegate : NSObject <UIDocumentPickerDelegate>
 @end
 
-@implementation SCIInstantsDocumentPickerDelegate
+@implementation SPKInstantsDocumentPickerDelegate
 + (instancetype)shared {
-    static SCIInstantsDocumentPickerDelegate *delegate;
+    static SPKInstantsDocumentPickerDelegate *delegate;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        delegate = [[SCIInstantsDocumentPickerDelegate alloc] init];
+        delegate = [[SPKInstantsDocumentPickerDelegate alloc] init];
     });
     return delegate;
 }
@@ -790,7 +790,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     UIImage *image = data ? [UIImage imageWithData:data] : nil;
     if (scoped) [url stopAccessingSecurityScopedResource];
     [controller dismissViewControllerAnimated:YES completion:^{
-        if (image) SCIInstantsPresentImageForPositioning(image);
+        if (image) SPKInstantsPresentImageForPositioning(image);
     }];
 }
 
@@ -799,51 +799,51 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 }
 @end
 
-@interface SCIInstantsGalleryButtonTarget : NSObject
+@interface SPKInstantsGalleryButtonTarget : NSObject
 + (instancetype)shared;
 - (void)buttonTapped:(UIButton *)sender;
 @end
 
-static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
-    UIViewController *presenter = SCIInstantsTopPresenter();
-    NSMutableArray<SCIIGAlertAction *> *actions = [NSMutableArray array];
+static void SPKPresentInstantsSourcePicker(__unused UIView *sourceView) {
+    UIViewController *presenter = SPKInstantsTopPresenter();
+    NSMutableArray<SPKIGAlertAction *> *actions = [NSMutableArray array];
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Photos" style:SCIIGAlertActionStyleDefault handler:^{
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Photos" style:SPKIGAlertActionStyleDefault handler:^{
         UIImagePickerController *picker = [[UIImagePickerController alloc] init];
         picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
         picker.mediaTypes = @[@"public.image"];
-        picker.delegate = [SCIInstantsImagePickerDelegate shared];
+        picker.delegate = [SPKInstantsImagePickerDelegate shared];
         picker.modalPresentationStyle = UIModalPresentationFullScreen;
-        [SCIInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
+        [SPKInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
     }]];
 
-    if ([SCIGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]]) {
-        [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Gallery" style:SCIIGAlertActionStyleDefault handler:^{
-            [SCIGalleryPickerViewController presentFromViewController:SCIInstantsTopPresenter()
+    if ([SPKGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:[NSSet setWithObject:@(SPKGalleryMediaTypeImage)]]) {
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Gallery" style:SPKIGAlertActionStyleDefault handler:^{
+            [SPKGalleryPickerViewController presentFromViewController:SPKInstantsTopPresenter()
                                                                 title:@"Choose Photo"
-                                                    allowedMediaTypes:[NSSet setWithObject:@(SCIGalleryMediaTypeImage)]
+                                                    allowedMediaTypes:[NSSet setWithObject:@(SPKGalleryMediaTypeImage)]
                                               allowsMultipleSelection:NO
-                                                           completion:^(NSArray<SCIGalleryFile *> *selectedFiles) {
-                SCIGalleryFile *file = selectedFiles.firstObject;
+                                                           completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
+                SPKGalleryFile *file = selectedFiles.firstObject;
                 UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
-                if (image) SCIInstantsPresentImageForPositioning(image);
+                if (image) SPKInstantsPresentImageForPositioning(image);
             }];
         }]];
     }
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Select from Files" style:SCIIGAlertActionStyleDefault handler:^{
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Files" style:SPKIGAlertActionStyleDefault handler:^{
         UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeImage ] asCopy:YES];
         picker.allowsMultipleSelection = NO;
-        picker.delegate = [SCIInstantsDocumentPickerDelegate shared];
-        [SCIInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
+        picker.delegate = [SPKInstantsDocumentPickerDelegate shared];
+        [SPKInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
     }]];
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Instants Settings" style:SCIIGAlertActionStyleDefault handler:^{
-        [SCIUtils showSettingsForTopicTitle:@"Instants"];
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Instants Settings" style:SPKIGAlertActionStyleDefault handler:^{
+        [SPKUtils showSettingsForTopicTitle:@"Instants"];
     }]];
 
-    [actions addObject:[SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:nil]];
-    if (![SCIIGAlertPresenter presentActionSheetFromViewController:presenter
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
+    if (![SPKIGAlertPresenter presentActionSheetFromViewController:presenter
                                                             title:@"Upload Photo"
                                                           message:@"Choose a photo to position and crop, then send as an Instant."
                                                           actions:actions]) {
@@ -852,22 +852,22 @@ static void SCIPresentInstantsSourcePicker(__unused UIView *sourceView) {
     }
 }
 
-@implementation SCIInstantsGalleryButtonTarget
+@implementation SPKInstantsGalleryButtonTarget
 + (instancetype)shared {
-    static SCIInstantsGalleryButtonTarget *target;
+    static SPKInstantsGalleryButtonTarget *target;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        target = [[SCIInstantsGalleryButtonTarget alloc] init];
+        target = [[SPKInstantsGalleryButtonTarget alloc] init];
     });
     return target;
 }
 
 - (void)buttonTapped:(UIButton *)sender {
-    SCIPresentInstantsSourcePicker(sender);
+    SPKPresentInstantsSourcePicker(sender);
 }
 @end
 
-static BOOL SCIInstantsGalleryFrameMatches(UIView *view, CGRect frame) {
+static BOOL SPKInstantsGalleryFrameMatches(UIView *view, CGRect frame) {
     if (![view isKindOfClass:UIView.class] || view.hidden || !view.superview) return NO;
     return ABS(CGRectGetMinX(view.frame) - CGRectGetMinX(frame)) < 0.5 &&
            ABS(CGRectGetMinY(view.frame) - CGRectGetMinY(frame)) < 0.5 &&
@@ -875,7 +875,7 @@ static BOOL SCIInstantsGalleryFrameMatches(UIView *view, CGRect frame) {
            ABS(CGRectGetHeight(view.frame) - CGRectGetHeight(frame)) < 0.5;
 }
 
-static UIView *SCIInstantsGalleryFallbackRightAnchor(UIView *header, UIView *host) {
+static UIView *SPKInstantsGalleryFallbackRightAnchor(UIView *header, UIView *host) {
     CGFloat halfWidth = header.bounds.size.width / 2.0;
     UIView *anchor = nil;
     CGFloat minX = CGFLOAT_MAX;
@@ -892,10 +892,10 @@ static UIView *SCIInstantsGalleryFallbackRightAnchor(UIView *header, UIView *hos
     return anchor;
 }
 
-static CGRect SCIInstantsGalleryButtonFrame(UIView *header, UIView *host) {
+static CGRect SPKInstantsGalleryButtonFrame(UIView *header, UIView *host) {
     CGFloat side = 44.0;
     CGFloat gap = 0.0;
-    UIView *anchor = SCIInstantsHeaderArchiveButton(header) ?: SCIInstantsGalleryFallbackRightAnchor(header, host);
+    UIView *anchor = SPKInstantsHeaderArchiveButton(header) ?: SPKInstantsGalleryFallbackRightAnchor(header, host);
 
     if (anchor) {
         return CGRectMake(CGRectGetMinX(anchor.frame) - side - gap,
@@ -910,165 +910,165 @@ static CGRect SCIInstantsGalleryButtonFrame(UIView *header, UIView *host) {
                       side);
 }
 
-static NSString *SCIInstantsGalleryFrameKey(UIView *header, UIView *anchor, CGRect frame) {
+static NSString *SPKInstantsGalleryFrameKey(UIView *header, UIView *anchor, CGRect frame) {
     return [NSString stringWithFormat:@"%p|%@|%@",
             anchor ?: header,
             NSStringFromCGRect(anchor ? anchor.frame : CGRectZero),
             NSStringFromCGRect(frame)];
 }
 
-static void SCIRemoveInstantsGalleryButton(UIView *header) {
-    UIView *host = [header viewWithTag:kSCIInstantsGalleryButtonTag];
+static void SPKRemoveInstantsGalleryButton(UIView *header) {
+    UIView *host = [header viewWithTag:kSPKInstantsGalleryButtonTag];
     [host removeFromSuperview];
 }
 
-static void SCIInstantsInstallGalleryButton(UIView *header) {
+static void SPKInstantsInstallGalleryButton(UIView *header) {
     if (!header) return;
-    UIView *host = [header viewWithTag:kSCIInstantsGalleryButtonTag];
-    UIButton *button = [host isKindOfClass:UIView.class] ? objc_getAssociatedObject(host, kSCIInstantsGalleryButtonKey) : nil;
-    if (!SCIInstantsUploadFromGalleryEnabled()) {
-        SCIRemoveInstantsGalleryButton(header);
+    UIView *host = [header viewWithTag:kSPKInstantsGalleryButtonTag];
+    UIButton *button = [host isKindOfClass:UIView.class] ? objc_getAssociatedObject(host, kSPKInstantsGalleryButtonKey) : nil;
+    if (!SPKInstantsUploadFromGalleryEnabled()) {
+        SPKRemoveInstantsGalleryButton(header);
         return;
     }
 
-    if (!SCIInstantsHeaderHasVisibleCreationView(header) || SCIInstantsHeaderHasVisibleSnapView(header)) {
-        SCIRemoveInstantsGalleryButton(header);
+    if (!SPKInstantsHeaderHasVisibleCreationView(header) || SPKInstantsHeaderHasVisibleSnapView(header)) {
+        SPKRemoveInstantsGalleryButton(header);
         return;
     }
 
     if (![button isKindOfClass:UIButton.class]) {
         [host removeFromSuperview];
         host = [[UIView alloc] init];
-        host.tag = kSCIInstantsGalleryButtonTag;
+        host.tag = kSPKInstantsGalleryButtonTag;
         host.translatesAutoresizingMaskIntoConstraints = YES;
         host.clipsToBounds = NO;
 
-        SCIChromeCanvas *canvas = [[SCIChromeCanvas alloc] init];
+        SPKChromeCanvas *canvas = [[SPKChromeCanvas alloc] init];
         canvas.userInteractionEnabled = YES;
         [host addSubview:canvas];
-        SCIInstantsPinEdges(canvas, host);
+        SPKInstantsPinEdges(canvas, host);
 
         button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.translatesAutoresizingMaskIntoConstraints = NO;
         button.showsMenuAsPrimaryAction = NO;
         button.adjustsImageWhenHighlighted = YES;
-        UIImage *image = [SCIAssetUtils instagramIconNamed:@"photo_gallery" pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+        UIImage *image = [SPKAssetUtils instagramIconNamed:@"photo_gallery" pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
         [button setImage:image forState:UIControlStateNormal];
         button.tintColor = [UIColor whiteColor];
-        [button addTarget:[SCIInstantsGalleryButtonTarget shared]
+        [button addTarget:[SPKInstantsGalleryButtonTarget shared]
                    action:@selector(buttonTapped:)
          forControlEvents:UIControlEventTouchUpInside];
         [canvas.contentContainer addSubview:button];
-        SCIInstantsPinEdges(button, canvas.contentContainer);
-        objc_setAssociatedObject(host, kSCIInstantsGalleryButtonKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        SPKInstantsPinEdges(button, canvas.contentContainer);
+        objc_setAssociatedObject(host, kSPKInstantsGalleryButtonKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         [header addSubview:host];
     }
 
-    UIView *anchor = SCIInstantsHeaderArchiveButton(header) ?: SCIInstantsGalleryFallbackRightAnchor(header, host);
-    CGRect frame = SCIInstantsGalleryButtonFrame(header, host);
-    NSString *frameKey = SCIInstantsGalleryFrameKey(header, anchor, frame);
-    NSString *previousFrameKey = objc_getAssociatedObject(host, kSCIInstantsGalleryFrameKey);
-    if ([previousFrameKey isEqualToString:frameKey] && SCIInstantsGalleryFrameMatches(host, frame)) {
+    UIView *anchor = SPKInstantsHeaderArchiveButton(header) ?: SPKInstantsGalleryFallbackRightAnchor(header, host);
+    CGRect frame = SPKInstantsGalleryButtonFrame(header, host);
+    NSString *frameKey = SPKInstantsGalleryFrameKey(header, anchor, frame);
+    NSString *previousFrameKey = objc_getAssociatedObject(host, kSPKInstantsGalleryFrameKey);
+    if ([previousFrameKey isEqualToString:frameKey] && SPKInstantsGalleryFrameMatches(host, frame)) {
         return;
     }
 
-    if (!SCIInstantsGalleryFrameMatches(host, frame)) {
+    if (!SPKInstantsGalleryFrameMatches(host, frame)) {
         host.frame = frame;
     }
-    objc_setAssociatedObject(host, kSCIInstantsGalleryFrameKey, frameKey, OBJC_ASSOCIATION_COPY_NONATOMIC);
+    objc_setAssociatedObject(host, kSPKInstantsGalleryFrameKey, frameKey, OBJC_ASSOCIATION_COPY_NONATOMIC);
 
     host.hidden = NO;
     host.alpha = 1.0;
     [header bringSubviewToFront:host];
 }
 
-typedef void (*SCIInstantsCreationViewLayoutIMP)(id, SEL);
-typedef void (*SCIInstantsCreationViewMoveIMP)(id, SEL, id);
-typedef void (*SCIInstantsHeaderLayoutIMP)(id, SEL);
-typedef void (*SCIInstantsSetSampleDelegateIMP)(id, SEL, id, dispatch_queue_t);
+typedef void (*SPKInstantsCreationViewLayoutIMP)(id, SEL);
+typedef void (*SPKInstantsCreationViewMoveIMP)(id, SEL, id);
+typedef void (*SPKInstantsHeaderLayoutIMP)(id, SEL);
+typedef void (*SPKInstantsSetSampleDelegateIMP)(id, SEL, id, dispatch_queue_t);
 
-static SCIInstantsCreationViewLayoutIMP orig_creationViewLayoutSubviews = NULL;
-static SCIInstantsCreationViewMoveIMP orig_creationViewWillMoveToWindow = NULL;
-static SCIInstantsHeaderLayoutIMP orig_headerLayoutSubviews = NULL;
-static SCIInstantsSetSampleDelegateIMP orig_setSampleBufferDelegate = NULL;
+static SPKInstantsCreationViewLayoutIMP orig_creationViewLayoutSubviews = NULL;
+static SPKInstantsCreationViewMoveIMP orig_creationViewWillMoveToWindow = NULL;
+static SPKInstantsHeaderLayoutIMP orig_headerLayoutSubviews = NULL;
+static SPKInstantsSetSampleDelegateIMP orig_setSampleBufferDelegate = NULL;
 
 static void replaced_creationViewLayoutSubviews(id self, SEL _cmd) {
     if (orig_creationViewLayoutSubviews) orig_creationViewLayoutSubviews(self, _cmd);
     UIView *creationView = (UIView *)self;
-    if (SCIInstantsViewIsVisible(creationView)) {
-        sSCIInstantsVisibleCreationView = creationView;
-        if (sSCIInstantsPendingImage && SCIInstantsCreationViewIsPostCapture(creationView)) {
-            SCIInstantsClearPendingImageForCreationView(creationView);
+    if (SPKInstantsViewIsVisible(creationView)) {
+        sSPKInstantsVisibleCreationView = creationView;
+        if (sSPKInstantsPendingImage && SPKInstantsCreationViewIsPostCapture(creationView)) {
+            SPKInstantsClearPendingImageForCreationView(creationView);
             return;
         }
-        UIView *header = SCIInstantsHeaderInWindow(SCIInstantsWindowForView(creationView));
-        if (header) SCIInstantsInstallGalleryButton(header);
+        UIView *header = SPKInstantsHeaderInWindow(SPKInstantsWindowForView(creationView));
+        if (header) SPKInstantsInstallGalleryButton(header);
     }
 }
 
 static void replaced_creationViewWillMoveToWindow(id self, SEL _cmd, id window) {
-    if (!window && sSCIInstantsPendingImage) {
-        SCIInstantsClearPendingImageForCreationView((UIView *)self);
+    if (!window && sSPKInstantsPendingImage) {
+        SPKInstantsClearPendingImageForCreationView((UIView *)self);
     }
-    if (!window && sSCIInstantsVisibleCreationView == (UIView *)self) {
-        sSCIInstantsVisibleCreationView = nil;
+    if (!window && sSPKInstantsVisibleCreationView == (UIView *)self) {
+        sSPKInstantsVisibleCreationView = nil;
     }
     if (orig_creationViewWillMoveToWindow) orig_creationViewWillMoveToWindow(self, _cmd, window);
 }
 
 static void replaced_headerLayoutSubviews(id self, SEL _cmd) {
     if (orig_headerLayoutSubviews) orig_headerLayoutSubviews(self, _cmd);
-    SCIInstantsInstallGalleryButton((UIView *)self);
+    SPKInstantsInstallGalleryButton((UIView *)self);
 }
 
-static BOOL SCIInstantsConfirmCaptureEnabled(void) {
-    return [SCIUtils getBoolPref:@"instants_confirm_capture"];
+static BOOL SPKInstantsConfirmCaptureEnabled(void) {
+    return [SPKUtils getBoolPref:@"instants_confirm_capture"];
 }
 
 static void replaced_setSampleBufferDelegate(id self, SEL _cmd, id delegate, dispatch_queue_t queue) {
     // Wrap the camera's sample-buffer delegate when EITHER feature needs it:
     // gallery upload (replace the feed with a chosen image) or confirm-capture
     // (freeze the live frame while confirming so the sent frame is exact).
-    BOOL wants = SCIInstantsUploadFromGalleryEnabled() || SCIInstantsConfirmCaptureEnabled();
-    if (delegate && wants && ![delegate isKindOfClass:SCIInstantsVideoBufferInjector.class]) {
-        SCIInstantsVideoBufferInjector *injector = [[SCIInstantsVideoBufferInjector alloc] init];
+    BOOL wants = SPKInstantsUploadFromGalleryEnabled() || SPKInstantsConfirmCaptureEnabled();
+    if (delegate && wants && ![delegate isKindOfClass:SPKInstantsVideoBufferInjector.class]) {
+        SPKInstantsVideoBufferInjector *injector = [[SPKInstantsVideoBufferInjector alloc] init];
         injector.realDelegate = delegate;
-        objc_setAssociatedObject(self, kSCIInstantsVideoInjectorKey, injector, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(self, kSPKInstantsVideoInjectorKey, injector, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         if (orig_setSampleBufferDelegate) orig_setSampleBufferDelegate(self, _cmd, injector, queue);
         return;
     }
     if (orig_setSampleBufferDelegate) orig_setSampleBufferDelegate(self, _cmd, delegate, queue);
 }
 
-static void SCIHookInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
+static void SPKHookInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
     Class cls = objc_getClass(className);
     Method method = cls ? class_getInstanceMethod(cls, selector) : NULL;
     if (!cls || !method) {
-        SCILog(@"Instants", @"[SCInsta] Missing hook target %s %@", className, NSStringFromSelector(selector));
+        SPKLog(@"Instants", @"[Sparkle] Missing hook target %s %@", className, NSStringFromSelector(selector));
         return;
     }
     MSHookMessageEx(cls, selector, replacement, original);
 }
 
-extern "C" void SCIInstallInstantsGalleryUploadHooksIfEnabled(void) {
+extern "C" void SPKInstallInstantsGalleryUploadHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCIHookInstanceMethod("_TtC29IGQuickSnapCreationController23IGQuickSnapCreationView",
+        SPKHookInstanceMethod("_TtC29IGQuickSnapCreationController23IGQuickSnapCreationView",
                               @selector(layoutSubviews),
                               (IMP)replaced_creationViewLayoutSubviews,
                               (IMP *)&orig_creationViewLayoutSubviews);
-        SCIHookInstanceMethod("_TtC29IGQuickSnapCreationController23IGQuickSnapCreationView",
+        SPKHookInstanceMethod("_TtC29IGQuickSnapCreationController23IGQuickSnapCreationView",
                               @selector(willMoveToWindow:),
                               (IMP)replaced_creationViewWillMoveToWindow,
                               (IMP *)&orig_creationViewWillMoveToWindow);
-        SCIHookInstanceMethod("_TtC45IGQuickSnapNavigationV3HeaderButtonController39IGQuickSnapNavigationV3HeaderButtonView",
+        SPKHookInstanceMethod("_TtC45IGQuickSnapNavigationV3HeaderButtonController39IGQuickSnapNavigationV3HeaderButtonView",
                               @selector(layoutSubviews),
                               (IMP)replaced_headerLayoutSubviews,
                               (IMP *)&orig_headerLayoutSubviews);
-        SCIHookInstanceMethod("AVCaptureVideoDataOutput",
+        SPKHookInstanceMethod("AVCaptureVideoDataOutput",
                               @selector(setSampleBufferDelegate:queue:),
                               (IMP)replaced_setSampleBufferDelegate,
                               (IMP *)&orig_setSampleBufferDelegate);
-        SCILog(@"Instants", @"[SCInsta] Instants gallery upload hooks installed");
+        SPKLog(@"Instants", @"[Sparkle] Instants gallery upload hooks installed");
     });
 }

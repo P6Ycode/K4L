@@ -1,12 +1,12 @@
 #import "../../Utils.h"
 
-static NSInteger const kSCIFeedRefreshReasonHomeButton = 5;
+static NSInteger const kSPKFeedRefreshReasonHomeButton = 5;
 
-static BOOL sciShouldBlockFeedRefresh(void) {
-    return [SCIUtils getBoolPref:@"feed_disable_home_refresh"];
+static BOOL spkShouldBlockFeedRefresh(void) {
+    return [SPKUtils getBoolPref:@"feed_disable_home_refresh"];
 }
 
-static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
+static BOOL spkScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
     if (![scrollView isKindOfClass:[UIScrollView class]]) {
         return NO;
     }
@@ -20,12 +20,12 @@ static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
     return NO;
 }
 
-%group SCIDisableHomeButtonRefreshHooks
+%group SPKDisableHomeButtonRefreshHooks
 
 %hook IGMainFeedViewController
 - (void)refreshFeedWithFetchReason:(NSInteger)reason animated:(BOOL)animated {
-    if (sciShouldBlockFeedRefresh() && reason == kSCIFeedRefreshReasonHomeButton) {
-        SCILog(@"General", @"[SCInsta] Blocking home-button feed refresh");
+    if (spkShouldBlockFeedRefresh() && reason == kSPKFeedRefreshReasonHomeButton) {
+        SPKLog(@"General", @"[Sparkle] Blocking home-button feed refresh");
         return;
     }
 
@@ -35,8 +35,8 @@ static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
 
 %hook IGMainFeedScrollViewDelegateDistributor
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
-    if (sciShouldBlockFeedRefresh()) {
-        return sciScrollViewToTopWithoutRefresh(scrollView);
+    if (spkShouldBlockFeedRefresh()) {
+        return spkScrollViewToTopWithoutRefresh(scrollView);
     }
 
     return %orig;
@@ -46,8 +46,8 @@ static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
 // Swift class from IGHomeSundialFeedScrollOrchestrator.
 %hook _TtC35IGHomeSundialFeedScrollOrchestrator35IGHomeSundialFeedScrollOrchestrator
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
-    if (sciShouldBlockFeedRefresh()) {
-        return sciScrollViewToTopWithoutRefresh(scrollView);
+    if (spkShouldBlockFeedRefresh()) {
+        return spkScrollViewToTopWithoutRefresh(scrollView);
     }
 
     return %orig;
@@ -56,11 +56,11 @@ static BOOL sciScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
 
 %end
 
-void SCIInstallDisableHomeButtonRefreshHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"feed_disable_home_refresh"]) return;
+void SPKInstallDisableHomeButtonRefreshHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"feed_disable_home_refresh"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIDisableHomeButtonRefreshHooks);
+        %init(SPKDisableHomeButtonRefreshHooks);
     });
 }

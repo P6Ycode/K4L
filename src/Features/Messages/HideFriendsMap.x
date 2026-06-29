@@ -1,6 +1,6 @@
 #import "../../Utils.h"
 
-static id SCIValueForSelectorOrKey(id object, NSString *name) {
+static id SPKValueForSelectorOrKey(id object, NSString *name) {
     if (!object || name.length == 0) return nil;
 
     SEL selector = NSSelectorFromString(name);
@@ -15,36 +15,36 @@ static id SCIValueForSelectorOrKey(id object, NSString *name) {
     }
 }
 
-static BOOL SCIObjectIsKindOfClassNamed(id object, NSString *className) {
+static BOOL SPKObjectIsKindOfClassNamed(id object, NSString *className) {
     if (!object || className.length == 0) return NO;
     Class cls = NSClassFromString(className);
     return cls && [object isKindOfClass:cls];
 }
 
-static BOOL SCIShouldHideFriendsMapObject(id object) {
-    if (![SCIUtils getBoolPref:@"msgs_hide_friends_map"]) return NO;
+static BOOL SPKShouldHideFriendsMapObject(id object) {
+    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"]) return NO;
 
     NSString *className = NSStringFromClass([object class]);
     if ([className containsString:@"FriendMap"]) return YES;
 
-    if (SCIObjectIsKindOfClassNamed(object, @"IGDirectNotesTrayUserViewModel")) {
-        id notePk = SCIValueForSelectorOrKey(object, @"notePk");
+    if (SPKObjectIsKindOfClassNamed(object, @"IGDirectNotesTrayUserViewModel")) {
+        id notePk = SPKValueForSelectorOrKey(object, @"notePk");
         if ([notePk isKindOfClass:[NSString class]] && [notePk isEqualToString:@"friends_map"]) {
             return YES;
         }
     }
 
-    id notePk = SCIValueForSelectorOrKey(object, @"notePk");
+    id notePk = SPKValueForSelectorOrKey(object, @"notePk");
     return [notePk isKindOfClass:[NSString class]] && [notePk isEqualToString:@"friends_map"];
 }
 
-static NSArray *SCIFilterFriendsMapObjects(NSArray *originalObjs) {
+static NSArray *SPKFilterFriendsMapObjects(NSArray *originalObjs) {
     if (![originalObjs isKindOfClass:[NSArray class]]) return originalObjs;
 
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
     for (id obj in originalObjs) {
-        if (SCIShouldHideFriendsMapObject(obj)) {
-            SCILog(@"General", @"[SCInsta] Hiding friends map");
+        if (SPKShouldHideFriendsMapObject(obj)) {
+            SPKLog(@"General", @"[Sparkle] Hiding friends map");
             continue;
         }
         [filteredObjs addObject:obj];
@@ -53,24 +53,24 @@ static NSArray *SCIFilterFriendsMapObjects(NSArray *originalObjs) {
     return [filteredObjs copy];
 }
 
-%group SCIHideFriendsMapHooks
+%group SPKHideFriendsMapHooks
 
 %hook IGDirectNotesTrayRowCell
 - (id)listAdapterObjects {
-    return SCIFilterFriendsMapObjects(%orig());
+    return SPKFilterFriendsMapObjects(%orig());
 }
 %end
 
 %hook _TtC24IGDirectNotesTrayUISwift42IGDirectNotesTrayCellListAdapterDataSource
 - (id)objectsForListAdapter:(id)adapter {
-    return SCIFilterFriendsMapObjects(%orig());
+    return SPKFilterFriendsMapObjects(%orig());
 }
 %end
 
 %hook _TtC24IGDirectNotesTrayUISwift43IGDirectNotesTrayFriendMapSectionController
 - (long long)numberOfItems {
-    if ([SCIUtils getBoolPref:@"msgs_hide_friends_map"]) {
-        SCILog(@"General", @"[SCInsta] Hiding friends map section");
+    if ([SPKUtils getBoolPref:@"msgs_hide_friends_map"]) {
+        SPKLog(@"General", @"[Sparkle] Hiding friends map section");
         return 0;
     }
     return %orig();
@@ -79,11 +79,11 @@ static NSArray *SCIFilterFriendsMapObjects(NSArray *originalObjs) {
 
 %end
 
-void SCIInstallHideFriendsMapHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"msgs_hide_friends_map"]) return;
+void SPKInstallHideFriendsMapHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIHideFriendsMapHooks);
+        %init(SPKHideFriendsMapHooks);
     });
 }

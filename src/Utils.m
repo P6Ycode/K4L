@@ -1,39 +1,39 @@
 #import "Utils.h"
 #import "AssetUtils.h"
-#import "App/SCICore.h"
+#import "App/SPKCore.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
-#import "Shared/MediaPreview/SCIMediaCacheManager.h"
-#import "Shared/Gallery/SCIGalleryPaths.h"
-#import "Shared/Gallery/SCIGalleryLockViewController.h"
-#import "Shared/Settings/SCISettingsLockManager.h"
-#import "Shared/UI/SCIIGAlertPresenter.h"
-#import "Settings/SCIPreferenceAvailability.h"
-#import "Settings/SCIPreferences.h"
-#import "App/SCIStabilityGuard.h"
-#import "Shared/Account/SCIAccountManager.h"
+#import "Shared/MediaPreview/SPKMediaCacheManager.h"
+#import "Shared/Gallery/SPKGalleryPaths.h"
+#import "Shared/Gallery/SPKGalleryLockViewController.h"
+#import "Shared/Settings/SPKSettingsLockManager.h"
+#import "Shared/UI/SPKIGAlertPresenter.h"
+#import "Settings/SPKPreferenceAvailability.h"
+#import "Settings/SPKPreferences.h"
+#import "App/SPKStabilityGuard.h"
+#import "Shared/Account/SPKAccountManager.h"
 
-NSString * const kSCIPrefPerAccountSettings = @"general_per_account_settings";
+NSString * const kSPKPrefPerAccountSettings = @"general_per_account_settings";
 
-static NSString *SCITrimmedLogBody(NSString *body) {
+static NSString *SPKTrimmedLogBody(NSString *body) {
     return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
-static NSString *SCINormalizedLogBody(NSString *category, NSString *body, NSString **outCategory) {
+static NSString *SPKNormalizedLogBody(NSString *category, NSString *body, NSString **outCategory) {
     NSString *resolvedCategory = category.length ? category : @"General";
     NSString *resolvedBody = body ?: @"";
     NSArray<NSDictionary<NSString *, NSString *> *> *legacyPrefixes = @[
-        @{@"prefix": @"[SCInsta][startup]", @"category": @"Startup"},
-        @{@"prefix": @"[SCInsta Gallery]", @"category": @"Gallery"},
-        @{@"prefix": @"[SCInsta BulkDownload]", @"category": @"BulkDownload"},
-        @{@"prefix": @"[SCInsta]", @"category": resolvedCategory},
+        @{@"prefix": @"[Sparkle][startup]", @"category": @"Startup"},
+        @{@"prefix": @"[Sparkle Gallery]", @"category": @"Gallery"},
+        @{@"prefix": @"[Sparkle BulkDownload]", @"category": @"BulkDownload"},
+        @{@"prefix": @"[Sparkle]", @"category": resolvedCategory},
     ];
 
     for (NSDictionary<NSString *, NSString *> *entry in legacyPrefixes) {
         NSString *prefix = entry[@"prefix"];
         if ([resolvedBody hasPrefix:prefix]) {
             resolvedCategory = entry[@"category"] ?: resolvedCategory;
-            resolvedBody = SCITrimmedLogBody([resolvedBody substringFromIndex:prefix.length]);
+            resolvedBody = SPKTrimmedLogBody([resolvedBody substringFromIndex:prefix.length]);
             break;
         }
     }
@@ -44,7 +44,7 @@ static NSString *SCINormalizedLogBody(NSString *category, NSString *body, NSStri
     return resolvedBody;
 }
 
-void SCILogMessage(NSString *category, os_log_type_t type, NSString *format, ...) {
+void SPKLogMessage(NSString *category, os_log_type_t type, NSString *format, ...) {
     NSString *body = @"";
     if (format.length > 0) {
         va_list args;
@@ -54,12 +54,12 @@ void SCILogMessage(NSString *category, os_log_type_t type, NSString *format, ...
     }
 
     NSString *resolvedCategory = nil;
-    NSString *resolvedBody = SCINormalizedLogBody(category, body ?: @"", &resolvedCategory);
-    NSString *line = [NSString stringWithFormat:@"[SCInsta %@]: %@", resolvedCategory ?: @"General", resolvedBody ?: @""];
+    NSString *resolvedBody = SPKNormalizedLogBody(category, body ?: @"", &resolvedCategory);
+    NSString *line = [NSString stringWithFormat:@"[Sparkle %@]: %@", resolvedCategory ?: @"General", resolvedBody ?: @""];
     os_log_with_type(OS_LOG_DEFAULT, type, "%{public}s", line.UTF8String);
 }
 
-static NSNumber *SCINumericValueForSelector(id target, NSString *selectorName) {
+static NSNumber *SPKNumericValueForSelector(id target, NSString *selectorName) {
     if (!target || !selectorName.length) return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
@@ -111,7 +111,7 @@ static NSNumber *SCINumericValueForSelector(id target, NSString *selectorName) {
     }
 }
 
-static id SCIObjectForSelector(id target, NSString *selectorName) {
+static id SPKObjectForSelector(id target, NSString *selectorName) {
     if (!target || !selectorName.length) return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
@@ -120,7 +120,7 @@ static id SCIObjectForSelector(id target, NSString *selectorName) {
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-static id SCIKVCObject(id target, NSString *key) {
+static id SPKKVCObject(id target, NSString *key) {
     if (!target || !key.length) return nil;
 
     @try {
@@ -130,7 +130,7 @@ static id SCIKVCObject(id target, NSString *key) {
     }
 }
 
-static NSURL *SCIURLFromStringOrURL(id value) {
+static NSURL *SPKURLFromStringOrURL(id value) {
     if (!value) return nil;
 
     if ([value isKindOfClass:[NSURL class]]) {
@@ -144,7 +144,7 @@ static NSURL *SCIURLFromStringOrURL(id value) {
     return nil;
 }
 
-static double SCIDoubleValue(id value) {
+static double SPKDoubleValue(id value) {
     if (!value) return 0.0;
 
     if ([value respondsToSelector:@selector(doubleValue)]) {
@@ -154,7 +154,7 @@ static double SCIDoubleValue(id value) {
     return 0.0;
 }
 
-static NSInteger SCIIntegerValue(id value) {
+static NSInteger SPKIntegerValue(id value) {
     if (!value) return 0;
 
     if ([value respondsToSelector:@selector(integerValue)]) {
@@ -164,7 +164,7 @@ static NSInteger SCIIntegerValue(id value) {
     return 0;
 }
 
-static NSArray *SCIArrayFromCollection(id collection) {
+static NSArray *SPKArrayFromCollection(id collection) {
     if (!collection ||
         [collection isKindOfClass:[NSDictionary class]] ||
         [collection isKindOfClass:[NSString class]] ||
@@ -195,10 +195,10 @@ static NSArray *SCIArrayFromCollection(id collection) {
     return nil;
 }
 
-static NSString * const kSCICacheAutoClearModeKey = @"general_cache_auto_clear";
-static NSString * const kSCICacheLastClearedAtKey = @"general_cache_last_cleared_at";
+static NSString * const kSPKCacheAutoClearModeKey = @"general_cache_auto_clear";
+static NSString * const kSPKCacheLastClearedAtKey = @"general_cache_last_cleared_at";
 
-static UIColor *SCIDynamicInstagramColor(CGFloat lightRed,
+static UIColor *SPKDynamicInstagramColor(CGFloat lightRed,
                                          CGFloat lightGreen,
                                          CGFloat lightBlue,
                                          CGFloat darkRed,
@@ -213,7 +213,7 @@ static UIColor *SCIDynamicInstagramColor(CGFloat lightRed,
     }];
 }
 
-static UIColor *SCIInstagramColorFromClassSelector(NSString *className, SEL selector) {
+static UIColor *SPKInstagramColorFromClassSelector(NSString *className, SEL selector) {
     Class colorClass = NSClassFromString(className);
     if (!colorClass || ![colorClass respondsToSelector:selector]) return nil;
 
@@ -221,7 +221,7 @@ static UIColor *SCIInstagramColorFromClassSelector(NSString *className, SEL sele
     return [color isKindOfClass:[UIColor class]] ? color : nil;
 }
 
-static UIColor *SCIInstagramPrimaryAccentColor(void) {
+static UIColor *SPKInstagramPrimaryAccentColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
             return [UIColor colorWithRed:0.408 green:0.557 blue:1.032 alpha:1.0];
@@ -231,7 +231,7 @@ static UIColor *SCIInstagramPrimaryAccentColor(void) {
     }];
 }
 
-static UIColor *SCIInstagramDestructiveColor(void) {
+static UIColor *SPKInstagramDestructiveColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
             return [UIColor colorWithRed:0.957 green:0.357 blue:0.420 alpha:1.0];
@@ -241,42 +241,42 @@ static UIColor *SCIInstagramDestructiveColor(void) {
     }];
 }
 
-static NSArray *SCIImageVersionsFromPhoto(IGPhoto *photo) {
+static NSArray *SPKImageVersionsFromPhoto(IGPhoto *photo) {
     if (!photo) return nil;
 
-    NSArray *versions = SCIArrayFromCollection(SCIObjectForSelector(photo, @"imageVersions"));
+    NSArray *versions = SPKArrayFromCollection(SPKObjectForSelector(photo, @"imageVersions"));
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection([SCIUtils getIvarForObj:photo name:"_originalImageVersions"]);
+    versions = SPKArrayFromCollection([SPKUtils getIvarForObj:photo name:"_originalImageVersions"]);
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection(SCIObjectForSelector(photo, @"imageVersionDictionaries"));
+    versions = SPKArrayFromCollection(SPKObjectForSelector(photo, @"imageVersionDictionaries"));
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection([SCIUtils getIvarForObj:photo name:"_imageVersions"]);
+    versions = SPKArrayFromCollection([SPKUtils getIvarForObj:photo name:"_imageVersions"]);
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection([SCIUtils getIvarForObj:photo name:"_imageVersionDictionaries"]);
+    versions = SPKArrayFromCollection([SPKUtils getIvarForObj:photo name:"_imageVersionDictionaries"]);
     return versions.count > 0 ? versions : nil;
 }
 
-static NSArray *SCIVideoVersionsFromVideo(IGVideo *video) {
+static NSArray *SPKVideoVersionsFromVideo(IGVideo *video) {
     if (!video) return nil;
 
-    NSArray *versions = SCIArrayFromCollection(SCIObjectForSelector(video, @"videoVersions"));
+    NSArray *versions = SPKArrayFromCollection(SPKObjectForSelector(video, @"videoVersions"));
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection(SCIObjectForSelector(video, @"videoVersionDictionaries"));
+    versions = SPKArrayFromCollection(SPKObjectForSelector(video, @"videoVersionDictionaries"));
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection([SCIUtils getIvarForObj:video name:"_videoVersions"]);
+    versions = SPKArrayFromCollection([SPKUtils getIvarForObj:video name:"_videoVersions"]);
     if (versions.count > 0) return versions;
 
-    versions = SCIArrayFromCollection([SCIUtils getIvarForObj:video name:"_videoVersionDictionaries"]);
+    versions = SPKArrayFromCollection([SPKUtils getIvarForObj:video name:"_videoVersionDictionaries"]);
     return versions.count > 0 ? versions : nil;
 }
 
-static NSArray<NSDictionary *> *SCISortedMediaVariantsFromVersions(NSArray *versions) {
+static NSArray<NSDictionary *> *SPKSortedMediaVariantsFromVersions(NSArray *versions) {
     if (![versions isKindOfClass:[NSArray class]] || versions.count == 0) {
         return @[];
     }
@@ -297,16 +297,16 @@ static NSArray<NSDictionary *> *SCISortedMediaVariantsFromVersions(NSArray *vers
             heightValue = dict[@"height"];
             bandwidthValue = dict[@"bandwidth"];
         } else {
-            rawURL = SCIObjectForSelector(version, @"url");
+            rawURL = SPKObjectForSelector(version, @"url");
             if (!rawURL) {
-                rawURL = SCIObjectForSelector(version, @"urlString");
+                rawURL = SPKObjectForSelector(version, @"urlString");
             }
-            widthValue = SCINumericValueForSelector(version, @"width");
-            heightValue = SCINumericValueForSelector(version, @"height");
-            bandwidthValue = SCINumericValueForSelector(version, @"bandwidth");
+            widthValue = SPKNumericValueForSelector(version, @"width");
+            heightValue = SPKNumericValueForSelector(version, @"height");
+            bandwidthValue = SPKNumericValueForSelector(version, @"bandwidth");
         }
 
-        NSURL *url = SCIURLFromStringOrURL(rawURL);
+        NSURL *url = SPKURLFromStringOrURL(rawURL);
         if (!url) continue;
 
         NSString *absolute = url.absoluteString;
@@ -317,9 +317,9 @@ static NSArray<NSDictionary *> *SCISortedMediaVariantsFromVersions(NSArray *vers
 
         [variants addObject:@{
             @"url": url,
-            @"width": @(SCIDoubleValue(widthValue)),
-            @"height": @(SCIDoubleValue(heightValue)),
-            @"bandwidth": @(SCIIntegerValue(bandwidthValue))
+            @"width": @(SPKDoubleValue(widthValue)),
+            @"height": @(SPKDoubleValue(heightValue)),
+            @"bandwidth": @(SPKIntegerValue(bandwidthValue))
         }];
     }
 
@@ -341,21 +341,21 @@ static NSArray<NSDictionary *> *SCISortedMediaVariantsFromVersions(NSArray *vers
     return variants;
 }
 
-static NSURL *SCIHighestQualityURLFromVersions(NSArray *versions) {
-    NSArray<NSDictionary *> *variants = SCISortedMediaVariantsFromVersions(versions);
+static NSURL *SPKHighestQualityURLFromVersions(NSArray *versions) {
+    NSArray<NSDictionary *> *variants = SPKSortedMediaVariantsFromVersions(versions);
     if (variants.count == 0) return nil;
 
     id value = variants.firstObject[@"url"];
     return [value isKindOfClass:[NSURL class]] ? value : nil;
 }
 
-static NSURL *SCIURLFromVideoURLCollection(id collection) {
+static NSURL *SPKURLFromVideoURLCollection(id collection) {
     if (!collection) return nil;
 
-    NSArray *items = SCIArrayFromCollection(collection);
+    NSArray *items = SPKArrayFromCollection(collection);
 
     if (!items) {
-        return SCIURLFromStringOrURL(collection);
+        return SPKURLFromStringOrURL(collection);
     }
 
     for (id item in items) {
@@ -363,9 +363,9 @@ static NSURL *SCIURLFromVideoURLCollection(id collection) {
 
         if ([item isKindOfClass:[NSDictionary class]]) {
             NSDictionary *dict = (NSDictionary *)item;
-            url = SCIURLFromStringOrURL(dict[@"url"] ?: dict[@"urlString"]);
+            url = SPKURLFromStringOrURL(dict[@"url"] ?: dict[@"urlString"]);
         } else {
-            url = SCIURLFromStringOrURL(item);
+            url = SPKURLFromStringOrURL(item);
         }
 
         if (url) return url;
@@ -374,70 +374,70 @@ static NSURL *SCIURLFromVideoURLCollection(id collection) {
     return nil;
 }
 
-static NSURL *SCIProfilePictureURLFromInfo(id info) {
+static NSURL *SPKProfilePictureURLFromInfo(id info) {
     if (!info) return nil;
 
-    NSURL *url = SCIURLFromStringOrURL(SCIObjectForSelector(info, @"url"));
+    NSURL *url = SPKURLFromStringOrURL(SPKObjectForSelector(info, @"url"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(info, @"urlString"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(info, @"urlString"));
     if (url) return url;
 
     if ([info isKindOfClass:[NSDictionary class]]) {
         NSDictionary *infoDictionary = (NSDictionary *)info;
-        url = SCIURLFromStringOrURL(infoDictionary[@"url"] ?: infoDictionary[@"urlString"]);
+        url = SPKURLFromStringOrURL(infoDictionary[@"url"] ?: infoDictionary[@"urlString"]);
         if (url) return url;
     }
 
     return nil;
 }
 
-static NSURL *SCIHDProfilePicURL(id user) {
+static NSURL *SPKHDProfilePicURL(id user) {
     if (!user) return nil;
 
-    NSURL *url = SCIProfilePictureURLFromInfo(SCIObjectForSelector(user, @"hdProfilePicUrlInfo"));
+    NSURL *url = SPKProfilePictureURLFromInfo(SPKObjectForSelector(user, @"hdProfilePicUrlInfo"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"HDProfilePicURL"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"HDProfilePicURL"));
     if (url) return url;
 
-    url = SCIProfilePictureURLFromInfo(SCIObjectForSelector(user, @"_private_hdProfilePicUrlInfo"));
+    url = SPKProfilePictureURLFromInfo(SPKObjectForSelector(user, @"_private_hdProfilePicUrlInfo"));
     if (url) return url;
 
-    url = SCIProfilePictureURLFromInfo(SCIObjectForSelector(user, @"HDProfilePicURLInfo"));
+    url = SPKProfilePictureURLFromInfo(SPKObjectForSelector(user, @"HDProfilePicURLInfo"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"profile_pic_url_hd"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profile_pic_url_hd"));
     if (url) return url;
 
-    return SCIURLFromStringOrURL(SCIKVCObject(user, @"profile_pic_url_hd"));
+    return SPKURLFromStringOrURL(SPKKVCObject(user, @"profile_pic_url_hd"));
 }
 
-static NSURL *SCIThumbProfilePicURL(id user) {
+static NSURL *SPKThumbProfilePicURL(id user) {
     if (!user) return nil;
 
-    NSURL *url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"derivedProfilePicURL"));
+    NSURL *url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"derivedProfilePicURL"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"profilePicURLString"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profilePicURLString"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"profilePicURL"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profilePicURL"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"_private_profilePicURLString"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"_private_profilePicURLString"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"_private_profilePicUrl"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"_private_profilePicUrl"));
     if (url) return url;
 
-    url = SCIURLFromStringOrURL(SCIObjectForSelector(user, @"profile_pic_url"));
+    url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profile_pic_url"));
     if (url) return url;
 
-    return SCIURLFromStringOrURL(SCIKVCObject(user, @"profile_pic_url"));
+    return SPKURLFromStringOrURL(SPKKVCObject(user, @"profile_pic_url"));
 }
 
-static BOOL SCIInstagramHostMatchesCanonical(NSString *host) {
+static BOOL SPKInstagramHostMatchesCanonical(NSString *host) {
     if (host.length == 0) return NO;
     NSString *lower = host.lowercaseString;
     return [lower isEqualToString:@"instagram.com"]
@@ -446,7 +446,7 @@ static BOOL SCIInstagramHostMatchesCanonical(NSString *host) {
         || [lower hasSuffix:@".instagram.com"];
 }
 
-static BOOL SCIInstagramPathUsesSharePrefix(NSArray<NSString *> *segments) {
+static BOOL SPKInstagramPathUsesSharePrefix(NSArray<NSString *> *segments) {
     if (segments.count < 2) return NO;
     NSString *candidate = segments[1].lowercaseString;
     return [candidate isEqualToString:@"p"]
@@ -455,14 +455,14 @@ static BOOL SCIInstagramPathUsesSharePrefix(NSArray<NSString *> *segments) {
         || [candidate isEqualToString:@"tv"];
 }
 
-static NSArray<NSString *> *SCISanitizedInstagramPathSegments(NSArray<NSString *> *segments) {
-    if (segments.count >= 3 && SCIInstagramPathUsesSharePrefix(segments)) {
+static NSArray<NSString *> *SPKSanitizedInstagramPathSegments(NSArray<NSString *> *segments) {
+    if (segments.count >= 3 && SPKInstagramPathUsesSharePrefix(segments)) {
         return [segments subarrayWithRange:NSMakeRange(1, segments.count - 1)];
     }
     return segments;
 }
 
-static NSArray<NSURLQueryItem *> *SCISanitizedInstagramQueryItems(NSArray<NSURLQueryItem *> *items) {
+static NSArray<NSURLQueryItem *> *SPKSanitizedInstagramQueryItems(NSArray<NSURLQueryItem *> *items) {
     if (items.count == 0) return nil;
 
     static NSSet<NSString *> *blockedKeys;
@@ -484,24 +484,24 @@ static NSArray<NSURLQueryItem *> *SCISanitizedInstagramQueryItems(NSArray<NSURLQ
     return kept.count > 0 ? kept : nil;
 }
 
-@interface SCISettingsNavigationController : UINavigationController
+@interface SPKSettingsNavigationController : UINavigationController
 @end
 
-@implementation SCISettingsNavigationController
+@implementation SPKSettingsNavigationController
 
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     if (self.isBeingDismissed || self.presentingViewController == nil) {
-        [[SCISettingsLockManager sharedManager] lockSettings];
+        [[SPKSettingsLockManager sharedManager] lockSettings];
     }
 }
 
 @end
 
-static void SCIPresentSettingsAfterUnlock(UIViewController *presenter, dispatch_block_t presentation) {
-    SCISettingsLockManager *manager = [SCISettingsLockManager sharedManager];
+static void SPKPresentSettingsAfterUnlock(UIViewController *presenter, dispatch_block_t presentation) {
+    SPKSettingsLockManager *manager = [SPKSettingsLockManager sharedManager];
     if (manager.isLockEnabled && !manager.isUnlocked) {
-        [SCIGalleryLockViewController presentUnlockForManager:manager
+        [SPKGalleryLockViewController presentUnlockForManager:manager
                                            fromViewController:presenter
                                                    completion:^(BOOL success) {
             if (success && presentation) presentation();
@@ -511,7 +511,7 @@ static void SCIPresentSettingsAfterUnlock(UIViewController *presenter, dispatch_
     if (presentation) presentation();
 }
 
-@implementation SCIUtils
+@implementation SPKUtils
 
 // Master kill switch overlay: when "Disable All Settings" is on, runtime
 // reads of feature prefs return the registered default instead of the user's
@@ -521,7 +521,7 @@ static void SCIPresentSettingsAfterUnlock(UIViewController *presenter, dispatch_
 //
 // A handful of keys must bypass the overlay so the kill switch and the
 // settings shortcut keep working. They're enumerated here.
-static NSSet<NSString *> *SCIMasterDisableBypassKeys(void) {
+static NSSet<NSString *> *SPKMasterDisableBypassKeys(void) {
     static NSSet<NSString *> *keys;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -536,7 +536,7 @@ static NSSet<NSString *> *SCIMasterDisableBypassKeys(void) {
     return keys;
 }
 
-static BOOL SCIMasterDisableActive(void) {
+static BOOL SPKMasterDisableActive(void) {
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"tools_disable_all"];
 }
 
@@ -544,19 +544,19 @@ static BOOL SCIMasterDisableActive(void) {
 
 // Read directly (never through the namespacing accessors) to avoid recursion;
 // the toggle itself is global.
-static BOOL SCIPrefPerAccountEnabled(void) {
-    return [[NSUserDefaults standardUserDefaults] boolForKey:kSCIPrefPerAccountSettings];
+static BOOL SPKPrefPerAccountEnabled(void) {
+    return [[NSUserDefaults standardUserDefaults] boolForKey:kSPKPrefPerAccountSettings];
 }
 
 // Keys that must never be per-account: physically single (app icon), device/app
 // wide (master kill switch, safe mode), appearance/Liquid Glass, download
 // encoding params, and all gallery view/lock/folder prefs.
-static BOOL SCIPrefIsGlobalKey(NSString *key) {
+static BOOL SPKPrefIsGlobalKey(NSString *key) {
     static NSSet<NSString *> *globalExact;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         globalExact = [NSSet setWithArray:@[
-            kSCIPrefPerAccountSettings,
+            kSPKPrefPerAccountSettings,
             @"general_app_icon_identifier",
             @"tools_disable_all",
             // Notification delivery is install-wide, not per-account.
@@ -583,30 +583,30 @@ static BOOL SCIPrefIsGlobalKey(NSString *key) {
     return NO;
 }
 
-BOOL SCIPerAccountModeActive(void) {
-    return SCIPrefPerAccountEnabled() && [SCIAccountManager currentAccountPK].length > 0;
+BOOL SPKPerAccountModeActive(void) {
+    return SPKPrefPerAccountEnabled() && [SPKAccountManager currentAccountPK].length > 0;
 }
 
-BOOL SCIPreferenceKeyIsGlobal(NSString *key) {
-    return SCIPrefIsGlobalKey(key);
+BOOL SPKPreferenceKeyIsGlobal(NSString *key) {
+    return SPKPrefIsGlobalKey(key);
 }
 
-NSString *SCIEffectivePreferenceKey(NSString *key) {
+NSString *SPKEffectivePreferenceKey(NSString *key) {
     if (key.length == 0) return key;
-    if (!SCIPrefPerAccountEnabled()) return key;
-    if (SCIPrefIsGlobalKey(key)) return key;
-    NSString *pk = [SCIAccountManager currentAccountPK];
+    if (!SPKPrefPerAccountEnabled()) return key;
+    if (SPKPrefIsGlobalKey(key)) return key;
+    NSString *pk = [SPKAccountManager currentAccountPK];
     if (pk.length == 0) return key;  // logged out / unresolved → use global
     return [NSString stringWithFormat:@"u_%@_%@", pk, key];
 }
 
 // Namespaced direct-defaults access for callers that read/write NSUserDefaults
-// outside the SCIUtils getXPref accessors (action-button config, manual-seen
+// outside the SPKUtils getXPref accessors (action-button config, manual-seen
 // list, etc.). Mirrors the accessor's per-account → global inheritance.
-id SCIPreferenceObjectForKey(NSString *key) {
+id SPKPreferenceObjectForKey(NSString *key) {
     if (key.length == 0) return nil;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSString *effectiveKey = SCIEffectivePreferenceKey(key);
+    NSString *effectiveKey = SPKEffectivePreferenceKey(key);
     if (![effectiveKey isEqualToString:key]) {
         id perAccountValue = [defaults objectForKey:effectiveKey];
         if (perAccountValue != nil) return perAccountValue;
@@ -614,18 +614,18 @@ id SCIPreferenceObjectForKey(NSString *key) {
     return [defaults objectForKey:key];
 }
 
-void SCIPreferenceSetObject(id value, NSString *key) {
+void SPKPreferenceSetObject(id value, NSString *key) {
     if (key.length == 0) return;
-    [[NSUserDefaults standardUserDefaults] setObject:value forKey:SCIEffectivePreferenceKey(key)];
+    [[NSUserDefaults standardUserDefaults] setObject:value forKey:SPKEffectivePreferenceKey(key)];
 }
 
-static id SCIPrefValueWithMasterOverlay(NSString *key) {
+static id SPKPrefValueWithMasterOverlay(NSString *key) {
     if (key.length == 0) return nil;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if (SCIMasterDisableActive() && ![SCIMasterDisableBypassKeys() containsObject:key]) {
-        return SCICoreRegisteredDefaults()[key];
+    if (SPKMasterDisableActive() && ![SPKMasterDisableBypassKeys() containsObject:key]) {
+        return SPKCoreRegisteredDefaults()[key];
     }
-    NSString *effectiveKey = SCIEffectivePreferenceKey(key);
+    NSString *effectiveKey = SPKEffectivePreferenceKey(key);
     if (![effectiveKey isEqualToString:key]) {
         id perAccountValue = [defaults objectForKey:effectiveKey];
         // Inherit the global value (and its registered default) until this
@@ -637,20 +637,20 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 + (BOOL)getBoolPref:(NSString *)key {
     if (![key length]) return NO;
-    if (!SCIPrefIsAvailable(key)) return NO;
-    id value = SCIPrefValueWithMasterOverlay(key);
+    if (!SPKPrefIsAvailable(key)) return NO;
+    id value = SPKPrefValueWithMasterOverlay(key);
     if ([value respondsToSelector:@selector(boolValue)]) return [value boolValue];
     return NO;
 }
 + (double)getDoublePref:(NSString *)key {
     if (![key length]) return 0;
-    id value = SCIPrefValueWithMasterOverlay(key);
+    id value = SPKPrefValueWithMasterOverlay(key);
     if ([value respondsToSelector:@selector(doubleValue)]) return [value doubleValue];
     return 0;
 }
 + (NSString *)getStringPref:(NSString *)key {
     if (![key length]) return @"";
-    id value = SCIPrefValueWithMasterOverlay(key);
+    id value = SPKPrefValueWithMasterOverlay(key);
     return [value isKindOfClass:[NSString class]] ? value : @"";
 }
 
@@ -678,13 +678,13 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return NO;
 }
 
-+ (_Bool)sci_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback {
-    return [SCIUtils sci_isLiquidGlassEffectivelyEnabled] ? YES : fallback;
++ (_Bool)spk_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback {
+    return [SPKUtils spk_isLiquidGlassEffectivelyEnabled] ? YES : fallback;
 }
 
-+ (BOOL)sci_isLiquidGlassEffectivelyEnabled {
-    return [SCIUtils getBoolPref:kSCIPrefInterfaceLiquidGlass] &&
-        !SCIStabilityGuardIsSafeStartupMode();
++ (BOOL)spk_isLiquidGlassEffectivelyEnabled {
+    return [SPKUtils getBoolPref:kSPKPrefInterfaceLiquidGlass] &&
+        !SPKStabilityGuardIsSafeStartupMode();
 }
 
 // MARK: Session / user
@@ -789,7 +789,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
         if (cacheItemDeletionError) [deletionErrors addObject:cacheItemDeletionError];
     }
 
-    NSURL *previewCacheURL = [[[SCIMediaCacheManager sharedManager] valueForKey:@"cacheRootURL"] copy];
+    NSURL *previewCacheURL = [[[SPKMediaCacheManager sharedManager] valueForKey:@"cacheRootURL"] copy];
     if (previewCacheURL) {
         NSError *previewCacheDeletionError = nil;
         [fileManager removeItemAtURL:previewCacheURL error:&previewCacheDeletionError];
@@ -800,12 +800,12 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     if (deletionErrors.count > 1) {
 
         for (NSError *error in deletionErrors) {
-            SCILog(@"General", @"[SCInsta] File Deletion Error: %@", error);
+            SPKLog(@"General", @"[Sparkle] File Deletion Error: %@", error);
         }
 
     }
 
-    [SCIUtils markCacheClearedNow];
+    [SPKUtils markCacheClearedNow];
 }
 
 + (unsigned long long)cacheSizeBytes {
@@ -852,7 +852,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (NSString *)cacheAutoClearMode {
-    NSString *mode = [SCIUtils getStringPref:kSCICacheAutoClearModeKey];
+    NSString *mode = [SPKUtils getStringPref:kSPKCacheAutoClearModeKey];
     return mode.length > 0 ? mode : @"never";
 }
 
@@ -861,7 +861,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     if ([mode isEqualToString:@"never"]) return NO;
     if ([mode isEqualToString:@"always"]) return YES;
 
-    NSDate *lastClearedAt = [[NSUserDefaults standardUserDefaults] objectForKey:kSCICacheLastClearedAtKey];
+    NSDate *lastClearedAt = [[NSUserDefaults standardUserDefaults] objectForKey:kSPKCacheLastClearedAtKey];
     if (![lastClearedAt isKindOfClass:[NSDate class]]) return YES;
 
     NSTimeInterval interval = 0.0;
@@ -874,18 +874,18 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (void)markCacheClearedNow {
-    [[NSUserDefaults standardUserDefaults] setObject:[NSDate date] forKey:kSCICacheLastClearedAtKey];
+    [[NSUserDefaults standardUserDefaults] setObject:[NSDate date] forKey:kSPKCacheLastClearedAtKey];
 }
 
 + (void)evaluateAutomaticCacheClearIfNeeded {
     if (![self shouldAutomaticallyClearCacheNow]) return;
-    SCILog(@"General", @"[SCInsta] Automatically clearing cache...");
+    SPKLog(@"General", @"[Sparkle] Automatically clearing cache...");
     [self cleanCache];
 }
 
 // MARK: Display View Controllers
 + (void)showMediaPreview:(NSURL *)fileURL {
-    [SCIFullScreenMediaPlayer showFileURL:fileURL];
+    [SPKFullScreenMediaPlayer showFileURL:fileURL];
 }
 + (void)showShareVC:(id)item {
     UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[item] applicationActivities:nil];
@@ -897,21 +897,21 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 + (void)showSettingsVC:(UIWindow *)window {
     UIViewController *rootController = [window rootViewController];
-    SCIPresentSettingsAfterUnlock(rootController, ^{
-        SCISettingsViewController *settingsViewController = [SCISettingsViewController new];
-        UINavigationController *navigationController = [[SCISettingsNavigationController alloc] initWithRootViewController:settingsViewController];
+    SPKPresentSettingsAfterUnlock(rootController, ^{
+        SPKSettingsViewController *settingsViewController = [SPKSettingsViewController new];
+        UINavigationController *navigationController = [[SPKSettingsNavigationController alloc] initWithRootViewController:settingsViewController];
         navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
         [rootController presentViewController:navigationController animated:YES completion:nil];
     });
 }
 
 + (void)showSettingsForTopicTitle:(NSString *)title {
-    NSArray *rootSections = [SCITweakSettings sections];
-    SCISetting *matchedRow = nil;
+    NSArray *rootSections = [SPKTweakSettings sections];
+    SPKSetting *matchedRow = nil;
     for (NSDictionary *section in rootSections) {
         NSArray *rows = section[@"rows"];
-        for (SCISetting *row in rows) {
-            if (![row isKindOfClass:[SCISetting class]]) continue;
+        for (SPKSetting *row in rows) {
+            if (![row isKindOfClass:[SPKSetting class]]) continue;
             if ([row.title isEqualToString:title]) {
                 matchedRow = row;
                 break;
@@ -925,19 +925,19 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
         if (matchedRow.navViewController) {
             settingsViewController = matchedRow.navViewController;
         } else if (matchedRow.navSections.count > 0) {
-            settingsViewController = [[SCISettingsViewController alloc] initWithTitle:title sections:matchedRow.navSections reduceMargin:NO];
+            settingsViewController = [[SPKSettingsViewController alloc] initWithTitle:title sections:matchedRow.navSections reduceMargin:NO];
             settingsViewController.title = title;
         }
     }
 
     if (!settingsViewController) {
-        settingsViewController = [SCISettingsViewController new];
+        settingsViewController = [SPKSettingsViewController new];
     }
 
 
     UIViewController *presenter = topMostController();
-    SCIPresentSettingsAfterUnlock(presenter, ^{
-        UINavigationController *navigationController = [[SCISettingsNavigationController alloc] initWithRootViewController:settingsViewController];
+    SPKPresentSettingsAfterUnlock(presenter, ^{
+        UINavigationController *navigationController = [[SPKSettingsNavigationController alloc] initWithRootViewController:settingsViewController];
         navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
         UIUserInterfaceStyle interfaceStyle = presenter.view.window.traitCollection.userInterfaceStyle;
         if (interfaceStyle == UIUserInterfaceStyleUnspecified) {
@@ -961,8 +961,8 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 + (void)presentViewControllerInSheet:(UIViewController *)vc {
     if (!vc) return;
     UIViewController *presenter = topMostController();
-    SCIPresentSettingsAfterUnlock(presenter, ^{
-        UINavigationController *navigationController = [[SCISettingsNavigationController alloc] initWithRootViewController:vc];
+    SPKPresentSettingsAfterUnlock(presenter, ^{
+        UINavigationController *navigationController = [[SPKSettingsNavigationController alloc] initWithRootViewController:vc];
         navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
         UIUserInterfaceStyle interfaceStyle = presenter.view.window.traitCollection.userInterfaceStyle;
         if (interfaceStyle == UIUserInterfaceStyleUnspecified) {
@@ -984,80 +984,80 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 }
 
 // MARK: Colours
-+ (UIColor *)SCIColor_InstagramBlue {
-    return SCIInstagramPrimaryAccentColor();
++ (UIColor *)SPKColor_InstagramBlue {
+    return SPKInstagramPrimaryAccentColor();
 }
 
-+ (UIColor *)SCIColor_InstagramBackground {
-    return SCIDynamicInstagramColor(255.0, 255.0, 255.0, 11.0, 16.0, 20.0);
++ (UIColor *)SPKColor_InstagramBackground {
+    return SPKDynamicInstagramColor(255.0, 255.0, 255.0, 11.0, 16.0, 20.0);
 }
 
-+ (UIColor *)SCIColor_InstagramSecondaryBackground {
-    return SCIDynamicInstagramColor(240.0, 241.0, 245.0, 42.0, 48.0, 55.0);
++ (UIColor *)SPKColor_InstagramSecondaryBackground {
+    return SPKDynamicInstagramColor(240.0, 241.0, 245.0, 42.0, 48.0, 55.0);
 }
 
-+ (UIColor *)SCIColor_InstagramTertiaryBackground {
-    return SCIDynamicInstagramColor(232.0, 234.0, 238.0, 58.0, 64.0, 72.0);
++ (UIColor *)SPKColor_InstagramTertiaryBackground {
+    return SPKDynamicInstagramColor(232.0, 234.0, 238.0, 58.0, 64.0, 72.0);
 }
 
-+ (UIColor *)SCIColor_InstagramGroupedBackground {
-    return [self SCIColor_InstagramBackground];
++ (UIColor *)SPKColor_InstagramGroupedBackground {
+    return [self SPKColor_InstagramBackground];
 }
 
-+ (UIColor *)SCIColor_InstagramPrimaryText {
-    return SCIDynamicInstagramColor(15.0, 20.0, 25.0, 244.0, 247.0, 251.0);
++ (UIColor *)SPKColor_InstagramPrimaryText {
+    return SPKDynamicInstagramColor(15.0, 20.0, 25.0, 244.0, 247.0, 251.0);
 }
 
-+ (UIColor *)SCIColor_InstagramSecondaryText {
-    return SCIDynamicInstagramColor(99.0, 108.0, 118.0, 177.0, 185.0, 194.0);
++ (UIColor *)SPKColor_InstagramSecondaryText {
+    return SPKDynamicInstagramColor(99.0, 108.0, 118.0, 177.0, 185.0, 194.0);
 }
 
-+ (UIColor *)SCIColor_InstagramTertiaryText {
-    return SCIDynamicInstagramColor(130.0, 138.0, 147.0, 130.0, 138.0, 147.0);
++ (UIColor *)SPKColor_InstagramTertiaryText {
+    return SPKDynamicInstagramColor(130.0, 138.0, 147.0, 130.0, 138.0, 147.0);
 }
 
-+ (UIColor *)SCIColor_InstagramSeparator {
-    return SCIDynamicInstagramColor(220.0, 223.0, 228.0, 52.0, 59.0, 67.0);
++ (UIColor *)SPKColor_InstagramSeparator {
+    return SPKDynamicInstagramColor(220.0, 223.0, 228.0, 52.0, 59.0, 67.0);
 }
 
-+ (UIColor *)SCIColor_InstagramFavorite {
++ (UIColor *)SPKColor_InstagramFavorite {
     return [UIColor colorWithRed:255.0 / 255.0 green:48.0 / 255.0 blue:64.0 / 255.0 alpha:1.0];
 }
 
-+ (UIColor *)SCIColor_InstagramDestructive {
-    return SCIInstagramDestructiveColor();
++ (UIColor *)SPKColor_InstagramDestructive {
+    return SPKInstagramDestructiveColor();
 }
 
-+ (UIColor *)SCIColor_InstagramPressedBackground {
-    return SCIDynamicInstagramColor(232.0, 233.0, 238.0, 51.0, 60.0, 69.0);
++ (UIColor *)SPKColor_InstagramPressedBackground {
+    return SPKDynamicInstagramColor(232.0, 233.0, 238.0, 51.0, 60.0, 69.0);
 }
 
-+ (UIColor *)SCIColor_ListRowPressedOverlay {
-    // Subtle text-tinted overlay used by the SCInsta Gallery list rows. Shared by
++ (UIColor *)SPKColor_ListRowPressedOverlay {
+    // Subtle text-tinted overlay used by the Sparkle Gallery list rows. Shared by
     // the other custom list UIs (deleted messages, profile analyzer, downloads
     // history) so their tap feedback matches the gallery rather than the heavier
     // settings-cell pressed background.
-    return [[SCIUtils SCIColor_InstagramPrimaryText] colorWithAlphaComponent:0.06];
+    return [[SPKUtils SPKColor_InstagramPrimaryText] colorWithAlphaComponent:0.06];
 }
 
-+ (UIColor *)SCIColor_SettingsSwitchOnTint {
++ (UIColor *)SPKColor_SettingsSwitchOnTint {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIColor.whiteColor : UIColor.blackColor;
     }];
 }
 
-+ (UIColor *)SCIColor_SettingsSwitchThumbTint {
++ (UIColor *)SPKColor_SettingsSwitchThumbTint {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIColor.blackColor : UIColor.whiteColor;
     }];
 }
 
-+ (UIColor *)SCIColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection {
++ (UIColor *)SPKColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection {
     BOOL isDark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     return isDark ? UIColor.whiteColor : UIColor.blackColor;
 }
 
-+ (UIColor *)SCIColor_SettingsSwitchThumbTintForTraitCollection:(UITraitCollection *)traitCollection {
++ (UIColor *)SPKColor_SettingsSwitchThumbTintForTraitCollection:(UITraitCollection *)traitCollection {
     BOOL isDark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     return isDark ? UIColor.blackColor : UIColor.whiteColor;
 }
@@ -1067,7 +1067,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return [self errorWithDescription:errorDesc code:1];
 }
 + (NSError *)errorWithDescription:(NSString *)errorDesc code:(NSInteger)errorCode {
-    NSError *error = [ NSError errorWithDomain:@"com.socuul.scinsta" code:errorCode userInfo:@{ NSLocalizedDescriptionKey: errorDesc } ];
+    NSError *error = [ NSError errorWithDomain:@"com.sparkle.sparkle" code:errorCode userInfo:@{ NSLocalizedDescriptionKey: errorDesc } ];
     return error;
 }
 + (BOOL)openURL:(NSURL *)url {
@@ -1105,7 +1105,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     }
     if (!rootVC) return;
 
-    Class galleryManagerClass = NSClassFromString(@"SCIGalleryManager");
+    Class galleryManagerClass = NSClassFromString(@"SPKGalleryManager");
     if (galleryManagerClass) {
         #pragma clang diagnostic push
         #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
@@ -1179,7 +1179,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     if (![url.scheme.lowercaseString isEqualToString:@"http"] && ![url.scheme.lowercaseString isEqualToString:@"https"]) {
         return url;
     }
-    if (!SCIInstagramHostMatchesCanonical(url.host)) {
+    if (!SPKInstagramHostMatchesCanonical(url.host)) {
         return url;
     }
 
@@ -1196,7 +1196,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
         }
     }
 
-    NSArray<NSString *> *sanitizedSegments = SCISanitizedInstagramPathSegments(segments);
+    NSArray<NSString *> *sanitizedSegments = SPKSanitizedInstagramPathSegments(segments);
     NSString *path = sanitizedSegments.count > 0 ? [@"/" stringByAppendingString:[sanitizedSegments componentsJoinedByString:@"/"]] : @"/";
     if (![path hasSuffix:@"/"]) {
         path = [path stringByAppendingString:@"/"];
@@ -1205,7 +1205,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     components.scheme = @"https";
     components.host = @"www.instagram.com";
     components.path = path;
-    components.queryItems = SCISanitizedInstagramQueryItems(components.queryItems);
+    components.queryItems = SPKSanitizedInstagramQueryItems(components.queryItems);
     components.fragment = nil;
 
     return components.URL ?: url;
@@ -1265,7 +1265,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 + (NSURL *)getPhotoUrl:(IGPhoto *)photo {
     if (!photo) return nil;
 
-    NSURL *photoUrl = SCIHighestQualityURLFromVersions(SCIImageVersionsFromPhoto(photo));
+    NSURL *photoUrl = SPKHighestQualityURLFromVersions(SPKImageVersionsFromPhoto(photo));
     if (photoUrl) return photoUrl;
 
     if ([photo respondsToSelector:@selector(imageURLForWidth:)]) {
@@ -1273,37 +1273,37 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
         if (photoUrl) return photoUrl;
     }
 
-    photoUrl = SCIURLFromStringOrURL(SCIObjectForSelector(photo, @"thumbnailURL"));
+    photoUrl = SPKURLFromStringOrURL(SPKObjectForSelector(photo, @"thumbnailURL"));
 
     return photoUrl;
 }
 + (NSURL *)getPhotoUrlForMedia:(IGMedia *)media {
     if (!media) return nil;
 
-    IGPhoto *photo = SCIObjectForSelector(media, @"photo");
+    IGPhoto *photo = SPKObjectForSelector(media, @"photo");
     if (!photo) return nil;
 
-    return [SCIUtils getPhotoUrl:photo];
+    return [SPKUtils getPhotoUrl:photo];
 }
 + (NSURL *)getBestProfilePictureURLForUser:(id)user {
-    return SCIHDProfilePicURL(user) ?: SCIThumbProfilePicURL(user);
+    return SPKHDProfilePicURL(user) ?: SPKThumbProfilePicURL(user);
 }
 + (NSURL *)getVideoUrl:(IGVideo *)video {
     if (!video) return nil;
 
-    NSURL *videoURL = SCIHighestQualityURLFromVersions(SCIVideoVersionsFromVideo(video));
+    NSURL *videoURL = SPKHighestQualityURLFromVersions(SPKVideoVersionsFromVideo(video));
     if (videoURL) return videoURL;
 
     // The past (pre v398)
     if ([video respondsToSelector:@selector(sortedVideoURLsBySize)]) {
         id sorted = [video sortedVideoURLsBySize];
-        videoURL = SCIURLFromVideoURLCollection(sorted);
+        videoURL = SPKURLFromVideoURLCollection(sorted);
         if (videoURL) return videoURL;
     }
 
     // The present (post v398)
     if ([video respondsToSelector:@selector(allVideoURLs)]) {
-        videoURL = SCIURLFromVideoURLCollection([video allVideoURLs]);
+        videoURL = SPKURLFromVideoURLCollection([video allVideoURLs]);
         if (videoURL) return videoURL;
     }
 
@@ -1312,10 +1312,10 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 + (NSURL *)getVideoUrlForMedia:(IGMedia *)media {
     if (!media) return nil;
 
-    IGVideo *video = SCIObjectForSelector(media, @"video");
+    IGVideo *video = SPKObjectForSelector(media, @"video");
     if (!video) return nil;
 
-    return [SCIUtils getVideoUrl:video];
+    return [SPKUtils getVideoUrl:video];
 }
 
 // MARK: View Controller Helpers
@@ -1355,14 +1355,14 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return [self showConfirmation:okHandler cancelHandler:cancelHandler title:title message:nil];
 };
 + (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title message:(NSString *)message {
-    [SCIIGAlertPresenter presentAlertFromViewController:topMostController()
+    [SPKIGAlertPresenter presentAlertFromViewController:topMostController()
                                                   title:title ?: @"Confirm Action"
                                                 message:message ?: @"Are you sure you want to continue?"
                                                 actions:@[
-        [SCIIGAlertAction actionWithTitle:@"Cancel" style:SCIIGAlertActionStyleCancel handler:^{
+        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
             if (cancelHandler) cancelHandler();
         }],
-        [SCIIGAlertAction actionWithTitle:@"Confirm" style:SCIIGAlertActionStyleDefault handler:^{
+        [SPKIGAlertAction actionWithTitle:@"Confirm" style:SPKIGAlertActionStyleDefault handler:^{
             if (okHandler) okHandler();
         }],
     ]];
@@ -1375,12 +1375,12 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     return [self showConfirmation:okHandler cancelHandler:cancelHandler title:nil];
 }
 + (void)showRestartConfirmation {
-    [SCIIGAlertPresenter presentAlertFromViewController:topMostController()
+    [SPKIGAlertPresenter presentAlertFromViewController:topMostController()
                                                   title:@"Restart Required"
                                                 message:@"You must restart the app to apply this change"
                                                 actions:@[
-        [SCIIGAlertAction actionWithTitle:@"Later" style:SCIIGAlertActionStyleCancel handler:nil],
-        [SCIIGAlertAction actionWithTitle:@"Restart" style:SCIIGAlertActionStyleDefault handler:^{
+        [SPKIGAlertAction actionWithTitle:@"Later" style:SPKIGAlertActionStyleCancel handler:nil],
+        [SPKIGAlertAction actionWithTitle:@"Restart" style:SPKIGAlertActionStyleDefault handler:^{
             exit(0);
         }],
     ]];
@@ -1406,7 +1406,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
     }
 }
 
-+ (UIImage *)sci_scaleImage:(UIImage *)image maxPointDimension:(CGFloat)maxPt {
++ (UIImage *)spk_scaleImage:(UIImage *)image maxPointDimension:(CGFloat)maxPt {
     if (!image || maxPt <= 0) {
         return image;
     }
@@ -1433,7 +1433,7 @@ static id SCIPrefValueWithMasterOverlay(NSString *key) {
 
 // Ivars
 + (NSNumber *)numericValueForObj:(id)obj selectorName:(NSString *)selectorName {
-    return SCINumericValueForSelector(obj, selectorName);
+    return SPKNumericValueForSelector(obj, selectorName);
 }
 
 + (id)getIvarForObj:(id)obj name:(const char *)name {

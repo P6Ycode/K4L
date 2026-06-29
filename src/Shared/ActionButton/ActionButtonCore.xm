@@ -3,80 +3,80 @@
 #import <objc/runtime.h>
 
 #import "ActionButtonCore.h"
-#import "SCIActionButtonConfiguration.h"
-#import "SCIActionDescriptor.h"
-#import "../Downloads/SCIDownloadHelpers.h"
+#import "SPKActionButtonConfiguration.h"
+#import "SPKActionDescriptor.h"
+#import "../Downloads/SPKDownloadHelpers.h"
 #import "../../InstagramHeaders.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
-#import "../../Settings/SCIPreferences.h"
-#import "../MediaDownload/SCIMediaQualityManager.h"
-#import "../MediaPreview/SCIFullScreenMediaPlayer.h"
-#import "../MediaPreview/SCIMediaItem.h"
-#import "../MediaTrim/SCITrimEntry.h"
-#import "../Gallery/SCIGalleryFile.h"
-#import "../Gallery/SCIGalleryOriginController.h"
-#import "../Gallery/SCIGallerySaveMetadata.h"
-#import "../Audio/SCIAudioDownloadCoordinator.h"
-#import "../Audio/SCIAudioItem.h"
-#import "../Stories/SCIStoryContext.h"
-#import "../Messages/SCIDirectSeenContext.h"
-#import "../Messages/SCIDirectUserResolver.h"
-#import "../UI/SCINotificationCenter.h"
-#import "../UI/SCIChrome.h"
-#import "../../Features/Messages/DeletedMessagesLog/SCIDeletedMessagesViewController.h"
-#import "../../Networking/SCIInstagramAPI.h"
-#import "SCIBulkMediaSelectionViewController.h"
+#import "../../Settings/SPKPreferences.h"
+#import "../MediaDownload/SPKMediaQualityManager.h"
+#import "../MediaPreview/SPKFullScreenMediaPlayer.h"
+#import "../MediaPreview/SPKMediaItem.h"
+#import "../MediaTrim/SPKTrimEntry.h"
+#import "../Gallery/SPKGalleryFile.h"
+#import "../Gallery/SPKGalleryOriginController.h"
+#import "../Gallery/SPKGallerySaveMetadata.h"
+#import "../Audio/SPKAudioDownloadCoordinator.h"
+#import "../Audio/SPKAudioItem.h"
+#import "../Stories/SPKStoryContext.h"
+#import "../Messages/SPKDirectSeenContext.h"
+#import "../Messages/SPKDirectUserResolver.h"
+#import "../UI/SPKNotificationCenter.h"
+#import "../UI/SPKChrome.h"
+#import "../../Features/Messages/DeletedMessagesLog/SPKDeletedMessagesViewController.h"
+#import "../../Networking/SPKInstagramAPI.h"
+#import "SPKBulkMediaSelectionViewController.h"
 
-NSString * const kSCIActionNone = @"none";
-NSString * const kSCIActionDownloadLibrary = @"download_library";
-NSString * const kSCIActionDownloadShare = @"download_share";
-NSString * const kSCIActionCopyDownloadLink = @"copy_download_link";
-NSString * const kSCIActionCopyMedia = @"copy_media";
-NSString * const kSCIActionDownloadGallery = @"download_gallery";
-NSString * const kSCIActionTrimSave = @"trim_save";
-NSString * const kSCIActionDownloadAudio = @"download_audio";
-NSString * const kSCIActionDownloadAudioShare = @"download_audio_share";
-NSString * const kSCIActionDownloadAudioGallery = @"download_audio_gallery";
-NSString * const kSCIActionPlayAudio = @"play_audio";
-NSString * const kSCIActionCopyAudioURL = @"copy_audio_url";
-NSString * const kSCIActionDownloadAll = @"download_all";
-NSString * const kSCIActionDownloadAllLibrary = @"download_all_library";
-NSString * const kSCIActionDownloadAllShare = @"download_all_share";
-NSString * const kSCIActionDownloadAllGallery = @"download_all_gallery";
-NSString * const kSCIActionDownloadAllClipboard = @"download_all_clipboard";
-NSString * const kSCIActionDownloadAllLinks = @"download_all_links";
-NSString * const kSCIActionExpand = @"expand";
-NSString * const kSCIActionViewThumbnail = @"view_thumbnail";
-NSString * const kSCIActionCopyCaption = @"copy_caption";
-NSString * const kSCIActionOpenTopicSettings = @"open_topic_settings";
-NSString * const kSCIActionDeletedMessagesLog = @"deleted_messages_log";
-NSString * const kSCIActionRepost = @"repost";
-NSString * const kSCIActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
-NSString * const kSCIActionToggleProfileStorySeenUserRule = @"toggle_profile_story_seen_user_rule";
-NSString * const kSCIActionToggleProfileMessagesSeenUserRule = @"toggle_profile_messages_seen_user_rule";
-NSString * const kSCIActionStoryMentionsSheet = @"story_mentions_sheet";
-NSString * const kSCIActionProfileCopyInfo = @"profile_copy_info";
-NSString * const kSCIActionProfileCopyID = @"profile_copy_id";
-NSString * const kSCIActionProfileCopyUsername = @"profile_copy_username";
-NSString * const kSCIActionProfileCopyName = @"profile_copy_name";
-NSString * const kSCIActionProfileCopyBio = @"profile_copy_bio";
-NSString * const kSCIActionProfileCopyLink = @"profile_copy_link";
-NSString * const SCIActionButtonConfigurationDidChangeNotification = @"SCIActionButtonConfigurationDidChangeNotification";
+NSString * const kSPKActionNone = @"none";
+NSString * const kSPKActionDownloadLibrary = @"download_library";
+NSString * const kSPKActionDownloadShare = @"download_share";
+NSString * const kSPKActionCopyDownloadLink = @"copy_download_link";
+NSString * const kSPKActionCopyMedia = @"copy_media";
+NSString * const kSPKActionDownloadGallery = @"download_gallery";
+NSString * const kSPKActionTrimSave = @"trim_save";
+NSString * const kSPKActionDownloadAudio = @"download_audio";
+NSString * const kSPKActionDownloadAudioShare = @"download_audio_share";
+NSString * const kSPKActionDownloadAudioGallery = @"download_audio_gallery";
+NSString * const kSPKActionPlayAudio = @"play_audio";
+NSString * const kSPKActionCopyAudioURL = @"copy_audio_url";
+NSString * const kSPKActionDownloadAll = @"download_all";
+NSString * const kSPKActionDownloadAllLibrary = @"download_all_library";
+NSString * const kSPKActionDownloadAllShare = @"download_all_share";
+NSString * const kSPKActionDownloadAllGallery = @"download_all_gallery";
+NSString * const kSPKActionDownloadAllClipboard = @"download_all_clipboard";
+NSString * const kSPKActionDownloadAllLinks = @"download_all_links";
+NSString * const kSPKActionExpand = @"expand";
+NSString * const kSPKActionViewThumbnail = @"view_thumbnail";
+NSString * const kSPKActionCopyCaption = @"copy_caption";
+NSString * const kSPKActionOpenTopicSettings = @"open_topic_settings";
+NSString * const kSPKActionDeletedMessagesLog = @"deleted_messages_log";
+NSString * const kSPKActionRepost = @"repost";
+NSString * const kSPKActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
+NSString * const kSPKActionToggleProfileStorySeenUserRule = @"toggle_profile_story_seen_user_rule";
+NSString * const kSPKActionToggleProfileMessagesSeenUserRule = @"toggle_profile_messages_seen_user_rule";
+NSString * const kSPKActionStoryMentionsSheet = @"story_mentions_sheet";
+NSString * const kSPKActionProfileCopyInfo = @"profile_copy_info";
+NSString * const kSPKActionProfileCopyID = @"profile_copy_id";
+NSString * const kSPKActionProfileCopyUsername = @"profile_copy_username";
+NSString * const kSPKActionProfileCopyName = @"profile_copy_name";
+NSString * const kSPKActionProfileCopyBio = @"profile_copy_bio";
+NSString * const kSPKActionProfileCopyLink = @"profile_copy_link";
+NSString * const SPKActionButtonConfigurationDidChangeNotification = @"SPKActionButtonConfigurationDidChangeNotification";
 
-static const void *kSCIActionButtonContextAssocKey = &kSCIActionButtonContextAssocKey;
-static const void *kSCIActionButtonTapActionAssocKey = &kSCIActionButtonTapActionAssocKey;
-static const void *kSCIActionButtonHapticActionAssocKey = &kSCIActionButtonHapticActionAssocKey;
-static const void *kSCIActionButtonIconImageViewAssocKey = &kSCIActionButtonIconImageViewAssocKey;
-static const void *kSCIActionButtonIconWidthConstraintAssocKey = &kSCIActionButtonIconWidthConstraintAssocKey;
-static const void *kSCIActionButtonIconHeightConstraintAssocKey = &kSCIActionButtonIconHeightConstraintAssocKey;
-static const void *kSCIActionButtonMenuSignatureAssocKey = &kSCIActionButtonMenuSignatureAssocKey;
-static const void *kSCIActionButtonLastMenuActionAssocKey = &kSCIActionButtonLastMenuActionAssocKey;
-static const void *kSCIActionButtonConfigurationObserverAssocKey = &kSCIActionButtonConfigurationObserverAssocKey;
-static const void *kSCIActionButtonMenuHiddenAlphaAssocKey = &kSCIActionButtonMenuHiddenAlphaAssocKey;
-static NSDictionary<NSString *, NSString *> *SCIPendingRepostFeedback = nil;
+static const void *kSPKActionButtonContextAssocKey = &kSPKActionButtonContextAssocKey;
+static const void *kSPKActionButtonTapActionAssocKey = &kSPKActionButtonTapActionAssocKey;
+static const void *kSPKActionButtonHapticActionAssocKey = &kSPKActionButtonHapticActionAssocKey;
+static const void *kSPKActionButtonIconImageViewAssocKey = &kSPKActionButtonIconImageViewAssocKey;
+static const void *kSPKActionButtonIconWidthConstraintAssocKey = &kSPKActionButtonIconWidthConstraintAssocKey;
+static const void *kSPKActionButtonIconHeightConstraintAssocKey = &kSPKActionButtonIconHeightConstraintAssocKey;
+static const void *kSPKActionButtonMenuSignatureAssocKey = &kSPKActionButtonMenuSignatureAssocKey;
+static const void *kSPKActionButtonLastMenuActionAssocKey = &kSPKActionButtonLastMenuActionAssocKey;
+static const void *kSPKActionButtonConfigurationObserverAssocKey = &kSPKActionButtonConfigurationObserverAssocKey;
+static const void *kSPKActionButtonMenuHiddenAlphaAssocKey = &kSPKActionButtonMenuHiddenAlphaAssocKey;
+static NSDictionary<NSString *, NSString *> *SPKPendingRepostFeedback = nil;
 
-@interface SCIResolvedMediaEntry : NSObject
+@interface SPKResolvedMediaEntry : NSObject
 @property (nonatomic, strong, nullable) id mediaObject;
 @property (nonatomic, strong, nullable) id metadataObject;
 @property (nonatomic, strong, nullable) NSURL *photoURL;
@@ -87,35 +87,35 @@ static NSDictionary<NSString *, NSString *> *SCIPendingRepostFeedback = nil;
 @property (nonatomic, strong, nullable) NSDate *importPostedDate;
 @end
 
-static void SCIPauseDirectPlaybackFromController(UIViewController *controller);
-static void SCIResumeDirectPlaybackFromController(UIViewController *controller);
-static BOOL SCIActionIdentifierOpensPreview(NSString *identifier);
-static id SCIResolveMediaForContext(SCIActionButtonContext *context);
-static UIViewController *SCIActionContextPresenter(SCIActionButtonContext *context);
-static UIView *SCIActionContextAnchorView(SCIActionButtonContext *context);
-static UIColor *SCIActionButtonTintForSource(SCIActionButtonSource source);
-void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
-void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
-SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button);
+static void SPKPauseDirectPlaybackFromController(UIViewController *controller);
+static void SPKResumeDirectPlaybackFromController(UIViewController *controller);
+static BOOL SPKActionIdentifierOpensPreview(NSString *identifier);
+static id SPKResolveMediaForContext(SPKActionButtonContext *context);
+static UIViewController *SPKActionContextPresenter(SPKActionButtonContext *context);
+static UIView *SPKActionContextAnchorView(SPKActionButtonContext *context);
+static UIColor *SPKActionButtonTintForSource(SPKActionButtonSource source);
+void SPKPauseStoryPlaybackFromOverlaySubview(UIView *overlayView);
+void SPKResumeStoryPlaybackFromOverlaySubview(UIView *overlayView);
+SPKActionButtonContext *SPKActionButtonContextFromButton(UIButton *button);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SCIPresentStoryMentionsSheet(UIView *overlayView);
+void SPKPresentStoryMentionsSheet(UIView *overlayView);
 #ifdef __cplusplus
 }
 #endif
 
-static BOOL SCIActionMenuButtonIsReels(UIButton *button) {
-	SCIActionButtonContext *context = SCIActionButtonContextFromButton(button);
-	return context.source == SCIActionButtonSourceReels;
+static BOOL SPKActionMenuButtonIsReels(UIButton *button) {
+	SPKActionButtonContext *context = SPKActionButtonContextFromButton(button);
+	return context.source == SPKActionButtonSourceReels;
 }
 
-static void SCIStabilizeReelsActionButtonIcon(UIButton *button) {
-	if (!SCIActionMenuButtonIsReels(button) || ![button isKindOfClass:[SCIChromeButton class]]) return;
+static void SPKStabilizeReelsActionButtonIcon(UIButton *button) {
+	if (!SPKActionMenuButtonIsReels(button) || ![button isKindOfClass:[SPKChromeButton class]]) return;
 
-	SCIChromeButton *chromeButton = (SCIChromeButton *)button;
-	chromeButton.iconTint = SCIActionButtonTintForSource(SCIActionButtonSourceReels);
+	SPKChromeButton *chromeButton = (SPKChromeButton *)button;
+	chromeButton.iconTint = SPKActionButtonTintForSource(SPKActionButtonSourceReels);
 	chromeButton.iconView.tintColor = chromeButton.iconTint;
 	chromeButton.iconView.hidden = NO;
 	chromeButton.iconView.alpha = 1.0;
@@ -126,30 +126,30 @@ static void SCIStabilizeReelsActionButtonIcon(UIButton *button) {
 	[chromeButton layoutIfNeeded];
 }
 
-static void SCISetReelsActionButtonMenuHidden(UIButton *button, BOOL hidden) {
+static void SPKSetReelsActionButtonMenuHidden(UIButton *button, BOOL hidden) {
 	if (!SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) return;
-	if (!SCIActionMenuButtonIsReels(button)) return;
+	if (!SPKActionMenuButtonIsReels(button)) return;
 
 	if (hidden) {
-		if (!objc_getAssociatedObject(button, kSCIActionButtonMenuHiddenAlphaAssocKey)) {
-			objc_setAssociatedObject(button, kSCIActionButtonMenuHiddenAlphaAssocKey, @(button.alpha), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		if (!objc_getAssociatedObject(button, kSPKActionButtonMenuHiddenAlphaAssocKey)) {
+			objc_setAssociatedObject(button, kSPKActionButtonMenuHiddenAlphaAssocKey, @(button.alpha), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		}
 		button.alpha = 0.0;
 		button.layer.opacity = 0.0;
 		return;
 	}
 
-	NSNumber *storedAlpha = objc_getAssociatedObject(button, kSCIActionButtonMenuHiddenAlphaAssocKey);
+	NSNumber *storedAlpha = objc_getAssociatedObject(button, kSPKActionButtonMenuHiddenAlphaAssocKey);
 	CGFloat alpha = storedAlpha ? storedAlpha.doubleValue : 1.0;
 	button.alpha = alpha;
 	button.layer.opacity = alpha;
-	objc_setAssociatedObject(button, kSCIActionButtonMenuHiddenAlphaAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKActionButtonMenuHiddenAlphaAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static UITargetedPreview *SCIReelsActionButtonMenuPreview(UIButton *button) {
-	if (!SCIActionMenuButtonIsReels(button) || ![button isKindOfClass:[SCIChromeButton class]]) return nil;
+static UITargetedPreview *SPKReelsActionButtonMenuPreview(UIButton *button) {
+	if (!SPKActionMenuButtonIsReels(button) || ![button isKindOfClass:[SPKChromeButton class]]) return nil;
 
-	SCIStabilizeReelsActionButtonIcon(button);
+	SPKStabilizeReelsActionButtonIcon(button);
 
 	CGRect bounds = button.bounds;
 	if (CGRectIsEmpty(bounds)) {
@@ -181,23 +181,23 @@ static UITargetedPreview *SCIReelsActionButtonMenuPreview(UIButton *button) {
 	return [[UITargetedPreview alloc] initWithView:previewView parameters:parameters];
 }
 
-static UITargetedPreview *SCIActionMenuButtonMenuPreview(UIButton *button) {
-	UITargetedPreview *reelsPreview = SCIReelsActionButtonMenuPreview(button);
+static UITargetedPreview *SPKActionMenuButtonMenuPreview(UIButton *button) {
+	UITargetedPreview *reelsPreview = SPKReelsActionButtonMenuPreview(button);
 	if (reelsPreview) return reelsPreview;
 	return [[UITargetedPreview alloc] initWithView:button];
 }
 
-@implementation SCIResolvedMediaEntry
+@implementation SPKResolvedMediaEntry
 @end
 
-@implementation SCIActionMenuButton
+@implementation SPKActionMenuButton
 
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
       previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
 {
 	(void)interaction;
 	(void)configuration;
-	return SCIActionMenuButtonMenuPreview(self);
+	return SPKActionMenuButtonMenuPreview(self);
 }
 
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
@@ -205,7 +205,7 @@ static UITargetedPreview *SCIActionMenuButtonMenuPreview(UIButton *button) {
 {
 	(void)interaction;
 	(void)configuration;
-	return SCIActionMenuButtonMenuPreview(self);
+	return SPKActionMenuButtonMenuPreview(self);
 }
 
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
@@ -221,25 +221,25 @@ willDisplayMenuForConfiguration:(id)configuration
 	// action). Lives here rather than on touch-down so it fires only when the menu actually
 	// appears — a touch-down tick stacked a second haptic on top of the action's own
 	// completion feedback for plain action taps.
-	if (![SCIUtils getBoolPref:@"general_disable_haptics"]) {
+	if (![SPKUtils getBoolPref:@"general_disable_haptics"]) {
 		UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
 		[feedback selectionChanged];
 	}
 
-	SCIActionButtonContext *context = SCIActionButtonContextFromButton(self);
+	SPKActionButtonContext *context = SPKActionButtonContextFromButton(self);
 	if (!context) return;
 
-	SCIStabilizeReelsActionButtonIcon(self);
+	SPKStabilizeReelsActionButtonIcon(self);
 	[animator addAnimations:^{
-		SCIStabilizeReelsActionButtonIcon(self);
+		SPKStabilizeReelsActionButtonIcon(self);
 	}];
-	SCISetReelsActionButtonMenuHidden(self, YES);
+	SPKSetReelsActionButtonMenuHidden(self, YES);
 
-	objc_setAssociatedObject(self, kSCIActionButtonLastMenuActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
-	if (context.source == SCIActionButtonSourceStories) {
-		SCIPauseStoryPlaybackFromOverlaySubview(context.view);
-	} else if (context.source == SCIActionButtonSourceDirect) {
-		SCIPauseDirectPlaybackFromController(context.controller);
+	objc_setAssociatedObject(self, kSPKActionButtonLastMenuActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+	if (context.source == SPKActionButtonSourceStories) {
+		SPKPauseStoryPlaybackFromOverlaySubview(context.view);
+	} else if (context.source == SPKActionButtonSourceDirect) {
+		SPKPauseDirectPlaybackFromController(context.controller);
 	}
 }
 
@@ -251,35 +251,35 @@ willDisplayMenuForConfiguration:(id)configuration
 	(void)interaction;
 	(void)configuration;
 
-	SCIStabilizeReelsActionButtonIcon(self);
+	SPKStabilizeReelsActionButtonIcon(self);
 	[animator addAnimations:^{
-		SCIStabilizeReelsActionButtonIcon(self);
+		SPKStabilizeReelsActionButtonIcon(self);
 	}];
-	SCISetReelsActionButtonMenuHidden(self, NO);
+	SPKSetReelsActionButtonMenuHidden(self, NO);
 
 	[animator addCompletion:^{
-		SCIActionMenuButton *strongSelf = self;
+		SPKActionMenuButton *strongSelf = self;
 		if (!strongSelf) return;
-		SCIStabilizeReelsActionButtonIcon(strongSelf);
+		SPKStabilizeReelsActionButtonIcon(strongSelf);
 
-		SCIActionButtonContext *context = SCIActionButtonContextFromButton(strongSelf);
-		NSString *lastAction = objc_getAssociatedObject(strongSelf, kSCIActionButtonLastMenuActionAssocKey);
-		objc_setAssociatedObject(strongSelf, kSCIActionButtonLastMenuActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+		SPKActionButtonContext *context = SPKActionButtonContextFromButton(strongSelf);
+		NSString *lastAction = objc_getAssociatedObject(strongSelf, kSPKActionButtonLastMenuActionAssocKey);
+		objc_setAssociatedObject(strongSelf, kSPKActionButtonLastMenuActionAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
 		if (!context) return;
-		if ([lastAction isEqualToString:kSCIActionOpenTopicSettings]) return;
-		if (SCIActionIdentifierOpensPreview(lastAction)) return;
+		if ([lastAction isEqualToString:kSPKActionOpenTopicSettings]) return;
+		if (SPKActionIdentifierOpensPreview(lastAction)) return;
 
-		if (context.source == SCIActionButtonSourceStories) {
-			SCIResumeStoryPlaybackFromOverlaySubview(context.view);
-		} else if (context.source == SCIActionButtonSourceDirect) {
-			SCIResumeDirectPlaybackFromController(context.controller);
+		if (context.source == SPKActionButtonSourceStories) {
+			SPKResumeStoryPlaybackFromOverlaySubview(context.view);
+		} else if (context.source == SPKActionButtonSourceDirect) {
+			SPKResumeDirectPlaybackFromController(context.controller);
 		}
 	}];
 }
 
 @end
 
-@implementation SCIActionButtonContext
+@implementation SPKActionButtonContext
 - (instancetype)init {
 	if ((self = [super init])) {
 		_currentIndexOverride = -1;
@@ -288,7 +288,7 @@ willDisplayMenuForConfiguration:(id)configuration
 }
 @end
 
-static BOOL SCIIsVideoExtension(NSString *ext) {
+static BOOL SPKIsVideoExtension(NSString *ext) {
 	if (ext.length == 0) return NO;
 
 	static NSSet<NSString *> *videoExts;
@@ -300,96 +300,96 @@ static BOOL SCIIsVideoExtension(NSString *ext) {
 	return [videoExts containsObject:ext.lowercaseString];
 }
 
-static NSString *SCIExtensionForURL(NSURL *url, BOOL isVideo) {
+static NSString *SPKExtensionForURL(NSURL *url, BOOL isVideo) {
 	NSString *ext = url.pathExtension;
 	if (ext.length > 0) return ext;
 	return isVideo ? @"mp4" : @"jpg";
 }
 
-static UIViewController *SCIViewControllerForAncestorView(UIView *view) {
+static UIViewController *SPKViewControllerForAncestorView(UIView *view) {
 	if (!view) return nil;
 
-	id candidate = SCIObjectForSelector(view, @"_viewControllerForAncestor");
+	id candidate = SPKObjectForSelector(view, @"_viewControllerForAncestor");
 	if ([candidate isKindOfClass:[UIViewController class]]) {
 		return (UIViewController *)candidate;
 	}
 
-	return [SCIUtils viewControllerForAncestralView:view];
+	return [SPKUtils viewControllerForAncestralView:view];
 }
 
-static UIColor *SCIActionButtonTintForSource(SCIActionButtonSource source) {
+static UIColor *SPKActionButtonTintForSource(SPKActionButtonSource source) {
 	switch (source) {
-		case SCIActionButtonSourceFeed:
-        case SCIActionButtonSourceProfile:
+		case SPKActionButtonSourceFeed:
+        case SPKActionButtonSourceProfile:
 			return [UIColor labelColor];
-		case SCIActionButtonSourceReels:
-		case SCIActionButtonSourceStories:
-		case SCIActionButtonSourceDirect:
-		case SCIActionButtonSourceInstants:
+		case SPKActionButtonSourceReels:
+		case SPKActionButtonSourceStories:
+		case SPKActionButtonSourceDirect:
+		case SPKActionButtonSourceInstants:
 		default:
 			return [UIColor whiteColor];
 	}
 }
 
-static NSString *SCIDefaultActionPrefKeyForSource(SCIActionButtonSource source) {
-	return SCIPrefActionButtonDefaultActionKey(SCIActionButtonTopicKeyForSource(source));
+static NSString *SPKDefaultActionPrefKeyForSource(SPKActionButtonSource source) {
+	return SPKPrefActionButtonDefaultActionKey(SPKActionButtonTopicKeyForSource(source));
 }
 
-static SCIGallerySource SCIGallerySourceForActionSource(SCIActionButtonSource source) {
+static SPKGallerySource SPKGallerySourceForActionSource(SPKActionButtonSource source) {
 	switch (source) {
-		case SCIActionButtonSourceFeed:
-			return SCIGallerySourceFeed;
-		case SCIActionButtonSourceReels:
-			return SCIGallerySourceReels;
-		case SCIActionButtonSourceStories:
-			return SCIGallerySourceStories;
-		case SCIActionButtonSourceDirect:
-			return SCIGallerySourceDMs;
-        case SCIActionButtonSourceProfile:
-            return SCIGallerySourceProfile;
-        case SCIActionButtonSourceInstants:
-            return SCIGallerySourceInstants;
+		case SPKActionButtonSourceFeed:
+			return SPKGallerySourceFeed;
+		case SPKActionButtonSourceReels:
+			return SPKGallerySourceReels;
+		case SPKActionButtonSourceStories:
+			return SPKGallerySourceStories;
+		case SPKActionButtonSourceDirect:
+			return SPKGallerySourceDMs;
+        case SPKActionButtonSourceProfile:
+            return SPKGallerySourceProfile;
+        case SPKActionButtonSourceInstants:
+            return SPKGallerySourceInstants;
 		default:
-			return SCIGallerySourceOther;
+			return SPKGallerySourceOther;
 	}
 }
 
-static SCIAudioSource SCIAudioSourceForActionSource(SCIActionButtonSource source) {
+static SPKAudioSource SPKAudioSourceForActionSource(SPKActionButtonSource source) {
 	switch (source) {
-		case SCIActionButtonSourceFeed:
-			return SCIAudioSourceFeed;
-		case SCIActionButtonSourceReels:
-			return SCIAudioSourceReels;
-		case SCIActionButtonSourceStories:
-			return SCIAudioSourceStories;
-		case SCIActionButtonSourceDirect:
-			return SCIAudioSourceDMs;
-		case SCIActionButtonSourceProfile:
-		case SCIActionButtonSourceInstants:
+		case SPKActionButtonSourceFeed:
+			return SPKAudioSourceFeed;
+		case SPKActionButtonSourceReels:
+			return SPKAudioSourceReels;
+		case SPKActionButtonSourceStories:
+			return SPKAudioSourceStories;
+		case SPKActionButtonSourceDirect:
+			return SPKAudioSourceDMs;
+		case SPKActionButtonSourceProfile:
+		case SPKActionButtonSourceInstants:
 		default:
-			return SCIAudioSourceOther;
+			return SPKAudioSourceOther;
 	}
 }
 
-static NSString *SCIDownloadURLNounForActionSource(SCIActionButtonSource source) {
+static NSString *SPKDownloadURLNounForActionSource(SPKActionButtonSource source) {
     switch (source) {
-        case SCIActionButtonSourceStories:
+        case SPKActionButtonSourceStories:
             return @"Story";
-        case SCIActionButtonSourceReels:
+        case SPKActionButtonSourceReels:
             return @"Reel";
-        case SCIActionButtonSourceFeed:
-        case SCIActionButtonSourceProfile:
+        case SPKActionButtonSourceFeed:
+        case SPKActionButtonSourceProfile:
             return @"Post";
-        case SCIActionButtonSourceInstants:
+        case SPKActionButtonSourceInstants:
             return @"Instant";
-        case SCIActionButtonSourceDirect:
+        case SPKActionButtonSourceDirect:
         default:
             return @"Media";
     }
 }
 
-static NSString *SCICopiedDownloadURLTitleForSource(SCIActionButtonSource source, BOOL plural) {
-    NSString *noun = SCIDownloadURLNounForActionSource(source);
+static NSString *SPKCopiedDownloadURLTitleForSource(SPKActionButtonSource source, BOOL plural) {
+    NSString *noun = SPKDownloadURLNounForActionSource(source);
     NSString *urlWord = plural ? @"URLs" : @"URL";
     if ([noun isEqualToString:@"Media"]) {
         return [NSString stringWithFormat:@"Download %@ copied", urlWord];
@@ -397,7 +397,7 @@ static NSString *SCICopiedDownloadURLTitleForSource(SCIActionButtonSource source
     return [NSString stringWithFormat:@"%@ download %@ copied", noun, urlWord];
 }
 
-static NSString *SCIProfileStringValue(id value) {
+static NSString *SPKProfileStringValue(id value) {
     if (!value) return nil;
     if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] > 0 ? value : nil;
     if ([value respondsToSelector:@selector(stringValue)]) {
@@ -407,55 +407,55 @@ static NSString *SCIProfileStringValue(id value) {
     return nil;
 }
 
-static NSString *SCIProfileUserPK(id user) {
-    NSString *pk = SCIProfileStringValue(SCIKVCObject(user, @"pk"));
-    if (pk.length == 0) pk = SCIProfileStringValue(SCIKVCObject(user, @"id"));
+static NSString *SPKProfileUserPK(id user) {
+    NSString *pk = SPKProfileStringValue(SPKKVCObject(user, @"pk"));
+    if (pk.length == 0) pk = SPKProfileStringValue(SPKKVCObject(user, @"id"));
     return pk;
 }
 
-static NSString *SCIProfileUsername(id user) {
-    return SCIProfileStringValue(SCIKVCObject(user, @"username"));
+static NSString *SPKProfileUsername(id user) {
+    return SPKProfileStringValue(SPKKVCObject(user, @"username"));
 }
 
-static NSString *SCIProfileFullName(id user) {
+static NSString *SPKProfileFullName(id user) {
     for (NSString *key in @[@"fullName", @"full_name", @"name"]) {
-        NSString *name = SCIProfileStringValue(SCIKVCObject(user, key));
+        NSString *name = SPKProfileStringValue(SPKKVCObject(user, key));
         if (name.length > 0) return name;
     }
     return nil;
 }
 
-static NSString *SCIProfileBiography(id user) {
+static NSString *SPKProfileBiography(id user) {
     for (NSString *key in @[@"biography", @"bio"]) {
-        NSString *bio = SCIProfileStringValue(SCIKVCObject(user, key));
+        NSString *bio = SPKProfileStringValue(SPKKVCObject(user, key));
         if (bio.length > 0) return bio;
     }
     return nil;
 }
 
-static NSURL *SCIProfileURL(id user) {
-    NSString *username = SCIProfileUsername(user);
+static NSURL *SPKProfileURL(id user) {
+    NSString *username = SPKProfileUsername(user);
     if (username.length == 0) return nil;
     NSString *encoded = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
     if (encoded.length == 0) return nil;
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/", encoded]];
 }
 
-static NSNumber *SCIProfileNumberValue(id value) {
+static NSNumber *SPKProfileNumberValue(id value) {
     if (!value) return nil;
     if ([value isKindOfClass:[NSNumber class]]) return value;
     if ([value respondsToSelector:@selector(integerValue)]) return @([value integerValue]);
     for (NSString *key in @[@"value", @"number", @"count"]) {
-        id nested = SCIKVCObject(value, key);
+        id nested = SPKKVCObject(value, key);
         if (nested && nested != value) {
-            NSNumber *number = SCIProfileNumberValue(nested);
+            NSNumber *number = SPKProfileNumberValue(nested);
             if (number) return number;
         }
     }
     return nil;
 }
 
-static NSNumber *SCIProfileNumericSelectorValue(id target, SEL selector) {
+static NSNumber *SPKProfileNumericSelectorValue(id target, SEL selector) {
     if (!target || !selector || ![target respondsToSelector:selector]) return nil;
     NSMethodSignature *signature = [target methodSignatureForSelector:selector];
     if (!signature || signature.numberOfArguments != 2) return nil;
@@ -468,7 +468,7 @@ static NSNumber *SCIProfileNumericSelectorValue(id target, SEL selector) {
 
     switch (type[0]) {
         case '@':
-            return SCIProfileNumberValue(((id (*)(id, SEL))objc_msgSend)(target, selector));
+            return SPKProfileNumberValue(((id (*)(id, SEL))objc_msgSend)(target, selector));
         case 'q':
             return @(((long long (*)(id, SEL))objc_msgSend)(target, selector));
         case 'Q':
@@ -490,7 +490,7 @@ static NSNumber *SCIProfileNumericSelectorValue(id target, SEL selector) {
     }
 }
 
-static BOOL SCIProfileNameMatchesCountKind(NSString *name, BOOL followers) {
+static BOOL SPKProfileNameMatchesCountKind(NSString *name, BOOL followers) {
     NSString *lower = name.lowercaseString;
     if (![lower containsString:@"count"]) return NO;
     if (followers) {
@@ -504,7 +504,7 @@ static BOOL SCIProfileNameMatchesCountKind(NSString *name, BOOL followers) {
            [lower containsString:@"edgefollow"];
 }
 
-static NSNumber *SCIProfileIvarNumberValue(id object, Ivar ivar) {
+static NSNumber *SPKProfileIvarNumberValue(id object, Ivar ivar) {
     if (!object || !ivar) return nil;
     const char *type = ivar_getTypeEncoding(ivar);
     if (!type) return nil;
@@ -513,7 +513,7 @@ static NSNumber *SCIProfileIvarNumberValue(id object, Ivar ivar) {
     }
     if (type[0] == '@') {
         @try {
-            return SCIProfileNumberValue(object_getIvar(object, ivar));
+            return SPKProfileNumberValue(object_getIvar(object, ivar));
         } @catch (__unused NSException *exception) {
             return nil;
         }
@@ -535,23 +535,23 @@ static NSNumber *SCIProfileIvarNumberValue(id object, Ivar ivar) {
     }
 }
 
-static NSString *SCIProfileInfoString(NSNumber *value) {
+static NSString *SPKProfileInfoString(NSNumber *value) {
     if (!value) return nil;
     NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
     formatter.numberStyle = NSNumberFormatterDecimalStyle;
     return [formatter stringFromNumber:value];
 }
 
-static NSString *SCIProfilePrivacyText(id user) {
-    NSNumber *privacyStatus = SCIProfileNumberValue(SCIKVCObject(user, @"privacyStatus"));
+static NSString *SPKProfilePrivacyText(id user) {
+    NSNumber *privacyStatus = SPKProfileNumberValue(SPKKVCObject(user, @"privacyStatus"));
     if (privacyStatus) {
         if (privacyStatus.integerValue == 2) return @"Private Profile";
         if (privacyStatus.integerValue == 1) return @"Public Profile";
     }
 
-    id privateValue = SCIKVCObject(user, @"isPrivate");
-    if (!privateValue) privateValue = SCIKVCObject(user, @"privateAccount");
-    if (!privateValue) privateValue = SCIKVCObject(user, @"isPrivateAccount");
+    id privateValue = SPKKVCObject(user, @"isPrivate");
+    if (!privateValue) privateValue = SPKKVCObject(user, @"privateAccount");
+    if (!privateValue) privateValue = SPKKVCObject(user, @"isPrivateAccount");
     if ([privateValue respondsToSelector:@selector(boolValue)]) {
         return [privateValue boolValue] ? @"Private Profile" : @"Public Profile";
     }
@@ -559,41 +559,41 @@ static NSString *SCIProfilePrivacyText(id user) {
     return nil;
 }
 
-static UIAction *SCIProfileDisabledInfoAction(NSString *title, NSString *resourceName) {
+static UIAction *SPKProfileDisabledInfoAction(NSString *title, NSString *resourceName) {
     UIAction *action = [UIAction actionWithTitle:title
-                                           image:[SCIAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"info") pointSize:22.0]
+                                           image:[SPKAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"info") pointSize:22.0]
                                       identifier:nil
                                          handler:^(__unused UIAction *menuAction) {}];
     action.attributes = UIMenuElementAttributesDisabled;
     return action;
 }
 
-static NSNumber *SCIProfileFollowerCount(id user);
-static NSNumber *SCIProfileFollowingCount(id user);
+static NSNumber *SPKProfileFollowerCount(id user);
+static NSNumber *SPKProfileFollowingCount(id user);
 
-static NSArray<UIMenuElement *> *SCIProfileInfoMenuElements(id user) {
+static NSArray<UIMenuElement *> *SPKProfileInfoMenuElements(id user) {
     if (!user) return @[];
 
     NSMutableArray<UIMenuElement *> *infoItems = [NSMutableArray array];
-    NSString *privacyText = SCIProfilePrivacyText(user);
+    NSString *privacyText = SPKProfilePrivacyText(user);
     if (privacyText.length > 0) {
-        [infoItems addObject:SCIProfileDisabledInfoAction(privacyText, [privacyText containsString:@"Private"] ? @"lock" : @"unlock")];
+        [infoItems addObject:SPKProfileDisabledInfoAction(privacyText, [privacyText containsString:@"Private"] ? @"lock" : @"unlock")];
     }
 
-    NSString *followers = SCIProfileInfoString(SCIProfileFollowerCount(user));
+    NSString *followers = SPKProfileInfoString(SPKProfileFollowerCount(user));
     if (followers.length > 0) {
-        [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Followers: %@", followers], @"users")];
+        [infoItems addObject:SPKProfileDisabledInfoAction([NSString stringWithFormat:@"Followers: %@", followers], @"users")];
     }
 
-    NSString *following = SCIProfileInfoString(SCIProfileFollowingCount(user));
+    NSString *following = SPKProfileInfoString(SPKProfileFollowingCount(user));
     if (following.length > 0) {
-        [infoItems addObject:SCIProfileDisabledInfoAction([NSString stringWithFormat:@"Following: %@", following], @"users")];
+        [infoItems addObject:SPKProfileDisabledInfoAction([NSString stringWithFormat:@"Following: %@", following], @"users")];
     }
 
     return infoItems;
 }
 
-static NSArray *SCIProfileCountCandidates(id user) {
+static NSArray *SPKProfileCountCandidates(id user) {
     if (!user) return @[];
 
     NSMutableArray *candidates = [NSMutableArray arrayWithObject:user];
@@ -609,7 +609,7 @@ static NSArray *SCIProfileCountCandidates(id user) {
         NSArray *snapshot = [candidates copy];
         for (id candidate in snapshot) {
             for (NSString *key in keys) {
-                id nested = SCIKVCObject(candidate, key) ?: SCIObjectForSelector(candidate, key);
+                id nested = SPKKVCObject(candidate, key) ?: SPKObjectForSelector(candidate, key);
                 if (!nested ||
                     [nested isKindOfClass:[NSString class]] ||
                     [nested isKindOfClass:[NSNumber class]] ||
@@ -627,30 +627,30 @@ static NSArray *SCIProfileCountCandidates(id user) {
     return candidates;
 }
 
-static NSNumber *SCIProfileCountForUser(id user, NSArray<NSString *> *keys) {
-    for (id candidate in SCIProfileCountCandidates(user)) {
+static NSNumber *SPKProfileCountForUser(id user, NSArray<NSString *> *keys) {
+    for (id candidate in SPKProfileCountCandidates(user)) {
         for (NSString *key in keys) {
-            NSNumber *value = [SCIUtils numericValueForObj:candidate selectorName:key];
+            NSNumber *value = [SPKUtils numericValueForObj:candidate selectorName:key];
             if (value) return value;
-            value = SCIProfileNumberValue(SCIObjectForSelector(candidate, key));
+            value = SPKProfileNumberValue(SPKObjectForSelector(candidate, key));
             if (value) return value;
-            value = SCIProfileNumberValue(SCIKVCObject(candidate, key));
+            value = SPKProfileNumberValue(SPKKVCObject(candidate, key));
             if (value) return value;
         }
     }
     return nil;
 }
 
-static NSNumber *SCIProfileRuntimeCountForUser(id user, BOOL followers) {
-    for (id candidate in SCIProfileCountCandidates(user)) {
+static NSNumber *SPKProfileRuntimeCountForUser(id user, BOOL followers) {
+    for (id candidate in SPKProfileCountCandidates(user)) {
         for (Class cls = [candidate class]; cls && cls != [NSObject class]; cls = class_getSuperclass(cls)) {
             unsigned int methodCount = 0;
             Method *methods = class_copyMethodList(cls, &methodCount);
             for (unsigned int index = 0; index < methodCount; index++) {
                 SEL selector = method_getName(methods[index]);
                 NSString *name = NSStringFromSelector(selector);
-                if (!SCIProfileNameMatchesCountKind(name, followers)) continue;
-                NSNumber *value = SCIProfileNumericSelectorValue(candidate, selector);
+                if (!SPKProfileNameMatchesCountKind(name, followers)) continue;
+                NSNumber *value = SPKProfileNumericSelectorValue(candidate, selector);
                 if (value) {
                     free(methods);
                     return value;
@@ -662,8 +662,8 @@ static NSNumber *SCIProfileRuntimeCountForUser(id user, BOOL followers) {
             Ivar *ivars = class_copyIvarList(cls, &ivarCount);
             for (unsigned int index = 0; index < ivarCount; index++) {
                 NSString *name = [NSString stringWithUTF8String:ivar_getName(ivars[index]) ?: ""];
-                if (!SCIProfileNameMatchesCountKind(name, followers)) continue;
-                NSNumber *value = SCIProfileIvarNumberValue(candidate, ivars[index]);
+                if (!SPKProfileNameMatchesCountKind(name, followers)) continue;
+                NSNumber *value = SPKProfileIvarNumberValue(candidate, ivars[index]);
                 if (value) {
                     free(ivars);
                     return value;
@@ -675,8 +675,8 @@ static NSNumber *SCIProfileRuntimeCountForUser(id user, BOOL followers) {
     return nil;
 }
 
-static NSNumber *SCIProfileFollowerCount(id user) {
-    NSNumber *value = SCIProfileCountForUser(user, @[
+static NSNumber *SPKProfileFollowerCount(id user) {
+    NSNumber *value = SPKProfileCountForUser(user, @[
         @"followerCount",
         @"followersCount",
         @"follower_count",
@@ -686,11 +686,11 @@ static NSNumber *SCIProfileFollowerCount(id user) {
         @"followedByCount",
         @"followed_by_count"
     ]);
-    return value ?: SCIProfileRuntimeCountForUser(user, YES);
+    return value ?: SPKProfileRuntimeCountForUser(user, YES);
 }
 
-static NSNumber *SCIProfileFollowingCount(id user) {
-    NSNumber *value = SCIProfileCountForUser(user, @[
+static NSNumber *SPKProfileFollowingCount(id user) {
+    NSNumber *value = SPKProfileCountForUser(user, @[
         @"followingCount",
         @"followingsCount",
         @"following_count",
@@ -699,125 +699,125 @@ static NSNumber *SCIProfileFollowingCount(id user) {
         @"edge_follow",
         @"followCount"
     ]);
-    return value ?: SCIProfileRuntimeCountForUser(user, NO);
+    return value ?: SPKProfileRuntimeCountForUser(user, NO);
 }
 
 
 
-static NSString *SCIProfileInfoSignature(id user) {
+static NSString *SPKProfileInfoSignature(id user) {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    NSString *privacy = SCIProfilePrivacyText(user);
+    NSString *privacy = SPKProfilePrivacyText(user);
     if (privacy.length > 0) [parts addObject:privacy];
-    NSString *followers = SCIProfileInfoString(SCIProfileFollowerCount(user));
+    NSString *followers = SPKProfileInfoString(SPKProfileFollowerCount(user));
     if (followers.length > 0) [parts addObject:[NSString stringWithFormat:@"followers:%@", followers]];
-    NSString *following = SCIProfileInfoString(SCIProfileFollowingCount(user));
+    NSString *following = SPKProfileInfoString(SPKProfileFollowingCount(user));
     if (following.length > 0) [parts addObject:[NSString stringWithFormat:@"following:%@", following]];
     return [parts componentsJoinedByString:@"|"];
 }
 
-static NSString *SCIProfileDefaultCopyInfoIdentifier(void) {
-    NSString *identifier = [SCIUtils getStringPref:@"profile_action_btn_default_copy_info_action"] ?: kSCIActionProfileCopyUsername;
+static NSString *SPKProfileDefaultCopyInfoIdentifier(void) {
+    NSString *identifier = [SPKUtils getStringPref:@"profile_action_btn_default_copy_info_action"] ?: kSPKActionProfileCopyUsername;
     NSDictionary<NSString *, NSString *> *legacyMap = @{
-        @"id": kSCIActionProfileCopyID,
-        @"username": kSCIActionProfileCopyUsername,
-        @"name": kSCIActionProfileCopyName,
-        @"bio": kSCIActionProfileCopyBio,
-        @"link": kSCIActionProfileCopyLink
+        @"id": kSPKActionProfileCopyID,
+        @"username": kSPKActionProfileCopyUsername,
+        @"name": kSPKActionProfileCopyName,
+        @"bio": kSPKActionProfileCopyBio,
+        @"link": kSPKActionProfileCopyLink
     };
     identifier = legacyMap[identifier] ?: identifier;
     NSSet<NSString *> *supported = [NSSet setWithArray:@[
-        kSCIActionProfileCopyID,
-        kSCIActionProfileCopyUsername,
-        kSCIActionProfileCopyName,
-        kSCIActionProfileCopyBio,
-        kSCIActionProfileCopyLink
+        kSPKActionProfileCopyID,
+        kSPKActionProfileCopyUsername,
+        kSPKActionProfileCopyName,
+        kSPKActionProfileCopyBio,
+        kSPKActionProfileCopyLink
     ]];
-    return [supported containsObject:identifier] ? identifier : kSCIActionProfileCopyUsername;
+    return [supported containsObject:identifier] ? identifier : kSPKActionProfileCopyUsername;
 }
 
-static NSString *SCIProfileCopyValueForIdentifier(id user, NSString *identifier) {
-    if ([identifier isEqualToString:kSCIActionProfileCopyID]) return SCIProfileUserPK(user);
-    if ([identifier isEqualToString:kSCIActionProfileCopyName]) return SCIProfileFullName(user);
-    if ([identifier isEqualToString:kSCIActionProfileCopyBio]) return SCIProfileBiography(user);
-    if ([identifier isEqualToString:kSCIActionProfileCopyLink]) return SCIProfileURL(user).absoluteString;
-    return SCIProfileUsername(user);
+static NSString *SPKProfileCopyValueForIdentifier(id user, NSString *identifier) {
+    if ([identifier isEqualToString:kSPKActionProfileCopyID]) return SPKProfileUserPK(user);
+    if ([identifier isEqualToString:kSPKActionProfileCopyName]) return SPKProfileFullName(user);
+    if ([identifier isEqualToString:kSPKActionProfileCopyBio]) return SPKProfileBiography(user);
+    if ([identifier isEqualToString:kSPKActionProfileCopyLink]) return SPKProfileURL(user).absoluteString;
+    return SPKProfileUsername(user);
 }
 
-static NSString *SCIProfileCopySuccessTitleForIdentifier(NSString *identifier) {
-    if ([identifier isEqualToString:kSCIActionProfileCopyID]) return @"ID copied";
-    if ([identifier isEqualToString:kSCIActionProfileCopyName]) return @"Name copied";
-    if ([identifier isEqualToString:kSCIActionProfileCopyBio]) return @"Bio copied";
-    if ([identifier isEqualToString:kSCIActionProfileCopyLink]) return @"Profile link copied";
+static NSString *SPKProfileCopySuccessTitleForIdentifier(NSString *identifier) {
+    if ([identifier isEqualToString:kSPKActionProfileCopyID]) return @"ID copied";
+    if ([identifier isEqualToString:kSPKActionProfileCopyName]) return @"Name copied";
+    if ([identifier isEqualToString:kSPKActionProfileCopyBio]) return @"Bio copied";
+    if ([identifier isEqualToString:kSPKActionProfileCopyLink]) return @"Profile link copied";
     return @"Username copied";
 }
 
-static BOOL SCIIsProfileCopyActionIdentifier(NSString *identifier) {
+static BOOL SPKIsProfileCopyActionIdentifier(NSString *identifier) {
     return [@[
-        kSCIActionProfileCopyInfo,
-        kSCIActionProfileCopyID,
-        kSCIActionProfileCopyUsername,
-        kSCIActionProfileCopyName,
-        kSCIActionProfileCopyBio,
-        kSCIActionProfileCopyLink
+        kSPKActionProfileCopyInfo,
+        kSPKActionProfileCopyID,
+        kSPKActionProfileCopyUsername,
+        kSPKActionProfileCopyName,
+        kSPKActionProfileCopyBio,
+        kSPKActionProfileCopyLink
     ] containsObject:identifier];
 }
 
-static BOOL SCIExecuteProfileCopyAction(NSString *identifier, SCIActionButtonContext *context) {
-    id user = SCIResolveMediaForContext(context);
+static BOOL SPKExecuteProfileCopyAction(NSString *identifier, SPKActionButtonContext *context) {
+    id user = SPKResolveMediaForContext(context);
     if (!user) {
-        SCINotify(kSCIActionProfileCopyInfo, @"Profile unavailable", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKActionProfileCopyInfo, @"Profile unavailable", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
-    NSString *copyIdentifier = [identifier isEqualToString:kSCIActionProfileCopyInfo] ? SCIProfileDefaultCopyInfoIdentifier() : identifier;
-    NSString *value = SCIProfileCopyValueForIdentifier(user, copyIdentifier);
+    NSString *copyIdentifier = [identifier isEqualToString:kSPKActionProfileCopyInfo] ? SPKProfileDefaultCopyInfoIdentifier() : identifier;
+    NSString *value = SPKProfileCopyValueForIdentifier(user, copyIdentifier);
     if (value.length == 0) {
-        SCINotify(kSCIActionProfileCopyInfo, @"Nothing to copy", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKActionProfileCopyInfo, @"Nothing to copy", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
     UIPasteboard.generalPasteboard.string = value;
-    SCINotify(kSCIActionProfileCopyInfo, SCIProfileCopySuccessTitleForIdentifier(copyIdentifier), nil, @"circle_check_filled", SCINotificationToneSuccess);
+    SPKNotify(kSPKActionProfileCopyInfo, SPKProfileCopySuccessTitleForIdentifier(copyIdentifier), nil, @"circle_check_filled", SPKNotificationToneSuccess);
     return YES;
 }
 
-static BOOL SCIActionMediaLooksLikeReel(id media) {
+static BOOL SPKActionMediaLooksLikeReel(id media) {
     if (!media) return NO;
     for (NSString *selectorName in @[@"isReelMedia", @"isClipsMedia", @"isClipsItem", @"isReel", @"isInstagramReel"]) {
-        NSNumber *value = [SCIUtils numericValueForObj:media selectorName:selectorName];
+        NSNumber *value = [SPKUtils numericValueForObj:media selectorName:selectorName];
         if (value.boolValue) return YES;
     }
     for (NSString *key in @[@"productType", @"mediaType", @"mediaSource", @"inventorySource", @"clipsTabEntryPoint"]) {
-        NSString *value = SCIStringFromValue(SCIObjectForSelector(media, key));
-        if (value.length == 0) value = SCIStringFromValue(SCIKVCObject(media, key));
+        NSString *value = SPKStringFromValue(SPKObjectForSelector(media, key));
+        if (value.length == 0) value = SPKStringFromValue(SPKKVCObject(media, key));
         NSString *lower = value.lowercaseString;
         if ([lower containsString:@"clips"] || [lower containsString:@"reel"]) return YES;
     }
     return NO;
 }
 
-static SCIGallerySaveMetadata *SCIGalleryMetadata(SCIActionButtonSource source, NSString *username, id media) {
-	SCIGallerySaveMetadata *meta = [[SCIGallerySaveMetadata alloc] init];
-    SCIGallerySource gallerySource = SCIGallerySourceForActionSource(source);
-    if (source == SCIActionButtonSourceFeed && SCIActionMediaLooksLikeReel(media)) {
-        gallerySource = SCIGallerySourceReels;
+static SPKGallerySaveMetadata *SPKGalleryMetadata(SPKActionButtonSource source, NSString *username, id media) {
+	SPKGallerySaveMetadata *meta = [[SPKGallerySaveMetadata alloc] init];
+    SPKGallerySource gallerySource = SPKGallerySourceForActionSource(source);
+    if (source == SPKActionButtonSourceFeed && SPKActionMediaLooksLikeReel(media)) {
+        gallerySource = SPKGallerySourceReels;
     }
 	meta.source = (int16_t)gallerySource;
 	if (username.length > 0) {
 		meta.sourceUsername = username;
 	}
-    if (source == SCIActionButtonSourceProfile) {
-        [SCIGalleryOriginController populateProfileMetadata:meta username:username user:media];
+    if (source == SPKActionButtonSourceProfile) {
+        [SPKGalleryOriginController populateProfileMetadata:meta username:username user:media];
     } else {
-        [SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+        [SPKGalleryOriginController populateMetadata:meta fromMedia:media];
     }
 	return meta;
 }
 
-static NSString *SCIExplicitSourceUsernameFromObject(id object) {
-    NSString *username = SCIStringFromValue(SCIObjectForSelector(object, @"sourceUsername") ?: SCIKVCObject(object, @"sourceUsername"));
+static NSString *SPKExplicitSourceUsernameFromObject(id object) {
+    NSString *username = SPKStringFromValue(SPKObjectForSelector(object, @"sourceUsername") ?: SPKKVCObject(object, @"sourceUsername"));
     return username.length > 0 ? username : nil;
 }
 
-static NSDate *SCIDateFromActionValue(id value) {
+static NSDate *SPKDateFromActionValue(id value) {
     if ([value isKindOfClass:NSDate.class]) return (NSDate *)value;
     if ([value respondsToSelector:@selector(doubleValue)]) {
         double timestamp = [value doubleValue];
@@ -828,16 +828,16 @@ static NSDate *SCIDateFromActionValue(id value) {
     return nil;
 }
 
-static NSString *SCIUsernameForEntry(SCIResolvedMediaEntry *entry, NSString *fallbackUsername) {
+static NSString *SPKUsernameForEntry(SPKResolvedMediaEntry *entry, NSString *fallbackUsername) {
     NSString *username = entry.sourceUsername;
-    if (username.length == 0) username = SCIExplicitSourceUsernameFromObject(entry.metadataObject ?: entry.mediaObject);
-    if (username.length == 0) username = SCIExplicitSourceUsernameFromObject(entry.mediaObject);
-    if (username.length == 0) username = SCIUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
+    if (username.length == 0) username = SPKExplicitSourceUsernameFromObject(entry.metadataObject ?: entry.mediaObject);
+    if (username.length == 0) username = SPKExplicitSourceUsernameFromObject(entry.mediaObject);
+    if (username.length == 0) username = SPKUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
     if (username.length == 0) username = fallbackUsername;
     return username;
 }
 
-static void SCIApplyEntryMetadata(SCIGallerySaveMetadata *meta, SCIResolvedMediaEntry *entry) {
+static void SPKApplyEntryMetadata(SPKGallerySaveMetadata *meta, SPKResolvedMediaEntry *entry) {
     if (!meta || !entry) return;
     if (entry.sourceUsername.length > 0) meta.sourceUsername = entry.sourceUsername;
     if (entry.sourceMediaPK.length > 0) meta.sourceMediaPK = entry.sourceMediaPK;
@@ -845,278 +845,278 @@ static void SCIApplyEntryMetadata(SCIGallerySaveMetadata *meta, SCIResolvedMedia
     if (entry.importPostedDate) meta.importPostedDate = entry.importPostedDate;
 }
 
-extern "C" NSString *SCIActionButtonTitleForIdentifier(NSString *identifier) {
-	return SCIActionDescriptorDisplayTitle(identifier, nil);
+extern "C" NSString *SPKActionButtonTitleForIdentifier(NSString *identifier) {
+	return SPKActionDescriptorDisplayTitle(identifier, nil);
 }
 
-static NSArray<NSString *> *SCIBulkActionChildIdentifiers(void) {
+static NSArray<NSString *> *SPKBulkActionChildIdentifiers(void) {
     return @[
-        kSCIActionDownloadAllLibrary,
-        kSCIActionDownloadAllShare,
-        kSCIActionDownloadAllGallery,
-        kSCIActionDownloadAllClipboard,
-        kSCIActionDownloadAllLinks
+        kSPKActionDownloadAllLibrary,
+        kSPKActionDownloadAllShare,
+        kSPKActionDownloadAllGallery,
+        kSPKActionDownloadAllClipboard,
+        kSPKActionDownloadAllLinks
     ];
 }
 
-static BOOL SCIIsBulkChildActionIdentifier(NSString *identifier) {
-    return [SCIBulkActionChildIdentifiers() containsObject:identifier];
+static BOOL SPKIsBulkChildActionIdentifier(NSString *identifier) {
+    return [SPKBulkActionChildIdentifiers() containsObject:identifier];
 }
 
-static BOOL SCIIsBulkDownloadActionIdentifier(NSString *identifier) {
+static BOOL SPKIsBulkDownloadActionIdentifier(NSString *identifier) {
     return [@[
-        kSCIActionDownloadAllLibrary,
-        kSCIActionDownloadAllShare,
-        kSCIActionDownloadAllGallery
+        kSPKActionDownloadAllLibrary,
+        kSPKActionDownloadAllShare,
+        kSPKActionDownloadAllGallery
     ] containsObject:identifier];
 }
 
-static BOOL SCIIsBulkCopyActionIdentifier(NSString *identifier) {
+static BOOL SPKIsBulkCopyActionIdentifier(NSString *identifier) {
     return [@[
-        kSCIActionDownloadAllClipboard,
-        kSCIActionDownloadAllLinks
+        kSPKActionDownloadAllClipboard,
+        kSPKActionDownloadAllLinks
     ] containsObject:identifier];
 }
 
-static NSString *SCIBaseActionIdentifierForBulkChild(NSString *identifier) {
-    if ([identifier isEqualToString:kSCIActionDownloadAllLibrary]) return kSCIActionDownloadLibrary;
-    if ([identifier isEqualToString:kSCIActionDownloadAllShare]) return kSCIActionDownloadShare;
-    if ([identifier isEqualToString:kSCIActionDownloadAllGallery]) return kSCIActionDownloadGallery;
-    if ([identifier isEqualToString:kSCIActionDownloadAllClipboard]) return kSCIActionCopyMedia;
-    if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) return kSCIActionCopyDownloadLink;
+static NSString *SPKBaseActionIdentifierForBulkChild(NSString *identifier) {
+    if ([identifier isEqualToString:kSPKActionDownloadAllLibrary]) return kSPKActionDownloadLibrary;
+    if ([identifier isEqualToString:kSPKActionDownloadAllShare]) return kSPKActionDownloadShare;
+    if ([identifier isEqualToString:kSPKActionDownloadAllGallery]) return kSPKActionDownloadGallery;
+    if ([identifier isEqualToString:kSPKActionDownloadAllClipboard]) return kSPKActionCopyMedia;
+    if ([identifier isEqualToString:kSPKActionDownloadAllLinks]) return kSPKActionCopyDownloadLink;
     return identifier;
 }
 
-static SCIStoryContext *SCIStoryContextForActionButtonContext(SCIActionButtonContext *context) {
-    if (context.source != SCIActionButtonSourceStories) return nil;
-    SCIStoryContext *storyContext = SCIStoryContextFromView(context.view);
+static SPKStoryContext *SPKStoryContextForActionButtonContext(SPKActionButtonContext *context) {
+    if (context.source != SPKActionButtonSourceStories) return nil;
+    SPKStoryContext *storyContext = SPKStoryContextFromView(context.view);
     if (storyContext) return storyContext;
-    return SCIStoryContextFromOverlay(SCIStoryActiveOverlay());
+    return SPKStoryContextFromOverlay(SPKStoryActiveOverlay());
 }
 
-static NSString *SCIActionButtonDisplayTitleForContext(NSString *identifier,
-                                                       SCIActionButtonContext *context,
-                                                       SCIResolvedMediaEntry *currentEntry) {
-    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
-        NSString *title = SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context));
-        return title ?: SCIActionDescriptorDisplayTitle(identifier, context.settingsTitle);
+static NSString *SPKActionButtonDisplayTitleForContext(NSString *identifier,
+                                                       SPKActionButtonContext *context,
+                                                       SPKResolvedMediaEntry *currentEntry) {
+    if ([identifier isEqualToString:kSPKActionToggleStorySeenUserRule]) {
+        NSString *title = SPKStoryCurrentUserRuleActionTitle(SPKStoryContextForActionButtonContext(context));
+        return title ?: SPKActionDescriptorDisplayTitle(identifier, context.settingsTitle);
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
-        id user = SCIResolveMediaForContext(context);
-        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+    if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
+        id user = SPKResolveMediaForContext(context);
+        NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
         if (pk.length > 0) {
-            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
-            BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+            BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
+            BOOL listed = SPKStoryManualSeenListContainsUser(pk, manualSeenEnabled);
             BOOL applies = manualSeenEnabled ? !listed : listed;
             return applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
         }
         return @"Toggle Story Seen";
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
-        id user = SCIResolveMediaForContext(context);
-        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+    if ([identifier isEqualToString:kSPKActionToggleProfileMessagesSeenUserRule]) {
+        id user = SPKResolveMediaForContext(context);
+        NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
         if (pk.length > 0) {
-            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
-            NSDictionary *existingEntry = SCIDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
+            BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"msgs_manual_seen"];
+            NSDictionary *existingEntry = SPKDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
             BOOL listed = (existingEntry != nil);
             BOOL applies = manualSeenEnabled ? !listed : listed;
             return applies ? @"Start Marking Messages as Seen" : @"Stop Marking Messages as Seen";
         }
         return @"Toggle Messages Seen";
     }
-    if ([identifier isEqualToString:kSCIActionCopyMedia]) {
+    if ([identifier isEqualToString:kSPKActionCopyMedia]) {
         BOOL isVideo = (currentEntry.videoURL != nil);
         if (isVideo) {
-            return (context.source == SCIActionButtonSourceReels) ? @"Copy Reel" : @"Copy Video";
+            return (context.source == SPKActionButtonSourceReels) ? @"Copy Reel" : @"Copy Video";
         }
         return @"Copy Photo";
     }
-	return SCIActionDescriptorDisplayTitle(identifier, context.settingsTitle);
+	return SPKActionDescriptorDisplayTitle(identifier, context.settingsTitle);
 }
 
-static NSString *SCIResolvedSettingsTitleForContext(SCIActionButtonContext *context) {
+static NSString *SPKResolvedSettingsTitleForContext(SPKActionButtonContext *context) {
     if (context.settingsTitle.length > 0) return context.settingsTitle;
-    return SCIActionButtonTopicTitleForSource(context.source);
+    return SPKActionButtonTopicTitleForSource(context.source);
 }
 
-static BOOL SCIStoryMediaHasMentions(id media) {
-    NSArray *mentions = SCIArrayFromCollection(SCIObjectForSelector(media, @"reelMentions") ?: SCIKVCObject(media, @"reelMentions"));
+static BOOL SPKStoryMediaHasMentions(id media) {
+    NSArray *mentions = SPKArrayFromCollection(SPKObjectForSelector(media, @"reelMentions") ?: SPKKVCObject(media, @"reelMentions"));
     return mentions.count > 0;
 }
 
-static UIImage *SCIIconForActionIdentifier(NSString *identifier, SCIActionButtonSource source, CGFloat size, SCIActionButtonContext *context) {
-	if (SCIIsBulkChildActionIdentifier(identifier)) {
-		return SCIIconForActionIdentifier(SCIBaseActionIdentifierForBulkChild(identifier), source, size, context);
+static UIImage *SPKIconForActionIdentifier(NSString *identifier, SPKActionButtonSource source, CGFloat size, SPKActionButtonContext *context) {
+	if (SPKIsBulkChildActionIdentifier(identifier)) {
+		return SPKIconForActionIdentifier(SPKBaseActionIdentifierForBulkChild(identifier), source, size, context);
 	}
 
-	NSString *iconName = SCIActionDescriptorIconName(identifier);
+	NSString *iconName = SPKActionDescriptorIconName(identifier);
 
-	if (source == SCIActionButtonSourceReels) {
+	if (source == SPKActionButtonSourceReels) {
 		NSString *reelsIconName = [NSString stringWithFormat:@"%@_reels", iconName];
-		UIImage *reelsImage = [SCIAssetUtils resolvedImageNamed:reelsIconName
+		UIImage *reelsImage = [SPKAssetUtils resolvedImageNamed:reelsIconName
 		                                     fallbackSystemName:nil
 		                                              pointSize:size
 		                                                 weight:UIImageSymbolWeightUnspecified
-		                                                 source:SCIResolvedImageSourceInstagramIcon
+		                                                 source:SPKResolvedImageSourceInstagramIcon
 		                                          renderingMode:UIImageRenderingModeAlwaysTemplate];
 		if (reelsImage) {
 			return reelsImage;
 		}
 	}
 
-    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
-        SCIStoryContext *storyCtx = SCIStoryContextForActionButtonContext(context);
-        BOOL applies = storyCtx ? SCIStoryManualSeenAppliesToContext(storyCtx) : YES;
-        return [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+    if ([identifier isEqualToString:kSPKActionToggleStorySeenUserRule]) {
+        SPKStoryContext *storyCtx = SPKStoryContextForActionButtonContext(context);
+        BOOL applies = storyCtx ? SPKStoryManualSeenAppliesToContext(storyCtx) : YES;
+        return [SPKAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
-        id user = context ? SCIResolveMediaForContext(context) : nil;
-        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+    if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
+        id user = context ? SPKResolveMediaForContext(context) : nil;
+        NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
         BOOL applies = YES;
         if (pk.length > 0) {
-            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
-            BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+            BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
+            BOOL listed = SPKStoryManualSeenListContainsUser(pk, manualSeenEnabled);
             applies = manualSeenEnabled ? !listed : listed;
         }
-        return [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+        return [SPKAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
-        id user = context ? SCIResolveMediaForContext(context) : nil;
-        NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
+    if ([identifier isEqualToString:kSPKActionToggleProfileMessagesSeenUserRule]) {
+        id user = context ? SPKResolveMediaForContext(context) : nil;
+        NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
         BOOL applies = YES;
         if (pk.length > 0) {
-            BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
-            NSDictionary *existingEntry = SCIDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
+            BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"msgs_manual_seen"];
+            NSDictionary *existingEntry = SPKDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
             applies = manualSeenEnabled ? !(existingEntry != nil) : (existingEntry != nil);
         }
-        return [SCIAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+        return [SPKAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
     }
 
-	return [SCIAssetUtils instagramIconNamed:iconName pointSize:size];
+	return [SPKAssetUtils instagramIconNamed:iconName pointSize:size];
 }
 
-static SCIFullScreenPlaybackSource SCIPlaybackSourceForActionSource(SCIActionButtonSource source) {
+static SPKFullScreenPlaybackSource SPKPlaybackSourceForActionSource(SPKActionButtonSource source) {
     switch (source) {
-        case SCIActionButtonSourceFeed:
-            return SCIFullScreenPlaybackSourceFeed;
-        case SCIActionButtonSourceProfile:
-            return SCIFullScreenPlaybackSourceProfile;
-        case SCIActionButtonSourceReels:
-            return SCIFullScreenPlaybackSourceReels;
-        case SCIActionButtonSourceStories:
-            return SCIFullScreenPlaybackSourceStories;
-        case SCIActionButtonSourceDirect:
-            return SCIFullScreenPlaybackSourceDirect;
-        case SCIActionButtonSourceInstants:
-            return SCIFullScreenPlaybackSourceInstants;
+        case SPKActionButtonSourceFeed:
+            return SPKFullScreenPlaybackSourceFeed;
+        case SPKActionButtonSourceProfile:
+            return SPKFullScreenPlaybackSourceProfile;
+        case SPKActionButtonSourceReels:
+            return SPKFullScreenPlaybackSourceReels;
+        case SPKActionButtonSourceStories:
+            return SPKFullScreenPlaybackSourceStories;
+        case SPKActionButtonSourceDirect:
+            return SPKFullScreenPlaybackSourceDirect;
+        case SPKActionButtonSourceInstants:
+            return SPKFullScreenPlaybackSourceInstants;
         default:
-            return SCIFullScreenPlaybackSourceUnknown;
+            return SPKFullScreenPlaybackSourceUnknown;
     }
 }
 
-static void SCIPausePlaybackForPreviewContext(SCIActionButtonContext *context) {
+static void SPKPausePlaybackForPreviewContext(SPKActionButtonContext *context) {
     if (!context) return;
 
     switch (context.source) {
-        case SCIActionButtonSourceStories:
-            SCIPauseStoryPlaybackFromOverlaySubview(context.view);
+        case SPKActionButtonSourceStories:
+            SPKPauseStoryPlaybackFromOverlaySubview(context.view);
             return;
-        case SCIActionButtonSourceDirect:
-            SCIPauseDirectPlaybackFromController(context.controller);
+        case SPKActionButtonSourceDirect:
+            SPKPauseDirectPlaybackFromController(context.controller);
             return;
-        case SCIActionButtonSourceFeed:
-        case SCIActionButtonSourceReels:
-        case SCIActionButtonSourceProfile:
+        case SPKActionButtonSourceFeed:
+        case SPKActionButtonSourceReels:
+        case SPKActionButtonSourceProfile:
         default:
             return;
     }
 }
 
-static void SCIResumePlaybackForPreviewContext(SCIActionButtonContext *context) {
+static void SPKResumePlaybackForPreviewContext(SPKActionButtonContext *context) {
     if (!context) return;
 
     switch (context.source) {
-        case SCIActionButtonSourceStories:
-            SCIResumeStoryPlaybackFromOverlaySubview(context.view);
+        case SPKActionButtonSourceStories:
+            SPKResumeStoryPlaybackFromOverlaySubview(context.view);
             return;
-        case SCIActionButtonSourceDirect:
-            SCIResumeDirectPlaybackFromController(context.controller);
+        case SPKActionButtonSourceDirect:
+            SPKResumeDirectPlaybackFromController(context.controller);
             return;
-        case SCIActionButtonSourceFeed:
-        case SCIActionButtonSourceReels:
-        case SCIActionButtonSourceProfile:
+        case SPKActionButtonSourceFeed:
+        case SPKActionButtonSourceReels:
+        case SPKActionButtonSourceProfile:
         default:
             return;
     }
 }
 
-static BOOL SCIActionIdentifierOpensPreview(NSString *identifier) {
-    return [identifier isEqualToString:kSCIActionExpand] ||
-           [identifier isEqualToString:kSCIActionViewThumbnail] ||
-           [identifier isEqualToString:kSCIActionStoryMentionsSheet];
+static BOOL SPKActionIdentifierOpensPreview(NSString *identifier) {
+    return [identifier isEqualToString:kSPKActionExpand] ||
+           [identifier isEqualToString:kSPKActionViewThumbnail] ||
+           [identifier isEqualToString:kSPKActionStoryMentionsSheet];
 }
 
-static SCIMediaPreviewPlaybackBlock SCIPausePlaybackBlockForContext(SCIActionButtonContext *context) {
+static SPKMediaPreviewPlaybackBlock SPKPausePlaybackBlockForContext(SPKActionButtonContext *context) {
     if (!context) return nil;
     __weak UIView *sourceView = context.view;
     __weak UIViewController *sourceController = context.controller;
-    SCIActionButtonSource source = context.source;
+    SPKActionButtonSource source = context.source;
     return [^{
-        SCIActionButtonContext *previewContext = [[SCIActionButtonContext alloc] init];
+        SPKActionButtonContext *previewContext = [[SPKActionButtonContext alloc] init];
         previewContext.source = source;
         previewContext.view = sourceView;
         previewContext.controller = sourceController;
-        SCIPausePlaybackForPreviewContext(previewContext);
+        SPKPausePlaybackForPreviewContext(previewContext);
     } copy];
 }
 
-static SCIMediaPreviewPlaybackBlock SCIResumePlaybackBlockForContext(SCIActionButtonContext *context) {
+static SPKMediaPreviewPlaybackBlock SPKResumePlaybackBlockForContext(SPKActionButtonContext *context) {
     if (!context) return nil;
     __weak UIView *sourceView = context.view;
     __weak UIViewController *sourceController = context.controller;
-    SCIActionButtonSource source = context.source;
+    SPKActionButtonSource source = context.source;
     return [^{
-        SCIActionButtonContext *previewContext = [[SCIActionButtonContext alloc] init];
+        SPKActionButtonContext *previewContext = [[SPKActionButtonContext alloc] init];
         previewContext.source = source;
         previewContext.view = sourceView;
         previewContext.controller = sourceController;
-        SCIResumePlaybackForPreviewContext(previewContext);
+        SPKResumePlaybackForPreviewContext(previewContext);
     } copy];
 }
 
-UIImage *SCIActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size) {
-	return SCIIconForActionIdentifier(identifier, SCIActionButtonSourceFeed, size, nil);
+UIImage *SPKActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size) {
+	return SPKIconForActionIdentifier(identifier, SPKActionButtonSourceFeed, size, nil);
 }
 
-static UIImage *SCIActionButtonMenuIconForContext(NSString *identifier, SCIActionButtonContext *context, CGFloat size) {
-	SCIActionButtonSource menuSource = (context.source == SCIActionButtonSourceReels)
-		? SCIActionButtonSourceFeed
+static UIImage *SPKActionButtonMenuIconForContext(NSString *identifier, SPKActionButtonContext *context, CGFloat size) {
+	SPKActionButtonSource menuSource = (context.source == SPKActionButtonSourceReels)
+		? SPKActionButtonSourceFeed
 		: context.source;
-	return SCIIconForActionIdentifier(identifier, menuSource, size, context);
+	return SPKIconForActionIdentifier(identifier, menuSource, size, context);
 }
 
-static NSInteger SCIClampedIndex(NSInteger index, NSInteger count) {
+static NSInteger SPKClampedIndex(NSInteger index, NSInteger count) {
 	if (count <= 0) return 0;
 	if (index < 0) return 0;
 	if (index >= count) return count - 1;
 	return index;
 }
 
-static NSURL *SCIURLFromURLCollectionValue(id collection) {
+static NSURL *SPKURLFromURLCollectionValue(id collection) {
 	if (!collection) return nil;
 
-	NSArray *items = SCIArrayFromCollection(collection);
-	if (!items) return SCIURLFromValue(collection);
+	NSArray *items = SPKArrayFromCollection(collection);
+	if (!items) return SPKURLFromValue(collection);
 
 	for (id item in items) {
 		NSURL *url = nil;
 		if ([item isKindOfClass:[NSDictionary class]]) {
 			NSDictionary *dict = (NSDictionary *)item;
-			url = SCIURLFromValue(dict[@"url"] ?: dict[@"urlString"]);
+			url = SPKURLFromValue(dict[@"url"] ?: dict[@"urlString"]);
 		} else {
-			url = SCIURLFromValue(SCIObjectForSelector(item, @"url"));
-			if (!url) url = SCIURLFromValue(SCIObjectForSelector(item, @"urlString"));
-			if (!url) url = SCIURLFromValue(item);
+			url = SPKURLFromValue(SPKObjectForSelector(item, @"url"));
+			if (!url) url = SPKURLFromValue(SPKObjectForSelector(item, @"urlString"));
+			if (!url) url = SPKURLFromValue(item);
 		}
 		if (url) return url;
 	}
@@ -1124,7 +1124,7 @@ static NSURL *SCIURLFromURLCollectionValue(id collection) {
 	return nil;
 }
 
-static NSURL *SCIURLFromAssetLikeObject(id object, BOOL videoHint) {
+static NSURL *SPKURLFromAssetLikeObject(id object, BOOL videoHint) {
 	if (!object) return nil;
 
 	NSArray<NSString *> *primarySelectors = videoHint
@@ -1132,15 +1132,15 @@ static NSURL *SCIURLFromAssetLikeObject(id object, BOOL videoHint) {
 		: @[@"imageURL", @"imageUrl", @"displayURL", @"thumbnailURL", @"url", @"urlString"];
 
 	for (NSString *selectorName in primarySelectors) {
-		NSURL *url = SCIURLFromValue(SCIObjectForSelector(object, selectorName));
-		if (!url) url = SCIURLFromValue(SCIKVCObject(object, selectorName));
+		NSURL *url = SPKURLFromValue(SPKObjectForSelector(object, selectorName));
+		if (!url) url = SPKURLFromValue(SPKKVCObject(object, selectorName));
 		if (url) return url;
 	}
 
 	if (videoHint) {
 		for (NSString *selectorName in @[@"allVideoURLs", @"sortedVideoURLsBySize", @"videoURLs", @"videoUrls"]) {
-			NSURL *url = SCIURLFromURLCollectionValue(SCIObjectForSelector(object, selectorName));
-			if (!url) url = SCIURLFromURLCollectionValue(SCIKVCObject(object, selectorName));
+			NSURL *url = SPKURLFromURLCollectionValue(SPKObjectForSelector(object, selectorName));
+			if (!url) url = SPKURLFromURLCollectionValue(SPKKVCObject(object, selectorName));
 			if (url) return url;
 		}
 	} else {
@@ -1154,7 +1154,7 @@ static NSURL *SCIURLFromAssetLikeObject(id object, BOOL videoHint) {
 	return nil;
 }
 
-static id SCIFieldCacheValue(id obj, NSString *key) {
+static id SPKFieldCacheValue(id obj, NSString *key) {
     if (!obj || key.length == 0) return nil;
 
     static Ivar fieldCacheIvar = NULL;
@@ -1182,26 +1182,26 @@ static id SCIFieldCacheValue(id obj, NSString *key) {
     return value;
 }
 
-static id SCIUnderlyingMediaObjectForAction(id object) {
+static id SPKUnderlyingMediaObjectForAction(id object) {
     if (!object) return nil;
 
-    if ([SCIUtils getPhotoUrlForMedia:object] || [SCIUtils getVideoUrlForMedia:object]) {
+    if ([SPKUtils getPhotoUrlForMedia:object] || [SPKUtils getVideoUrlForMedia:object]) {
         return object;
     }
 
     for (NSString *selectorName in @[@"photo", @"rawPhoto", @"video", @"rawVideo"]) {
-        id nestedAsset = SCIObjectForSelector(object, selectorName);
-        if (!nestedAsset) nestedAsset = SCIKVCObject(object, selectorName);
+        id nestedAsset = SPKObjectForSelector(object, selectorName);
+        if (!nestedAsset) nestedAsset = SPKKVCObject(object, selectorName);
         if (nestedAsset && nestedAsset != object) {
             return object;
         }
     }
 
     for (NSString *selectorName in @[@"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post"]) {
-        id nested = SCIObjectForSelector(object, selectorName);
-        if (!nested) nested = SCIKVCObject(object, selectorName);
+        id nested = SPKObjectForSelector(object, selectorName);
+        if (!nested) nested = SPKKVCObject(object, selectorName);
         if (nested && nested != object) {
-            id resolved = SCIUnderlyingMediaObjectForAction(nested);
+            id resolved = SPKUnderlyingMediaObjectForAction(nested);
             if (resolved) return resolved;
         }
     }
@@ -1209,7 +1209,7 @@ static id SCIUnderlyingMediaObjectForAction(id object) {
     return object;
 }
 
-static NSURL *SCIBestCandidatePhotoURLFromCandidates(id candidates) {
+static NSURL *SPKBestCandidatePhotoURLFromCandidates(id candidates) {
     if (![candidates isKindOfClass:[NSArray class]] || [(NSArray *)candidates count] == 0) {
         return nil;
     }
@@ -1229,17 +1229,17 @@ static NSURL *SCIBestCandidatePhotoURLFromCandidates(id candidates) {
     return urlString.length > 0 ? [NSURL URLWithString:urlString] : nil;
 }
 
-static NSURL *SCIHDPhotoURLForMediaObject(id mediaObject) {
-    id imageVersions = SCIFieldCacheValue(mediaObject, @"image_versions2");
+static NSURL *SPKHDPhotoURLForMediaObject(id mediaObject) {
+    id imageVersions = SPKFieldCacheValue(mediaObject, @"image_versions2");
     id candidates = [imageVersions isKindOfClass:[NSDictionary class]] ? ((NSDictionary *)imageVersions)[@"candidates"] : nil;
     if (!candidates) {
-        candidates = SCIFieldCacheValue(mediaObject, @"candidates");
+        candidates = SPKFieldCacheValue(mediaObject, @"candidates");
     }
 
-    NSURL *fieldCacheURL = SCIBestCandidatePhotoURLFromCandidates(candidates);
+    NSURL *fieldCacheURL = SPKBestCandidatePhotoURLFromCandidates(candidates);
     if (fieldCacheURL) return fieldCacheURL;
 
-    id photoObject = SCIObjectForSelector(mediaObject, @"photo");
+    id photoObject = SPKObjectForSelector(mediaObject, @"photo");
     if (!photoObject) return nil;
 
     Ivar originalVersionsIvar = class_getInstanceVariable([photoObject class], "_originalImageVersions");
@@ -1267,7 +1267,7 @@ static NSURL *SCIHDPhotoURLForMediaObject(id mediaObject) {
             width = [((NSDictionary *)item)[@"width"] integerValue];
         } else {
             if ([item respondsToSelector:@selector(url)]) {
-                url = SCIURLFromValue([item valueForKey:@"url"]);
+                url = SPKURLFromValue([item valueForKey:@"url"]);
             }
             if ([item respondsToSelector:@selector(width)]) {
                 width = [[item valueForKey:@"width"] integerValue];
@@ -1282,63 +1282,63 @@ static NSURL *SCIHDPhotoURLForMediaObject(id mediaObject) {
     return bestURL;
 }
 
-static NSURL *SCIFieldCachePhotoURLForMediaObject(id mediaObject) {
-    id imageVersions = SCIFieldCacheValue(mediaObject, @"image_versions2");
+static NSURL *SPKFieldCachePhotoURLForMediaObject(id mediaObject) {
+    id imageVersions = SPKFieldCacheValue(mediaObject, @"image_versions2");
     id candidates = [imageVersions isKindOfClass:[NSDictionary class]] ? ((NSDictionary *)imageVersions)[@"candidates"] : nil;
     if (!candidates) {
-        candidates = SCIFieldCacheValue(mediaObject, @"candidates");
+        candidates = SPKFieldCacheValue(mediaObject, @"candidates");
     }
-    return SCIBestCandidatePhotoURLFromCandidates(candidates);
+    return SPKBestCandidatePhotoURLFromCandidates(candidates);
 }
 
-static NSURL *SCIBestDownloadURLForMediaObject(id mediaObject) {
+static NSURL *SPKBestDownloadURLForMediaObject(id mediaObject) {
     if (!mediaObject) return nil;
 
-    mediaObject = SCIUnderlyingMediaObjectForAction(mediaObject);
+    mediaObject = SPKUnderlyingMediaObjectForAction(mediaObject);
 
-    NSURL *videoURL = [SCIUtils getVideoUrlForMedia:mediaObject];
+    NSURL *videoURL = [SPKUtils getVideoUrlForMedia:mediaObject];
     if (videoURL) return videoURL;
 
-    NSURL *hdPhotoURL = SCIHDPhotoURLForMediaObject(mediaObject);
+    NSURL *hdPhotoURL = SPKHDPhotoURLForMediaObject(mediaObject);
     if (hdPhotoURL) return hdPhotoURL;
 
-    NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:mediaObject];
+    NSURL *photoURL = [SPKUtils getPhotoUrlForMedia:mediaObject];
     if (photoURL) return photoURL;
 
-    return SCIFieldCachePhotoURLForMediaObject(mediaObject);
+    return SPKFieldCachePhotoURLForMediaObject(mediaObject);
 }
 
-static NSURL *SCICoverURLForMediaObject(id mediaObject) {
+static NSURL *SPKCoverURLForMediaObject(id mediaObject) {
     if (!mediaObject) return nil;
 
-    mediaObject = SCIUnderlyingMediaObjectForAction(mediaObject);
+    mediaObject = SPKUnderlyingMediaObjectForAction(mediaObject);
 
-    NSURL *hdPhotoURL = SCIHDPhotoURLForMediaObject(mediaObject);
+    NSURL *hdPhotoURL = SPKHDPhotoURLForMediaObject(mediaObject);
     if (hdPhotoURL) return hdPhotoURL;
 
-    NSURL *photoURL = [SCIUtils getPhotoUrlForMedia:mediaObject];
+    NSURL *photoURL = [SPKUtils getPhotoUrlForMedia:mediaObject];
     if (photoURL) return photoURL;
 
-    return SCIFieldCachePhotoURLForMediaObject(mediaObject);
+    return SPKFieldCachePhotoURLForMediaObject(mediaObject);
 }
 
-static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
+static SPKResolvedMediaEntry *SPKEntryFromMediaObject(id mediaObject) {
 	if (!mediaObject) return nil;
 
-    NSURL *instantsURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaMediaURL") ?: SCIKVCObject(mediaObject, @"scinstaMediaURL"));
-    NSURL *instantsPhotoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaPhotoURL") ?: SCIKVCObject(mediaObject, @"scinstaPhotoURL"));
-    NSURL *instantsVideoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"scinstaVideoURL") ?: SCIKVCObject(mediaObject, @"scinstaVideoURL"));
-    NSNumber *instantsIsVideoNumber = [SCIUtils numericValueForObj:mediaObject selectorName:@"scinstaIsVideo"];
+    NSURL *instantsURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"sparkleMediaURL") ?: SPKKVCObject(mediaObject, @"sparkleMediaURL"));
+    NSURL *instantsPhotoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"sparklePhotoURL") ?: SPKKVCObject(mediaObject, @"sparklePhotoURL"));
+    NSURL *instantsVideoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"sparkleVideoURL") ?: SPKKVCObject(mediaObject, @"sparkleVideoURL"));
+    NSNumber *instantsIsVideoNumber = [SPKUtils numericValueForObj:mediaObject selectorName:@"sparkleIsVideo"];
     BOOL instantsHasHint = instantsURL || instantsPhotoURL || instantsVideoURL || instantsIsVideoNumber != nil;
     if (instantsHasHint) {
-        SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
+        SPKResolvedMediaEntry *entry = [[SPKResolvedMediaEntry alloc] init];
         entry.mediaObject = mediaObject;
         entry.metadataObject = mediaObject;
-        entry.sourceUsername = SCIExplicitSourceUsernameFromObject(mediaObject);
-        entry.sourceMediaPK = SCIStringFromValue(SCIObjectForSelector(mediaObject, @"sourceMediaPK") ?: SCIKVCObject(mediaObject, @"sourceMediaPK"));
-        entry.sourceMediaURLString = SCIStringFromValue(SCIObjectForSelector(mediaObject, @"sourceMediaURLString") ?: SCIKVCObject(mediaObject, @"sourceMediaURLString"));
-        entry.importPostedDate = SCIDateFromActionValue(SCIObjectForSelector(mediaObject, @"importPostedDate") ?: SCIKVCObject(mediaObject, @"importPostedDate") ?: SCIObjectForSelector(mediaObject, @"takenAt") ?: SCIKVCObject(mediaObject, @"takenAt"));
-        BOOL isVideo = instantsIsVideoNumber ? instantsIsVideoNumber.boolValue : SCIIsVideoExtension((instantsVideoURL ?: instantsURL).pathExtension);
+        entry.sourceUsername = SPKExplicitSourceUsernameFromObject(mediaObject);
+        entry.sourceMediaPK = SPKStringFromValue(SPKObjectForSelector(mediaObject, @"sourceMediaPK") ?: SPKKVCObject(mediaObject, @"sourceMediaPK"));
+        entry.sourceMediaURLString = SPKStringFromValue(SPKObjectForSelector(mediaObject, @"sourceMediaURLString") ?: SPKKVCObject(mediaObject, @"sourceMediaURLString"));
+        entry.importPostedDate = SPKDateFromActionValue(SPKObjectForSelector(mediaObject, @"importPostedDate") ?: SPKKVCObject(mediaObject, @"importPostedDate") ?: SPKObjectForSelector(mediaObject, @"takenAt") ?: SPKKVCObject(mediaObject, @"takenAt"));
+        BOOL isVideo = instantsIsVideoNumber ? instantsIsVideoNumber.boolValue : SPKIsVideoExtension((instantsVideoURL ?: instantsURL).pathExtension);
         if (isVideo) {
             entry.videoURL = instantsVideoURL ?: instantsURL;
             entry.photoURL = instantsPhotoURL;
@@ -1351,12 +1351,12 @@ static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
         return (entry.photoURL || entry.videoURL) ? entry : nil;
     }
 
-    NSURL *directURL = SCIURLFromValue(mediaObject);
+    NSURL *directURL = SPKURLFromValue(mediaObject);
     if (directURL) {
-        SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
+        SPKResolvedMediaEntry *entry = [[SPKResolvedMediaEntry alloc] init];
         entry.mediaObject = mediaObject;
         entry.metadataObject = mediaObject;
-        if (SCIIsVideoExtension(directURL.pathExtension)) {
+        if (SPKIsVideoExtension(directURL.pathExtension)) {
             entry.videoURL = directURL;
         } else {
             entry.photoURL = directURL;
@@ -1364,55 +1364,55 @@ static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
         return entry;
     }
 
-    mediaObject = SCIUnderlyingMediaObjectForAction(mediaObject);
+    mediaObject = SPKUnderlyingMediaObjectForAction(mediaObject);
 
-	SCIResolvedMediaEntry *entry = [[SCIResolvedMediaEntry alloc] init];
+	SPKResolvedMediaEntry *entry = [[SPKResolvedMediaEntry alloc] init];
 	entry.mediaObject = mediaObject;
 	entry.metadataObject = mediaObject;
 
     if (!entry.photoURL) {
-        entry.photoURL = [SCIUtils getPhotoUrlForMedia:mediaObject];
+        entry.photoURL = [SPKUtils getPhotoUrlForMedia:mediaObject];
     }
     if (!entry.videoURL) {
-        entry.videoURL = [SCIUtils getVideoUrlForMedia:mediaObject];
+        entry.videoURL = [SPKUtils getVideoUrlForMedia:mediaObject];
     }
 
-	id photoObject = SCIObjectForSelector(mediaObject, @"photo");
-	if (!photoObject) photoObject = SCIObjectForSelector(mediaObject, @"rawPhoto");
+	id photoObject = SPKObjectForSelector(mediaObject, @"photo");
+	if (!photoObject) photoObject = SPKObjectForSelector(mediaObject, @"rawPhoto");
 	if (photoObject) {
-		entry.photoURL = [SCIUtils getPhotoUrl:photoObject];
+		entry.photoURL = [SPKUtils getPhotoUrl:photoObject];
 		if (!entry.photoURL) {
-			entry.photoURL = SCIURLFromAssetLikeObject(photoObject, NO);
+			entry.photoURL = SPKURLFromAssetLikeObject(photoObject, NO);
 		}
 	}
 
-	if (!entry.photoURL) entry.photoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"imageURL"));
-	if (!entry.photoURL) entry.photoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"imageUrl"));
+	if (!entry.photoURL) entry.photoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"imageURL"));
+	if (!entry.photoURL) entry.photoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"imageUrl"));
 	if (!entry.photoURL) {
-		id imageSpecifier = SCIObjectForSelector(mediaObject, @"imageSpecifier");
-		entry.photoURL = SCIURLFromValue(SCIObjectForSelector(imageSpecifier, @"url"));
+		id imageSpecifier = SPKObjectForSelector(mediaObject, @"imageSpecifier");
+		entry.photoURL = SPKURLFromValue(SPKObjectForSelector(imageSpecifier, @"url"));
 	}
-	if (!entry.photoURL) entry.photoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"displayURL"));
-	if (!entry.photoURL) entry.photoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"thumbnailURL"));
-    if (!entry.photoURL) entry.photoURL = [SCIUtils getBestProfilePictureURLForUser:mediaObject];
+	if (!entry.photoURL) entry.photoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"displayURL"));
+	if (!entry.photoURL) entry.photoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"thumbnailURL"));
+    if (!entry.photoURL) entry.photoURL = [SPKUtils getBestProfilePictureURLForUser:mediaObject];
 
-	id videoObject = SCIObjectForSelector(mediaObject, @"video");
-	if (!videoObject) videoObject = SCIObjectForSelector(mediaObject, @"rawVideo");
+	id videoObject = SPKObjectForSelector(mediaObject, @"video");
+	if (!videoObject) videoObject = SPKObjectForSelector(mediaObject, @"rawVideo");
 	if (videoObject) {
-		entry.videoURL = [SCIUtils getVideoUrl:videoObject];
+		entry.videoURL = [SPKUtils getVideoUrl:videoObject];
 		if (!entry.videoURL) {
-			entry.videoURL = SCIURLFromAssetLikeObject(videoObject, YES);
+			entry.videoURL = SPKURLFromAssetLikeObject(videoObject, YES);
 		}
 	}
 
-	if (!entry.videoURL) entry.videoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"videoURL"));
-	if (!entry.videoURL) entry.videoURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"videoUrl"));
+	if (!entry.videoURL) entry.videoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"videoURL"));
+	if (!entry.videoURL) entry.videoURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"videoUrl"));
 
-	NSURL *genericURL = SCIURLFromValue(SCIObjectForSelector(mediaObject, @"url"));
+	NSURL *genericURL = SPKURLFromValue(SPKObjectForSelector(mediaObject, @"url"));
 	if (genericURL) {
-		if (!entry.videoURL && SCIIsVideoExtension(genericURL.pathExtension)) {
+		if (!entry.videoURL && SPKIsVideoExtension(genericURL.pathExtension)) {
 			entry.videoURL = genericURL;
-		} else if (!entry.photoURL && !SCIIsVideoExtension(genericURL.pathExtension)) {
+		} else if (!entry.photoURL && !SPKIsVideoExtension(genericURL.pathExtension)) {
 			entry.photoURL = genericURL;
 		}
 	}
@@ -1424,31 +1424,31 @@ static SCIResolvedMediaEntry *SCIEntryFromMediaObject(id mediaObject) {
 	return entry;
 }
 
-NSArray *SCIActionButtonCarouselChildren(id media) {
+NSArray *SPKActionButtonCarouselChildren(id media) {
     if (!media) return @[];
 
     for (NSString *selectorName in @[@"items", @"carouselMedia", @"carouselChildren", @"children", @"carousel_media"]) {
-        id value = SCIObjectForSelector(media, selectorName);
-        if (!value) value = SCIKVCObject(media, selectorName);
-        NSArray *items = SCIArrayFromCollection(value);
+        id value = SPKObjectForSelector(media, selectorName);
+        if (!value) value = SPKKVCObject(media, selectorName);
+        NSArray *items = SPKArrayFromCollection(value);
         if (items.count > 0) return items;
     }
 
     return @[];
 }
 
-static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
+static NSArray<SPKResolvedMediaEntry *> *SPKEntriesFromMedia(id media) {
 	if (!media) return @[];
 
-	NSMutableArray<SCIResolvedMediaEntry *> *entries = [NSMutableArray array];
+	NSMutableArray<SPKResolvedMediaEntry *> *entries = [NSMutableArray array];
 
-    NSArray *directCollection = SCIArrayFromCollection(media);
+    NSArray *directCollection = SPKArrayFromCollection(media);
     if (directCollection.count > 0) {
         for (id item in directCollection) {
-            SCIResolvedMediaEntry *entry = SCIEntryFromMediaObject(item);
+            SPKResolvedMediaEntry *entry = SPKEntryFromMediaObject(item);
             if (!entry) {
-                id nestedMedia = SCIObjectForSelector(item, @"media") ?: SCIKVCObject(item, @"media");
-                entry = SCIEntryFromMediaObject(nestedMedia);
+                id nestedMedia = SPKObjectForSelector(item, @"media") ?: SPKKVCObject(item, @"media");
+                entry = SPKEntryFromMediaObject(nestedMedia);
                 if (entry && !entry.metadataObject) {
                     entry.metadataObject = nestedMedia ?: item;
                 }
@@ -1462,15 +1462,15 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
         if (entries.count > 0) return entries;
     }
 
-	NSArray *items = SCIActionButtonCarouselChildren(media);
+	NSArray *items = SPKActionButtonCarouselChildren(media);
 
 	if (items.count > 0) {
 		for (id item in items) {
-            id nestedMedia = SCIObjectForSelector(item, @"media") ?: SCIKVCObject(item, @"media");
-			SCIResolvedMediaEntry *entry = SCIEntryFromMediaObject(nestedMedia);
-			if (!entry) entry = SCIEntryFromMediaObject(SCIObjectForSelector(item, @"visualMessage") ?: SCIKVCObject(item, @"visualMessage"));
-			if (!entry) entry = SCIEntryFromMediaObject(SCIObjectForSelector(item, @"item") ?: SCIKVCObject(item, @"item"));
-			if (!entry) entry = SCIEntryFromMediaObject(item);
+            id nestedMedia = SPKObjectForSelector(item, @"media") ?: SPKKVCObject(item, @"media");
+			SPKResolvedMediaEntry *entry = SPKEntryFromMediaObject(nestedMedia);
+			if (!entry) entry = SPKEntryFromMediaObject(SPKObjectForSelector(item, @"visualMessage") ?: SPKKVCObject(item, @"visualMessage"));
+			if (!entry) entry = SPKEntryFromMediaObject(SPKObjectForSelector(item, @"item") ?: SPKKVCObject(item, @"item"));
+			if (!entry) entry = SPKEntryFromMediaObject(item);
 			if (entry) {
 				if (!entry.mediaObject) {
                     entry.mediaObject = item;
@@ -1482,14 +1482,14 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
 			}
 		}
 	} else {
-        SCIResolvedMediaEntry *directEntry = SCIEntryFromMediaObject(media);
+        SPKResolvedMediaEntry *directEntry = SPKEntryFromMediaObject(media);
         if (directEntry) return @[directEntry];
 
-        id nested = SCIObjectForSelector(media, @"media");
-        if (!nested) nested = SCIKVCObject(media, @"media");
-		SCIResolvedMediaEntry *singleEntry = SCIEntryFromMediaObject(nested);
+        id nested = SPKObjectForSelector(media, @"media");
+        if (!nested) nested = SPKKVCObject(media, @"media");
+		SPKResolvedMediaEntry *singleEntry = SPKEntryFromMediaObject(nested);
 		if (!singleEntry) {
-			singleEntry = SCIEntryFromMediaObject(media);
+			singleEntry = SPKEntryFromMediaObject(media);
 		}
 		if (singleEntry) [entries addObject:singleEntry];
 	}
@@ -1497,28 +1497,28 @@ static NSArray<SCIResolvedMediaEntry *> *SCIEntriesFromMedia(id media) {
 	return entries;
 }
 
-static NSArray<SCIMediaItem *> *SCIPlayerItemsFromEntries(NSArray<SCIResolvedMediaEntry *> *entries, SCIActionButtonSource source, NSString *username, id media) {
-	NSMutableArray<SCIMediaItem *> *items = [NSMutableArray array];
+static NSArray<SPKMediaItem *> *SPKPlayerItemsFromEntries(NSArray<SPKResolvedMediaEntry *> *entries, SPKActionButtonSource source, NSString *username, id media) {
+	NSMutableArray<SPKMediaItem *> *items = [NSMutableArray array];
 
 	NSInteger index = 0;
-	for (SCIResolvedMediaEntry *entry in entries) {
+	for (SPKResolvedMediaEntry *entry in entries) {
 		NSURL *url = entry.videoURL ?: entry.photoURL;
 		if (!url) {
 			index++;
 			continue;
 		}
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
-        NSString *itemUsername = source == SCIActionButtonSourceInstants ? SCIUsernameForEntry(entry, username) : username;
+        NSString *itemUsername = source == SPKActionButtonSourceInstants ? SPKUsernameForEntry(entry, username) : username;
 
-		SCIMediaItem *item = [SCIMediaItem itemWithFileURL:url];
-		item.mediaType = entry.videoURL ? SCIMediaItemTypeVideo : SCIMediaItemTypeImage;
-		item.gallerySaveSource = SCIGallerySourceForActionSource(source);
-		item.galleryMetadata = SCIGalleryMetadata(source, itemUsername, metadataObject);
-        SCIApplyEntryMetadata(item.galleryMetadata, entry);
-		if (metadataObject != media && source != SCIActionButtonSourceInstants) {
-			[SCIGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
+		SPKMediaItem *item = [SPKMediaItem itemWithFileURL:url];
+		item.mediaType = entry.videoURL ? SPKMediaItemTypeVideo : SPKMediaItemTypeImage;
+		item.gallerySaveSource = SPKGallerySourceForActionSource(source);
+		item.galleryMetadata = SPKGalleryMetadata(source, itemUsername, metadataObject);
+        SPKApplyEntryMetadata(item.galleryMetadata, entry);
+		if (metadataObject != media && source != SPKActionButtonSourceInstants) {
+			[SPKGalleryOriginController populateMetadata:item.galleryMetadata fromMedia:media];
 			if (entries.count > 1) {
-				item.galleryMetadata.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
+				item.galleryMetadata.sourceMediaURLString = [SPKUtils appendImgIndex:index toURLString:item.galleryMetadata.sourceMediaURLString];
 			}
 		}
         item.sourceMediaObject = metadataObject;
@@ -1530,16 +1530,16 @@ static NSArray<SCIMediaItem *> *SCIPlayerItemsFromEntries(NSArray<SCIResolvedMed
 	return items;
 }
 
-static UIView *SCIDirectMediaView(UIViewController *controller) {
+static UIView *SPKDirectMediaView(UIViewController *controller) {
 	if (!controller) return nil;
-	id viewerContainer = [SCIUtils getIvarForObj:controller name:"_viewerContainerView"];
-	if (!viewerContainer) viewerContainer = SCIKVCObject(controller, @"viewerContainerView");
-	id mediaView = SCIObjectForSelector(viewerContainer, @"mediaView");
+	id viewerContainer = [SPKUtils getIvarForObj:controller name:"_viewerContainerView"];
+	if (!viewerContainer) viewerContainer = SPKKVCObject(controller, @"viewerContainerView");
+	id mediaView = SPKObjectForSelector(viewerContainer, @"mediaView");
 	return [mediaView isKindOfClass:[UIView class]] ? (UIView *)mediaView : nil;
 }
 
-extern "C" void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView) {
-	UIViewController *ancestorController = SCIViewControllerForAncestorView(overlayView);
+extern "C" void SPKPauseStoryPlaybackFromOverlaySubview(UIView *overlayView) {
+	UIViewController *ancestorController = SPKViewControllerForAncestorView(overlayView);
 	if (!ancestorController) return;
 
 	if ([ancestorController respondsToSelector:NSSelectorFromString(@"pauseWithReason:")]) {
@@ -1551,8 +1551,8 @@ extern "C" void SCIPauseStoryPlaybackFromOverlaySubview(UIView *overlayView) {
 	}
 }
 
-extern "C" void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView) {
-	UIViewController *ancestorController = SCIViewControllerForAncestorView(overlayView);
+extern "C" void SPKResumeStoryPlaybackFromOverlaySubview(UIView *overlayView) {
+	UIViewController *ancestorController = SPKViewControllerForAncestorView(overlayView);
 	if (!ancestorController) return;
 
 	if ([ancestorController respondsToSelector:NSSelectorFromString(@"tryResumePlayback")]) {
@@ -1566,59 +1566,59 @@ extern "C" void SCIResumeStoryPlaybackFromOverlaySubview(UIView *overlayView) {
 	}
 }
 
-static void SCIPauseDirectPlaybackFromController(UIViewController *controller) {
-	UIView *mediaView = SCIDirectMediaView(controller);
+static void SPKPauseDirectPlaybackFromController(UIViewController *controller) {
+	UIView *mediaView = SPKDirectMediaView(controller);
 	SEL pauseSelector = NSSelectorFromString(@"pauseWithReason:");
 	if (mediaView && [mediaView respondsToSelector:pauseSelector]) {
 		((void (*)(id, SEL, NSInteger))objc_msgSend)(mediaView, pauseSelector, 0);
 	}
 }
 
-static void SCIResumeDirectPlaybackFromController(UIViewController *controller) {
-	UIView *mediaView = SCIDirectMediaView(controller);
+static void SPKResumeDirectPlaybackFromController(UIViewController *controller) {
+	UIView *mediaView = SPKDirectMediaView(controller);
 	SEL playSelector = NSSelectorFromString(@"play");
 	if (mediaView && [mediaView respondsToSelector:playSelector]) {
 		((void (*)(id, SEL))objc_msgSend)(mediaView, playSelector);
 	}
 }
 
-static UIImage *SCIButtonDefaultImage(NSString *identifier, SCIActionButtonSource source, SCIActionButtonContext *context) {
+static UIImage *SPKButtonDefaultImage(NSString *identifier, SPKActionButtonSource source, SPKActionButtonContext *context) {
 	CGFloat size = 24.0;
-	if (source == SCIActionButtonSourceReels) {
+	if (source == SPKActionButtonSourceReels) {
 		size = 44.0;
-	} else if ([identifier isEqualToString:kSCIActionDownloadShare] ||
-			   [identifier isEqualToString:kSCIActionViewThumbnail] ||
-               [identifier isEqualToString:kSCIActionDownloadGallery]) {
+	} else if ([identifier isEqualToString:kSPKActionDownloadShare] ||
+			   [identifier isEqualToString:kSPKActionViewThumbnail] ||
+               [identifier isEqualToString:kSPKActionDownloadGallery]) {
 		size = 23.0;
 	}
 
     NSString *resolvedIdentifier = identifier;
-    if (source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
-        resolvedIdentifier = SCIProfileDefaultCopyInfoIdentifier();
+    if (source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionProfileCopyInfo]) {
+        resolvedIdentifier = SPKProfileDefaultCopyInfoIdentifier();
     }
 
-	return SCIIconForActionIdentifier(resolvedIdentifier, source, size, context);
+	return SPKIconForActionIdentifier(resolvedIdentifier, source, size, context);
 }
 
-static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButtonSource source, UIImage *image, UIButton *button) {
+static CGSize SPKCustomButtonIconDisplaySize(NSString *identifier, SPKActionButtonSource source, UIImage *image, UIButton *button) {
     if (!image) return CGSizeZero;
 
     CGFloat width = image.size.width;
     CGFloat height = image.size.height;
 
-    if (source == SCIActionButtonSourceReels) {
-        if ([identifier isEqualToString:kSCIActionDownloadShare] ||
-            [identifier isEqualToString:kSCIActionDownloadAudioShare]) {
+    if (source == SPKActionButtonSourceReels) {
+        if ([identifier isEqualToString:kSPKActionDownloadShare] ||
+            [identifier isEqualToString:kSPKActionDownloadAudioShare]) {
             width = height = 38.0;
-        } else if ([identifier isEqualToString:kSCIActionNone] ||
-                   [identifier isEqualToString:kSCIActionViewThumbnail] ||
-                   [identifier isEqualToString:kSCIActionDownloadGallery] ||
-                   [identifier isEqualToString:kSCIActionCopyMedia] ||
-                   [identifier isEqualToString:kSCIActionTrimSave] ||
-                   [identifier isEqualToString:kSCIActionDownloadAudio] ||
-                   [identifier isEqualToString:kSCIActionDownloadAudioGallery] ||
-                   [identifier isEqualToString:kSCIActionPlayAudio] ||
-                   [identifier isEqualToString:kSCIActionCopyCaption]) {
+        } else if ([identifier isEqualToString:kSPKActionNone] ||
+                   [identifier isEqualToString:kSPKActionViewThumbnail] ||
+                   [identifier isEqualToString:kSPKActionDownloadGallery] ||
+                   [identifier isEqualToString:kSPKActionCopyMedia] ||
+                   [identifier isEqualToString:kSPKActionTrimSave] ||
+                   [identifier isEqualToString:kSPKActionDownloadAudio] ||
+                   [identifier isEqualToString:kSPKActionDownloadAudioGallery] ||
+                   [identifier isEqualToString:kSPKActionPlayAudio] ||
+                   [identifier isEqualToString:kSPKActionCopyCaption]) {
             // Actions without a dedicated 44pt _reels asset render at 28pt.
             width = height = 28.0;
         }
@@ -1630,8 +1630,8 @@ static CGSize SCICustomButtonIconDisplaySize(NSString *identifier, SCIActionButt
     return CGSizeMake(MAX(1.0, MIN(maxWidth, width)), MAX(1.0, MIN(maxHeight, height)));
 }
 
-static UIImageView *SCIEnsureCustomIconImageView(UIButton *button) {
-	UIImageView *imageView = objc_getAssociatedObject(button, kSCIActionButtonIconImageViewAssocKey);
+static UIImageView *SPKEnsureCustomIconImageView(UIButton *button) {
+	UIImageView *imageView = objc_getAssociatedObject(button, kSPKActionButtonIconImageViewAssocKey);
 	if ([imageView isKindOfClass:[UIImageView class]]) return imageView;
 
 	imageView = [[UIImageView alloc] initWithFrame:CGRectZero];
@@ -1652,50 +1652,50 @@ static UIImageView *SCIEnsureCustomIconImageView(UIButton *button) {
 	widthConstraint.active = YES;
 	heightConstraint.active = YES;
 
-	objc_setAssociatedObject(button, kSCIActionButtonIconImageViewAssocKey, imageView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	objc_setAssociatedObject(button, kSCIActionButtonIconWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	objc_setAssociatedObject(button, kSCIActionButtonIconHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKActionButtonIconImageViewAssocKey, imageView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKActionButtonIconWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKActionButtonIconHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	return imageView;
 }
 
-static void SCISetButtonVisualImage(UIButton *button, UIImage *image, SCIActionButtonSource source, NSString *identifier) {
+static void SPKSetButtonVisualImage(UIButton *button, UIImage *image, SPKActionButtonSource source, NSString *identifier) {
 	UIImage *templatedImage = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-	if ([button isKindOfClass:[SCIChromeButton class]]) {
-		SCIChromeButton *chromeButton = (SCIChromeButton *)button;
-		if (source == SCIActionButtonSourceReels) {
+	if ([button isKindOfClass:[SPKChromeButton class]]) {
+		SPKChromeButton *chromeButton = (SPKChromeButton *)button;
+		if (source == SPKActionButtonSourceReels) {
 			chromeButton.iconView.contentMode = UIViewContentModeScaleAspectFit;
-			CGSize displaySize = SCICustomButtonIconDisplaySize(identifier, source, templatedImage, button);
-			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey);
-			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey);
+			CGSize displaySize = SPKCustomButtonIconDisplaySize(identifier, source, templatedImage, button);
+			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSPKActionButtonIconWidthConstraintAssocKey);
+			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSPKActionButtonIconHeightConstraintAssocKey);
 			if (!widthConstraint) {
 				widthConstraint = [chromeButton.iconView.widthAnchor constraintEqualToConstant:displaySize.width];
 				heightConstraint = [chromeButton.iconView.heightAnchor constraintEqualToConstant:displaySize.height];
 				widthConstraint.active = YES;
 				heightConstraint.active = YES;
-				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+				objc_setAssociatedObject(chromeButton, kSPKActionButtonIconWidthConstraintAssocKey, widthConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+				objc_setAssociatedObject(chromeButton, kSPKActionButtonIconHeightConstraintAssocKey, heightConstraint, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 			} else {
 				widthConstraint.constant = displaySize.width;
 				heightConstraint.constant = displaySize.height;
 			}
 		} else {
-			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey);
-			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey);
+			NSLayoutConstraint *widthConstraint = objc_getAssociatedObject(chromeButton, kSPKActionButtonIconWidthConstraintAssocKey);
+			NSLayoutConstraint *heightConstraint = objc_getAssociatedObject(chromeButton, kSPKActionButtonIconHeightConstraintAssocKey);
 			if (widthConstraint) {
 				widthConstraint.active = NO;
 				heightConstraint.active = NO;
-				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconWidthConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-				objc_setAssociatedObject(chromeButton, kSCIActionButtonIconHeightConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+				objc_setAssociatedObject(chromeButton, kSPKActionButtonIconWidthConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+				objc_setAssociatedObject(chromeButton, kSPKActionButtonIconHeightConstraintAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 			}
 			chromeButton.iconView.contentMode = UIViewContentModeCenter;
 		}
 		chromeButton.iconView.image = templatedImage;
-		chromeButton.iconTint = SCIActionButtonTintForSource(source);
+		chromeButton.iconTint = SPKActionButtonTintForSource(source);
 		[button setImage:nil forState:UIControlStateNormal];
 		return;
 	}
 
-	UIImageView *customIconView = objc_getAssociatedObject(button, kSCIActionButtonIconImageViewAssocKey);
+	UIImageView *customIconView = objc_getAssociatedObject(button, kSPKActionButtonIconImageViewAssocKey);
 	if ([customIconView isKindOfClass:[UIImageView class]]) {
 		customIconView.hidden = YES;
 		customIconView.image = nil;
@@ -1703,59 +1703,59 @@ static void SCISetButtonVisualImage(UIButton *button, UIImage *image, SCIActionB
 	[button setImage:templatedImage forState:UIControlStateNormal];
 }
 
-static id SCIResolveMediaForContext(SCIActionButtonContext *context) {
+static id SPKResolveMediaForContext(SPKActionButtonContext *context) {
 	if (!context) return nil;
 	if (context.mediaOverride) return context.mediaOverride;
 	if (context.mediaResolver) return context.mediaResolver(context);
 	return nil;
 }
 
-static id SCIResolveBulkMediaForContext(SCIActionButtonContext *context) {
+static id SPKResolveBulkMediaForContext(SPKActionButtonContext *context) {
     if (!context) return nil;
     if (context.bulkMediaResolver) return context.bulkMediaResolver(context);
-    return SCIResolveMediaForContext(context);
+    return SPKResolveMediaForContext(context);
 }
 
-static NSInteger SCIResolveCurrentIndexForContext(SCIActionButtonContext *context) {
+static NSInteger SPKResolveCurrentIndexForContext(SPKActionButtonContext *context) {
 	if (!context) return 0;
 	if (context.currentIndexOverride >= 0) return context.currentIndexOverride;
 	if (context.currentIndexResolver) return context.currentIndexResolver(context);
 	return 0;
 }
 
-static NSArray<SCIResolvedMediaEntry *> *SCIBulkEntriesForContext(SCIActionButtonContext *context) {
-    id bulkMedia = SCIResolveBulkMediaForContext(context);
-    return SCIEntriesFromMedia(bulkMedia);
+static NSArray<SPKResolvedMediaEntry *> *SPKBulkEntriesForContext(SPKActionButtonContext *context) {
+    id bulkMedia = SPKResolveBulkMediaForContext(context);
+    return SPKEntriesFromMedia(bulkMedia);
 }
 
-static NSArray<SCIResolvedMediaEntry *> *SCIDownloadableEntries(NSArray<SCIResolvedMediaEntry *> *entries) {
-    NSMutableArray<SCIResolvedMediaEntry *> *filtered = [NSMutableArray array];
-    for (SCIResolvedMediaEntry *entry in entries) {
+static NSArray<SPKResolvedMediaEntry *> *SPKDownloadableEntries(NSArray<SPKResolvedMediaEntry *> *entries) {
+    NSMutableArray<SPKResolvedMediaEntry *> *filtered = [NSMutableArray array];
+    for (SPKResolvedMediaEntry *entry in entries) {
         NSURL *url = entry.videoURL ?: entry.photoURL;
         if (url) [filtered addObject:entry];
     }
     return filtered;
 }
 
-static UIViewController *SCIActionContextPresenter(SCIActionButtonContext *context) {
+static UIViewController *SPKActionContextPresenter(SPKActionButtonContext *context) {
     if (context.controller.view.window) return context.controller;
-    UIViewController *ancestor = SCIViewControllerForAncestorView(context.view);
+    UIViewController *ancestor = SPKViewControllerForAncestorView(context.view);
     if (ancestor.view.window) return ancestor;
     return topMostController();
 }
 
-static UIView *SCIActionContextAnchorView(SCIActionButtonContext *context) {
+static UIView *SPKActionContextAnchorView(SPKActionButtonContext *context) {
     if ([context.view isKindOfClass:[UIView class]] && context.view.window) return context.view;
-    return SCIActionContextPresenter(context).view;
+    return SPKActionContextPresenter(context).view;
 }
 
-static NSArray<SCIDownloadItemRequest *> *SCIBulkDownloadItemsFromEntries(NSArray<SCIResolvedMediaEntry *> *entries,
-                                                                          SCIActionButtonSource source,
+static NSArray<SPKDownloadItemRequest *> *SPKBulkDownloadItemsFromEntries(NSArray<SPKResolvedMediaEntry *> *entries,
+                                                                          SPKActionButtonSource source,
                                                                           NSString *username,
                                                                           id media) {
-    NSMutableArray<SCIDownloadItemRequest *> *items = [NSMutableArray array];
+    NSMutableArray<SPKDownloadItemRequest *> *items = [NSMutableArray array];
     NSInteger index = 0;
-    for (SCIResolvedMediaEntry *entry in entries) {
+    for (SPKResolvedMediaEntry *entry in entries) {
         NSURL *url = entry.videoURL ?: entry.photoURL;
         if (!url) {
             index++;
@@ -1763,36 +1763,36 @@ static NSArray<SCIDownloadItemRequest *> *SCIBulkDownloadItemsFromEntries(NSArra
         }
         BOOL isVideo = (entry.videoURL != nil);
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
-        NSString *itemUsername = source == SCIActionButtonSourceInstants ? SCIUsernameForEntry(entry, username) : username;
-        SCIGallerySaveMetadata *meta = SCIGalleryMetadata(source, itemUsername, metadataObject);
-        SCIApplyEntryMetadata(meta, entry);
-        if (metadataObject != media && source != SCIActionButtonSourceInstants) {
-            [SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+        NSString *itemUsername = source == SPKActionButtonSourceInstants ? SPKUsernameForEntry(entry, username) : username;
+        SPKGallerySaveMetadata *meta = SPKGalleryMetadata(source, itemUsername, metadataObject);
+        SPKApplyEntryMetadata(meta, entry);
+        if (metadataObject != media && source != SPKActionButtonSourceInstants) {
+            [SPKGalleryOriginController populateMetadata:meta fromMedia:media];
             if (entries.count > 1) {
-                meta.sourceMediaURLString = [SCIUtils appendImgIndex:index toURLString:meta.sourceMediaURLString];
+                meta.sourceMediaURLString = [SPKUtils appendImgIndex:index toURLString:meta.sourceMediaURLString];
             }
         }
-        NSString *extension = SCIExtensionForURL(url, isVideo);
-        SCIDownloadMediaKind kind = isVideo ? SCIDownloadMediaKindVideo : SCIDownloadMediaKindImage;
-        SCIDownloadItemRequest *item = url.isFileURL
-            ? [SCIDownloadItemRequest itemWithLocalPath:url.path mediaKind:kind]
-            : [SCIDownloadItemRequest itemWithRemoteURL:url mediaKind:kind];
+        NSString *extension = SPKExtensionForURL(url, isVideo);
+        SPKDownloadMediaKind kind = isVideo ? SPKDownloadMediaKindVideo : SPKDownloadMediaKindImage;
+        SPKDownloadItemRequest *item = url.isFileURL
+            ? [SPKDownloadItemRequest itemWithLocalPath:url.path mediaKind:kind]
+            : [SPKDownloadItemRequest itemWithRemoteURL:url mediaKind:kind];
         item.preferredFileExtension = extension;
         item.metadata = meta;
         item.index = index;
-        item.linkString = SCIBestDownloadURLForMediaObject(metadataObject).absoluteString ?: url.absoluteString;
-        item.expectedFilenameStem = [[SCIDownloadHelpers preferredFilenameForURL:url mediaKind:kind metadata:meta] stringByDeletingPathExtension];
+        item.linkString = SPKBestDownloadURLForMediaObject(metadataObject).absoluteString ?: url.absoluteString;
+        item.expectedFilenameStem = [[SPKDownloadHelpers preferredFilenameForURL:url mediaKind:kind metadata:meta] stringByDeletingPathExtension];
         [items addObject:item];
         index++;
     }
     return items;
 }
 
-static NSArray<NSString *> *SCIBulkDownloadLinksFromEntries(NSArray<SCIResolvedMediaEntry *> *entries, id media) {
+static NSArray<NSString *> *SPKBulkDownloadLinksFromEntries(NSArray<SPKResolvedMediaEntry *> *entries, id media) {
     NSMutableOrderedSet<NSString *> *links = [NSMutableOrderedSet orderedSet];
-    for (SCIResolvedMediaEntry *entry in entries) {
+    for (SPKResolvedMediaEntry *entry in entries) {
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?: media;
-        NSURL *bestURL = SCIBestDownloadURLForMediaObject(metadataObject) ?: entry.videoURL ?: entry.photoURL;
+        NSURL *bestURL = SPKBestDownloadURLForMediaObject(metadataObject) ?: entry.videoURL ?: entry.photoURL;
         if (bestURL.absoluteString.length > 0) {
             [links addObject:bestURL.absoluteString];
         }
@@ -1800,19 +1800,19 @@ static NSArray<NSString *> *SCIBulkDownloadLinksFromEntries(NSArray<SCIResolvedM
     return links.array;
 }
 
-NSArray<NSString *> *SCIConfiguredBulkActionIdentifiersForSource(SCIActionButtonSource source) {
+NSArray<NSString *> *SPKConfiguredBulkActionIdentifiersForSource(SPKActionButtonSource source) {
     NSMutableOrderedSet<NSString *> *ordered = [NSMutableOrderedSet orderedSet];
-    [ordered addObjectsFromArray:SCIActionButtonConfiguredBulkDownloadActionsForSource(source)];
-    [ordered addObjectsFromArray:SCIActionButtonConfiguredBulkCopyActionsForSource(source)];
+    [ordered addObjectsFromArray:SPKActionButtonConfiguredBulkDownloadActionsForSource(source)];
+    [ordered addObjectsFromArray:SPKActionButtonConfiguredBulkCopyActionsForSource(source)];
     return ordered.array;
 }
 
-static NSArray<UIMenuElement *> *SCIBulkActionMenuElementsForIdentifiers(NSArray<NSString *> *identifiers,
+static NSArray<UIMenuElement *> *SPKBulkActionMenuElementsForIdentifiers(NSArray<NSString *> *identifiers,
                                                                          void (^selectionHandler)(NSString *identifier)) {
     NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
     for (NSString *identifier in identifiers) {
-        UIImage *image = SCIActionButtonMenuIconForIdentifier(identifier, 22.0);
-        NSString *title = SCIActionButtonTitleForIdentifier(identifier);
+        UIImage *image = SPKActionButtonMenuIconForIdentifier(identifier, 22.0);
+        NSString *title = SPKActionButtonTitleForIdentifier(identifier);
         [elements addObject:[UIAction actionWithTitle:title
                                                 image:image
                                            identifier:nil
@@ -1823,7 +1823,7 @@ static NSArray<UIMenuElement *> *SCIBulkActionMenuElementsForIdentifiers(NSArray
     return elements;
 }
 
-static NSArray<NSString *> *SCIFilterBulkActionIdentifiers(NSArray<NSString *> *identifiers,
+static NSArray<NSString *> *SPKFilterBulkActionIdentifiers(NSArray<NSString *> *identifiers,
                                                            BOOL (^predicate)(NSString *identifier)) {
     NSMutableArray<NSString *> *filtered = [NSMutableArray array];
     for (NSString *identifier in identifiers) {
@@ -1834,34 +1834,34 @@ static NSArray<NSString *> *SCIFilterBulkActionIdentifiers(NSArray<NSString *> *
     return filtered;
 }
 
-static UIMenu *SCIBulkActionMenuForContext(SCIActionButtonContext *context,
-                                           NSArray<SCIResolvedMediaEntry *> *entries,
+static UIMenu *SPKBulkActionMenuForContext(SPKActionButtonContext *context,
+                                           NSArray<SPKResolvedMediaEntry *> *entries,
                                            NSString *username,
                                            id media,
                                            NSArray<NSString *> *configuredIdentifiers) {
-    NSArray<SCIResolvedMediaEntry *> *downloadableEntries = SCIDownloadableEntries(entries);
+    NSArray<SPKResolvedMediaEntry *> *downloadableEntries = SPKDownloadableEntries(entries);
     if (downloadableEntries.count < 2) {
         return nil;
     }
 
-    __weak SCIActionButtonContext *weakContext = context;
-    NSArray<UIMenuElement *> *children = SCIBulkActionMenuElementsForIdentifiers(configuredIdentifiers, ^(NSString *identifier) {
-        SCIActionButtonContext *strongContext = weakContext;
+    __weak SPKActionButtonContext *weakContext = context;
+    NSArray<UIMenuElement *> *children = SPKBulkActionMenuElementsForIdentifiers(configuredIdentifiers, ^(NSString *identifier) {
+        SPKActionButtonContext *strongContext = weakContext;
         if (strongContext) {
-            SCIExecuteActionIdentifier(identifier, strongContext, NO);
+            SPKExecuteActionIdentifier(identifier, strongContext, NO);
         }
     });
     if (children.count == 0) return nil;
     return [UIMenu menuWithTitle:@"" children:children];
 }
 
-static void SCIPresentBulkActionChooser(SCIActionButtonContext *context,
-                                        NSArray<SCIResolvedMediaEntry *> *entries,
+static void SPKPresentBulkActionChooser(SPKActionButtonContext *context,
+                                        NSArray<SPKResolvedMediaEntry *> *entries,
                                         NSString *username,
                                         id media) {
-    UIMenu *menu = SCIBulkActionMenuForContext(context, entries, username, media, SCIConfiguredBulkActionIdentifiersForSource(context.source));
+    UIMenu *menu = SPKBulkActionMenuForContext(context, entries, username, media, SPKConfiguredBulkActionIdentifiersForSource(context.source));
     if (!menu) {
-        SCINotify(kSCIActionDownloadAllLibrary, @"No bulk media available", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKActionDownloadAllLibrary, @"No bulk media available", nil, @"error_filled", SPKNotificationToneError);
     }
 }
 
@@ -1869,7 +1869,7 @@ static void SCIPresentBulkActionChooser(SCIActionButtonContext *context,
 // one child, returns that child inline instead, so single-element submenus never
 // add a redundant nesting level. Used everywhere a submenu/section is built so
 // the behavior is uniform across built-in and custom sections.
-static UIMenuElement *SCISubmenuOrSingleElement(NSString *title, UIImage *image, NSArray<UIMenuElement *> *children) {
+static UIMenuElement *SPKSubmenuOrSingleElement(NSString *title, UIImage *image, NSArray<UIMenuElement *> *children) {
     if (children.count == 0) return nil;
     if (children.count == 1) return children.firstObject;
     return [UIMenu menuWithTitle:title ?: @""
@@ -1879,43 +1879,43 @@ static UIMenuElement *SCISubmenuOrSingleElement(NSString *title, UIImage *image,
                         children:children];
 }
 
-static UIMenuElement *SCIBulkActionMenuElementForContext(SCIActionButtonContext *context,
-                                                         NSArray<SCIResolvedMediaEntry *> *entries,
+static UIMenuElement *SPKBulkActionMenuElementForContext(SPKActionButtonContext *context,
+                                                         NSArray<SPKResolvedMediaEntry *> *entries,
                                                          NSString *username,
                                                          id media,
                                                          NSArray<NSString *> *configuredIdentifiers,
                                                          NSString *title,
                                                          NSString *iconIdentifier) {
-    UIMenu *menu = SCIBulkActionMenuForContext(context, entries, username, media, configuredIdentifiers);
+    UIMenu *menu = SPKBulkActionMenuForContext(context, entries, username, media, configuredIdentifiers);
     if (!menu) return nil;
-    return SCISubmenuOrSingleElement(title,
-                                     SCIActionButtonMenuIconForContext(iconIdentifier ?: kSCIActionDownloadAll, context, 22.0),
+    return SPKSubmenuOrSingleElement(title,
+                                     SPKActionButtonMenuIconForContext(iconIdentifier ?: kSPKActionDownloadAll, context, 22.0),
                                      menu.children);
 }
 
-static NSString *SCIResolvedBulkUsernameForContext(SCIActionButtonContext *context, NSArray<SCIResolvedMediaEntry *> *entries, id media) {
-    NSString *username = (context.source == SCIActionButtonSourceDirect)
-        ? SCIDirectUsernameFromController(context.controller)
-        : SCIUsernameFromMediaObject(media);
+static NSString *SPKResolvedBulkUsernameForContext(SPKActionButtonContext *context, NSArray<SPKResolvedMediaEntry *> *entries, id media) {
+    NSString *username = (context.source == SPKActionButtonSourceDirect)
+        ? SPKDirectUsernameFromController(context.controller)
+        : SPKUsernameFromMediaObject(media);
     if (username.length > 0) return username;
-    for (SCIResolvedMediaEntry *entry in entries) {
-        username = SCIUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
+    for (SPKResolvedMediaEntry *entry in entries) {
+        username = SPKUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
         if (username.length > 0) return username;
     }
     return nil;
 }
 
-static id SCICheapObjectValueForAudioKey(id object, NSString *key) {
+static id SPKCheapObjectValueForAudioKey(id object, NSString *key) {
     if (!object || key.length == 0) return nil;
-    id value = SCIFieldCacheValue(object, key);
-    if (!value) value = SCIObjectForSelector(object, key);
-    if (!value) value = SCIKVCObject(object, key);
+    id value = SPKFieldCacheValue(object, key);
+    if (!value) value = SPKObjectForSelector(object, key);
+    if (!value) value = SPKKVCObject(object, key);
     return [value isKindOfClass:[NSNull class]] ? nil : value;
 }
 
-static BOOL SCICheapAudioValueExists(id object, NSArray<NSString *> *keys) {
+static BOOL SPKCheapAudioValueExists(id object, NSArray<NSString *> *keys) {
     for (NSString *key in keys) {
-        id value = SCICheapObjectValueForAudioKey(object, key);
+        id value = SPKCheapObjectValueForAudioKey(object, key);
         if (!value) continue;
         if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] == 0) continue;
         if ([value isKindOfClass:[NSArray class]] && [(NSArray *)value count] == 0) continue;
@@ -1925,15 +1925,15 @@ static BOOL SCICheapAudioValueExists(id object, NSArray<NSString *> *keys) {
     return NO;
 }
 
-static BOOL SCICheapAudioBoolValue(id object, NSArray<NSString *> *keys) {
+static BOOL SPKCheapAudioBoolValue(id object, NSArray<NSString *> *keys) {
     for (NSString *key in keys) {
-        id value = SCICheapObjectValueForAudioKey(object, key);
+        id value = SPKCheapObjectValueForAudioKey(object, key);
         if ([value respondsToSelector:@selector(boolValue)] && [value boolValue]) return YES;
     }
     return NO;
 }
 
-static NSArray *SCIFeedAudioVisibilityCandidates(SCIResolvedMediaEntry *entry, id media) {
+static NSArray *SPKFeedAudioVisibilityCandidates(SPKResolvedMediaEntry *entry, id media) {
     NSMutableArray *candidates = [NSMutableArray array];
     for (id candidate in @[media ?: NSNull.null, entry.metadataObject ?: NSNull.null, entry.mediaObject ?: NSNull.null]) {
         if (candidate == NSNull.null || [candidates containsObject:candidate]) continue;
@@ -1942,7 +1942,7 @@ static NSArray *SCIFeedAudioVisibilityCandidates(SCIResolvedMediaEntry *entry, i
     return candidates;
 }
 
-static BOOL SCIFeedEntryMayHaveDownloadableAudio(SCIResolvedMediaEntry *entry, id media) {
+static BOOL SPKFeedEntryMayHaveDownloadableAudio(SPKResolvedMediaEntry *entry, id media) {
     static NSArray<NSString *> *metadataKeys = nil;
     static NSArray<NSString *> *boolKeys = nil;
     static dispatch_once_t onceToken;
@@ -1959,8 +1959,8 @@ static BOOL SCIFeedEntryMayHaveDownloadableAudio(SCIResolvedMediaEntry *entry, i
         boolKeys = @[@"has_audio", @"hasAudio", @"has_original_audio", @"hasOriginalAudio", @"contains_audio", @"containsAudio"];
     });
 
-    for (id candidate in SCIFeedAudioVisibilityCandidates(entry, media)) {
-        if (SCICheapAudioValueExists(candidate, metadataKeys) || SCICheapAudioBoolValue(candidate, boolKeys)) {
+    for (id candidate in SPKFeedAudioVisibilityCandidates(entry, media)) {
+        if (SPKCheapAudioValueExists(candidate, metadataKeys) || SPKCheapAudioBoolValue(candidate, boolKeys)) {
             return YES;
         }
     }
@@ -1968,7 +1968,7 @@ static BOOL SCIFeedEntryMayHaveDownloadableAudio(SCIResolvedMediaEntry *entry, i
     return NO;
 }
 
-static BOOL SCIFeedEntryMayHaveDirectAudioURL(SCIResolvedMediaEntry *entry, id media) {
+static BOOL SPKFeedEntryMayHaveDirectAudioURL(SPKResolvedMediaEntry *entry, id media) {
     static NSArray<NSString *> *directKeys = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -1978,122 +1978,122 @@ static BOOL SCIFeedEntryMayHaveDirectAudioURL(SCIResolvedMediaEntry *entry, id m
         ];
     });
 
-    for (id candidate in SCIFeedAudioVisibilityCandidates(entry, media)) {
-        if (SCICheapAudioValueExists(candidate, directKeys)) return YES;
+    for (id candidate in SPKFeedAudioVisibilityCandidates(entry, media)) {
+        if (SPKCheapAudioValueExists(candidate, directKeys)) return YES;
     }
     return NO;
 }
 
-static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
-							   SCIActionButtonConfiguration *configuration,
+static BOOL SPKIsActionVisible(SPKActionButtonContext *context,
+							   SPKActionButtonConfiguration *configuration,
 							   NSString *identifier,
 							   id media,
-							   NSArray<SCIResolvedMediaEntry *> *entries,
+							   NSArray<SPKResolvedMediaEntry *> *entries,
 							   NSInteger currentIndex) {
 	if (identifier.length == 0) return NO;
 	if ([configuration.disabledActions containsObject:identifier] || [configuration.unassignedActions containsObject:identifier]) {
 		return NO;
 	}
 
-    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
-        return context.source == SCIActionButtonSourceStories &&
-               SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context)).length > 0;
+    if ([identifier isEqualToString:kSPKActionToggleStorySeenUserRule]) {
+        return context.source == SPKActionButtonSourceStories &&
+               SPKStoryCurrentUserRuleActionTitle(SPKStoryContextForActionButtonContext(context)).length > 0;
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
-        return context.source == SCIActionButtonSourceProfile &&
-               SCIResolveMediaForContext(context) != nil;
+    if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
+        return context.source == SPKActionButtonSourceProfile &&
+               SPKResolveMediaForContext(context) != nil;
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
-        return context.source == SCIActionButtonSourceProfile &&
-               SCIResolveMediaForContext(context) != nil;
+    if ([identifier isEqualToString:kSPKActionToggleProfileMessagesSeenUserRule]) {
+        return context.source == SPKActionButtonSourceProfile &&
+               SPKResolveMediaForContext(context) != nil;
     }
-    if ([identifier isEqualToString:kSCIActionStoryMentionsSheet]) {
-        return context.source == SCIActionButtonSourceStories && SCIStoryMediaHasMentions(media);
+    if ([identifier isEqualToString:kSPKActionStoryMentionsSheet]) {
+        return context.source == SPKActionButtonSourceStories && SPKStoryMediaHasMentions(media);
     }
-    if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
+    if (context.source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionProfileCopyInfo]) {
         return media != nil;
     }
-    if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionOpenTopicSettings]) {
-        return SCIResolvedSettingsTitleForContext(context).length > 0;
+    if (context.source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionOpenTopicSettings]) {
+        return SPKResolvedSettingsTitleForContext(context).length > 0;
     }
-    if (context.source == SCIActionButtonSourceDirect && [identifier isEqualToString:kSCIActionDeletedMessagesLog]) {
+    if (context.source == SPKActionButtonSourceDirect && [identifier isEqualToString:kSPKActionDeletedMessagesLog]) {
         return YES;
     }
 
     if (entries.count == 0) return NO;
 
-	NSInteger idx = SCIClampedIndex(currentIndex, (NSInteger)entries.count);
-	SCIResolvedMediaEntry *currentEntry = entries[idx];
+	NSInteger idx = SPKClampedIndex(currentIndex, (NSInteger)entries.count);
+	SPKResolvedMediaEntry *currentEntry = entries[idx];
 	NSURL *currentURL = currentEntry.videoURL ?: currentEntry.photoURL;
 
-	if ([identifier isEqualToString:kSCIActionViewThumbnail]) {
+	if ([identifier isEqualToString:kSPKActionViewThumbnail]) {
 		if (!currentEntry.videoURL) return NO;
 		// For stories, photo items may falsely expose a videoURL.
 		// Only show thumbnail if no photoURL exists (pure video),
 		// or if both exist but are distinct URLs.
-		if (context.source == SCIActionButtonSourceStories && currentEntry.photoURL) {
+		if (context.source == SPKActionButtonSourceStories && currentEntry.photoURL) {
 			return ![currentEntry.videoURL isEqual:currentEntry.photoURL];
 		}
 		return YES;
 	}
-	if ([identifier isEqualToString:kSCIActionTrimSave]) {
+	if ([identifier isEqualToString:kSPKActionTrimSave]) {
 		// Video-only, but unlike thumbnail/download we can't rely on a resolved
 		// videoURL — feed-inline reels resolve it lazily. Fall back to a cheap
 		// media-object video check (duration / resolvable URL).
 		if (currentEntry.videoURL) {
-			if (context.source == SCIActionButtonSourceStories && currentEntry.photoURL) {
+			if (context.source == SPKActionButtonSourceStories && currentEntry.photoURL) {
 				return ![currentEntry.videoURL isEqual:currentEntry.photoURL];
 			}
 			return YES;
 		}
 		id mediaObj = currentEntry.mediaObject ?: media;
-		return [SCIMediaQualityManager mediaObjectIsVideo:mediaObj];
+		return [SPKMediaQualityManager mediaObjectIsVideo:mediaObj];
 	}
-	if ([identifier isEqualToString:kSCIActionDownloadLibrary] ||
-		[identifier isEqualToString:kSCIActionDownloadShare] ||
-		[identifier isEqualToString:kSCIActionCopyDownloadLink] ||
-        [identifier isEqualToString:kSCIActionCopyMedia] ||
-		[identifier isEqualToString:kSCIActionDownloadGallery]) {
+	if ([identifier isEqualToString:kSPKActionDownloadLibrary] ||
+		[identifier isEqualToString:kSPKActionDownloadShare] ||
+		[identifier isEqualToString:kSPKActionCopyDownloadLink] ||
+        [identifier isEqualToString:kSPKActionCopyMedia] ||
+		[identifier isEqualToString:kSPKActionDownloadGallery]) {
 		return currentURL != nil;
 	}
-    if ([identifier isEqualToString:kSCIActionDownloadAudio] ||
-        [identifier isEqualToString:kSCIActionDownloadAudioShare] ||
-        [identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
-        if (context.source == SCIActionButtonSourceFeed) {
-            return SCIFeedEntryMayHaveDownloadableAudio(currentEntry, media);
+    if ([identifier isEqualToString:kSPKActionDownloadAudio] ||
+        [identifier isEqualToString:kSPKActionDownloadAudioShare] ||
+        [identifier isEqualToString:kSPKActionDownloadAudioGallery]) {
+        if (context.source == SPKActionButtonSourceFeed) {
+            return SPKFeedEntryMayHaveDownloadableAudio(currentEntry, media);
         }
         id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        return [SCIAudioDownloadCoordinator bestAudioDownloadURLFromMediaObject:audioMedia] != nil;
+        return [SPKAudioDownloadCoordinator bestAudioDownloadURLFromMediaObject:audioMedia] != nil;
     }
-    if ([identifier isEqualToString:kSCIActionPlayAudio] ||
-        [identifier isEqualToString:kSCIActionCopyAudioURL]) {
-        if (context.source == SCIActionButtonSourceFeed) {
-            return SCIFeedEntryMayHaveDirectAudioURL(currentEntry, media);
+    if ([identifier isEqualToString:kSPKActionPlayAudio] ||
+        [identifier isEqualToString:kSPKActionCopyAudioURL]) {
+        if (context.source == SPKActionButtonSourceFeed) {
+            return SPKFeedEntryMayHaveDirectAudioURL(currentEntry, media);
         }
         id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        return [SCIAudioDownloadCoordinator bestAudioURLFromMediaObject:audioMedia] != nil;
+        return [SPKAudioDownloadCoordinator bestAudioURLFromMediaObject:audioMedia] != nil;
     }
-	if ([identifier isEqualToString:kSCIActionCopyCaption]) {
+	if ([identifier isEqualToString:kSPKActionCopyCaption]) {
 		return context.captionResolver != nil && [context.captionResolver(context, media, entries, idx) length] > 0;
 	}
-	if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) {
-		return SCIResolvedSettingsTitleForContext(context).length > 0;
+	if ([identifier isEqualToString:kSPKActionOpenTopicSettings]) {
+		return SPKResolvedSettingsTitleForContext(context).length > 0;
 	}
-	if ([identifier isEqualToString:kSCIActionRepost]) {
+	if ([identifier isEqualToString:kSPKActionRepost]) {
 		return context.repostHandler != nil;
     }
-    if (SCIIsBulkChildActionIdentifier(identifier)) {
-        id bulkMedia = SCIResolveBulkMediaForContext(context);
-        NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
+    if (SPKIsBulkChildActionIdentifier(identifier)) {
+        id bulkMedia = SPKResolveBulkMediaForContext(context);
+        NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(bulkMedia));
         if (bulkEntries.count <= 1) return NO;
-        if (SCIIsBulkDownloadActionIdentifier(identifier)) {
-            return ![configuration.disabledActions containsObject:kSCIActionDownloadLibrary] ||
-                   ![configuration.disabledActions containsObject:kSCIActionDownloadShare] ||
-                   ![configuration.disabledActions containsObject:kSCIActionDownloadGallery];
+        if (SPKIsBulkDownloadActionIdentifier(identifier)) {
+            return ![configuration.disabledActions containsObject:kSPKActionDownloadLibrary] ||
+                   ![configuration.disabledActions containsObject:kSPKActionDownloadShare] ||
+                   ![configuration.disabledActions containsObject:kSPKActionDownloadGallery];
         }
-        if (SCIIsBulkCopyActionIdentifier(identifier)) {
-            return ![configuration.disabledActions containsObject:kSCIActionCopyDownloadLink] ||
-                   ![configuration.disabledActions containsObject:kSCIActionCopyMedia];
+        if (SPKIsBulkCopyActionIdentifier(identifier)) {
+            return ![configuration.disabledActions containsObject:kSPKActionCopyDownloadLink] ||
+                   ![configuration.disabledActions containsObject:kSPKActionCopyMedia];
         }
     }
 	if (context.visibilityResolver) {
@@ -2102,69 +2102,69 @@ static BOOL SCIIsActionVisible(SCIActionButtonContext *context,
 	return YES;
 }
 
-static NSArray<NSString *> *SCIVisibleActionsForContext(SCIActionButtonContext *context, id media, NSArray<SCIResolvedMediaEntry *> *entries, NSInteger currentIndex) {
-	SCIActionButtonConfiguration *configuration = [SCIActionButtonConfiguration configurationForSource:context.source
-																						  topicTitle:context.settingsTitle ?: SCIActionButtonTopicTitleForSource(context.source)
-																					supportedActions:context.supportedActions ?: SCIActionButtonSupportedActionsForSource(context.source)
-																					 defaultSections:SCIActionButtonDefaultSectionsForSource(context.source)];
+static NSArray<NSString *> *SPKVisibleActionsForContext(SPKActionButtonContext *context, id media, NSArray<SPKResolvedMediaEntry *> *entries, NSInteger currentIndex) {
+	SPKActionButtonConfiguration *configuration = [SPKActionButtonConfiguration configurationForSource:context.source
+																						  topicTitle:context.settingsTitle ?: SPKActionButtonTopicTitleForSource(context.source)
+																					supportedActions:context.supportedActions ?: SPKActionButtonSupportedActionsForSource(context.source)
+																					 defaultSections:SPKActionButtonDefaultSectionsForSource(context.source)];
 	NSArray<NSString *> *supportedActions = configuration.supportedActions ?: @[];
 	if (supportedActions.count == 0) return @[];
 
 	NSMutableArray<NSString *> *visible = [NSMutableArray array];
 	for (NSString *identifier in supportedActions) {
-		if (SCIIsActionVisible(context, configuration, identifier, media, entries, currentIndex)) {
+		if (SPKIsActionVisible(context, configuration, identifier, media, entries, currentIndex)) {
 			[visible addObject:identifier];
 		}
 	}
 	return visible;
 }
 
-static NSString *SCIResolvedDefaultActionIdentifier(NSArray<NSString *> *visibleIdentifiers, SCIActionButtonSource source) {
+static NSString *SPKResolvedDefaultActionIdentifier(NSArray<NSString *> *visibleIdentifiers, SPKActionButtonSource source) {
 	if (visibleIdentifiers.count == 0) return nil;
 
-	NSString *saved = [SCIUtils getStringPref:SCIDefaultActionPrefKeyForSource(source)];
-    if (source == SCIActionButtonSourceProfile && saved.length > 0) {
+	NSString *saved = [SPKUtils getStringPref:SPKDefaultActionPrefKeyForSource(source)];
+    if (source == SPKActionButtonSourceProfile && saved.length > 0) {
         NSDictionary<NSString *, NSString *> *legacyMap = @{
-            @"copy_info": kSCIActionProfileCopyInfo,
-            @"view_picture": kSCIActionExpand,
-            @"share_picture": kSCIActionDownloadShare,
-            @"save_picture_gallery": kSCIActionDownloadGallery,
-            @"profile_settings": kSCIActionOpenTopicSettings
+            @"copy_info": kSPKActionProfileCopyInfo,
+            @"view_picture": kSPKActionExpand,
+            @"share_picture": kSPKActionDownloadShare,
+            @"save_picture_gallery": kSPKActionDownloadGallery,
+            @"profile_settings": kSPKActionOpenTopicSettings
         };
         saved = legacyMap[saved] ?: saved;
     }
-	if ([saved isEqualToString:kSCIActionNone]) return kSCIActionNone;
-	if ([saved isEqualToString:kSCIActionDownloadAll] && [visibleIdentifiers containsObject:kSCIActionDownloadAllLibrary]) {
-        return kSCIActionDownloadAllLibrary;
+	if ([saved isEqualToString:kSPKActionNone]) return kSPKActionNone;
+	if ([saved isEqualToString:kSPKActionDownloadAll] && [visibleIdentifiers containsObject:kSPKActionDownloadAllLibrary]) {
+        return kSPKActionDownloadAllLibrary;
     }
 	if (saved.length > 0 && [visibleIdentifiers containsObject:saved]) return saved;
-	if (saved.length > 0) return kSCIActionNone;
-    if (source == SCIActionButtonSourceProfile) return kSCIActionNone;
-	if ([visibleIdentifiers containsObject:kSCIActionDownloadLibrary]) return kSCIActionDownloadLibrary;
+	if (saved.length > 0) return kSPKActionNone;
+    if (source == SPKActionButtonSourceProfile) return kSPKActionNone;
+	if ([visibleIdentifiers containsObject:kSPKActionDownloadLibrary]) return kSPKActionDownloadLibrary;
 	return visibleIdentifiers.firstObject;
 }
 
-static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
-											  SCIActionButtonConfiguration *configuration,
+static NSString *SPKActionButtonMenuSignature(SPKActionButtonContext *context,
+											  SPKActionButtonConfiguration *configuration,
 											  NSArray<NSString *> *visibleActions,
 											  NSString *defaultIdentifier,
                                               NSUInteger bulkEntryCount) {
-    NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleStorySeenUserRule]
-        ? SCIStoryCurrentUserRuleActionTitle(SCIStoryContextForActionButtonContext(context))
+    NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSPKActionToggleStorySeenUserRule]
+        ? SPKStoryCurrentUserRuleActionTitle(SPKStoryContextForActionButtonContext(context))
         : @"";
-    NSString *dynamicProfileStoryRuleTitle = [visibleActions containsObject:kSCIActionToggleProfileStorySeenUserRule]
-        ? SCIActionButtonDisplayTitleForContext(kSCIActionToggleProfileStorySeenUserRule, context, nil)
+    NSString *dynamicProfileStoryRuleTitle = [visibleActions containsObject:kSPKActionToggleProfileStorySeenUserRule]
+        ? SPKActionButtonDisplayTitleForContext(kSPKActionToggleProfileStorySeenUserRule, context, nil)
         : @"";
-    NSString *dynamicProfileMessagesRuleTitle = [visibleActions containsObject:kSCIActionToggleProfileMessagesSeenUserRule]
-        ? SCIActionButtonDisplayTitleForContext(kSCIActionToggleProfileMessagesSeenUserRule, context, nil)
+    NSString *dynamicProfileMessagesRuleTitle = [visibleActions containsObject:kSPKActionToggleProfileMessagesSeenUserRule]
+        ? SPKActionButtonDisplayTitleForContext(kSPKActionToggleProfileMessagesSeenUserRule, context, nil)
         : @"";
-    NSString *profileInfoSignature = (context.source == SCIActionButtonSourceProfile)
-        ? SCIProfileInfoSignature(SCIResolveMediaForContext(context))
+    NSString *profileInfoSignature = (context.source == SPKActionButtonSourceProfile)
+        ? SPKProfileInfoSignature(SPKResolveMediaForContext(context))
         : @"";
-    id media = SCIResolveMediaForContext(context);
-    NSInteger currentIndex = SCIResolveCurrentIndexForContext(context);
+    id media = SPKResolveMediaForContext(context);
+    NSInteger currentIndex = SPKResolveCurrentIndexForContext(context);
 	return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@|%@|%@|%p|idx:%ld",
-			SCIActionButtonTopicKeyForSource(context.source),
+			SPKActionButtonTopicKeyForSource(context.source),
 			defaultIdentifier ?: @"",
 			[visibleActions componentsJoinedByString:@","],
             (unsigned long)bulkEntryCount,
@@ -2177,29 +2177,29 @@ static NSString *SCIActionButtonMenuSignature(SCIActionButtonContext *context,
             (long)currentIndex];
 }
 
-void SCIArmPendingRepostFeedback(SCIActionButtonContext *context) {
+void SPKArmPendingRepostFeedback(SPKActionButtonContext *context) {
 	if (!context) return;
 
 	NSString *sourceValue = [NSString stringWithFormat:@"%ld", (long)context.source];
-	SCIPendingRepostFeedback = @{
+	SPKPendingRepostFeedback = @{
 		@"title": @"Tapped repost button",
 		@"iconResource": @"ig_icon_reshare_outline_24",
 		@"source": sourceValue
 	};
 }
 
-NSDictionary<NSString *, NSString *> *SCIConsumePendingRepostFeedback(SCIActionButtonSource source) {
+NSDictionary<NSString *, NSString *> *SPKConsumePendingRepostFeedback(SPKActionButtonSource source) {
 	NSString *expectedSource = [NSString stringWithFormat:@"%ld", (long)source];
-	if (![SCIPendingRepostFeedback[@"source"] isEqualToString:expectedSource]) return nil;
+	if (![SPKPendingRepostFeedback[@"source"] isEqualToString:expectedSource]) return nil;
 
-	NSDictionary<NSString *, NSString *> *feedback = SCIPendingRepostFeedback;
-	SCIPendingRepostFeedback = nil;
+	NSDictionary<NSString *, NSString *> *feedback = SPKPendingRepostFeedback;
+	SPKPendingRepostFeedback = nil;
 	return feedback;
 }
 
-static void SCIShowExtractedVideoCover(NSURL *videoURL, SCIGallerySaveMetadata *metadata, SCIActionButtonContext *context) {
+static void SPKShowExtractedVideoCover(NSURL *videoURL, SPKGallerySaveMetadata *metadata, SPKActionButtonContext *context) {
 	if (!videoURL) {
-		SCINotify(kSCINotificationViewThumbnail, @"Cover unavailable", nil, @"error_filled", SCINotificationToneError);
+		SPKNotify(kSPKNotificationViewThumbnail, @"Cover unavailable", nil, @"error_filled", SPKNotificationToneError);
 		return;
 	}
 
@@ -2213,7 +2213,7 @@ static void SCIShowExtractedVideoCover(NSURL *videoURL, SCIGallerySaveMetadata *
 		CGImageRef imageRef = [generator copyCGImageAtTime:CMTimeMakeWithSeconds(0.0, 600) actualTime:NULL error:&error];
 		if (!imageRef) {
 			dispatch_async(dispatch_get_main_queue(), ^{
-				SCINotify(kSCINotificationViewThumbnail, @"Cover unavailable", error.localizedDescription ?: @"", @"error_filled", SCINotificationToneError);
+				SPKNotify(kSPKNotificationViewThumbnail, @"Cover unavailable", error.localizedDescription ?: @"", @"error_filled", SPKNotificationToneError);
 			});
 			return;
 		}
@@ -2222,166 +2222,166 @@ static void SCIShowExtractedVideoCover(NSURL *videoURL, SCIGallerySaveMetadata *
 		CGImageRelease(imageRef);
 
 		dispatch_async(dispatch_get_main_queue(), ^{
-			[SCIFullScreenMediaPlayer showImage:image
+			[SPKFullScreenMediaPlayer showImage:image
                                       metadata:metadata
-                                playbackSource:SCIPlaybackSourceForActionSource(context.source)
+                                playbackSource:SPKPlaybackSourceForActionSource(context.source)
                                     sourceView:context.view
                                     controller:context.controller
-                                 pausePlayback:SCIPausePlaybackBlockForContext(context)
-                                resumePlayback:SCIResumePlaybackBlockForContext(context)];
+                                 pausePlayback:SPKPausePlaybackBlockForContext(context)
+                                resumePlayback:SPKResumePlaybackBlockForContext(context)];
 		});
 	});
 }
 
-static BOOL SCIExecuteBulkChildAction(NSString *identifier,
-                                      SCIActionButtonContext *context,
-                                      NSArray<SCIResolvedMediaEntry *> *entries,
+static BOOL SPKExecuteBulkChildAction(NSString *identifier,
+                                      SPKActionButtonContext *context,
+                                      NSArray<SPKResolvedMediaEntry *> *entries,
                                       NSString *username,
                                       id media) {
-    NSArray<SCIResolvedMediaEntry *> *downloadableEntries = SCIDownloadableEntries(entries);
+    NSArray<SPKResolvedMediaEntry *> *downloadableEntries = SPKDownloadableEntries(entries);
     if (downloadableEntries.count < 2) {
-        SCINotify(identifier, @"No bulk media available", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(identifier, @"No bulk media available", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
 
-    NSArray<SCIDownloadItemRequest *> *bulkItems = SCIBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media);
-    UIViewController *presenter = SCIActionContextPresenter(context);
-    UIView *anchorView = SCIActionContextAnchorView(context);
-    SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+    NSArray<SPKDownloadItemRequest *> *bulkItems = SPKBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media);
+    UIViewController *presenter = SPKActionContextPresenter(context);
+    UIView *anchorView = SPKActionContextAnchorView(context);
+    SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
 
-    if ([SCIDownloadHelpers performBulkDownloadIdentifier:identifier
+    if ([SPKDownloadHelpers performBulkDownloadIdentifier:identifier
                                                     items:bulkItems
                                                 presenter:presenter
                                                anchorView:anchorView
                                             sourceSurface:surface]) {
         return YES;
     }
-    if ([identifier isEqualToString:kSCIActionDownloadAllLinks]) {
-        NSArray<NSString *> *bulkLinks = SCIBulkDownloadLinksFromEntries(downloadableEntries, media);
+    if ([identifier isEqualToString:kSPKActionDownloadAllLinks]) {
+        NSArray<NSString *> *bulkLinks = SPKBulkDownloadLinksFromEntries(downloadableEntries, media);
         if (bulkLinks.count == 0) {
-            SCINotify(identifier, @"No links available", nil, @"error_filled", SCINotificationToneError);
+            SPKNotify(identifier, @"No links available", nil, @"error_filled", SPKNotificationToneError);
             return YES;
         }
         [UIPasteboard generalPasteboard].string = [bulkLinks componentsJoinedByString:@"\n"];
-        SCINotify(identifier, SCICopiedDownloadURLTitleForSource(context.source, YES), [NSString stringWithFormat:@"%lu item%@", (unsigned long)bulkLinks.count, bulkLinks.count == 1 ? @"" : @"s"], @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+        SPKNotify(identifier, SPKCopiedDownloadURLTitleForSource(context.source, YES), [NSString stringWithFormat:@"%lu item%@", (unsigned long)bulkLinks.count, bulkLinks.count == 1 ? @"" : @"s"], @"copy_filled", SPKNotificationToneForIconResource(@"copy_filled"));
         return YES;
     }
 
     return NO;
 }
 
-static BOOL SCIExecuteCommonAction(NSString *identifier,
-								   SCIActionButtonContext *context,
-								   SCIResolvedMediaEntry *currentEntry,
-								   NSArray<SCIResolvedMediaEntry *> *entries,
+static BOOL SPKExecuteCommonAction(NSString *identifier,
+								   SPKActionButtonContext *context,
+								   SPKResolvedMediaEntry *currentEntry,
+								   NSArray<SPKResolvedMediaEntry *> *entries,
 								   NSInteger resolvedIndex,
 								   NSString *username,
-								   SCIGallerySaveMetadata *meta,
+								   SPKGallerySaveMetadata *meta,
 								   id media) {
 	NSURL *currentURL = currentEntry.videoURL ?: currentEntry.photoURL;
 	BOOL isVideo = (currentEntry.videoURL != nil);
-	BOOL shouldNotify = SCINotificationIsEnabled(identifier);
+	BOOL shouldNotify = SPKNotificationIsEnabled(identifier);
 
-	if ([identifier isEqualToString:kSCIActionDownloadAll]) {
+	if ([identifier isEqualToString:kSPKActionDownloadAll]) {
 		return YES;
 	}
-    if (SCIIsBulkChildActionIdentifier(identifier)) {
-        return SCIExecuteBulkChildAction(identifier, context, entries, username, media);
+    if (SPKIsBulkChildActionIdentifier(identifier)) {
+        return SPKExecuteBulkChildAction(identifier, context, entries, username, media);
     }
 
-    if ([identifier isEqualToString:kSCIActionDownloadAudio] ||
-        [identifier isEqualToString:kSCIActionDownloadAudioShare] ||
-        [identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
+    if ([identifier isEqualToString:kSPKActionDownloadAudio] ||
+        [identifier isEqualToString:kSPKActionDownloadAudioShare] ||
+        [identifier isEqualToString:kSPKActionDownloadAudioGallery]) {
         id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        SCIAudioItem *audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
-                                                                                 source:SCIAudioSourceForActionSource(context.source)
+        SPKAudioItem *audioItem = [SPKAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
+                                                                                 source:SPKAudioSourceForActionSource(context.source)
                                                                     allowVideoFallback:YES];
         if (!audioItem && media && media != audioMedia) {
-            audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:media
-                                                                       source:SCIAudioSourceForActionSource(context.source)
+            audioItem = [SPKAudioDownloadCoordinator audioItemFromMediaObject:media
+                                                                       source:SPKAudioSourceForActionSource(context.source)
                                                           allowVideoFallback:YES];
         }
         if (!audioItem) {
-            SCINotify(identifier, @"No audio available", nil, @"error_filled", SCINotificationToneError);
+            SPKNotify(identifier, @"No audio available", nil, @"error_filled", SPKNotificationToneError);
             return YES;
         }
         if (audioItem.artist.length == 0) audioItem.artist = username;
         if (audioItem.sourceURLString.length == 0) audioItem.sourceURLString = audioItem.url.absoluteString;
 
-        SCIAudioAction audioAction = SCIAudioActionConvertAndShare;
-        if ([identifier isEqualToString:kSCIActionDownloadAudioGallery]) {
-            audioAction = SCIAudioActionConvertAndSaveToGallery;
-        } else if ([identifier isEqualToString:kSCIActionDownloadAudio]) {
-            audioAction = SCIAudioActionSaveToFiles;
+        SPKAudioAction audioAction = SPKAudioActionConvertAndShare;
+        if ([identifier isEqualToString:kSPKActionDownloadAudioGallery]) {
+            audioAction = SPKAudioActionConvertAndSaveToGallery;
+        } else if ([identifier isEqualToString:kSPKActionDownloadAudio]) {
+            audioAction = SPKAudioActionSaveToFiles;
         }
-        [SCIAudioDownloadCoordinator performAction:audioAction
+        [SPKAudioDownloadCoordinator performAction:audioAction
                                              item:audioItem
-                                        presenter:SCIActionContextPresenter(context)
-                                       sourceView:SCIActionContextAnchorView(context)
+                                        presenter:SPKActionContextPresenter(context)
+                                       sourceView:SPKActionContextAnchorView(context)
                                          metadata:meta
                            notificationIdentifier:identifier
-                                 playbackSource:SCIPlaybackSourceForActionSource(context.source)
-                                  pausePlayback:SCIPausePlaybackBlockForContext(context)
-                                 resumePlayback:SCIResumePlaybackBlockForContext(context)];
+                                 playbackSource:SPKPlaybackSourceForActionSource(context.source)
+                                  pausePlayback:SPKPausePlaybackBlockForContext(context)
+                                 resumePlayback:SPKResumePlaybackBlockForContext(context)];
         return YES;
     }
 
-    if ([identifier isEqualToString:kSCIActionPlayAudio] ||
-        [identifier isEqualToString:kSCIActionCopyAudioURL]) {
+    if ([identifier isEqualToString:kSPKActionPlayAudio] ||
+        [identifier isEqualToString:kSPKActionCopyAudioURL]) {
         id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        SCIAudioItem *audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
-                                                                                 source:SCIAudioSourceForActionSource(context.source)];
+        SPKAudioItem *audioItem = [SPKAudioDownloadCoordinator audioItemFromMediaObject:audioMedia
+                                                                                 source:SPKAudioSourceForActionSource(context.source)];
         if (!audioItem && media && media != audioMedia) {
-            audioItem = [SCIAudioDownloadCoordinator audioItemFromMediaObject:media
-                                                                       source:SCIAudioSourceForActionSource(context.source)];
+            audioItem = [SPKAudioDownloadCoordinator audioItemFromMediaObject:media
+                                                                       source:SPKAudioSourceForActionSource(context.source)];
         }
         if (!audioItem) {
-            SCINotify(identifier, @"No audio available", nil, @"error_filled", SCINotificationToneError);
+            SPKNotify(identifier, @"No audio available", nil, @"error_filled", SPKNotificationToneError);
             return YES;
         }
         if (audioItem.artist.length == 0) audioItem.artist = username;
         if (audioItem.sourceURLString.length == 0) audioItem.sourceURLString = audioItem.url.absoluteString;
 
-        SCIAudioAction audioAction = [identifier isEqualToString:kSCIActionPlayAudio] ? SCIAudioActionPlay : SCIAudioActionCopyURL;
-        [SCIAudioDownloadCoordinator performAction:audioAction
+        SPKAudioAction audioAction = [identifier isEqualToString:kSPKActionPlayAudio] ? SPKAudioActionPlay : SPKAudioActionCopyURL;
+        [SPKAudioDownloadCoordinator performAction:audioAction
                                              item:audioItem
-                                        presenter:SCIActionContextPresenter(context)
-                                       sourceView:SCIActionContextAnchorView(context)
+                                        presenter:SPKActionContextPresenter(context)
+                                       sourceView:SPKActionContextAnchorView(context)
                                          metadata:meta
                            notificationIdentifier:identifier
-                                 playbackSource:SCIPlaybackSourceForActionSource(context.source)
-                                  pausePlayback:SCIPausePlaybackBlockForContext(context)
-                                 resumePlayback:SCIResumePlaybackBlockForContext(context)];
+                                 playbackSource:SPKPlaybackSourceForActionSource(context.source)
+                                  pausePlayback:SPKPausePlaybackBlockForContext(context)
+                                 resumePlayback:SPKResumePlaybackBlockForContext(context)];
         return YES;
     }
 
-	if ([identifier isEqualToString:kSCIActionTrimSave]) {
+	if ([identifier isEqualToString:kSPKActionTrimSave]) {
 		id mediaForTrim = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-		[SCITrimEntry beginTrimAndSaveForMediaObject:mediaForTrim
+		[SPKTrimEntry beginTrimAndSaveForMediaObject:mediaForTrim
 		                                    photoURL:currentEntry.photoURL
 		                                    videoURL:currentEntry.videoURL
 		                                    metadata:meta
-		                                   presenter:SCIActionContextPresenter(context)];
+		                                   presenter:SPKActionContextPresenter(context)];
 		return YES;
 	}
 
-	if ([identifier isEqualToString:kSCIActionDownloadLibrary] ||
-		[identifier isEqualToString:kSCIActionDownloadShare] ||
-		[identifier isEqualToString:kSCIActionDownloadGallery]) {
+	if ([identifier isEqualToString:kSPKActionDownloadLibrary] ||
+		[identifier isEqualToString:kSPKActionDownloadShare] ||
+		[identifier isEqualToString:kSPKActionDownloadGallery]) {
 		if (!currentURL) {
-			SCINotify(identifier, @"No downloadable media", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"No downloadable media", nil, @"error_filled", SPKNotificationToneError);
 			return YES;
 		}
 
-		SCIDownloadDestination destination = SCIDownloadDestinationPhotos;
-		if ([identifier isEqualToString:kSCIActionDownloadShare]) destination = SCIDownloadDestinationShare;
-		else if ([identifier isEqualToString:kSCIActionDownloadGallery]) destination = SCIDownloadDestinationGallery;
+		SPKDownloadDestination destination = SPKDownloadDestinationPhotos;
+		if ([identifier isEqualToString:kSPKActionDownloadShare]) destination = SPKDownloadDestinationShare;
+		else if ([identifier isEqualToString:kSPKActionDownloadGallery]) destination = SPKDownloadDestinationGallery;
 
         id mediaForDownload = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        UIViewController *presenter = SCIActionContextPresenter(context);
-        UIView *anchorView = SCIActionContextAnchorView(context);
-        SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
-        if ([SCIMediaQualityManager handleDownloadDestination:destination
+        UIViewController *presenter = SPKActionContextPresenter(context);
+        UIView *anchorView = SPKActionContextAnchorView(context);
+        SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+        if ([SPKMediaQualityManager handleDownloadDestination:destination
                                              identifier:identifier
                                               presenter:presenter
                                              sourceView:anchorView
@@ -2394,8 +2394,8 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
             return YES;
         }
 
-        [SCIDownloadHelpers downloadURL:currentURL
-                                    extension:SCIExtensionForURL(currentURL, isVideo)
+        [SPKDownloadHelpers downloadURL:currentURL
+                                    extension:SPKExtensionForURL(currentURL, isVideo)
                                 destination:destination
                                      metadata:meta
                              notificationID:identifier
@@ -2404,28 +2404,28 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 		return YES;
 	}
 
-	if ([identifier isEqualToString:kSCIActionCopyDownloadLink]) {
+	if ([identifier isEqualToString:kSPKActionCopyDownloadLink]) {
         NSURL *bestURL = currentEntry.videoURL ?: currentEntry.photoURL;
         if (!bestURL) {
             id mediaForCopy = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-            bestURL = SCIBestDownloadURLForMediaObject(mediaForCopy);
+            bestURL = SPKBestDownloadURLForMediaObject(mediaForCopy);
 		}
 		if (!bestURL) {
-			SCINotify(identifier, @"No link available", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"No link available", nil, @"error_filled", SPKNotificationToneError);
 			return YES;
 		}
 
 		[UIPasteboard generalPasteboard].string = bestURL.absoluteString ?: @"";
-		SCINotify(identifier, SCICopiedDownloadURLTitleForSource(context.source, NO), nil, @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+		SPKNotify(identifier, SPKCopiedDownloadURLTitleForSource(context.source, NO), nil, @"copy_filled", SPKNotificationToneForIconResource(@"copy_filled"));
 		return YES;
 	}
 
-    if ([identifier isEqualToString:kSCIActionCopyMedia]) {
+    if ([identifier isEqualToString:kSPKActionCopyMedia]) {
         id mediaForCopy = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
-        if ([SCIMediaQualityManager handleCopyActionWithIdentifier:identifier
-                                                         presenter:SCIActionContextPresenter(context)
-                                                        sourceView:SCIActionContextAnchorView(context)
+        SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+        if ([SPKMediaQualityManager handleCopyActionWithIdentifier:identifier
+                                                         presenter:SPKActionContextPresenter(context)
+                                                        sourceView:SPKActionContextAnchorView(context)
                                                          mediaObject:mediaForCopy
                                                            photoURL:currentEntry.photoURL
                                                            videoURL:currentEntry.videoURL
@@ -2436,7 +2436,7 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
         }
 
         if (!currentURL && !currentEntry.photoURL) {
-            SCINotify(identifier, @"Nothing to copy", nil, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+            SPKNotify(identifier, @"Nothing to copy", nil, @"error_filled", SPKNotificationToneForIconResource(@"error_filled"));
             return YES;
         }
 
@@ -2445,7 +2445,7 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
             UIImage *image = imageData ? [UIImage imageWithData:imageData] : nil;
             if (image) {
                 [[UIPasteboard generalPasteboard] setImage:image];
-                SCINotify(identifier, @"Copied photo to clipboard", nil, @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+                SPKNotify(identifier, @"Copied photo to clipboard", nil, @"copy_filled", SPKNotificationToneForIconResource(@"copy_filled"));
             }
             return YES;
         }
@@ -2453,113 +2453,113 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
         NSData *data = [NSData dataWithContentsOfURL:currentURL];
         if (data) {
             [[UIPasteboard generalPasteboard] setData:data forPasteboardType:@"public.mpeg-4"];
-            SCINotify(identifier, @"Copied video to clipboard", nil, @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+            SPKNotify(identifier, @"Copied video to clipboard", nil, @"copy_filled", SPKNotificationToneForIconResource(@"copy_filled"));
         } else {
-            SCINotify(identifier, @"Nothing to copy", nil, @"error_filled", SCINotificationToneForIconResource(@"error_filled"));
+            SPKNotify(identifier, @"Nothing to copy", nil, @"error_filled", SPKNotificationToneForIconResource(@"error_filled"));
         }
         return YES;
     }
 
-	if ([identifier isEqualToString:kSCIActionExpand]) {
-        NSArray<SCIResolvedMediaEntry *> *previewEntries = entries;
-        NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIBulkEntriesForContext(context));
+	if ([identifier isEqualToString:kSPKActionExpand]) {
+        NSArray<SPKResolvedMediaEntry *> *previewEntries = entries;
+        NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKBulkEntriesForContext(context));
         if (bulkEntries.count > previewEntries.count) {
             previewEntries = bulkEntries;
 		}
-		NSArray<SCIMediaItem *> *playerItems = SCIPlayerItemsFromEntries(previewEntries, context.source, username, media);
+		NSArray<SPKMediaItem *> *playerItems = SPKPlayerItemsFromEntries(previewEntries, context.source, username, media);
 		if (playerItems.count == 0) {
-			SCINotify(identifier, @"No media to expand", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"No media to expand", nil, @"error_filled", SPKNotificationToneError);
 			return YES;
 		}
 
-		NSInteger previewIndex = SCIClampedIndex(SCIResolveCurrentIndexForContext(context), (NSInteger)previewEntries.count);
-		NSInteger clampedIndex = SCIClampedIndex(previewIndex, (NSInteger)playerItems.count);
-		SCINotify(identifier, @"Expanded media", nil, @"expand", SCINotificationToneForIconResource(@"expand"));
-		[SCIFullScreenMediaPlayer showMediaItems:playerItems
+		NSInteger previewIndex = SPKClampedIndex(SPKResolveCurrentIndexForContext(context), (NSInteger)previewEntries.count);
+		NSInteger clampedIndex = SPKClampedIndex(previewIndex, (NSInteger)playerItems.count);
+		SPKNotify(identifier, @"Expanded media", nil, @"expand", SPKNotificationToneForIconResource(@"expand"));
+		[SPKFullScreenMediaPlayer showMediaItems:playerItems
                                 startingAtIndex:clampedIndex
                                        metadata:meta
-                                 playbackSource:SCIPlaybackSourceForActionSource(context.source)
+                                 playbackSource:SPKPlaybackSourceForActionSource(context.source)
                                      sourceView:context.view
                                      controller:context.controller
-                                  pausePlayback:SCIPausePlaybackBlockForContext(context)
-                                 resumePlayback:SCIResumePlaybackBlockForContext(context)];
+                                  pausePlayback:SPKPausePlaybackBlockForContext(context)
+                                 resumePlayback:SPKResumePlaybackBlockForContext(context)];
 		return YES;
 	}
 
-	if ([identifier isEqualToString:kSCIActionViewThumbnail]) {
+	if ([identifier isEqualToString:kSPKActionViewThumbnail]) {
 		BOOL isVideo = currentEntry.videoURL != nil;
-		if (isVideo && context.source == SCIActionButtonSourceStories && currentEntry.photoURL) {
+		if (isVideo && context.source == SPKActionButtonSourceStories && currentEntry.photoURL) {
 			isVideo = ![currentEntry.videoURL isEqual:currentEntry.photoURL];
 		}
 		if (!isVideo) {
-			SCINotify(identifier, @"Thumbnail is only available for videos", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"Thumbnail is only available for videos", nil, @"error_filled", SPKNotificationToneError);
 			return YES;
 		}
 
-		SCIGallerySaveMetadata *thumbnailMeta = [[SCIGallerySaveMetadata alloc] init];
-		thumbnailMeta.source = (int16_t)SCIGallerySourceThumbnail;
+		SPKGallerySaveMetadata *thumbnailMeta = [[SPKGallerySaveMetadata alloc] init];
+		thumbnailMeta.source = (int16_t)SPKGallerySourceThumbnail;
 		thumbnailMeta.sourceUsername = meta.sourceUsername;
         id mediaForThumbnail = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        NSURL *coverURL = SCICoverURLForMediaObject(mediaForThumbnail);
+        NSURL *coverURL = SPKCoverURLForMediaObject(mediaForThumbnail);
         if (coverURL) {
             dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
                 NSData *data = [NSData dataWithContentsOfURL:coverURL];
                 UIImage *image = data ? [UIImage imageWithData:data] : nil;
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (image) {
-                        [SCIFullScreenMediaPlayer showImage:image
+                        [SPKFullScreenMediaPlayer showImage:image
                                                   metadata:thumbnailMeta
-                                            playbackSource:SCIPlaybackSourceForActionSource(context.source)
+                                            playbackSource:SPKPlaybackSourceForActionSource(context.source)
                                                 sourceView:context.view
                                                 controller:context.controller
-                                             pausePlayback:SCIPausePlaybackBlockForContext(context)
-                                            resumePlayback:SCIResumePlaybackBlockForContext(context)];
+                                             pausePlayback:SPKPausePlaybackBlockForContext(context)
+                                            resumePlayback:SPKResumePlaybackBlockForContext(context)];
                     } else {
-		                SCIShowExtractedVideoCover(currentEntry.videoURL, thumbnailMeta, context);
+		                SPKShowExtractedVideoCover(currentEntry.videoURL, thumbnailMeta, context);
                     }
                 });
             });
         } else {
-		    SCIShowExtractedVideoCover(currentEntry.videoURL, thumbnailMeta, context);
+		    SPKShowExtractedVideoCover(currentEntry.videoURL, thumbnailMeta, context);
         }
-		SCINotify(identifier, @"Opened thumbnail", nil, @"photo_gallery", SCINotificationToneForIconResource(@"photo_gallery"));
+		SPKNotify(identifier, @"Opened thumbnail", nil, @"photo_gallery", SPKNotificationToneForIconResource(@"photo_gallery"));
 		return YES;
 	}
 
-	if ([identifier isEqualToString:kSCIActionCopyCaption]) {
+	if ([identifier isEqualToString:kSPKActionCopyCaption]) {
 		NSString *caption = context.captionResolver ? context.captionResolver(context, media, entries, resolvedIndex) : nil;
 		if (caption.length == 0) {
-			SCINotify(identifier, @"No caption available", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"No caption available", nil, @"error_filled", SPKNotificationToneError);
 			return YES;
 		}
 
 		[UIPasteboard generalPasteboard].string = caption;
-		SCINotify(identifier, @"Caption copied", nil, @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+		SPKNotify(identifier, @"Caption copied", nil, @"copy_filled", SPKNotificationToneForIconResource(@"copy_filled"));
 		return YES;
 	}
 
-	if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) {
-		NSString *settingsTitle = SCIResolvedSettingsTitleForContext(context);
+	if ([identifier isEqualToString:kSPKActionOpenTopicSettings]) {
+		NSString *settingsTitle = SPKResolvedSettingsTitleForContext(context);
 		if (settingsTitle.length == 0) {
-			SCINotify(identifier, @"Settings unavailable", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"Settings unavailable", nil, @"error_filled", SPKNotificationToneError);
 			return YES;
 		}
 
-		SCINotify(identifier, @"Opened settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
-		[SCIUtils showSettingsForTopicTitle:settingsTitle];
+		SPKNotify(identifier, @"Opened settings", nil, @"settings", SPKNotificationToneForIconResource(@"settings"));
+		[SPKUtils showSettingsForTopicTitle:settingsTitle];
 		return YES;
 	}
 
-	if ([identifier isEqualToString:kSCIActionRepost]) {
+	if ([identifier isEqualToString:kSPKActionRepost]) {
 		if (context.repostHandler) {
-			SCIArmPendingRepostFeedback(context);
+			SPKArmPendingRepostFeedback(context);
 		}
 		BOOL handled = context.repostHandler ? context.repostHandler(context) : NO;
 		if (!handled) {
-			SCIConsumePendingRepostFeedback(context.source);
+			SPKConsumePendingRepostFeedback(context.source);
 		}
 		if (!handled) {
-			SCINotify(identifier, @"Repost unavailable", nil, @"error_filled", SCINotificationToneError);
+			SPKNotify(identifier, @"Repost unavailable", nil, @"error_filled", SPKNotificationToneError);
 		}
 		return YES;
 	}
@@ -2567,41 +2567,41 @@ static BOOL SCIExecuteCommonAction(NSString *identifier,
 	return NO;
 }
 
-static BOOL SCIExecuteToggleStorySeenUserRuleAction(SCIActionButtonContext *context) {
-    SCIStoryContext *storyContext = SCIStoryContextForActionButtonContext(context);
-    NSString *title = SCIStoryCurrentUserRuleConfirmationTitle(storyContext);
-    NSString *message = SCIStoryCurrentUserRuleConfirmationMessage(storyContext);
+static BOOL SPKExecuteToggleStorySeenUserRuleAction(SPKActionButtonContext *context) {
+    SPKStoryContext *storyContext = SPKStoryContextForActionButtonContext(context);
+    NSString *title = SPKStoryCurrentUserRuleConfirmationTitle(storyContext);
+    NSString *message = SPKStoryCurrentUserRuleConfirmationMessage(storyContext);
     if (title.length == 0 || message.length == 0) {
-        SCINotify(kSCINotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKNotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
 
-    [SCIUtils showConfirmation:^{
+    [SPKUtils showConfirmation:^{
         NSString *notificationTitle = nil;
         NSString *notificationSubtitle = nil;
-        if (!SCIStoryToggleCurrentUserRule(storyContext, &notificationTitle, &notificationSubtitle)) {
-            SCINotify(kSCINotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SCINotificationToneError);
+        if (!SPKStoryToggleCurrentUserRule(storyContext, &notificationTitle, &notificationSubtitle)) {
+            SPKNotify(kSPKNotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SPKNotificationToneError);
             return;
         }
-        SCINotify(kSCINotificationStorySeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
+        SPKNotify(kSPKNotificationStorySeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SPKNotificationToneSuccess);
         [storyContext.overlayView setNeedsLayout];
     } title:title message:message];
     return YES;
 }
 
-static BOOL SCIExecuteToggleProfileStorySeenUserRuleAction(SCIActionButtonContext *context) {
-    id user = SCIResolveMediaForContext(context);
-    NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
-    NSString *username = user ? SCIProfileUsername(user) : nil;
-    NSString *fullName = user ? SCIProfileFullName(user) : nil;
-    NSString *profilePicUrl = user ? sciDirectUserResolverProfilePicURLStringFromUser(user) : nil;
+static BOOL SPKExecuteToggleProfileStorySeenUserRuleAction(SPKActionButtonContext *context) {
+    id user = SPKResolveMediaForContext(context);
+    NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
+    NSString *username = user ? SPKProfileUsername(user) : nil;
+    NSString *fullName = user ? SPKProfileFullName(user) : nil;
+    NSString *profilePicUrl = user ? spkDirectUserResolverProfilePicURLStringFromUser(user) : nil;
     if (pk.length == 0 || username.length == 0) {
-        SCINotify(kSCINotificationProfileStorySeenUserRule, @"User not found", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKNotificationProfileStorySeenUserRule, @"User not found", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
 
-    BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"stories_manual_seen"];
-    BOOL listed = SCIStoryManualSeenListContainsUser(pk, manualSeenEnabled);
+    BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
+    BOOL listed = SPKStoryManualSeenListContainsUser(pk, manualSeenEnabled);
     BOOL applies = manualSeenEnabled ? !listed : listed;
 
     NSString *title = applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
@@ -2609,55 +2609,55 @@ static BOOL SCIExecuteToggleProfileStorySeenUserRuleAction(SCIActionButtonContex
         ? [NSString stringWithFormat:@"Do you want to start marking stories from @%@ as seen?", username]
         : [NSString stringWithFormat:@"Do you want to stop marking stories from @%@ as seen?", username];
 
-    [SCIUtils showConfirmation:^{
-        SCIStoryToggleUserRuleForPK(pk, username, fullName, profilePicUrl);
+    [SPKUtils showConfirmation:^{
+        SPKStoryToggleUserRuleForPK(pk, username, fullName, profilePicUrl);
         NSString *notificationTitle = applies
             ? [NSString stringWithFormat:@"Stories seen on for @%@", username]
             : [NSString stringWithFormat:@"Stories seen off for @%@", username];
-        SCINotify(kSCINotificationProfileStorySeenUserRule, notificationTitle, nil, @"circle_check_filled", SCINotificationToneSuccess);
-        [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+        SPKNotify(kSPKNotificationProfileStorySeenUserRule, notificationTitle, nil, @"circle_check_filled", SPKNotificationToneSuccess);
+        [[NSNotificationCenter defaultCenter] postNotificationName:SPKActionButtonConfigurationDidChangeNotification object:nil];
     } title:title message:message];
     return YES;
 }
 
-static BOOL SCIExecuteToggleProfileMessagesSeenUserRuleAction(SCIActionButtonContext *context) {
-    id user = SCIResolveMediaForContext(context);
-    NSString *pk = user ? [SCIUtils pkFromIGUser:user] : nil;
-    NSString *username = user ? SCIProfileUsername(user) : nil;
-    NSString *fullName = user ? SCIProfileFullName(user) : nil;
-    NSString *profilePicUrl = user ? sciDirectUserResolverProfilePicURLStringFromUser(user) : nil;
+static BOOL SPKExecuteToggleProfileMessagesSeenUserRuleAction(SPKActionButtonContext *context) {
+    id user = SPKResolveMediaForContext(context);
+    NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
+    NSString *username = user ? SPKProfileUsername(user) : nil;
+    NSString *fullName = user ? SPKProfileFullName(user) : nil;
+    NSString *profilePicUrl = user ? spkDirectUserResolverProfilePicURLStringFromUser(user) : nil;
     if (pk.length == 0 || username.length == 0) {
-        SCINotify(kSCINotificationProfileMessagesSeenUserRule, @"User not found", nil, @"error_filled", SCINotificationToneError);
+        SPKNotify(kSPKNotificationProfileMessagesSeenUserRule, @"User not found", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
 
-    BOOL manualSeenEnabled = [SCIUtils getBoolPref:@"msgs_manual_seen"];
-    NSDictionary *existingEntry = SCIDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
+    BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"msgs_manual_seen"];
+    NSDictionary *existingEntry = SPKDirectManualSeenThreadEntryForUserPK(pk, manualSeenEnabled);
     BOOL listed = (existingEntry != nil);
     BOOL applies = manualSeenEnabled ? !listed : listed;
 
     NSString *title = applies ? @"Start Marking Messages as Seen" : @"Stop Marking Messages as Seen";
     NSString *message = applies
         ? [NSString stringWithFormat:@"Do you want to start marking messages from %@ as seen?", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])]
-        : [NSString stringWithFormat:@"Do you want to stop marking messages from %@ as seen?", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];    [SCIUtils showConfirmation:^{
+        : [NSString stringWithFormat:@"Do you want to stop marking messages from %@ as seen?", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];    [SPKUtils showConfirmation:^{
         if (listed) {
             NSString *threadId = existingEntry[@"threadId"];
-            SCIDirectRemoveManualSeenThreadId(threadId, manualSeenEnabled);
+            SPKDirectRemoveManualSeenThreadId(threadId, manualSeenEnabled);
             NSString *notificationTitle = [NSString stringWithFormat:@"Messages seen off for %@", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];
-            NSString *notificationSubtitle = SCIDirectManualSeenListTitle(manualSeenEnabled);
-            SCINotify(kSCINotificationProfileMessagesSeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
-            [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+            NSString *notificationSubtitle = SPKDirectManualSeenListTitle(manualSeenEnabled);
+            SPKNotify(kSPKNotificationProfileMessagesSeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SPKNotificationToneSuccess);
+            [[NSNotificationCenter defaultCenter] postNotificationName:SPKActionButtonConfigurationDidChangeNotification object:nil];
         } else {
             NSString *encodedRecipients = [[NSString stringWithFormat:@"[%@]", pk] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
-            [SCIInstagramAPI sendRequestWithMethod:@"GET"
+            [SPKInstagramAPI sendRequestWithMethod:@"GET"
                                               path:[NSString stringWithFormat:@"direct_v2/threads/get_by_participants/?recipient_users=%@", encodedRecipients]
                                               body:nil
                                          completion:^(NSDictionary *threadResponse, NSError *threadError) {
                 NSDictionary *thread = threadResponse[@"thread"];
-                NSString *threadId = SCIStringFromValue(thread[@"thread_id"] ?: thread[@"threadId"]);
+                NSString *threadId = SPKStringFromValue(thread[@"thread_id"] ?: thread[@"threadId"]);
                 if (threadId.length == 0 || threadError) {
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        SCINotify(kSCINotificationProfileMessagesSeenUserRule, @"No 1:1 chat thread found", @"Make sure you have an active chat with this user.", @"error_filled", SCINotificationToneError);
+                        SPKNotify(kSPKNotificationProfileMessagesSeenUserRule, @"No 1:1 chat thread found", @"Make sure you have an active chat with this user.", @"error_filled", SPKNotificationToneError);
                     });
                     return;
                 }
@@ -2669,7 +2669,7 @@ static BOOL SCIExecuteToggleProfileMessagesSeenUserRuleAction(SCIActionButtonCon
                     } mutableCopy];
                     if (profilePicUrl.length > 0) usersEntry[@"profilePicUrl"] = profilePicUrl;
                     
-                    SCIDirectAddOrUpdateManualSeenThreadEntry(@{
+                    SPKDirectAddOrUpdateManualSeenThreadEntry(@{
                         @"threadId": threadId,
                         @"threadName": fullName.length > 0 ? fullName : username,
                         @"isGroup": @(NO),
@@ -2677,9 +2677,9 @@ static BOOL SCIExecuteToggleProfileMessagesSeenUserRuleAction(SCIActionButtonCon
                     }, manualSeenEnabled);
 
                     NSString *notificationTitle = [NSString stringWithFormat:@"Messages seen on for %@", (fullName.length > 0 ? fullName : [@"@" stringByAppendingString:username])];
-                    NSString *notificationSubtitle = SCIDirectManualSeenListTitle(manualSeenEnabled);
-                    SCINotify(kSCINotificationProfileMessagesSeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SCINotificationToneSuccess);
-                    [[NSNotificationCenter defaultCenter] postNotificationName:SCIActionButtonConfigurationDidChangeNotification object:nil];
+                    NSString *notificationSubtitle = SPKDirectManualSeenListTitle(manualSeenEnabled);
+                    SPKNotify(kSPKNotificationProfileMessagesSeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SPKNotificationToneSuccess);
+                    [[NSNotificationCenter defaultCenter] postNotificationName:SPKActionButtonConfigurationDidChangeNotification object:nil];
                 });
             }];
         }
@@ -2687,125 +2687,125 @@ static BOOL SCIExecuteToggleProfileMessagesSeenUserRuleAction(SCIActionButtonCon
     return YES;
 }
 
-static BOOL SCIExecuteStoryMentionsSheetAction(SCIActionButtonContext *context) {
-    if (context.source != SCIActionButtonSourceStories || !context.view) {
-        SCINotify(kSCINotificationStoryMentionsSheet, @"Story mentions unavailable", nil, @"error_filled", SCINotificationToneError);
+static BOOL SPKExecuteStoryMentionsSheetAction(SPKActionButtonContext *context) {
+    if (context.source != SPKActionButtonSourceStories || !context.view) {
+        SPKNotify(kSPKNotificationStoryMentionsSheet, @"Story mentions unavailable", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
 
-    id media = SCIResolveMediaForContext(context);
-    if (!SCIStoryMediaHasMentions(media)) {
-        SCINotify(kSCINotificationStoryMentionsSheet, @"No mentions found", nil, @"error_filled", SCINotificationToneError);
+    id media = SPKResolveMediaForContext(context);
+    if (!SPKStoryMediaHasMentions(media)) {
+        SPKNotify(kSPKNotificationStoryMentionsSheet, @"No mentions found", nil, @"error_filled", SPKNotificationToneError);
         return YES;
     }
 
-    SCIPresentStoryMentionsSheet(context.view);
+    SPKPresentStoryMentionsSheet(context.view);
     return YES;
 }
 
-BOOL SCIExecuteActionIdentifier(NSString *identifier, SCIActionButtonContext *context, BOOL isDefaultTap) {
+BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *context, BOOL isDefaultTap) {
 	if (identifier.length == 0 || !context) return NO;
 
-    if ([identifier isEqualToString:kSCIActionToggleStorySeenUserRule]) {
-        return SCIExecuteToggleStorySeenUserRuleAction(context);
+    if ([identifier isEqualToString:kSPKActionToggleStorySeenUserRule]) {
+        return SPKExecuteToggleStorySeenUserRuleAction(context);
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileStorySeenUserRule]) {
-        return SCIExecuteToggleProfileStorySeenUserRuleAction(context);
+    if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
+        return SPKExecuteToggleProfileStorySeenUserRuleAction(context);
     }
-    if ([identifier isEqualToString:kSCIActionToggleProfileMessagesSeenUserRule]) {
-        return SCIExecuteToggleProfileMessagesSeenUserRuleAction(context);
+    if ([identifier isEqualToString:kSPKActionToggleProfileMessagesSeenUserRule]) {
+        return SPKExecuteToggleProfileMessagesSeenUserRuleAction(context);
     }
-    if ([identifier isEqualToString:kSCIActionStoryMentionsSheet]) {
-        return SCIExecuteStoryMentionsSheetAction(context);
+    if ([identifier isEqualToString:kSPKActionStoryMentionsSheet]) {
+        return SPKExecuteStoryMentionsSheetAction(context);
     }
-    if (context.source == SCIActionButtonSourceProfile && SCIIsProfileCopyActionIdentifier(identifier)) {
-        return SCIExecuteProfileCopyAction(identifier, context);
+    if (context.source == SPKActionButtonSourceProfile && SPKIsProfileCopyActionIdentifier(identifier)) {
+        return SPKExecuteProfileCopyAction(identifier, context);
     }
-    if ([identifier isEqualToString:kSCIActionOpenTopicSettings]) {
-        NSString *settingsTitle = SCIResolvedSettingsTitleForContext(context);
+    if ([identifier isEqualToString:kSPKActionOpenTopicSettings]) {
+        NSString *settingsTitle = SPKResolvedSettingsTitleForContext(context);
         if (settingsTitle.length == 0) {
-            SCINotify(identifier, @"Settings unavailable", nil, @"error_filled", SCINotificationToneError);
+            SPKNotify(identifier, @"Settings unavailable", nil, @"error_filled", SPKNotificationToneError);
             return YES;
         }
-        SCINotify(identifier, @"Opened settings", nil, @"settings", SCINotificationToneForIconResource(@"settings"));
-        [SCIUtils showSettingsForTopicTitle:settingsTitle];
+        SPKNotify(identifier, @"Opened settings", nil, @"settings", SPKNotificationToneForIconResource(@"settings"));
+        [SPKUtils showSettingsForTopicTitle:settingsTitle];
         return YES;
     }
-    if (context.source == SCIActionButtonSourceDirect && [identifier isEqualToString:kSCIActionDeletedMessagesLog]) {
-        [SCIDeletedMessagesViewController presentFromViewController:SCIActionContextPresenter(context)];
+    if (context.source == SPKActionButtonSourceDirect && [identifier isEqualToString:kSPKActionDeletedMessagesLog]) {
+        [SPKDeletedMessagesViewController presentFromViewController:SPKActionContextPresenter(context)];
         return YES;
     }
 
-	id media = SCIResolveMediaForContext(context);
-	NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);
-    if (SCIIsBulkChildActionIdentifier(identifier)) {
-        id bulkMedia = SCIResolveBulkMediaForContext(context);
-        NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
+	id media = SPKResolveMediaForContext(context);
+	NSArray<SPKResolvedMediaEntry *> *entries = SPKEntriesFromMedia(media);
+    if (SPKIsBulkChildActionIdentifier(identifier)) {
+        id bulkMedia = SPKResolveBulkMediaForContext(context);
+        NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(bulkMedia));
         if (bulkEntries.count > 0) {
             media = bulkMedia ?: media;
             entries = bulkEntries;
         }
     }
 	if (entries.count == 0) {
-		SCINotify(identifier, @"Media not found", nil, @"error_filled", SCINotificationToneError);
+		SPKNotify(identifier, @"Media not found", nil, @"error_filled", SPKNotificationToneError);
 		return NO;
 	}
 
-	NSInteger resolvedIndex = SCIClampedIndex(SCIResolveCurrentIndexForContext(context), (NSInteger)entries.count);
-	SCIResolvedMediaEntry *currentEntry = entries[resolvedIndex];
+	NSInteger resolvedIndex = SPKClampedIndex(SPKResolveCurrentIndexForContext(context), (NSInteger)entries.count);
+	SPKResolvedMediaEntry *currentEntry = entries[resolvedIndex];
     id metadataObject = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
 
-	NSString *username = (context.source == SCIActionButtonSourceDirect)
-		? SCIDirectUsernameFromController(context.controller)
-		: SCIUsernameFromMediaObject(media);
-    if (context.source == SCIActionButtonSourceInstants) {
-        NSString *explicitUsername = SCIUsernameForEntry(currentEntry, nil);
+	NSString *username = (context.source == SPKActionButtonSourceDirect)
+		? SPKDirectUsernameFromController(context.controller)
+		: SPKUsernameFromMediaObject(media);
+    if (context.source == SPKActionButtonSourceInstants) {
+        NSString *explicitUsername = SPKUsernameForEntry(currentEntry, nil);
         if (explicitUsername.length > 0) {
             username = explicitUsername;
         }
     }
-	if (username.length == 0) username = SCIUsernameFromMediaObject(metadataObject);
+	if (username.length == 0) username = SPKUsernameFromMediaObject(metadataObject);
 	if (username.length == 0) {
-		for (SCIResolvedMediaEntry *entry in entries) {
-			username = SCIUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
+		for (SPKResolvedMediaEntry *entry in entries) {
+			username = SPKUsernameFromMediaObject(entry.metadataObject ?: entry.mediaObject);
 			if (username.length > 0) break;
 		}
 	}
-	if (context.source == SCIActionButtonSourceDirect && username.length > 0) {
-		NSString *sessionUsername = SCISessionUsernameFromController(context.controller);
+	if (context.source == SPKActionButtonSourceDirect && username.length > 0) {
+		NSString *sessionUsername = SPKSessionUsernameFromController(context.controller);
 		if (sessionUsername.length > 0 && [username caseInsensitiveCompare:sessionUsername] == NSOrderedSame) {
 			username = nil;
 		}
 	}
 
-	SCIGallerySaveMetadata *meta = SCIGalleryMetadata(context.source, username, metadataObject);
-    SCIApplyEntryMetadata(meta, currentEntry);
-	if (metadataObject != media && context.source != SCIActionButtonSourceInstants) {
-		[SCIGalleryOriginController populateMetadata:meta fromMedia:media];
+	SPKGallerySaveMetadata *meta = SPKGalleryMetadata(context.source, username, metadataObject);
+    SPKApplyEntryMetadata(meta, currentEntry);
+	if (metadataObject != media && context.source != SPKActionButtonSourceInstants) {
+		[SPKGalleryOriginController populateMetadata:meta fromMedia:media];
 		if (entries.count > 1) {
-			meta.sourceMediaURLString = [SCIUtils appendImgIndex:resolvedIndex toURLString:meta.sourceMediaURLString];
+			meta.sourceMediaURLString = [SPKUtils appendImgIndex:resolvedIndex toURLString:meta.sourceMediaURLString];
 		}
 	}
 
-	if (isDefaultTap && !SCIActionIdentifierOpensPreview(identifier)) {
-		SCIPausePlaybackForPreviewContext(context);
+	if (isDefaultTap && !SPKActionIdentifierOpensPreview(identifier)) {
+		SPKPausePlaybackForPreviewContext(context);
 	}
 
-	return SCIExecuteCommonAction(identifier, context, currentEntry, entries, resolvedIndex, username, meta, media);
+	return SPKExecuteCommonAction(identifier, context, currentEntry, entries, resolvedIndex, username, meta, media);
 }
 
-static BOOL SCIActionButtonLegacyDiagnosticsEnabled(SCIActionButtonSource source) {
-	return source == SCIActionButtonSourceFeed && SYSTEM_VERSION_LESS_THAN(@"26.0");
+static BOOL SPKActionButtonLegacyDiagnosticsEnabled(SPKActionButtonSource source) {
+	return source == SPKActionButtonSourceFeed && SYSTEM_VERSION_LESS_THAN(@"26.0");
 }
 
-UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag) {
+UIButton *SPKActionButtonWithTag(UIView *container, NSInteger tag) {
 	UIView *existing = [container viewWithTag:tag];
 	if ([existing isKindOfClass:[UIButton class]]) {
 		return (UIButton *)existing;
 	}
 	[existing removeFromSuperview];
 
-	SCIActionMenuButton *button = [[SCIActionMenuButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
+	SPKActionMenuButton *button = [[SPKActionMenuButton alloc] initWithSymbol:@"" pointSize:24.0 diameter:44.0];
 	button.tag = tag;
 	button.adjustsImageWhenHighlighted = YES;
 	button.showsMenuAsPrimaryAction = NO;
@@ -2813,7 +2813,7 @@ UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag) {
 	button.translatesAutoresizingMaskIntoConstraints = YES;
 	[container addSubview:button];
 	if (SYSTEM_VERSION_LESS_THAN(@"26.0")) {
-		SCILog(@"ActionButton", @"Created action button tag=%ld class=%@ container=%@ iOS=%@",
+		SPKLog(@"ActionButton", @"Created action button tag=%ld class=%@ container=%@ iOS=%@",
 			   (long)tag,
 			   NSStringFromClass(button.class),
 			   NSStringFromClass(container.class),
@@ -2822,10 +2822,10 @@ UIButton *SCIActionButtonWithTag(UIView *container, NSInteger tag) {
 	return button;
 }
 
-void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
+void SPKApplyButtonStyle(UIButton *button, SPKActionButtonSource source) {
 	if (!button) return;
 
-	button.tintColor = SCIActionButtonTintForSource(source);
+	button.tintColor = SPKActionButtonTintForSource(source);
 	button.backgroundColor = UIColor.clearColor;
 	button.layer.cornerRadius = 0.0;
 	button.layer.shadowColor = UIColor.clearColor.CGColor;
@@ -2834,10 +2834,10 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 	button.layer.shadowOffset = CGSizeZero;
 	button.clipsToBounds = NO;
 
-	BOOL isChrome = [button isKindOfClass:[SCIChromeButton class]];
+	BOOL isChrome = [button isKindOfClass:[SPKChromeButton class]];
 	if (isChrome) {
-		SCIChromeButton *chromeButton = (SCIChromeButton *)button;
-		chromeButton.iconTint = SCIActionButtonTintForSource(source);
+		SPKChromeButton *chromeButton = (SPKChromeButton *)button;
+		chromeButton.iconTint = SPKActionButtonTintForSource(source);
 		chromeButton.bubbleColor = UIColor.clearColor;
 
 		// Reset iconView shadow by default
@@ -2848,9 +2848,9 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 		chromeButton.iconView.layer.masksToBounds = NO;
 	}
 
-	if (source == SCIActionButtonSourceReels) {
+	if (source == SPKActionButtonSourceReels) {
 		if (isChrome) {
-			SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+			SPKChromeButton *chromeButton = (SPKChromeButton *)button;
 			chromeButton.iconView.layer.shadowColor = [UIColor blackColor].CGColor;
 			chromeButton.iconView.layer.shadowOpacity = 0.24;
 			chromeButton.iconView.layer.shadowRadius = 1.8;
@@ -2862,9 +2862,9 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 			button.layer.shadowRadius = 1.8;
 			button.layer.shadowOffset = CGSizeMake(0.0, 1.0);
 		}
-	} else if (source == SCIActionButtonSourceStories || source == SCIActionButtonSourceDirect || source == SCIActionButtonSourceInstants) {
+	} else if (source == SPKActionButtonSourceStories || source == SPKActionButtonSourceDirect || source == SPKActionButtonSourceInstants) {
 		if (isChrome) {
-			SCIChromeButton *chromeButton = (SCIChromeButton *)button;
+			SPKChromeButton *chromeButton = (SPKChromeButton *)button;
 			chromeButton.iconView.layer.shadowColor = [UIColor blackColor].CGColor;
 			chromeButton.iconView.layer.shadowOpacity = 0.5;
 			chromeButton.iconView.layer.shadowRadius = 2.0;
@@ -2879,20 +2879,20 @@ void SCIApplyButtonStyle(UIButton *button, SCIActionButtonSource source) {
 	}
 }
 
-BOOL SCIIsDirectVisualViewerAncestor(UIView *view) {
+BOOL SPKIsDirectVisualViewerAncestor(UIView *view) {
 	static Class directViewerClass;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
 		directViewerClass = NSClassFromString(@"IGDirectVisualMessageViewerController");
 	});
 	if (!directViewerClass) return NO;
-	UIViewController *ancestorController = SCIViewControllerForAncestorView(view);
+	UIViewController *ancestorController = SPKViewControllerForAncestorView(view);
 	return [ancestorController isKindOfClass:directViewerClass];
 }
 
-SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button) {
-	id context = objc_getAssociatedObject(button, kSCIActionButtonContextAssocKey);
-	return [context isKindOfClass:[SCIActionButtonContext class]] ? context : nil;
+SPKActionButtonContext *SPKActionButtonContextFromButton(UIButton *button) {
+	id context = objc_getAssociatedObject(button, kSPKActionButtonContextAssocKey);
+	return [context isKindOfClass:[SPKActionButtonContext class]] ? context : nil;
 }
 
 // Builds the "Bulk" section (Download All / Copy All / Select Media) for a
@@ -2903,90 +2903,90 @@ SCIActionButtonContext *SCIActionButtonContextFromButton(UIButton *button) {
 // the menu opens, not whatever was available when the button was first
 // configured (which is stale on the first story of a reel, etc.). Returns an
 // empty array when there is no bulk media.
-static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfiguration *configuration,
-                                                          SCIActionButtonContext *context,
+static NSArray<UIMenuElement *> *SPKBuildBulkMenuChildren(SPKActionButtonConfiguration *configuration,
+                                                          SPKActionButtonContext *context,
                                                           NSString *sectionTitle,
                                                           NSString *sectionIconName,
                                                           BOOL collapsible) {
-    id bulkMedia = SCIResolveBulkMediaForContext(context);
-    NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
+    id bulkMedia = SPKResolveBulkMediaForContext(context);
+    NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(bulkMedia));
     if (bulkEntries.count <= 1) return @[];
 
-    NSString *bulkUsername = SCIResolvedBulkUsernameForContext(context, bulkEntries, bulkMedia);
-    NSArray<NSString *> *configuredBulkDownloadIdentifiers = SCIActionButtonConfiguredBulkDownloadActionsForSource(context.source);
-    NSArray<NSString *> *configuredBulkCopyIdentifiers = SCIActionButtonConfiguredBulkCopyActionsForSource(context.source);
+    NSString *bulkUsername = SPKResolvedBulkUsernameForContext(context, bulkEntries, bulkMedia);
+    NSArray<NSString *> *configuredBulkDownloadIdentifiers = SPKActionButtonConfiguredBulkDownloadActionsForSource(context.source);
+    NSArray<NSString *> *configuredBulkCopyIdentifiers = SPKActionButtonConfiguredBulkCopyActionsForSource(context.source);
 
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
     // Each bulk entry sits in its own inline group so they read as separate rows
     // divided by separator lines. Download All / Copy All carry the download / copy
     // icons (not the generic "more" icon).
-    UIMenuElement *downloadAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSCIActionDownloadAllLibrary);
+    UIMenuElement *downloadAll = SPKBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkDownloadIdentifiers, @"Download All", kSPKActionDownloadAllLibrary);
     if (downloadAll) [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[downloadAll]]];
-    UIMenuElement *copyAll = SCIBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSCIActionDownloadAllClipboard);
+    UIMenuElement *copyAll = SPKBulkActionMenuElementForContext(context, bulkEntries, bulkUsername, bulkMedia, configuredBulkCopyIdentifiers, @"Copy All", kSPKActionDownloadAllClipboard);
     if (copyAll) [children addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[copyAll]]];
 
     // "Select Media" picker — destinations are the configured bulk actions, in a
     // fixed order: Save to Photos, Share, Copy, Save to Gallery, Copy URLs.
-    id media = SCIResolveMediaForContext(context);
-    NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);
-    NSInteger currentIndex = SCIResolveCurrentIndexForContext(context);
-    NSArray<NSString *> *configuredBulkIdentifiers = SCIConfiguredBulkActionIdentifiersForSource(context.source);
+    id media = SPKResolveMediaForContext(context);
+    NSArray<SPKResolvedMediaEntry *> *entries = SPKEntriesFromMedia(media);
+    NSInteger currentIndex = SPKResolveCurrentIndexForContext(context);
+    NSArray<NSString *> *configuredBulkIdentifiers = SPKConfiguredBulkActionIdentifiersForSource(context.source);
     NSArray<NSString *> *selectMediaOrder = @[
-        kSCIActionDownloadAllLibrary,
-        kSCIActionDownloadAllShare,
-        kSCIActionDownloadAllClipboard,
-        kSCIActionDownloadAllGallery,
-        kSCIActionDownloadAllLinks
+        kSPKActionDownloadAllLibrary,
+        kSPKActionDownloadAllShare,
+        kSPKActionDownloadAllClipboard,
+        kSPKActionDownloadAllGallery,
+        kSPKActionDownloadAllLinks
     ];
-    NSMutableArray<SCIBulkSelectionDestination *> *destinations = [NSMutableArray array];
+    NSMutableArray<SPKBulkSelectionDestination *> *destinations = [NSMutableArray array];
     for (NSString *identifier in selectMediaOrder) {
         if (![configuredBulkIdentifiers containsObject:identifier]) continue;
-        if (SCIIsActionVisible(context, configuration, identifier, media, entries, currentIndex)) {
-            [destinations addObject:[SCIBulkSelectionDestination destinationWithIdentifier:identifier
-                                                                                     title:SCIActionButtonTitleForIdentifier(identifier)
-                                                                                  iconName:SCIActionDescriptorIconName(identifier)]];
+        if (SPKIsActionVisible(context, configuration, identifier, media, entries, currentIndex)) {
+            [destinations addObject:[SPKBulkSelectionDestination destinationWithIdentifier:identifier
+                                                                                     title:SPKActionButtonTitleForIdentifier(identifier)
+                                                                                  iconName:SPKActionDescriptorIconName(identifier)]];
         }
     }
     if (destinations.count > 0) {
         UIAction *selectMediaAction = [UIAction actionWithTitle:@"Select Media"
-                                                          image:[SCIAssetUtils instagramIconNamed:@"circle_check" pointSize:22.0]
+                                                          image:[SPKAssetUtils instagramIconNamed:@"circle_check" pointSize:22.0]
                                                      identifier:nil
                                                         handler:^(__unused UIAction *action) {
             // Re-resolve at tap time as well, in case the carousel changed.
-            id tapBulkMedia = SCIResolveBulkMediaForContext(context);
-            NSArray<SCIResolvedMediaEntry *> *tapBulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(tapBulkMedia));
+            id tapBulkMedia = SPKResolveBulkMediaForContext(context);
+            NSArray<SPKResolvedMediaEntry *> *tapBulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(tapBulkMedia));
             if (tapBulkEntries.count == 0) return;
-            NSString *tapBulkUsername = SCIResolvedBulkUsernameForContext(context, tapBulkEntries, tapBulkMedia);
-            NSMutableArray<SCIBulkSelectionItem *> *selectionItems = [NSMutableArray array];
-            for (SCIResolvedMediaEntry *entry in tapBulkEntries) {
-                [selectionItems addObject:[SCIBulkSelectionItem itemWithThumbnailURL:entry.photoURL ?: entry.videoURL
+            NSString *tapBulkUsername = SPKResolvedBulkUsernameForContext(context, tapBulkEntries, tapBulkMedia);
+            NSMutableArray<SPKBulkSelectionItem *> *selectionItems = [NSMutableArray array];
+            for (SPKResolvedMediaEntry *entry in tapBulkEntries) {
+                [selectionItems addObject:[SPKBulkSelectionItem itemWithThumbnailURL:entry.photoURL ?: entry.videoURL
                                                                              isVideo:(entry.videoURL != nil)]];
             }
-            [SCIBulkMediaSelectionViewController presentFromViewController:SCIActionContextPresenter(context)
+            [SPKBulkMediaSelectionViewController presentFromViewController:SPKActionContextPresenter(context)
                                                                     items:selectionItems
                                                              destinations:destinations
                                                                completion:^(NSIndexSet *selectedIndexes, NSString *destinationIdentifier) {
-                NSArray<SCIResolvedMediaEntry *> *selectedEntries = [tapBulkEntries objectsAtIndexes:selectedIndexes];
+                NSArray<SPKResolvedMediaEntry *> *selectedEntries = [tapBulkEntries objectsAtIndexes:selectedIndexes];
                 if (selectedEntries.count == 0) return;
-                NSArray<SCIDownloadItemRequest *> *selectedItems = SCIBulkDownloadItemsFromEntries(selectedEntries, context.source, tapBulkUsername, tapBulkMedia);
-                UIViewController *presenter = SCIActionContextPresenter(context);
-                UIView *anchorView = SCIActionContextAnchorView(context);
-                SCIDownloadSourceSurface surface = [SCIDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
-                if ([SCIDownloadHelpers performBulkDownloadIdentifier:destinationIdentifier
+                NSArray<SPKDownloadItemRequest *> *selectedItems = SPKBulkDownloadItemsFromEntries(selectedEntries, context.source, tapBulkUsername, tapBulkMedia);
+                UIViewController *presenter = SPKActionContextPresenter(context);
+                UIView *anchorView = SPKActionContextAnchorView(context);
+                SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+                if ([SPKDownloadHelpers performBulkDownloadIdentifier:destinationIdentifier
                                                                 items:selectedItems
                                                             presenter:presenter
                                                            anchorView:anchorView
                                                         sourceSurface:surface]) {
                     return;
                 }
-                if ([destinationIdentifier isEqualToString:kSCIActionDownloadAllLinks]) {
-                    NSArray<NSString *> *links = SCIBulkDownloadLinksFromEntries(selectedEntries, tapBulkMedia);
+                if ([destinationIdentifier isEqualToString:kSPKActionDownloadAllLinks]) {
+                    NSArray<NSString *> *links = SPKBulkDownloadLinksFromEntries(selectedEntries, tapBulkMedia);
                     if (links.count == 0) {
-                        SCINotify(destinationIdentifier, @"No links available", nil, @"error_filled", SCINotificationToneError);
+                        SPKNotify(destinationIdentifier, @"No links available", nil, @"error_filled", SPKNotificationToneError);
                         return;
                     }
                     [UIPasteboard generalPasteboard].string = [links componentsJoinedByString:@"\n"];
-                    SCINotify(destinationIdentifier, SCICopiedDownloadURLTitleForSource(context.source, YES), [NSString stringWithFormat:@"%lu item%@", (unsigned long)links.count, links.count == 1 ? @"" : @"s"], @"copy_filled", SCINotificationToneForIconResource(@"copy_filled"));
+                    SPKNotify(destinationIdentifier, SPKCopiedDownloadURLTitleForSource(context.source, YES), [NSString stringWithFormat:@"%lu item%@", (unsigned long)links.count, links.count == 1 ? @"" : @"s"], @"copy_filled", SPKNotificationToneForIconResource(@"copy_filled"));
                 }
             }];
         }];
@@ -2998,50 +2998,50 @@ static NSArray<UIMenuElement *> *SCIBuildBulkMenuChildren(SCIActionButtonConfigu
     // collapsible sections. Title carries the carousel item count.
     NSString *baseTitle = sectionTitle.length > 0 ? sectionTitle : @"Bulk";
     NSString *title = [NSString stringWithFormat:@"%@ • %lu", baseTitle, (unsigned long)bulkEntries.count];
-    UIImage *bulkIcon = [[[SCIAssetUtils instagramIconNamed:(sectionIconName.length > 0 ? sectionIconName : @"carousel") pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIImage *bulkIcon = [[[SPKAssetUtils instagramIconNamed:(sectionIconName.length > 0 ? sectionIconName : @"carousel") pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
     UIMenuElement *section = collapsible
-        ? SCISubmenuOrSingleElement(title, bulkIcon, children)
+        ? SPKSubmenuOrSingleElement(title, bulkIcon, children)
         : [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:children];
     return section ? @[ section ] : @[];
 }
 
-void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context) {
+void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context) {
 	if (!button || !context) return;
-	BOOL legacyDiagnostics = SCIActionButtonLegacyDiagnosticsEnabled(context.source);
+	BOOL legacyDiagnostics = SPKActionButtonLegacyDiagnosticsEnabled(context.source);
 	if (legacyDiagnostics) {
-		SCILog(@"ActionButton", @"Configuring feed action button class=%@ view=%@ iOS=%@",
+		SPKLog(@"ActionButton", @"Configuring feed action button class=%@ view=%@ iOS=%@",
 			   NSStringFromClass(button.class),
 			   NSStringFromClass(context.view.class),
 			   [UIDevice currentDevice].systemVersion);
 	}
 
-    if (!objc_getAssociatedObject(button, kSCIActionButtonConfigurationObserverAssocKey)) {
+    if (!objc_getAssociatedObject(button, kSPKActionButtonConfigurationObserverAssocKey)) {
         __weak UIButton *weakObservedButton = button;
-        id token = [[NSNotificationCenter defaultCenter] addObserverForName:SCIActionButtonConfigurationDidChangeNotification
+        id token = [[NSNotificationCenter defaultCenter] addObserverForName:SPKActionButtonConfigurationDidChangeNotification
                                                                       object:nil
                                                                        queue:nil
                                                                   usingBlock:^(__unused NSNotification *note) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 UIButton *strongButton = weakObservedButton;
-                SCIActionButtonContext *storedContext = SCIActionButtonContextFromButton(strongButton);
+                SPKActionButtonContext *storedContext = SPKActionButtonContextFromButton(strongButton);
                 if (!strongButton || !storedContext) return;
-                objc_setAssociatedObject(strongButton, kSCIActionButtonMenuSignatureAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
-                SCIConfigureActionButton(strongButton, storedContext);
+                objc_setAssociatedObject(strongButton, kSPKActionButtonMenuSignatureAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                SPKConfigureActionButton(strongButton, storedContext);
             });
         }];
-        objc_setAssociatedObject(button, kSCIActionButtonConfigurationObserverAssocKey, token, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(button, kSPKActionButtonConfigurationObserverAssocKey, token, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
-	id media = SCIResolveMediaForContext(context);
-	NSArray<SCIResolvedMediaEntry *> *entries = SCIEntriesFromMedia(media);
-	NSInteger currentIndex = SCIResolveCurrentIndexForContext(context);
-    SCIResolvedMediaEntry *currentEntry = nil;
+	id media = SPKResolveMediaForContext(context);
+	NSArray<SPKResolvedMediaEntry *> *entries = SPKEntriesFromMedia(media);
+	NSInteger currentIndex = SPKResolveCurrentIndexForContext(context);
+    SPKResolvedMediaEntry *currentEntry = nil;
     if (entries.count > 0) {
-        currentEntry = entries[SCIClampedIndex(currentIndex, (NSInteger)entries.count)];
+        currentEntry = entries[SPKClampedIndex(currentIndex, (NSInteger)entries.count)];
 	}
-	NSArray<NSString *> *visibleActions = SCIVisibleActionsForContext(context, media, entries, currentIndex);
+	NSArray<NSString *> *visibleActions = SPKVisibleActionsForContext(context, media, entries, currentIndex);
 	if (legacyDiagnostics) {
-		SCILog(@"ActionButton", @"Feed action button resolved visibleActions=%lu entries=%lu currentIndex=%ld",
+		SPKLog(@"ActionButton", @"Feed action button resolved visibleActions=%lu entries=%lu currentIndex=%ld",
 			   (unsigned long)visibleActions.count,
 			   (unsigned long)entries.count,
 			   (long)currentIndex);
@@ -3051,30 +3051,30 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		button.hidden = YES;
 		button.menu = nil;
 		if (legacyDiagnostics) {
-			SCILog(@"ActionButton", @"Feed action button hidden: no visible actions");
+			SPKLog(@"ActionButton", @"Feed action button hidden: no visible actions");
 		}
 		return;
 	}
 
 	button.hidden = NO;
 
-	NSString *defaultIdentifier = SCIResolvedDefaultActionIdentifier(visibleActions, context.source);
-	UIImage *defaultImage = SCIButtonDefaultImage(defaultIdentifier, context.source, context);
-	SCISetButtonVisualImage(button, defaultImage, context.source, defaultIdentifier);
-	BOOL shouldOpenMenuOnTap = [defaultIdentifier isEqualToString:kSCIActionNone];
-	SCIActionButtonConfiguration *configuration = [SCIActionButtonConfiguration configurationForSource:context.source
-																						  topicTitle:context.settingsTitle ?: SCIActionButtonTopicTitleForSource(context.source)
-																					supportedActions:context.supportedActions ?: SCIActionButtonSupportedActionsForSource(context.source)
-																					 defaultSections:SCIActionButtonDefaultSectionsForSource(context.source)];
-    id bulkMedia = SCIResolveBulkMediaForContext(context);
-    NSArray<SCIResolvedMediaEntry *> *bulkEntries = SCIDownloadableEntries(SCIEntriesFromMedia(bulkMedia));
-	NSString *menuSignature = SCIActionButtonMenuSignature(context, configuration, visibleActions, defaultIdentifier, bulkEntries.count);
-	NSString *existingSignature = objc_getAssociatedObject(button, kSCIActionButtonMenuSignatureAssocKey);
+	NSString *defaultIdentifier = SPKResolvedDefaultActionIdentifier(visibleActions, context.source);
+	UIImage *defaultImage = SPKButtonDefaultImage(defaultIdentifier, context.source, context);
+	SPKSetButtonVisualImage(button, defaultImage, context.source, defaultIdentifier);
+	BOOL shouldOpenMenuOnTap = [defaultIdentifier isEqualToString:kSPKActionNone];
+	SPKActionButtonConfiguration *configuration = [SPKActionButtonConfiguration configurationForSource:context.source
+																						  topicTitle:context.settingsTitle ?: SPKActionButtonTopicTitleForSource(context.source)
+																					supportedActions:context.supportedActions ?: SPKActionButtonSupportedActionsForSource(context.source)
+																					 defaultSections:SPKActionButtonDefaultSectionsForSource(context.source)];
+    id bulkMedia = SPKResolveBulkMediaForContext(context);
+    NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(bulkMedia));
+	NSString *menuSignature = SPKActionButtonMenuSignature(context, configuration, visibleActions, defaultIdentifier, bulkEntries.count);
+	NSString *existingSignature = objc_getAssociatedObject(button, kSPKActionButtonMenuSignatureAssocKey);
 	if ([existingSignature isEqualToString:menuSignature] && button.menu != nil) {
 		button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
-		objc_setAssociatedObject(button, kSCIActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		if (legacyDiagnostics) {
-			SCILog(@"ActionButton", @"Feed action button reused menu default=%@ opensMenu=%@",
+			SPKLog(@"ActionButton", @"Feed action button reused menu default=%@ opensMenu=%@",
 				   defaultIdentifier ?: @"(nil)",
 				   shouldOpenMenuOnTap ? @"YES" : @"NO");
 		}
@@ -3083,54 +3083,54 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 
 	__weak UIButton *weakButton = button;
 	// No bespoke touch-down haptic: the resolved action emits its own completion haptic
-	// (via SCINotify, which already respects general_disable_haptics), and the menu-open
+	// (via SPKNotify, which already respects general_disable_haptics), and the menu-open
 	// (None) path uses the system context-menu haptic. A selection haptic on touch-down
 	// stacked a second, wrong-feeling tick on top of those. Clear any stale one left on a
 	// reused button by an earlier configure pass.
-	UIAction *oldHapticAction = objc_getAssociatedObject(button, kSCIActionButtonHapticActionAssocKey);
+	UIAction *oldHapticAction = objc_getAssociatedObject(button, kSPKActionButtonHapticActionAssocKey);
 	if (oldHapticAction) {
 		[button removeAction:oldHapticAction forControlEvents:UIControlEventTouchDown];
-		objc_setAssociatedObject(button, kSCIActionButtonHapticActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKActionButtonHapticActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
-	UIAction *oldTapAction = objc_getAssociatedObject(button, kSCIActionButtonTapActionAssocKey);
+	UIAction *oldTapAction = objc_getAssociatedObject(button, kSPKActionButtonTapActionAssocKey);
 	if (oldTapAction) [button removeAction:oldTapAction forControlEvents:UIControlEventTouchUpInside];
 
 	if (shouldOpenMenuOnTap) {
-		objc_setAssociatedObject(button, kSCIActionButtonTapActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKActionButtonTapActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	} else {
 		UIAction *newTapAction = [UIAction actionWithHandler:^(__unused UIAction *action) {
 			UIButton *strongButton = weakButton;
-			SCIActionButtonContext *strongContext = SCIActionButtonContextFromButton(strongButton);
+			SPKActionButtonContext *strongContext = SPKActionButtonContextFromButton(strongButton);
 			if (!strongContext) return;
 
-			id tapMedia = SCIResolveMediaForContext(strongContext);
-			NSArray<SCIResolvedMediaEntry *> *tapEntries = SCIEntriesFromMedia(tapMedia);
-			NSArray<NSString *> *tapVisibleActions = SCIVisibleActionsForContext(strongContext, tapMedia, tapEntries, SCIResolveCurrentIndexForContext(strongContext));
-			NSString *tapIdentifier = SCIResolvedDefaultActionIdentifier(tapVisibleActions, strongContext.source);
-			SCIExecuteActionIdentifier(tapIdentifier, strongContext, YES);
+			id tapMedia = SPKResolveMediaForContext(strongContext);
+			NSArray<SPKResolvedMediaEntry *> *tapEntries = SPKEntriesFromMedia(tapMedia);
+			NSArray<NSString *> *tapVisibleActions = SPKVisibleActionsForContext(strongContext, tapMedia, tapEntries, SPKResolveCurrentIndexForContext(strongContext));
+			NSString *tapIdentifier = SPKResolvedDefaultActionIdentifier(tapVisibleActions, strongContext.source);
+			SPKExecuteActionIdentifier(tapIdentifier, strongContext, YES);
 		}];
 		[button addAction:newTapAction forControlEvents:UIControlEventTouchUpInside];
-		objc_setAssociatedObject(button, kSCIActionButtonTapActionAssocKey, newTapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(button, kSPKActionButtonTapActionAssocKey, newTapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	}
 
 	NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray array];
 	// Iterate the configured section order. Non-bulk sections render from their
 	// visible (enabled) actions; the "bulk" section renders the derived carousel
 	// actions lazily so it tracks the live carousel — both honor the user's order.
-	NSArray<SCIActionMenuSection *> *visibleSectionsList = [configuration visibleSections];
-	NSMutableDictionary<NSString *, SCIActionMenuSection *> *visibleSectionsByID = [NSMutableDictionary dictionary];
-	for (SCIActionMenuSection *visibleSection in visibleSectionsList) {
+	NSArray<SPKActionMenuSection *> *visibleSectionsList = [configuration visibleSections];
+	NSMutableDictionary<NSString *, SPKActionMenuSection *> *visibleSectionsByID = [NSMutableDictionary dictionary];
+	for (SPKActionMenuSection *visibleSection in visibleSectionsList) {
 		if (visibleSection.identifier) visibleSectionsByID[visibleSection.identifier] = visibleSection;
 	}
 	BOOL firstGroup = YES;
-	for (SCIActionMenuSection *orderedSection in configuration.sections) {
+	for (SPKActionMenuSection *orderedSection in configuration.sections) {
 		if ([orderedSection.identifier isEqualToString:@"bulk"]) {
 			NSString *bulkTitle = orderedSection.title;
 			NSString *bulkIconName = orderedSection.iconName;
 			BOOL bulkCollapsible = orderedSection.collapsible;
 			UIDeferredMenuElement *bulkDeferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
-				completion(SCIBuildBulkMenuChildren(configuration, context, bulkTitle, bulkIconName, bulkCollapsible));
+				completion(SPKBuildBulkMenuChildren(configuration, context, bulkTitle, bulkIconName, bulkCollapsible));
 			}];
 			if (!firstGroup) {
 				[menuElements addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[]]];
@@ -3139,7 +3139,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 			firstGroup = NO;
 			continue;
 		}
-		SCIActionMenuSection *group = visibleSectionsByID[orderedSection.identifier];
+		SPKActionMenuSection *group = visibleSectionsByID[orderedSection.identifier];
 		if (!group) continue;
 		NSString *title = group.title;
 		NSArray<NSString *> *identifiers = group.actions;
@@ -3150,33 +3150,33 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		for (NSString *identifier in identifiers) {
 			if (![visibleActions containsObject:identifier]) continue;
 
-            if (context.source == SCIActionButtonSourceProfile && [identifier isEqualToString:kSCIActionProfileCopyInfo]) {
+            if (context.source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionProfileCopyInfo]) {
                 NSMutableArray<UIMenuElement *> *copyChildren = [NSMutableArray array];
-                for (NSString *copyIdentifier in SCIProfileConfiguredCopyInfoActions()) {
-                    [copyChildren addObject:[UIAction actionWithTitle:SCIActionButtonTitleForIdentifier(copyIdentifier)
-                                                                image:SCIActionButtonMenuIconForContext(copyIdentifier, context, 22.0)
+                for (NSString *copyIdentifier in SPKProfileConfiguredCopyInfoActions()) {
+                    [copyChildren addObject:[UIAction actionWithTitle:SPKActionButtonTitleForIdentifier(copyIdentifier)
+                                                                image:SPKActionButtonMenuIconForContext(copyIdentifier, context, 22.0)
                                                            identifier:nil
                                                               handler:^(__unused UIAction *action) {
                         UIButton *strongButton = weakButton;
                         if (strongButton) {
-                            objc_setAssociatedObject(strongButton, kSCIActionButtonLastMenuActionAssocKey, copyIdentifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                            objc_setAssociatedObject(strongButton, kSPKActionButtonLastMenuActionAssocKey, copyIdentifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
                         }
-                        SCIExecuteActionIdentifier(copyIdentifier, context, NO);
+                        SPKExecuteActionIdentifier(copyIdentifier, context, NO);
                     }]];
                 }
-                profileCopyInfoElement = SCISubmenuOrSingleElement(SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry),
-                                                                   SCIActionButtonMenuIconForContext(identifier, context, 22.0),
+                profileCopyInfoElement = SPKSubmenuOrSingleElement(SPKActionButtonDisplayTitleForContext(identifier, context, currentEntry),
+                                                                   SPKActionButtonMenuIconForContext(identifier, context, 22.0),
                                                                    copyChildren);
             } else {
-                UIAction *menuAction = [UIAction actionWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
-                                                           image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
+                UIAction *menuAction = [UIAction actionWithTitle:SPKActionButtonDisplayTitleForContext(identifier, context, currentEntry)
+                                                           image:SPKActionButtonMenuIconForContext(identifier, context, 22.0)
                                                       identifier:nil
                                                          handler:^(__unused UIAction *action) {
                     UIButton *strongButton = weakButton;
                     if (strongButton) {
-                        objc_setAssociatedObject(strongButton, kSCIActionButtonLastMenuActionAssocKey, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                        objc_setAssociatedObject(strongButton, kSPKActionButtonLastMenuActionAssocKey, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
                     }
-                    SCIExecuteActionIdentifier(identifier, context, NO);
+                    SPKExecuteActionIdentifier(identifier, context, NO);
                 }];
                 [groupElements addObject:menuAction];
             }
@@ -3203,7 +3203,7 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		if (group.collapsible && groupElements.count > 1) {
 			UIImage *sectionImage = nil;
 			if (group.iconName.length > 0) {
-				sectionImage = [[[SCIAssetUtils instagramIconNamed:group.iconName pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+				sectionImage = [[[SPKAssetUtils instagramIconNamed:group.iconName pointSize:22.0] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] imageWithTintColor:[UIColor labelColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
 			}
 			UIMenu *submenu = [UIMenu menuWithTitle:title ?: @""
 											 image:sectionImage
@@ -3221,10 +3221,10 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 		firstGroup = NO;
 	}
 
-    if (context.source == SCIActionButtonSourceProfile) {
+    if (context.source == SPKActionButtonSourceProfile) {
         UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
-            id freshMedia = SCIResolveMediaForContext(context);
-            completion(SCIProfileInfoMenuElements(freshMedia));
+            id freshMedia = SPKResolveMediaForContext(context);
+            completion(SPKProfileInfoMenuElements(freshMedia));
         }];
         [menuElements addObject:[UIMenu menuWithTitle:@""
                                                 image:nil
@@ -3235,15 +3235,15 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
 
 	if (menuElements.count == 0) {
 		for (NSString *identifier in visibleActions) {
-			[menuElements addObject:[UIAction actionWithTitle:SCIActionButtonDisplayTitleForContext(identifier, context, currentEntry)
-														image:SCIActionButtonMenuIconForContext(identifier, context, 22.0)
+			[menuElements addObject:[UIAction actionWithTitle:SPKActionButtonDisplayTitleForContext(identifier, context, currentEntry)
+														image:SPKActionButtonMenuIconForContext(identifier, context, 22.0)
 												   identifier:nil
 													  handler:^(__unused UIAction *action) {
 				UIButton *strongButton = weakButton;
 				if (strongButton) {
-					objc_setAssociatedObject(strongButton, kSCIActionButtonLastMenuActionAssocKey, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
+					objc_setAssociatedObject(strongButton, kSPKActionButtonLastMenuActionAssocKey, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
 				}
-				SCIExecuteActionIdentifier(identifier, context, NO);
+				SPKExecuteActionIdentifier(identifier, context, NO);
 			}]];
 		}
 	}
@@ -3251,10 +3251,10 @@ void SCIConfigureActionButton(UIButton *button, SCIActionButtonContext *context)
     UIMenu *fullMenu = [UIMenu menuWithTitle:@"" children:menuElements];
     button.menu = fullMenu;
 	button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
-	objc_setAssociatedObject(button, kSCIActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	objc_setAssociatedObject(button, kSCIActionButtonMenuSignatureAssocKey, menuSignature, OBJC_ASSOCIATION_COPY_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	objc_setAssociatedObject(button, kSPKActionButtonMenuSignatureAssocKey, menuSignature, OBJC_ASSOCIATION_COPY_NONATOMIC);
 	if (legacyDiagnostics) {
-		SCILog(@"ActionButton", @"Feed action button menu complete elements=%lu default=%@ opensMenu=%@",
+		SPKLog(@"ActionButton", @"Feed action button menu complete elements=%lu default=%@ opensMenu=%@",
 			   (unsigned long)menuElements.count,
 			   defaultIdentifier ?: @"(nil)",
 			   shouldOpenMenuOnTap ? @"YES" : @"NO");

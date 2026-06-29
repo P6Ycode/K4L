@@ -1,20 +1,20 @@
 #import "../../Utils.h"
 
-static NSString *const kSCIEnhancedMediaResolutionDefaultsKey = @"downloads_enhanced_media_resolution";
+static NSString *const kSPKEnhancedMediaResolutionDefaultsKey = @"downloads_enhanced_media_resolution";
 
-static const NSInteger kSCIHighResUserAgentWidth = 2064;
-static const NSInteger kSCIHighResUserAgentHeight = 2752;
-static const CGFloat kSCIHighResUserAgentScale = 3.0;
+static const NSInteger kSPKHighResUserAgentWidth = 2064;
+static const NSInteger kSPKHighResUserAgentHeight = 2752;
+static const CGFloat kSPKHighResUserAgentScale = 3.0;
 
-static BOOL SCIEnhancedMediaResolutionEnabled(void) {
-	return [SCIUtils getBoolPref:kSCIEnhancedMediaResolutionDefaultsKey];
+static BOOL SPKEnhancedMediaResolutionEnabled(void) {
+	return [SPKUtils getBoolPref:kSPKEnhancedMediaResolutionDefaultsKey];
 }
 
 @interface IGURLRequest : NSMutableURLRequest
 @end
 
 /// Replaces `\d{3,4}x\d{3,4}` and `scale=\d+\.\d+` in Instagram's UA.
-static NSString *SCIHighResUserAgentStringFromString(NSString *userAgent) {
+static NSString *SPKHighResUserAgentStringFromString(NSString *userAgent) {
 	if (userAgent.length == 0) {
 		return userAgent;
 	}
@@ -24,8 +24,8 @@ static NSString *SCIHighResUserAgentStringFromString(NSString *userAgent) {
 																					options:0
 																					  error:&error];
 	NSString *dimensionTemplate = [NSString stringWithFormat:@"%ldx%ld",
-															 (long)kSCIHighResUserAgentWidth,
-															 (long)kSCIHighResUserAgentHeight];
+															 (long)kSPKHighResUserAgentWidth,
+															 (long)kSPKHighResUserAgentHeight];
 	NSString *step1 = [dimensionRegex stringByReplacingMatchesInString:userAgent
 															   options:0
 																 range:NSMakeRange(0, userAgent.length)
@@ -34,15 +34,15 @@ static NSString *SCIHighResUserAgentStringFromString(NSString *userAgent) {
 	NSRegularExpression *scaleRegex = [NSRegularExpression regularExpressionWithPattern:@"scale=\\d+\\.\\d+"
 																				options:0
 																				  error:&error];
-	NSString *scaleTemplate = [NSString stringWithFormat:@"scale=%.2f", kSCIHighResUserAgentScale];
+	NSString *scaleTemplate = [NSString stringWithFormat:@"scale=%.2f", kSPKHighResUserAgentScale];
 	return [scaleRegex stringByReplacingMatchesInString:step1
 												options:0
 												  range:NSMakeRange(0, step1.length)
 										   withTemplate:scaleTemplate];
 }
 
-static NSString *SCIHighResHeaderValueIfNeeded(NSString *value, NSString *field) {
-	if (!SCIEnhancedMediaResolutionEnabled()) {
+static NSString *SPKHighResHeaderValueIfNeeded(NSString *value, NSString *field) {
+	if (!SPKEnhancedMediaResolutionEnabled()) {
 		return value;
 	}
 	if (![value isKindOfClass:[NSString class]] || ![field isKindOfClass:[NSString class]] || field.length == 0) {
@@ -51,19 +51,19 @@ static NSString *SCIHighResHeaderValueIfNeeded(NSString *value, NSString *field)
 	if ([field caseInsensitiveCompare:@"User-Agent"] != NSOrderedSame) {
 		return value;
 	}
-	return SCIHighResUserAgentStringFromString(value);
+	return SPKHighResUserAgentStringFromString(value);
 }
 
-%group SCIEnhancedMediaResolutionHooks
+%group SPKEnhancedMediaResolutionHooks
 
 %hook NSMutableURLRequest
 
 - (void)setValue:(NSString *)value forHTTPHeaderField:(NSString *)field {
-	%orig(SCIHighResHeaderValueIfNeeded(value, field), field);
+	%orig(SPKHighResHeaderValueIfNeeded(value, field), field);
 }
 
 - (void)setAllHTTPHeaderFields:(NSDictionary *)headerFields {
-	if (!SCIEnhancedMediaResolutionEnabled() || headerFields.count == 0) {
+	if (!SPKEnhancedMediaResolutionEnabled() || headerFields.count == 0) {
 		%orig(headerFields);
 		return;
 	}
@@ -78,7 +78,7 @@ static NSString *SCIHighResHeaderValueIfNeeded(NSString *value, NSString *field)
 		}
 		id existing = headers[key];
 		if ([existing isKindOfClass:[NSString class]]) {
-			headers[key] = SCIHighResUserAgentStringFromString((NSString *)existing);
+			headers[key] = SPKHighResUserAgentStringFromString((NSString *)existing);
 		}
 		break;
 	}
@@ -90,18 +90,18 @@ static NSString *SCIHighResHeaderValueIfNeeded(NSString *value, NSString *field)
 %hook IGURLRequest
 
 - (void)setValue:(NSString *)value forHTTPHeaderField:(NSString *)field {
-	%orig(SCIHighResHeaderValueIfNeeded(value, field), field);
+	%orig(SPKHighResHeaderValueIfNeeded(value, field), field);
 }
 
 %end
 
 %end
 
-extern "C" void SCIInstallEnhancedMediaResolutionHooksIfEnabled(void) {
-	if (!SCIEnhancedMediaResolutionEnabled()) return;
+extern "C" void SPKInstallEnhancedMediaResolutionHooksIfEnabled(void) {
+	if (!SPKEnhancedMediaResolutionEnabled()) return;
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		%init(SCIEnhancedMediaResolutionHooks);
+		%init(SPKEnhancedMediaResolutionHooks);
 	});
 }

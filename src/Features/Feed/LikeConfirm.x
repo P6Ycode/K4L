@@ -3,38 +3,38 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-extern void SCIMarkStoryAsSeenForViewWithAdvancePref(UIView *view, NSString *advancePrefKey);
-extern UIView *SCIActiveStoryOverlayForInteractions(void);
+extern void SPKMarkStoryAsSeenForViewWithAdvancePref(UIView *view, NSString *advancePrefKey);
+extern UIView *SPKActiveStoryOverlayForInteractions(void);
 
-static inline BOOL SCIStoryMarkSeenOnLikeEnabled(void) {
-    return [SCIUtils getBoolPref:@"stories_mark_seen_on_like"];
+static inline BOOL SPKStoryMarkSeenOnLikeEnabled(void) {
+    return [SPKUtils getBoolPref:@"stories_mark_seen_on_like"];
 }
 
-static inline BOOL SCIStoryMarkSeenOnReplyEnabled(void) {
-    return [SCIUtils getBoolPref:@"stories_mark_seen_on_reply"];
+static inline BOOL SPKStoryMarkSeenOnReplyEnabled(void) {
+    return [SPKUtils getBoolPref:@"stories_mark_seen_on_reply"];
 }
 
-static inline BOOL SCIStoryQuickReactionConfirmEnabled(void) {
-    return [SCIUtils getBoolPref:@"stories_confirm_quick_reaction"];
+static inline BOOL SPKStoryQuickReactionConfirmEnabled(void) {
+    return [SPKUtils getBoolPref:@"stories_confirm_quick_reaction"];
 }
 
-static inline BOOL SCIStoryInteractionHooksNeeded(void) {
-    return [SCIUtils getBoolPref:@"stories_confirm_like"] ||
-        SCIStoryMarkSeenOnLikeEnabled() ||
-        SCIStoryMarkSeenOnReplyEnabled() ||
-        [SCIUtils getBoolPref:@"stories_advance_on_like_seen"] ||
-        [SCIUtils getBoolPref:@"stories_advance_on_reply_seen"] ||
-        SCIStoryQuickReactionConfirmEnabled();
+static inline BOOL SPKStoryInteractionHooksNeeded(void) {
+    return [SPKUtils getBoolPref:@"stories_confirm_like"] ||
+        SPKStoryMarkSeenOnLikeEnabled() ||
+        SPKStoryMarkSeenOnReplyEnabled() ||
+        [SPKUtils getBoolPref:@"stories_advance_on_like_seen"] ||
+        [SPKUtils getBoolPref:@"stories_advance_on_reply_seen"] ||
+        SPKStoryQuickReactionConfirmEnabled();
 }
 
-static inline id SCIObjectForSelectorIfAvailable(id target, NSString *selectorName) {
+static inline id SPKObjectForSelectorIfAvailable(id target, NSString *selectorName) {
     if (!target || !selectorName.length) return nil;
     SEL selector = NSSelectorFromString(selectorName);
     if (![target respondsToSelector:selector]) return nil;
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-static BOOL SCIBoolValueForSelector(id target, NSString *selectorName, BOOL *resolved) {
+static BOOL SPKBoolValueForSelector(id target, NSString *selectorName, BOOL *resolved) {
     if (resolved) *resolved = NO;
     if (!target || !selectorName.length) return NO;
 
@@ -63,13 +63,13 @@ static BOOL SCIBoolValueForSelector(id target, NSString *selectorName, BOOL *res
         return NO;
     }
 
-    NSNumber *number = [SCIUtils numericValueForObj:target selectorName:selectorName];
+    NSNumber *number = [SPKUtils numericValueForObj:target selectorName:selectorName];
     if (!number) return NO;
     if (resolved) *resolved = YES;
     return [number boolValue];
 }
 
-static BOOL SCILikeStateFromControl(id control, BOOL *resolved) {
+static BOOL SPKLikeStateFromControl(id control, BOOL *resolved) {
     if (resolved) *resolved = NO;
     if (!control) return NO;
     if ([control isKindOfClass:[UIControl class]]) {
@@ -79,7 +79,7 @@ static BOOL SCILikeStateFromControl(id control, BOOL *resolved) {
     return NO;
 }
 
-static BOOL SCILikeStateFromModel(id model, BOOL *resolved) {
+static BOOL SPKLikeStateFromModel(id model, BOOL *resolved) {
     if (resolved) *resolved = NO;
     if (!model) return NO;
 
@@ -92,7 +92,7 @@ static BOOL SCILikeStateFromModel(id model, BOOL *resolved) {
         @"liked"
     ]) {
         BOOL found = NO;
-        BOOL liked = SCIBoolValueForSelector(model, selectorName, &found);
+        BOOL liked = SPKBoolValueForSelector(model, selectorName, &found);
         if (found) {
             if (resolved) *resolved = YES;
             return liked;
@@ -101,118 +101,118 @@ static BOOL SCILikeStateFromModel(id model, BOOL *resolved) {
     return NO;
 }
 
-static void SCIPresentLikeToggleConfirmation(BOOL isUnlike,
+static void SPKPresentLikeToggleConfirmation(BOOL isUnlike,
                                              NSString *likeTitle,
                                              NSString *likeMessage,
                                              NSString *unlikeTitle,
                                              NSString *unlikeMessage,
                                              void (^handler)(void)) {
-    [SCIUtils showConfirmation:handler
+    [SPKUtils showConfirmation:handler
                          title:(isUnlike ? unlikeTitle : likeTitle)
                        message:(isUnlike ? unlikeMessage : likeMessage)];
 }
 
-static id SCILikeButtonFromContext(id context) {
+static id SPKLikeButtonFromContext(id context) {
     if (!context) return nil;
-    id button = SCIObjectForSelectorIfAvailable(context, @"likeButton");
+    id button = SPKObjectForSelectorIfAvailable(context, @"likeButton");
     if (button) return button;
 
-    id ufiView = [SCIUtils getIvarForObj:context name:"_ufiButtonBarView"];
-    if (!ufiView) ufiView = SCIObjectForSelectorIfAvailable(context, @"ufiButtonBarView");
+    id ufiView = [SPKUtils getIvarForObj:context name:"_ufiButtonBarView"];
+    if (!ufiView) ufiView = SPKObjectForSelectorIfAvailable(context, @"ufiButtonBarView");
     if (!ufiView) return nil;
 
-    return SCIObjectForSelectorIfAvailable(ufiView, @"likeButton");
+    return SPKObjectForSelectorIfAvailable(ufiView, @"likeButton");
 }
 
-static id SCIMediaFromContext(id context) {
+static id SPKMediaFromContext(id context) {
     if (!context) return nil;
-    id media = [SCIUtils getIvarForObj:context name:"_media"];
+    id media = [SPKUtils getIvarForObj:context name:"_media"];
     if (media) return media;
 
-    media = SCIObjectForSelectorIfAvailable(context, @"media");
+    media = SPKObjectForSelectorIfAvailable(context, @"media");
     if (media) return media;
 
-    id viewModel = [SCIUtils getIvarForObj:context name:"_cellViewModel_DO_NOT_USE"];
-    if (!viewModel) viewModel = SCIObjectForSelectorIfAvailable(context, @"cellViewModel");
+    id viewModel = [SPKUtils getIvarForObj:context name:"_cellViewModel_DO_NOT_USE"];
+    if (!viewModel) viewModel = SPKObjectForSelectorIfAvailable(context, @"cellViewModel");
     if (!viewModel) return nil;
 
-    return SCIObjectForSelectorIfAvailable(viewModel, @"media");
+    return SPKObjectForSelectorIfAvailable(viewModel, @"media");
 }
 
-static id SCICommentFromContext(id context) {
+static id SPKCommentFromContext(id context) {
     if (!context) return nil;
-    id comment = [SCIUtils getIvarForObj:context name:"_commentModel"];
+    id comment = [SPKUtils getIvarForObj:context name:"_commentModel"];
     if (comment) return comment;
 
-    comment = [SCIUtils getIvarForObj:context name:"_comment"];
+    comment = [SPKUtils getIvarForObj:context name:"_comment"];
     if (comment) return comment;
 
-    comment = SCIObjectForSelectorIfAvailable(context, @"commentModel");
+    comment = SPKObjectForSelectorIfAvailable(context, @"commentModel");
     if (comment) return comment;
 
-    return SCIObjectForSelectorIfAvailable(context, @"comment");
+    return SPKObjectForSelectorIfAvailable(context, @"comment");
 }
 
-static BOOL SCIFeedLikeIsUnlike(id button, id context) {
+static BOOL SPKFeedLikeIsUnlike(id button, id context) {
     BOOL resolved = NO;
-    BOOL liked = SCILikeStateFromControl(button, &resolved);
+    BOOL liked = SPKLikeStateFromControl(button, &resolved);
     if (!resolved) {
-        id likeButton = SCILikeButtonFromContext(context);
-        liked = SCILikeStateFromControl(likeButton, &resolved);
+        id likeButton = SPKLikeButtonFromContext(context);
+        liked = SPKLikeStateFromControl(likeButton, &resolved);
     }
     if (!resolved) {
-        id media = SCIMediaFromContext(context);
-        liked = SCILikeStateFromModel(media, &resolved);
+        id media = SPKMediaFromContext(context);
+        liked = SPKLikeStateFromModel(media, &resolved);
     }
     return resolved && liked;
 }
 
-static BOOL SCICommentLikeIsUnlike(id button, id context) {
+static BOOL SPKCommentLikeIsUnlike(id button, id context) {
     BOOL resolved = NO;
-    BOOL liked = SCILikeStateFromControl(button, &resolved);
+    BOOL liked = SPKLikeStateFromControl(button, &resolved);
     if (!resolved) {
-        id likeButton = SCILikeButtonFromContext(context);
-        liked = SCILikeStateFromControl(likeButton, &resolved);
+        id likeButton = SPKLikeButtonFromContext(context);
+        liked = SPKLikeStateFromControl(likeButton, &resolved);
     }
     if (!resolved) {
-        id comment = SCICommentFromContext(context);
-        liked = SCILikeStateFromModel(comment, &resolved);
+        id comment = SPKCommentFromContext(context);
+        liked = SPKLikeStateFromModel(comment, &resolved);
     }
     return resolved && liked;
 }
 
-static void SCIStoryMarkSeenForInteractionView(UIView *view, NSString *advancePrefKey) {
+static void SPKStoryMarkSeenForInteractionView(UIView *view, NSString *advancePrefKey) {
     if (!view) return;
-    SCIMarkStoryAsSeenForViewWithAdvancePref(view, advancePrefKey);
+    SPKMarkStoryAsSeenForViewWithAdvancePref(view, advancePrefKey);
 }
 
-static void SCIStoryReplySideEffects(void) {
-    if (!SCIStoryMarkSeenOnReplyEnabled()) return;
-    UIView *overlay = SCIActiveStoryOverlayForInteractions();
+static void SPKStoryReplySideEffects(void) {
+    if (!SPKStoryMarkSeenOnReplyEnabled()) return;
+    UIView *overlay = SPKActiveStoryOverlayForInteractions();
     if (!overlay) return;
-    SCIStoryMarkSeenForInteractionView(overlay, @"stories_advance_on_reply_seen");
+    SPKStoryMarkSeenForInteractionView(overlay, @"stories_advance_on_reply_seen");
 }
 
 ///////////////////////////////////////////////////////////
 
 // Confirmation handlers
 
-static BOOL SCIBypassFeedPostLikeConfirm = NO;
+static BOOL SPKBypassFeedPostLikeConfirm = NO;
 
-#define SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig) \
+#define SPK_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig) \
     do {                                                 \
-        SCIBypassFeedPostLikeConfirm = YES;              \
+        SPKBypassFeedPostLikeConfirm = YES;              \
         @try {                                           \
             orig;                                        \
         } @finally {                                     \
-            SCIBypassFeedPostLikeConfirm = NO;           \
+            SPKBypassFeedPostLikeConfirm = NO;           \
         }                                                \
     } while (0)
 
-#define SCICONFIRMLIKE(prefKey, logText, titleText, messageText, orig) \
-    if ([SCIUtils getBoolPref:prefKey]) {                              \
-        SCILog(@"General", @"[SCInsta] %@", logText);                               \
-        [SCIUtils showConfirmation:^(void) { orig; }                   \
+#define SPKCONFIRMLIKE(prefKey, logText, titleText, messageText, orig) \
+    if ([SPKUtils getBoolPref:prefKey]) {                              \
+        SPKLog(@"General", @"[Sparkle] %@", logText);                               \
+        [SPKUtils showConfirmation:^(void) { orig; }                   \
                                  title:titleText                       \
                                message:messageText];                   \
     }                                                                  \
@@ -221,19 +221,19 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }                                                                  \
 
 #define CONFIRMFEEDPOSTLIKE(context, button, orig) \
-    if (SCIBypassFeedPostLikeConfirm) { \
+    if (SPKBypassFeedPostLikeConfirm) { \
         return orig; \
     } \
-    if ([SCIUtils getBoolPref:@"feed_confirm_post_like"]) { \
-        BOOL isUnlike = SCIFeedLikeIsUnlike((button), (context)); \
-        SCILog(@"General", @"[SCInsta] Confirm feed post %@ triggered", isUnlike ? @"unlike" : @"like"); \
-        SCIPresentLikeToggleConfirmation( \
+    if ([SPKUtils getBoolPref:@"feed_confirm_post_like"]) { \
+        BOOL isUnlike = SPKFeedLikeIsUnlike((button), (context)); \
+        SPKLog(@"General", @"[Sparkle] Confirm feed post %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SPKPresentLikeToggleConfirmation( \
             isUnlike, \
             @"Confirm Post Like", \
             @"Are you sure you want to like this post?", \
             @"Confirm Post Unlike", \
             @"Are you sure you want to unlike this post?", \
-            ^{ SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
+            ^{ SPK_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
         ); \
     } \
     else { \
@@ -241,27 +241,27 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMFEEDDOUBLETAPLIKE(context, orig) \
-    if ([SCIUtils getBoolPref:@"feed_confirm_double_tap_like"]) { \
-        BOOL isUnlike = SCIFeedLikeIsUnlike(nil, (context)); \
-        SCILog(@"General", @"[SCInsta] Confirm feed double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
-        SCIPresentLikeToggleConfirmation( \
+    if ([SPKUtils getBoolPref:@"feed_confirm_double_tap_like"]) { \
+        BOOL isUnlike = SPKFeedLikeIsUnlike(nil, (context)); \
+        SPKLog(@"General", @"[Sparkle] Confirm feed double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SPKPresentLikeToggleConfirmation( \
             isUnlike, \
             @"Confirm Post Like", \
             @"Are you sure you want to like this post?", \
             @"Confirm Post Unlike", \
             @"Are you sure you want to unlike this post?", \
-            ^{ SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
+            ^{ SPK_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); } \
         ); \
     } \
     else { \
-        SCI_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); \
+        SPK_RUN_WITH_FEED_POST_LIKE_CONFIRM_BYPASS(orig); \
     }
 
 #define CONFIRMCOMMENTLIKE(context, button, orig) \
-    if ([SCIUtils getBoolPref:@"feed_confirm_comment_like"]) { \
-        BOOL isUnlike = SCICommentLikeIsUnlike((button), (context)); \
-        SCILog(@"General", @"[SCInsta] Confirm comment %@ triggered", isUnlike ? @"unlike" : @"like"); \
-        SCIPresentLikeToggleConfirmation( \
+    if ([SPKUtils getBoolPref:@"feed_confirm_comment_like"]) { \
+        BOOL isUnlike = SPKCommentLikeIsUnlike((button), (context)); \
+        SPKLog(@"General", @"[Sparkle] Confirm comment %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SPKPresentLikeToggleConfirmation( \
             isUnlike, \
             @"Confirm Comment Like", \
             @"Are you sure you want to like this comment?", \
@@ -274,10 +274,10 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMREELSLIKE(context, button, orig) \
-    if ([SCIUtils getBoolPref:@"reels_confirm_like"]) { \
-        BOOL isUnlike = SCIFeedLikeIsUnlike((button), (context)); \
-        SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like"); \
-        SCIPresentLikeToggleConfirmation( \
+    if ([SPKUtils getBoolPref:@"reels_confirm_like"]) { \
+        BOOL isUnlike = SPKFeedLikeIsUnlike((button), (context)); \
+        SPKLog(@"General", @"[Sparkle] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SPKPresentLikeToggleConfirmation( \
             isUnlike, \
             @"Confirm Reel Like", \
             @"Are you sure you want to like this reel?", \
@@ -290,10 +290,10 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMREELSDOUBLETAPLIKE(context, orig) \
-    if ([SCIUtils getBoolPref:@"reels_confirm_double_tap_like"]) { \
-        BOOL isUnlike = SCIFeedLikeIsUnlike(nil, (context)); \
-        SCILog(@"General", @"[SCInsta] Confirm reels double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
-        SCIPresentLikeToggleConfirmation( \
+    if ([SPKUtils getBoolPref:@"reels_confirm_double_tap_like"]) { \
+        BOOL isUnlike = SPKFeedLikeIsUnlike(nil, (context)); \
+        SPKLog(@"General", @"[Sparkle] Confirm reels double-tap %@ triggered", isUnlike ? @"unlike" : @"like"); \
+        SPKPresentLikeToggleConfirmation( \
             isUnlike, \
             @"Confirm Reel Like", \
             @"Are you sure you want to like this reel?", \
@@ -308,7 +308,7 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 ///////////////////////////////////////////////////////////
 
 // Liking posts
-%group SCILikeConfirmHooks
+%group SPKLikeConfirmHooks
 
 %hook IGUFIButtonBarView
 - (void)_onLikeButtonPressed {
@@ -405,12 +405,12 @@ static BOOL SCIBypassFeedPostLikeConfirm = NO;
 %end
 
 // Liking stories (newer Instagram builds)
-static void (*orig_sciStoryLikeTap)(id, SEL, id);
-static void new_sciStoryLikeTap(id self, SEL _cmd, id button) {
-    if (![SCIUtils getBoolPref:@"stories_confirm_like"]) {
-        orig_sciStoryLikeTap(self, _cmd, button);
-        if (SCIStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
-            SCIStoryMarkSeenForInteractionView((UIView *)button, @"stories_advance_on_like_seen");
+static void (*orig_spkStoryLikeTap)(id, SEL, id);
+static void new_spkStoryLikeTap(id self, SEL _cmd, id button) {
+    if (![SPKUtils getBoolPref:@"stories_confirm_like"]) {
+        orig_spkStoryLikeTap(self, _cmd, button);
+        if (SPKStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
+            SPKStoryMarkSeenForInteractionView((UIView *)button, @"stories_advance_on_like_seen");
         }
         return;
     }
@@ -421,16 +421,16 @@ static void new_sciStoryLikeTap(id self, SEL _cmd, id button) {
     UIButton *btn = [button isKindOfClass:[UIButton class]] ? (UIButton *)button : nil;
     SEL setLikedSel = NSSelectorFromString(@"setIsLiked:animated:");
 
-    [SCIUtils showConfirmation:^{
+    [SPKUtils showConfirmation:^{
         if (btn) {
             [btn setSelected:isSelected];
             if ([btn respondsToSelector:setLikedSel]) {
                 ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(btn, setLikedSel, isSelected, YES);
             }
         }
-        orig_sciStoryLikeTap(self, _cmd, button);
-        if (!isUnlike && SCIStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
-            SCIStoryMarkSeenForInteractionView((UIView *)button, @"stories_advance_on_like_seen");
+        orig_spkStoryLikeTap(self, _cmd, button);
+        if (!isUnlike && SPKStoryMarkSeenOnLikeEnabled() && [button isKindOfClass:[UIView class]]) {
+            SPKStoryMarkSeenForInteractionView((UIView *)button, @"stories_advance_on_like_seen");
         }
     } title:(isUnlike ? @"Confirm Story Unlike" : @"Confirm Story Like")
       message:(isUnlike ? @"Are you sure you want to unlike this story?" : @"Are you sure you want to like this story?")];
@@ -445,8 +445,8 @@ static void new_sciStoryLikeTap(id self, SEL _cmd, id button) {
     }
 }
 
-static void SCIInstallStoryLikeConfirmHookIfNeeded(void) {
-    if (!SCIStoryInteractionHooksNeeded()) {
+static void SPKInstallStoryLikeConfirmHookIfNeeded(void) {
+    if (!SPKStoryInteractionHooksNeeded()) {
         return;
     }
 
@@ -462,55 +462,55 @@ static void SCIInstallStoryLikeConfirmHookIfNeeded(void) {
         }
         if (!class_getInstanceMethod(cls, sel)) return;
 
-        MSHookMessageEx(cls, sel, (IMP)new_sciStoryLikeTap, (IMP *)&orig_sciStoryLikeTap);
+        MSHookMessageEx(cls, sel, (IMP)new_spkStoryLikeTap, (IMP *)&orig_spkStoryLikeTap);
     });
 }
 
 %hook IGDirectComposer
 - (void)_didTapSend {
     %orig;
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 - (void)_didTapSend:(id)arg {
     %orig;
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 - (void)_send {
     %orig;
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 - (void)_didTapEmojiQuickReactionButton:(id)button {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             %orig;
-            if (SCIActiveStoryOverlayForInteractions()) SCIStoryReplySideEffects();
+            if (SPKActiveStoryOverlayForInteractions()) SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
-    if (SCIActiveStoryOverlayForInteractions()) {
+    if (SPKActiveStoryOverlayForInteractions()) {
         %orig;
-        SCIStoryReplySideEffects();
+        SPKStoryReplySideEffects();
         return;
     }
     %orig;
 }
 
 - (void)_didTapEmojiReactionButton:(id)button {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             %orig;
-            if (SCIActiveStoryOverlayForInteractions()) SCIStoryReplySideEffects();
+            if (SPKActiveStoryOverlayForInteractions()) SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
-    if (SCIActiveStoryOverlayForInteractions()) {
+    if (SPKActiveStoryOverlayForInteractions()) {
         %orig;
-        SCIStoryReplySideEffects();
+        SPKStoryReplySideEffects();
         return;
     }
     %orig;
@@ -518,76 +518,76 @@ static void SCIInstallStoryLikeConfirmHookIfNeeded(void) {
 %end
 
 static void (*orig_storyFooterEmojiQuick)(id, SEL, id, id);
-static void SCIHookedStoryFooterEmojiQuick(id self, SEL _cmd, id inputView, id button) {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+static void SPKHookedStoryFooterEmojiQuick(id self, SEL _cmd, id inputView, id button) {
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             if (orig_storyFooterEmojiQuick) orig_storyFooterEmojiQuick(self, _cmd, inputView, button);
-            SCIStoryReplySideEffects();
+            SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
     if (orig_storyFooterEmojiQuick) orig_storyFooterEmojiQuick(self, _cmd, inputView, button);
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 static void (*orig_storyFooterEmojiReaction)(id, SEL, id, id);
-static void SCIHookedStoryFooterEmojiReaction(id self, SEL _cmd, id inputView, id button) {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+static void SPKHookedStoryFooterEmojiReaction(id self, SEL _cmd, id inputView, id button) {
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             if (orig_storyFooterEmojiReaction) orig_storyFooterEmojiReaction(self, _cmd, inputView, button);
-            SCIStoryReplySideEffects();
+            SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
     if (orig_storyFooterEmojiReaction) orig_storyFooterEmojiReaction(self, _cmd, inputView, button);
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 static void (*orig_storyQuickReaction)(id, SEL, id, id, id);
-static void SCIHookedStoryQuickReaction(id self, SEL _cmd, id view, id sourceButton, id emoji) {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+static void SPKHookedStoryQuickReaction(id self, SEL _cmd, id view, id sourceButton, id emoji) {
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             if (orig_storyQuickReaction) orig_storyQuickReaction(self, _cmd, view, sourceButton, emoji);
-            SCIStoryReplySideEffects();
+            SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
     if (orig_storyQuickReaction) orig_storyQuickReaction(self, _cmd, view, sourceButton, emoji);
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 static void (*orig_storyPrivateEmojiQuick)(id, SEL, id);
-static void SCIHookedStoryPrivateEmojiQuick(id self, SEL _cmd, id button) {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+static void SPKHookedStoryPrivateEmojiQuick(id self, SEL _cmd, id button) {
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             if (orig_storyPrivateEmojiQuick) orig_storyPrivateEmojiQuick(self, _cmd, button);
-            SCIStoryReplySideEffects();
+            SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
     if (orig_storyPrivateEmojiQuick) orig_storyPrivateEmojiQuick(self, _cmd, button);
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
 static void (*orig_directReshareQuickReaction)(id, SEL, id);
-static void SCIHookedDirectReshareQuickReaction(id self, SEL _cmd, id arg) {
-    if (SCIStoryQuickReactionConfirmEnabled()) {
-        [SCIUtils showConfirmation:^{
+static void SPKHookedDirectReshareQuickReaction(id self, SEL _cmd, id arg) {
+    if (SPKStoryQuickReactionConfirmEnabled()) {
+        [SPKUtils showConfirmation:^{
             if (orig_directReshareQuickReaction) orig_directReshareQuickReaction(self, _cmd, arg);
-            SCIStoryReplySideEffects();
+            SPKStoryReplySideEffects();
         } title:@"Confirm Quick Reaction"
           message:@"Are you sure you want to send this emoji reaction?"];
         return;
     }
     if (orig_directReshareQuickReaction) orig_directReshareQuickReaction(self, _cmd, arg);
-    SCIStoryReplySideEffects();
+    SPKStoryReplySideEffects();
 }
 
-static Class SCIStoryReplyFooterClass(void) {
+static Class SPKStoryReplyFooterClass(void) {
     for (NSString *className in @[
         @"IGStoryDefaultFooter.IGStoryFullscreenDefaultFooterView",
         @"IGStoryFullscreenDefaultFooterView"
@@ -598,39 +598,39 @@ static Class SCIStoryReplyFooterClass(void) {
     return Nil;
 }
 
-static void SCIInstallStoryReplyHooksIfNeeded(void) {
-    if (!SCIStoryInteractionHooksNeeded()) return;
+static void SPKInstallStoryReplyHooksIfNeeded(void) {
+    if (!SPKStoryInteractionHooksNeeded()) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        Class footerClass = SCIStoryReplyFooterClass();
+        Class footerClass = SPKStoryReplyFooterClass();
         SEL quickSelector = NSSelectorFromString(@"inputView:didTapEmojiQuickReactionButton:");
         if (footerClass && class_getInstanceMethod(footerClass, quickSelector)) {
-            MSHookMessageEx(footerClass, quickSelector, (IMP)SCIHookedStoryFooterEmojiQuick, (IMP *)&orig_storyFooterEmojiQuick);
+            MSHookMessageEx(footerClass, quickSelector, (IMP)SPKHookedStoryFooterEmojiQuick, (IMP *)&orig_storyFooterEmojiQuick);
         }
 
         SEL reactionSelector = NSSelectorFromString(@"inputView:didTapEmojiReactionButton:");
         if (footerClass && class_getInstanceMethod(footerClass, reactionSelector)) {
-            MSHookMessageEx(footerClass, reactionSelector, (IMP)SCIHookedStoryFooterEmojiReaction, (IMP *)&orig_storyFooterEmojiReaction);
+            MSHookMessageEx(footerClass, reactionSelector, (IMP)SPKHookedStoryFooterEmojiReaction, (IMP *)&orig_storyFooterEmojiReaction);
         }
 
         Class quickReactionClass = NSClassFromString(@"IGStoryQuickReactions.IGStoryQuickReactionsController");
         if (!quickReactionClass) quickReactionClass = NSClassFromString(@"IGStoryQuickReactionsController");
         SEL quickReactionSelector = NSSelectorFromString(@"quickReactionsView:sourceEmojiButton:didTapEmoji:");
         if (quickReactionClass && class_getInstanceMethod(quickReactionClass, quickReactionSelector)) {
-            MSHookMessageEx(quickReactionClass, quickReactionSelector, (IMP)SCIHookedStoryQuickReaction, (IMP *)&orig_storyQuickReaction);
+            MSHookMessageEx(quickReactionClass, quickReactionSelector, (IMP)SPKHookedStoryQuickReaction, (IMP *)&orig_storyQuickReaction);
         }
 
         SEL privateQuickSelector = NSSelectorFromString(@"_didTapEmojiQuickReactionButton:");
         if (footerClass && class_getInstanceMethod(footerClass, privateQuickSelector)) {
-            MSHookMessageEx(footerClass, privateQuickSelector, (IMP)SCIHookedStoryPrivateEmojiQuick, (IMP *)&orig_storyPrivateEmojiQuick);
+            MSHookMessageEx(footerClass, privateQuickSelector, (IMP)SPKHookedStoryPrivateEmojiQuick, (IMP *)&orig_storyPrivateEmojiQuick);
         }
 
         Class quickReactionDelegateClass = NSClassFromString(@"_TtC29IGStoryQuickReactionsDelegate33IGStoryQuickReactionsDelegateImpl");
         if (!quickReactionDelegateClass) quickReactionDelegateClass = NSClassFromString(@"IGStoryQuickReactionsDelegateImpl");
         SEL directReshareSelector = NSSelectorFromString(@"directReshareMediaReplyFooterViewDidTapQuickReactionEmoji:");
         if (quickReactionDelegateClass && class_getInstanceMethod(quickReactionDelegateClass, directReshareSelector)) {
-            MSHookMessageEx(quickReactionDelegateClass, directReshareSelector, (IMP)SCIHookedDirectReshareQuickReaction, (IMP *)&orig_directReshareQuickReaction);
+            MSHookMessageEx(quickReactionDelegateClass, directReshareSelector, (IMP)SPKHookedDirectReshareQuickReaction, (IMP *)&orig_directReshareQuickReaction);
         }
     });
 }
@@ -647,55 +647,55 @@ static void SCIInstallStoryReplyHooksIfNeeded(void) {
 
 %end
 
-static void (*orig_sciReelsLikeHandlerTap)(id, SEL, id, id, BOOL) = NULL;
-static void sciReelsLikeHandlerTap(id self, SEL _cmd, id context, id likeButton, BOOL willAnimate) {
-    if (![SCIUtils getBoolPref:@"reels_confirm_like"]) {
-        if (orig_sciReelsLikeHandlerTap) orig_sciReelsLikeHandlerTap(self, _cmd, context, likeButton, willAnimate);
+static void (*orig_spkReelsLikeHandlerTap)(id, SEL, id, id, BOOL) = NULL;
+static void spkReelsLikeHandlerTap(id self, SEL _cmd, id context, id likeButton, BOOL willAnimate) {
+    if (![SPKUtils getBoolPref:@"reels_confirm_like"]) {
+        if (orig_spkReelsLikeHandlerTap) orig_spkReelsLikeHandlerTap(self, _cmd, context, likeButton, willAnimate);
         return;
     }
 
     __strong id strongContext = context;
     __strong id strongButton = likeButton;
-    BOOL isUnlike = SCIFeedLikeIsUnlike(strongButton, strongContext);
-    SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like");
-    SCIPresentLikeToggleConfirmation(
+    BOOL isUnlike = SPKFeedLikeIsUnlike(strongButton, strongContext);
+    SPKLog(@"General", @"[Sparkle] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like");
+    SPKPresentLikeToggleConfirmation(
         isUnlike,
         @"Confirm Reel Like",
         @"Are you sure you want to like this reel?",
         @"Confirm Reel Unlike",
         @"Are you sure you want to unlike this reel?",
         ^{
-            if (orig_sciReelsLikeHandlerTap) orig_sciReelsLikeHandlerTap(self, _cmd, strongContext, strongButton, willAnimate);
+            if (orig_spkReelsLikeHandlerTap) orig_spkReelsLikeHandlerTap(self, _cmd, strongContext, strongButton, willAnimate);
         }
     );
 }
 
-static void (*orig_sciReelsLikeHandlerTapCompletion)(id, SEL, id, id, BOOL, id) = NULL;
-static void sciReelsLikeHandlerTapCompletion(id self, SEL _cmd, id context, id likeButton, BOOL willAnimate, id completion) {
-    if (![SCIUtils getBoolPref:@"reels_confirm_like"]) {
-        if (orig_sciReelsLikeHandlerTapCompletion) orig_sciReelsLikeHandlerTapCompletion(self, _cmd, context, likeButton, willAnimate, completion);
+static void (*orig_spkReelsLikeHandlerTapCompletion)(id, SEL, id, id, BOOL, id) = NULL;
+static void spkReelsLikeHandlerTapCompletion(id self, SEL _cmd, id context, id likeButton, BOOL willAnimate, id completion) {
+    if (![SPKUtils getBoolPref:@"reels_confirm_like"]) {
+        if (orig_spkReelsLikeHandlerTapCompletion) orig_spkReelsLikeHandlerTapCompletion(self, _cmd, context, likeButton, willAnimate, completion);
         return;
     }
 
     __strong id strongContext = context;
     __strong id strongButton = likeButton;
     id strongCompletion = completion ? [completion copy] : nil;
-    BOOL isUnlike = SCIFeedLikeIsUnlike(strongButton, strongContext);
-    SCILog(@"General", @"[SCInsta] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like");
-    SCIPresentLikeToggleConfirmation(
+    BOOL isUnlike = SPKFeedLikeIsUnlike(strongButton, strongContext);
+    SPKLog(@"General", @"[Sparkle] Confirm reels %@ triggered", isUnlike ? @"unlike" : @"like");
+    SPKPresentLikeToggleConfirmation(
         isUnlike,
         @"Confirm Reel Like",
         @"Are you sure you want to like this reel?",
         @"Confirm Reel Unlike",
         @"Are you sure you want to unlike this reel?",
         ^{
-            if (orig_sciReelsLikeHandlerTapCompletion) orig_sciReelsLikeHandlerTapCompletion(self, _cmd, strongContext, strongButton, willAnimate, strongCompletion);
+            if (orig_spkReelsLikeHandlerTapCompletion) orig_spkReelsLikeHandlerTapCompletion(self, _cmd, strongContext, strongButton, willAnimate, strongCompletion);
         }
     );
 }
 
-static void SCIInstallReelsSwiftLikeConfirmHookIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"reels_confirm_like"]) return;
+static void SPKInstallReelsSwiftLikeConfirmHookIfNeeded(void) {
+    if (![SPKUtils getBoolPref:@"reels_confirm_like"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -706,32 +706,32 @@ static void SCIInstallReelsSwiftLikeConfirmHookIfNeeded(void) {
 
         SEL tapSel = NSSelectorFromString(@"handleTapWithActionContext:likeButton:willPlayRingsCustomLikeAnimation:");
         if (class_getClassMethod(cls, tapSel)) {
-            MSHookMessageEx(meta, tapSel, (IMP)sciReelsLikeHandlerTap, (IMP *)&orig_sciReelsLikeHandlerTap);
+            MSHookMessageEx(meta, tapSel, (IMP)spkReelsLikeHandlerTap, (IMP *)&orig_spkReelsLikeHandlerTap);
         }
 
         SEL tapCompletionSel = NSSelectorFromString(@"handleTapWithActionContext:likeButton:willPlayRingsCustomLikeAnimation:completion:");
         if (class_getClassMethod(cls, tapCompletionSel)) {
-            MSHookMessageEx(meta, tapCompletionSel, (IMP)sciReelsLikeHandlerTapCompletion, (IMP *)&orig_sciReelsLikeHandlerTapCompletion);
+            MSHookMessageEx(meta, tapCompletionSel, (IMP)spkReelsLikeHandlerTapCompletion, (IMP *)&orig_spkReelsLikeHandlerTapCompletion);
         }
     });
 }
 
-void SCIInstallLikeConfirmHooksIfNeeded(void) {
-    if (![SCIUtils getBoolPref:@"feed_confirm_post_like"] &&
-        ![SCIUtils getBoolPref:@"feed_confirm_double_tap_like"] &&
-        ![SCIUtils getBoolPref:@"feed_confirm_comment_like"] &&
-        ![SCIUtils getBoolPref:@"reels_confirm_like"] &&
-        ![SCIUtils getBoolPref:@"reels_confirm_double_tap_like"] &&
-        !SCIStoryInteractionHooksNeeded()) {
+void SPKInstallLikeConfirmHooksIfNeeded(void) {
+    if (![SPKUtils getBoolPref:@"feed_confirm_post_like"] &&
+        ![SPKUtils getBoolPref:@"feed_confirm_double_tap_like"] &&
+        ![SPKUtils getBoolPref:@"feed_confirm_comment_like"] &&
+        ![SPKUtils getBoolPref:@"reels_confirm_like"] &&
+        ![SPKUtils getBoolPref:@"reels_confirm_double_tap_like"] &&
+        !SPKStoryInteractionHooksNeeded()) {
         return;
     }
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCILikeConfirmHooks);
+        %init(SPKLikeConfirmHooks);
     });
 
-    SCIInstallStoryLikeConfirmHookIfNeeded();
-    SCIInstallStoryReplyHooksIfNeeded();
-    SCIInstallReelsSwiftLikeConfirmHookIfNeeded();
+    SPKInstallStoryLikeConfirmHookIfNeeded();
+    SPKInstallStoryReplyHooksIfNeeded();
+    SPKInstallReelsSwiftLikeConfirmHookIfNeeded();
 }

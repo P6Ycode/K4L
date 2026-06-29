@@ -2,18 +2,18 @@
 #import <objc/runtime.h>
 
 #import "../../Utils.h"
-#import "../../Settings/SCIPreferences.h"
-#include "../../../modules/SCISideloadFix/fishhook/fishhook.h"
+#import "../../Settings/SPKPreferences.h"
+#include "../../../modules/SPKSideloadFix/fishhook/fishhook.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
 
-typedef BOOL (*SCI_BOOL_MSG)(id self, SEL _cmd);
-typedef void (*SCI_VOID_MSG)(id self, SEL _cmd);
-typedef void (*SCI_SET_CGFLOAT_MSG)(id self, SEL _cmd, CGFloat value);
+typedef BOOL (*SPK_BOOL_MSG)(id self, SEL _cmd);
+typedef void (*SPK_VOID_MSG)(id self, SEL _cmd);
+typedef void (*SPK_SET_CGFLOAT_MSG)(id self, SEL _cmd, CGFloat value);
 
-static BOOL SCIIsLiquidGlassEnabled(void) {
-    return [SCIUtils sci_isLiquidGlassEffectivelyEnabled];
+static BOOL SPKIsLiquidGlassEnabled(void) {
+    return [SPKUtils spk_isLiquidGlassEffectivelyEnabled];
 }
 
 // MARK: - Experiment-helper overrides (IG 433+)
@@ -24,13 +24,13 @@ static BOOL SCIIsLiquidGlassEnabled(void) {
 // IG's own QE-override path and propagates consistently to the nav chrome /
 // follow button, unlike swizzling individual getters.
 
-static Class SCILiquidGlassNavHelperClass(void) {
+static Class SPKLiquidGlassNavHelperClass(void) {
     Class c = objc_getClass("_TtC29IGLiquidGlassExperimentHelper39IGLiquidGlassNavigationExperimentHelper");
     if (!c) c = NSClassFromString(@"IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper");
     return c;
 }
 
-static id SCILiquidGlassSharedSingleton(Class cls) {
+static id SPKLiquidGlassSharedSingleton(Class cls) {
     if (cls && [cls respondsToSelector:@selector(shared)]) {
         return ((id (*)(id, SEL))objc_msgSend)(cls, @selector(shared));
     }
@@ -39,7 +39,7 @@ static id SCILiquidGlassSharedSingleton(Class cls) {
 
 // Calls a "-(void)overrideXxx:" setter, adapting to whether the first argument
 // is a scalar BOOL or a boxed object (Bool? bridges to NSNumber *).
-static void SCILiquidGlassCallOverrideBool(id target, SEL sel, BOOL value) {
+static void SPKLiquidGlassCallOverrideBool(id target, SEL sel, BOOL value) {
     if (!target || ![target respondsToSelector:sel]) return;
     Method m = class_getInstanceMethod([target class], sel);
     char argType[16] = {0};
@@ -54,15 +54,15 @@ static void SCILiquidGlassCallOverrideBool(id target, SEL sel, BOOL value) {
 // Force the navigation Liquid Glass experiment on, matching the gate values
 // observed on a server-enabled account (isEnabled=YES, everything else left at
 // its natural value).
-extern "C" void SCIApplyLiquidGlassExperimentOverridesIfEnabled(void) {
-    if (!SCIIsLiquidGlassEnabled()) return;
-    id nav = SCILiquidGlassSharedSingleton(SCILiquidGlassNavHelperClass());
+extern "C" void SPKApplyLiquidGlassExperimentOverridesIfEnabled(void) {
+    if (!SPKIsLiquidGlassEnabled()) return;
+    id nav = SPKLiquidGlassSharedSingleton(SPKLiquidGlassNavHelperClass());
     if (!nav) {
-        SCILog(@"LiquidGlass", @"NavExperimentHelper unavailable; override skipped");
+        SPKLog(@"LiquidGlass", @"NavExperimentHelper unavailable; override skipped");
         return;
     }
-    SCILiquidGlassCallOverrideBool(nav, @selector(overrideIsEnabled:), YES);
-    SCILog(@"LiquidGlass", @"Applied NavExperimentHelper overrideIsEnabled:YES");
+    SPKLiquidGlassCallOverrideBool(nav, @selector(overrideIsEnabled:), YES);
+    SPKLog(@"LiquidGlass", @"Applied NavExperimentHelper overrideIsEnabled:YES");
 }
 
 
@@ -75,19 +75,19 @@ extern "C" void SCIApplyLiquidGlassExperimentOverridesIfEnabled(void) {
 
 // MARK: - Native button experiment
 
-static SCI_BOOL_MSG orig_swizzleToggle_isEnabled;
+static SPK_BOOL_MSG orig_swizzleToggle_isEnabled;
 static BOOL hook_swizzleToggle_isEnabled(id self, SEL _cmd) {
-    return SCIIsLiquidGlassEnabled() ? YES : (orig_swizzleToggle_isEnabled ? orig_swizzleToggle_isEnabled(self, _cmd) : NO);
+    return SPKIsLiquidGlassEnabled() ? YES : (orig_swizzleToggle_isEnabled ? orig_swizzleToggle_isEnabled(self, _cmd) : NO);
 }
 
-static SCI_BOOL_MSG orig_navigationExperiment_isEnabled;
+static SPK_BOOL_MSG orig_navigationExperiment_isEnabled;
 static BOOL hook_navigationExperiment_isEnabled(id self, SEL _cmd) {
-    return SCIIsLiquidGlassEnabled() ? YES : (orig_navigationExperiment_isEnabled ? orig_navigationExperiment_isEnabled(self, _cmd) : NO);
+    return SPKIsLiquidGlassEnabled() ? YES : (orig_navigationExperiment_isEnabled ? orig_navigationExperiment_isEnabled(self, _cmd) : NO);
 }
 
-static SCI_BOOL_MSG orig_navigationExperiment_isHomeFeedHeaderEnabled;
+static SPK_BOOL_MSG orig_navigationExperiment_isHomeFeedHeaderEnabled;
 static BOOL hook_navigationExperiment_isHomeFeedHeaderEnabled(id self, SEL _cmd) {
-    return SCIIsLiquidGlassEnabled() ? YES : (orig_navigationExperiment_isHomeFeedHeaderEnabled ? orig_navigationExperiment_isHomeFeedHeaderEnabled(self, _cmd) : NO);
+    return SPKIsLiquidGlassEnabled() ? YES : (orig_navigationExperiment_isHomeFeedHeaderEnabled ? orig_navigationExperiment_isHomeFeedHeaderEnabled(self, _cmd) : NO);
 }
 
 // MARK: - Native surface feature symbols
@@ -99,42 +99,42 @@ static BOOL (*orig_IGTabBarHomecomingWithFloatingTabEnabled)(void);
 static BOOL (*orig_IGTabBarViewPointFixEnabled)(void);
 static NSInteger (*orig_IGTabBarStyleForLauncherSet)(NSInteger launcherSet);
 
-#define SCI_LIQUID_GLASS_BOOL_FISHHOOK(name) \
+#define SPK_LIQUID_GLASS_BOOL_FISHHOOK(name) \
     static BOOL hook_##name(void) { \
-        return SCIIsLiquidGlassEnabled() ? YES : (orig_##name ? orig_##name() : NO); \
+        return SPKIsLiquidGlassEnabled() ? YES : (orig_##name ? orig_##name() : NO); \
     }
 
-SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGFloatingTabBarEnabled)
-SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarDynamicSizingEnabled)
-SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarEnhancedDynamicSizingEnabled)
-SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarHomecomingWithFloatingTabEnabled)
-SCI_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarViewPointFixEnabled)
+SPK_LIQUID_GLASS_BOOL_FISHHOOK(IGFloatingTabBarEnabled)
+SPK_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarDynamicSizingEnabled)
+SPK_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarEnhancedDynamicSizingEnabled)
+SPK_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarHomecomingWithFloatingTabEnabled)
+SPK_LIQUID_GLASS_BOOL_FISHHOOK(IGTabBarViewPointFixEnabled)
 
 static NSInteger hook_IGTabBarStyleForLauncherSet(NSInteger launcherSet) {
-    return SCIIsLiquidGlassEnabled() ? 1 : (orig_IGTabBarStyleForLauncherSet ? orig_IGTabBarStyleForLauncherSet(launcherSet) : launcherSet);
+    return SPKIsLiquidGlassEnabled() ? 1 : (orig_IGTabBarStyleForLauncherSet ? orig_IGTabBarStyleForLauncherSet(launcherSet) : launcherSet);
 }
 
 // MARK: - Tab bar scroll state
 
-typedef NS_ENUM(NSInteger, SCILiquidGlassTabBarMode) {
-    SCILiquidGlassTabBarModeDefault = 0,
-    SCILiquidGlassTabBarModeFixed,
-    SCILiquidGlassTabBarModeHide,
+typedef NS_ENUM(NSInteger, SPKLiquidGlassTabBarMode) {
+    SPKLiquidGlassTabBarModeDefault = 0,
+    SPKLiquidGlassTabBarModeFixed,
+    SPKLiquidGlassTabBarModeHide,
 };
 
-static SCILiquidGlassTabBarMode SCICurrentLiquidGlassTabBarMode(void) {
-    NSString *mode = [SCIUtils getStringPref:kSCIPrefInterfaceLiquidGlassTabBarMode];
-    if ([mode isEqualToString:@"fixed"]) return SCILiquidGlassTabBarModeFixed;
-    if ([mode isEqualToString:@"hide"]) return SCILiquidGlassTabBarModeHide;
-    return SCILiquidGlassTabBarModeDefault;
+static SPKLiquidGlassTabBarMode SPKCurrentLiquidGlassTabBarMode(void) {
+    NSString *mode = [SPKUtils getStringPref:kSPKPrefInterfaceLiquidGlassTabBarMode];
+    if ([mode isEqualToString:@"fixed"]) return SPKLiquidGlassTabBarModeFixed;
+    if ([mode isEqualToString:@"hide"]) return SPKLiquidGlassTabBarModeHide;
+    return SPKLiquidGlassTabBarModeDefault;
 }
 
-static const void *kSCILiquidGlassTabBarHiddenKey = &kSCILiquidGlassTabBarHiddenKey;
+static const void *kSPKLiquidGlassTabBarHiddenKey = &kSPKLiquidGlassTabBarHiddenKey;
 
-static void SCIApplyLiquidGlassTabBarHiddenState(UIView *bar, BOOL hidden) {
-    NSNumber *current = objc_getAssociatedObject(bar, kSCILiquidGlassTabBarHiddenKey);
+static void SPKApplyLiquidGlassTabBarHiddenState(UIView *bar, BOOL hidden) {
+    NSNumber *current = objc_getAssociatedObject(bar, kSPKLiquidGlassTabBarHiddenKey);
     if (current && current.boolValue == hidden) return;
-    objc_setAssociatedObject(bar, kSCILiquidGlassTabBarHiddenKey, @(hidden), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(bar, kSPKLiquidGlassTabBarHiddenKey, @(hidden), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     CGFloat dropY = CGRectGetHeight(bar.bounds) + 40.0;
     [UIView animateWithDuration:0.28
@@ -150,29 +150,29 @@ static void SCIApplyLiquidGlassTabBarHiddenState(UIView *bar, BOOL hidden) {
 
 static void (*orig_tabBar_setScaleProgress)(id self, SEL _cmd, double progress);
 static void hook_tabBar_setScaleProgress(id self, SEL _cmd, double progress) {
-    SCILiquidGlassTabBarMode mode = SCIIsLiquidGlassEnabled() ? SCICurrentLiquidGlassTabBarMode() : SCILiquidGlassTabBarModeDefault;
-    if (mode == SCILiquidGlassTabBarModeFixed) {
-        SCIApplyLiquidGlassTabBarHiddenState((UIView *)self, NO);
+    SPKLiquidGlassTabBarMode mode = SPKIsLiquidGlassEnabled() ? SPKCurrentLiquidGlassTabBarMode() : SPKLiquidGlassTabBarModeDefault;
+    if (mode == SPKLiquidGlassTabBarModeFixed) {
+        SPKApplyLiquidGlassTabBarHiddenState((UIView *)self, NO);
         progress = 0.0;
-    } else if (mode == SCILiquidGlassTabBarModeHide) {
-        SCIApplyLiquidGlassTabBarHiddenState((UIView *)self, progress > 0.05);
+    } else if (mode == SPKLiquidGlassTabBarModeHide) {
+        SPKApplyLiquidGlassTabBarHiddenState((UIView *)self, progress > 0.05);
         progress = 0.0;
     } else {
-        SCIApplyLiquidGlassTabBarHiddenState((UIView *)self, NO);
+        SPKApplyLiquidGlassTabBarHiddenState((UIView *)self, NO);
     }
     if (orig_tabBar_setScaleProgress) orig_tabBar_setScaleProgress(self, _cmd, progress);
 }
 
 static void (*orig_tabBar_scaleDownWithInteraction)(id self, SEL _cmd, id interaction);
 static void hook_tabBar_scaleDownWithInteraction(id self, SEL _cmd, id interaction) {
-    SCILiquidGlassTabBarMode mode = SCIIsLiquidGlassEnabled() ? SCICurrentLiquidGlassTabBarMode() : SCILiquidGlassTabBarModeDefault;
-    if (mode != SCILiquidGlassTabBarModeDefault) return;
+    SPKLiquidGlassTabBarMode mode = SPKIsLiquidGlassEnabled() ? SPKCurrentLiquidGlassTabBarMode() : SPKLiquidGlassTabBarModeDefault;
+    if (mode != SPKLiquidGlassTabBarModeDefault) return;
     if (orig_tabBar_scaleDownWithInteraction) orig_tabBar_scaleDownWithInteraction(self, _cmd, interaction);
 }
 
 // MARK: - Direct inbox separator workaround
 
-static Class SCIDirectInboxNavigationHeaderViewClass(void) {
+static Class SPKDirectInboxNavigationHeaderViewClass(void) {
     Class cls = objc_getClass("IGDirectInboxNavigationHeaderView");
     if (!cls) {
         cls = objc_getClass("IGDirectInboxNavigationHeaderView.IGDirectInboxNavigationHeaderView");
@@ -180,7 +180,7 @@ static Class SCIDirectInboxNavigationHeaderViewClass(void) {
     return cls;
 }
 
-static UIView *SCIDirectInboxHeaderSeparatorView(id headerView) {
+static UIView *SPKDirectInboxHeaderSeparatorView(id headerView) {
     if (![headerView isKindOfClass:UIView.class]) return nil;
 
     NSArray<UIView *> *subviews = [(UIView *)headerView subviews];
@@ -193,41 +193,41 @@ static UIView *SCIDirectInboxHeaderSeparatorView(id headerView) {
     return (subviews.count == 2 || height <= 3.0) ? candidate : nil;
 }
 
-static void SCIRemoveDirectInboxHeaderSeparator(id headerView) {
-    if (!SCIIsLiquidGlassEnabled()) return;
-    UIView *separator = SCIDirectInboxHeaderSeparatorView(headerView);
+static void SPKRemoveDirectInboxHeaderSeparator(id headerView) {
+    if (!SPKIsLiquidGlassEnabled()) return;
+    UIView *separator = SPKDirectInboxHeaderSeparatorView(headerView);
     separator.alpha = 0.0;
     separator.hidden = YES;
     [separator removeFromSuperview];
 }
 
-static SCI_VOID_MSG orig_directInboxHeader_layoutSubviews;
+static SPK_VOID_MSG orig_directInboxHeader_layoutSubviews;
 static void hook_directInboxHeader_layoutSubviews(id self, SEL _cmd) {
     if (orig_directInboxHeader_layoutSubviews) orig_directInboxHeader_layoutSubviews(self, _cmd);
-    SCIRemoveDirectInboxHeaderSeparator(self);
+    SPKRemoveDirectInboxHeaderSeparator(self);
 }
 
-static SCI_VOID_MSG orig_directInboxHeader_didMoveToWindow;
+static SPK_VOID_MSG orig_directInboxHeader_didMoveToWindow;
 static void hook_directInboxHeader_didMoveToWindow(id self, SEL _cmd) {
     if (orig_directInboxHeader_didMoveToWindow) orig_directInboxHeader_didMoveToWindow(self, _cmd);
-    SCIRemoveDirectInboxHeaderSeparator(self);
+    SPKRemoveDirectInboxHeaderSeparator(self);
 }
 
-static SCI_SET_CGFLOAT_MSG orig_directInboxHeader_setSeparatorAlpha;
+static SPK_SET_CGFLOAT_MSG orig_directInboxHeader_setSeparatorAlpha;
 static void hook_directInboxHeader_setSeparatorAlpha(id self, SEL _cmd, CGFloat alpha) {
     if (orig_directInboxHeader_setSeparatorAlpha) {
-        orig_directInboxHeader_setSeparatorAlpha(self, _cmd, SCIIsLiquidGlassEnabled() ? 0.0 : alpha);
+        orig_directInboxHeader_setSeparatorAlpha(self, _cmd, SPKIsLiquidGlassEnabled() ? 0.0 : alpha);
     }
-    SCIRemoveDirectInboxHeaderSeparator(self);
+    SPKRemoveDirectInboxHeaderSeparator(self);
 }
 
-static void SCIHookInstanceMethodIfPresent(Class cls, SEL selector, IMP replacement, IMP *original) {
+static void SPKHookInstanceMethodIfPresent(Class cls, SEL selector, IMP replacement, IMP *original) {
     if (cls && class_getInstanceMethod(cls, selector)) {
         MSHookMessageEx(cls, selector, replacement, original);
     }
 }
 
-extern "C" void SCIInstallLiquidGlassHooksIfEnabled(void) {
+extern "C" void SPKInstallLiquidGlassHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         int result = rebind_symbols((struct rebinding[]){
@@ -238,30 +238,30 @@ extern "C" void SCIInstallLiquidGlassHooksIfEnabled(void) {
             {"IGTabBarViewPointFixEnabled", (void *)hook_IGTabBarViewPointFixEnabled, (void **)&orig_IGTabBarViewPointFixEnabled},
             {"IGTabBarStyleForLauncherSet", (void *)hook_IGTabBarStyleForLauncherSet, (void **)&orig_IGTabBarStyleForLauncherSet},
         }, 6);
-        SCILog(@"LiquidGlass", @"Surface fishhook result=%d", result);
+        SPKLog(@"LiquidGlass", @"Surface fishhook result=%d", result);
 
         Class cls = objc_getClass("IGLiquidGlassSwizzle.IGLiquidGlassSwizzleToggle");
-        SCIHookInstanceMethodIfPresent(cls, @selector(isEnabled), (IMP)hook_swizzleToggle_isEnabled, (IMP *)&orig_swizzleToggle_isEnabled);
+        SPKHookInstanceMethodIfPresent(cls, @selector(isEnabled), (IMP)hook_swizzleToggle_isEnabled, (IMP *)&orig_swizzleToggle_isEnabled);
 
         cls = objc_getClass("IGLiquidGlassExperimentHelper.IGLiquidGlassNavigationExperimentHelper");
-        SCIHookInstanceMethodIfPresent(cls, @selector(isEnabled), (IMP)hook_navigationExperiment_isEnabled, (IMP *)&orig_navigationExperiment_isEnabled);
-        SCIHookInstanceMethodIfPresent(cls, @selector(isHomeFeedHeaderEnabled), (IMP)hook_navigationExperiment_isHomeFeedHeaderEnabled, (IMP *)&orig_navigationExperiment_isHomeFeedHeaderEnabled);
+        SPKHookInstanceMethodIfPresent(cls, @selector(isEnabled), (IMP)hook_navigationExperiment_isEnabled, (IMP *)&orig_navigationExperiment_isEnabled);
+        SPKHookInstanceMethodIfPresent(cls, @selector(isHomeFeedHeaderEnabled), (IMP)hook_navigationExperiment_isHomeFeedHeaderEnabled, (IMP *)&orig_navigationExperiment_isHomeFeedHeaderEnabled);
 
         cls = objc_getClass("IGLiquidGlassInteractiveTabBar");
-        SCIHookInstanceMethodIfPresent(cls, @selector(setScaleProgress:), (IMP)hook_tabBar_setScaleProgress, (IMP *)&orig_tabBar_setScaleProgress);
-        SCIHookInstanceMethodIfPresent(cls, @selector(scaleDownWithInteraction:), (IMP)hook_tabBar_scaleDownWithInteraction, (IMP *)&orig_tabBar_scaleDownWithInteraction);
+        SPKHookInstanceMethodIfPresent(cls, @selector(setScaleProgress:), (IMP)hook_tabBar_setScaleProgress, (IMP *)&orig_tabBar_setScaleProgress);
+        SPKHookInstanceMethodIfPresent(cls, @selector(scaleDownWithInteraction:), (IMP)hook_tabBar_scaleDownWithInteraction, (IMP *)&orig_tabBar_scaleDownWithInteraction);
 
-        cls = SCIDirectInboxNavigationHeaderViewClass();
-        SCIHookInstanceMethodIfPresent(cls, @selector(layoutSubviews), (IMP)hook_directInboxHeader_layoutSubviews, (IMP *)&orig_directInboxHeader_layoutSubviews);
-        SCIHookInstanceMethodIfPresent(cls, @selector(didMoveToWindow), (IMP)hook_directInboxHeader_didMoveToWindow, (IMP *)&orig_directInboxHeader_didMoveToWindow);
-        SCIHookInstanceMethodIfPresent(cls, @selector(setSeparatorAlpha:), (IMP)hook_directInboxHeader_setSeparatorAlpha, (IMP *)&orig_directInboxHeader_setSeparatorAlpha);
+        cls = SPKDirectInboxNavigationHeaderViewClass();
+        SPKHookInstanceMethodIfPresent(cls, @selector(layoutSubviews), (IMP)hook_directInboxHeader_layoutSubviews, (IMP *)&orig_directInboxHeader_layoutSubviews);
+        SPKHookInstanceMethodIfPresent(cls, @selector(didMoveToWindow), (IMP)hook_directInboxHeader_didMoveToWindow, (IMP *)&orig_directInboxHeader_didMoveToWindow);
+        SPKHookInstanceMethodIfPresent(cls, @selector(setSeparatorAlpha:), (IMP)hook_directInboxHeader_setSeparatorAlpha, (IMP *)&orig_directInboxHeader_setSeparatorAlpha);
 
-        SCIApplyLiquidGlassExperimentOverridesIfEnabled();
+        SPKApplyLiquidGlassExperimentOverridesIfEnabled();
     });
 }
 
 // MARK: - Progressive Blur Hooks
-%group SCIProgressiveBlurHooks
+%group SPKProgressiveBlurHooks
 %hook UIScrollEdgeEffect
 + (void)hide {
     // No-op to prevent globally hiding scroll-edge effects
@@ -277,14 +277,14 @@ extern "C" void SCIInstallLiquidGlassHooksIfEnabled(void) {
 %end
 %end
 
-extern "C" void SCIInstallProgressiveBlurHooksIfEnabled(void) {
+extern "C" void SPKInstallProgressiveBlurHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         if (objc_getClass("UIScrollEdgeEffect")) {
-            %init(SCIProgressiveBlurHooks);
-            SCILog(@"LiquidGlass", @"SCIProgressiveBlurHooks successfully installed!");
+            %init(SPKProgressiveBlurHooks);
+            SPKLog(@"LiquidGlass", @"SPKProgressiveBlurHooks successfully installed!");
         } else {
-            SCILog(@"LiquidGlass", @"UIScrollEdgeEffect class not found at runtime, skipping hooks.");
+            SPKLog(@"LiquidGlass", @"UIScrollEdgeEffect class not found at runtime, skipping hooks.");
         }
     });
 }

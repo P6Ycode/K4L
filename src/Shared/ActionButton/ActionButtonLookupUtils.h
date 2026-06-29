@@ -5,21 +5,21 @@
 extern "C" {
 #endif
 
-id SCIObjectForSelector(id target, NSString *selectorName);
-id SCIKVCObject(id target, NSString *key);
-NSArray *SCIArrayFromCollection(id collection);
-NSURL *SCIURLFromValue(id value);
-NSString *SCIStringFromValue(id value);
-NSString *SCIClassName(id object);
+id SPKObjectForSelector(id target, NSString *selectorName);
+id SPKKVCObject(id target, NSString *key);
+NSArray *SPKArrayFromCollection(id collection);
+NSURL *SPKURLFromValue(id value);
+NSString *SPKStringFromValue(id value);
+NSString *SPKClassName(id object);
 
-NSString *SCIUsernameFromMediaObject(id media);
-NSString *SCICaptionFromMediaObject(id media);
-NSString *SCISessionUsernameFromController(UIViewController *controller);
+NSString *SPKUsernameFromMediaObject(id media);
+NSString *SPKCaptionFromMediaObject(id media);
+NSString *SPKSessionUsernameFromController(UIViewController *controller);
 
-id SCIDirectCurrentMessageFromController(UIViewController *controller);
-id SCIDirectResolvedMediaFromController(UIViewController *controller);
-NSInteger SCIDirectCurrentIndexFromController(UIViewController *controller);
-NSString *SCIDirectUsernameFromController(UIViewController *controller);
+id SPKDirectCurrentMessageFromController(UIViewController *controller);
+id SPKDirectResolvedMediaFromController(UIViewController *controller);
+NSInteger SPKDirectCurrentIndexFromController(UIViewController *controller);
+NSString *SPKDirectUsernameFromController(UIViewController *controller);
 
 #ifdef __cplusplus
 }

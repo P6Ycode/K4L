@@ -2,29 +2,29 @@
 #import <UIKit/UIKit.h>
 
 #import "../../Utils.h"
-#import "../../Shared/UI/SCIChrome.h"
+#import "../../Shared/UI/SPKChrome.h"
 #import "CaptureHiding.h"
 
 
-static const void *kSCICaptureFieldKey  = &kSCICaptureFieldKey;
-static const void *kSCICaptureCanvasKey = &kSCICaptureCanvasKey;
+static const void *kSPKCaptureFieldKey  = &kSPKCaptureFieldKey;
+static const void *kSPKCaptureCanvasKey = &kSPKCaptureCanvasKey;
 
-const NSInteger kSCICaptureFollowIndicatorTag = 926003;
+const NSInteger kSPKCaptureFollowIndicatorTag = 926003;
 
-static NSSet<NSNumber *> *SCICaptureHiddenTags(void) {
+static NSSet<NSNumber *> *SPKCaptureHiddenTags(void) {
     static NSSet<NSNumber *> *tags;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         tags = [NSSet setWithArray:@[
             @921341, @921342, @921343, @921344, @921345,
             @926001, @926002,
-            @(kSCICaptureFollowIndicatorTag)
+            @(kSPKCaptureFollowIndicatorTag)
         ]];
     });
     return tags;
 }
 
-static UIView *SCIFindCanvasView(UIView *root, int depth) {
+static UIView *SPKFindCanvasView(UIView *root, int depth) {
     if (!root || depth > 4) return nil;
     for (UIView *sub in root.subviews) {
         NSString *cls = NSStringFromClass([sub class]);
@@ -32,13 +32,13 @@ static UIView *SCIFindCanvasView(UIView *root, int depth) {
             [cls containsString:@"TextLayoutCanvas"]) {
             return sub;
         }
-        UIView *found = SCIFindCanvasView(sub, depth + 1);
+        UIView *found = SPKFindCanvasView(sub, depth + 1);
         if (found) return found;
     }
     return nil;
 }
 
-static NSString *SCICaptureSubviewSummary(UIView *view) {
+static NSString *SPKCaptureSubviewSummary(UIView *view) {
     if (!view) return @"(nil)";
 
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
@@ -53,16 +53,16 @@ static NSString *SCICaptureSubviewSummary(UIView *view) {
     return parts.count ? [parts componentsJoinedByString:@", "] : @"(none)";
 }
 
-static void SCIEnsureSecureCanvas(UIView *button) {
+static void SPKEnsureSecureCanvas(UIView *button) {
     if (!button || !button.window) return;
-    if ([button isKindOfClass:NSClassFromString(@"SCIChromeButton")]) return;
-    if (![SCIUtils getBoolPref:@"interface_hide_ui_on_capture"]) return;
+    if ([button isKindOfClass:NSClassFromString(@"SPKChromeButton")]) return;
+    if (![SPKUtils getBoolPref:@"interface_hide_ui_on_capture"]) return;
 
     // Check if secure field already exists
-    UITextField *field = objc_getAssociatedObject(button, kSCICaptureFieldKey);
+    UITextField *field = objc_getAssociatedObject(button, kSPKCaptureFieldKey);
     if (field) return;
 
-    SCILog(@"Capture", @"Creating secure canvas for tag=%ld class=%@",
+    SPKLog(@"Capture", @"Creating secure canvas for tag=%ld class=%@",
            (long)button.tag, NSStringFromClass([button class]));
 
     // 1. Create secure text field
@@ -76,7 +76,7 @@ static void SCIEnsureSecureCanvas(UIView *button) {
     field.translatesAutoresizingMaskIntoConstraints = NO;
 
     // Associate it BEFORE adding as subview so the addSubview: hook recognizes it
-    objc_setAssociatedObject(button, kSCICaptureFieldKey, field, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(button, kSPKCaptureFieldKey, field, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     // 2. Snapshot existing children (if any were added before didMoveToWindow)
     NSMutableArray<UIView *> *existing = [NSMutableArray array];
@@ -98,11 +98,11 @@ static void SCIEnsureSecureCanvas(UIView *button) {
     [field layoutIfNeeded];
 
     // 4. Locate CanvasView
-    UIView *canvas = SCIFindCanvasView(field, 0);
+    UIView *canvas = SPKFindCanvasView(field, 0);
     if (!canvas) {
-        SCIWarnLog(@"Capture", @"CanvasView not found for tag=%ld", (long)button.tag);
+        SPKWarnLog(@"Capture", @"CanvasView not found for tag=%ld", (long)button.tag);
         [field removeFromSuperview];
-        objc_setAssociatedObject(button, kSCICaptureFieldKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(button, kSPKCaptureFieldKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         return;
     }
 
@@ -117,7 +117,7 @@ static void SCIEnsureSecureCanvas(UIView *button) {
         [canvas.bottomAnchor constraintEqualToAnchor:field.bottomAnchor]
     ]];
 
-    objc_setAssociatedObject(button, kSCICaptureCanvasKey, canvas, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(button, kSPKCaptureCanvasKey, canvas, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     // 6. Migrate pre-existing subviews to canvas
     for (UIView *child in existing) {
@@ -125,53 +125,53 @@ static void SCIEnsureSecureCanvas(UIView *button) {
         [canvas addSubview:child];
     }
 
-    SCILog(@"Capture", @"Secure canvas successfully applied to tag=%ld (%lu pre-existing children moved)",
+    SPKLog(@"Capture", @"Secure canvas successfully applied to tag=%ld (%lu pre-existing children moved)",
            (long)button.tag, (unsigned long)existing.count);
-    SCILog(@"Capture", @"button=%@<%p> subviews=%@",
-           NSStringFromClass(button.class), button, SCICaptureSubviewSummary(button));
+    SPKLog(@"Capture", @"button=%@<%p> subviews=%@",
+           NSStringFromClass(button.class), button, SPKCaptureSubviewSummary(button));
     if ([button isKindOfClass:UIButton.class]) {
         UIButton *uiButton = (UIButton *)button;
-        SCILog(@"Capture", @"imageView=%@<%p> imageSuperview=%@<%p>",
+        SPKLog(@"Capture", @"imageView=%@<%p> imageSuperview=%@<%p>",
                NSStringFromClass(uiButton.imageView.class),
                uiButton.imageView,
                NSStringFromClass(uiButton.imageView.superview.class),
                uiButton.imageView.superview);
     }
-    SCILog(@"Capture", @"canvas=%@<%p> canvasSubviews=%@",
-           NSStringFromClass(canvas.class), canvas, SCICaptureSubviewSummary(canvas));
+    SPKLog(@"Capture", @"canvas=%@<%p> canvasSubviews=%@",
+           NSStringFromClass(canvas.class), canvas, SPKCaptureSubviewSummary(canvas));
 }
 
-%group SCICaptureHidingHooks
+%group SPKCaptureHidingHooks
 
 %hook UIView
 
 - (void)didMoveToWindow {
     %orig;
     if (self.window &&
-        ![self isKindOfClass:NSClassFromString(@"SCIChromeButton")] &&
-        [SCICaptureHiddenTags() containsObject:@(self.tag)]) {
-        SCIEnsureSecureCanvas(self);
+        ![self isKindOfClass:NSClassFromString(@"SPKChromeButton")] &&
+        [SPKCaptureHiddenTags() containsObject:@(self.tag)]) {
+        SPKEnsureSecureCanvas(self);
     }
 }
 
 - (void)addSubview:(UIView *)view {
-    if (![self isKindOfClass:NSClassFromString(@"SCIChromeButton")] &&
-        [SCICaptureHiddenTags() containsObject:@(self.tag)]) {
+    if (![self isKindOfClass:NSClassFromString(@"SPKChromeButton")] &&
+        [SPKCaptureHiddenTags() containsObject:@(self.tag)]) {
         // If this is the secure field itself, let it pass
-        UITextField *secureField = objc_getAssociatedObject(self, kSCICaptureFieldKey);
+        UITextField *secureField = objc_getAssociatedObject(self, kSPKCaptureFieldKey);
         if (view == secureField) {
             %orig;
             return;
         }
 
         // Ensure canvas is instantiated
-        SCIEnsureSecureCanvas(self);
+        SPKEnsureSecureCanvas(self);
 
-        UIView *canvas = objc_getAssociatedObject(self, kSCICaptureCanvasKey);
+        UIView *canvas = objc_getAssociatedObject(self, kSPKCaptureCanvasKey);
         if (canvas) {
             // Intercept and redirect the subview into the secure canvas
             [canvas addSubview:view];
-            SCILog(@"Capture", @"Redirected subview class=%@ tag=%ld into secure canvas",
+            SPKLog(@"Capture", @"Redirected subview class=%@ tag=%ld into secure canvas",
                    NSStringFromClass([view class]), (long)self.tag);
         } else {
             // Fallback
@@ -186,10 +186,10 @@ static void SCIEnsureSecureCanvas(UIView *button) {
 
 %end
 
-extern "C" void SCIInstallCaptureHidingHooksIfNeeded(void) {
+extern "C" void SPKInstallCaptureHidingHooksIfNeeded(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCILog(@"Capture", @"Installing capture hiding hooks...");
-        %init(SCICaptureHidingHooks);
+        SPKLog(@"Capture", @"Installing capture hiding hooks...");
+        %init(SPKCaptureHidingHooks);
     });
 }

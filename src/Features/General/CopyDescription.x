@@ -1,13 +1,13 @@
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 
-%group SCICopyDescriptionHooks
+%group SPKCopyDescriptionHooks
 
 %hook IGCoreTextView
 - (void)didMoveToSuperview {
     %orig;
 
-    if ([SCIUtils getBoolPref:@"general_copy_text"]) {
+    if ([SPKUtils getBoolPref:@"general_copy_text"]) {
         [self addHandleLongPress];
     }
 
@@ -34,23 +34,23 @@
                                                    withTemplate:@""]
           stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
-    SCILog(@"General", @"[SCInsta] Copying description");
+    SPKLog(@"General", @"[Sparkle] Copying description");
 
     // Copy text to system clipboard
     UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
     pasteboard.string = result;
 
-    SCINotify(kSCINotificationCopyDescription, @"Copied text to clipboard", nil, @"circle_check_filled", SCINotificationToneSuccess);
+    SPKNotify(kSPKNotificationCopyDescription, @"Copied text to clipboard", nil, @"circle_check_filled", SPKNotificationToneSuccess);
 }
 %end
 
 %end
 
-void SCIInstallCopyDescriptionHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"general_copy_text"]) return;
+void SPKInstallCopyDescriptionHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"general_copy_text"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCICopyDescriptionHooks);
+        %init(SPKCopyDescriptionHooks);
     });
 }

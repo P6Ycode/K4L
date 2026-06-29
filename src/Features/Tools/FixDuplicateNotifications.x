@@ -16,12 +16,12 @@
 // of these in-app duplicates, swallow it (invoke the completion handler with no error and skip %orig)
 // so only the extension's banner remains.
 
-%group SCIFixDuplicateNotificationsHooks
+%group SPKFixDuplicateNotificationsHooks
 
 %hook UNUserNotificationCenter
 
 - (void)addNotificationRequest:(UNNotificationRequest *)request withCompletionHandler:(void (^)(NSError *error))completionHandler {
-    if (![SCIUtils getBoolPref:@"tools_fix_duplicate_notifications"]) {
+    if (![SPKUtils getBoolPref:@"tools_fix_duplicate_notifications"]) {
         %orig;
         return;
     }
@@ -50,11 +50,11 @@
 
 %end
 
-void SCIInstallFixDuplicateNotificationsHooksIfNeeded(void) {
+void SPKInstallFixDuplicateNotificationsHooksIfNeeded(void) {
     // Install unconditionally and gate on the pref inside the hook so the toggle
     // takes effect live, without a restart.
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIFixDuplicateNotificationsHooks);
+        %init(SPKFixDuplicateNotificationsHooks);
     });
 }

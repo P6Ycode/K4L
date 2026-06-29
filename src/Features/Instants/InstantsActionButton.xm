@@ -2,14 +2,14 @@
 #import <objc/runtime.h>
 #import "../../Utils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SCIActionButtonConfiguration.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "InstantsResolver.h"
 
-static NSInteger const kSCIInstantsActionButtonTag = 921399;
+static NSInteger const kSPKInstantsActionButtonTag = 921399;
 
 // MARK: - Anchor Helpers
 
-static UIView *SCIInstantsHeaderOwnedView(UIView *header, NSString *key) {
+static UIView *SPKInstantsHeaderOwnedView(UIView *header, NSString *key) {
     if (!header || key.length == 0) return nil;
     id view = nil;
     @try { view = [header valueForKey:key]; } @catch (__unused NSException *e) {}
@@ -20,13 +20,13 @@ static UIView *SCIInstantsHeaderOwnedView(UIView *header, NSString *key) {
     return [view isKindOfClass:UIView.class] ? (UIView *)view : nil;
 }
 
-static UIView *SCIInstantsHeaderArchiveButton(UIView *header) {
-    UIView *btn = SCIInstantsHeaderOwnedView(header, @"archiveButton");
+static UIView *SPKInstantsHeaderArchiveButton(UIView *header) {
+    UIView *btn = SPKInstantsHeaderOwnedView(header, @"archiveButton");
     if (btn && btn.superview == header && !btn.hidden && btn.alpha >= 0.01) return btn;
     return nil;
 }
 
-static UIView *SCIInstantsFallbackRightAnchor(UIView *header, UIView *button) {
+static UIView *SPKInstantsFallbackRightAnchor(UIView *header, UIView *button) {
     CGFloat halfWidth = header.bounds.size.width / 2.0;
     UIView *anchor = nil;
     CGFloat minX = CGFLOAT_MAX;
@@ -41,7 +41,7 @@ static UIView *SCIInstantsFallbackRightAnchor(UIView *header, UIView *button) {
 
 // MARK: - Header Visibility
 
-static BOOL SCIInstantsHeaderIsVisible(UIView *header) {
+static BOOL SPKInstantsHeaderIsVisible(UIView *header) {
     if (!header || header.hidden || header.alpha < 0.01 || !header.window) return NO;
     if (header.bounds.size.width < 10.0 || header.bounds.size.height < 10.0) return NO;
     return CGRectIntersectsRect([header convertRect:header.bounds toView:header.window], header.window.bounds);
@@ -51,7 +51,7 @@ static BOOL SCIInstantsHeaderIsVisible(UIView *header) {
 /// on the consumption header, not on the creation/camera header (which hosts the gallery
 /// upload button at the same anchor). Detected by the presence of a visible
 /// IGQuickSnapImmersiveViewerSingleSnapView in the same window.
-static BOOL SCIInstantsHeaderIsConsumption(UIView *header) {
+static BOOL SPKInstantsHeaderIsConsumption(UIView *header) {
     UIWindow *window = header.window;
     if (!window) return NO;
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:window];
@@ -70,27 +70,27 @@ static BOOL SCIInstantsHeaderIsConsumption(UIView *header) {
 
 // MARK: - Action Context
 
-static SCIActionButtonContext *SCIInstantsActionContext(UIView *header, UIButton *button) {
-    SCIActionButtonContext *context = [[SCIActionButtonContext alloc] init];
-    context.source = SCIActionButtonSourceInstants;
+static SPKActionButtonContext *SPKInstantsActionContext(UIView *header, UIButton *button) {
+    SPKActionButtonContext *context = [[SPKActionButtonContext alloc] init];
+    context.source = SPKActionButtonSourceInstants;
     context.view = button ?: header;
-    context.controller = [SCIUtils viewControllerForAncestralView:header] ?: topMostController();
-    context.settingsTitle = SCIActionButtonTopicTitleForSource(SCIActionButtonSourceInstants);
-    context.supportedActions = SCIActionButtonSupportedActionsForSource(SCIActionButtonSourceInstants);
+    context.controller = [SPKUtils viewControllerForAncestralView:header] ?: topMostController();
+    context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceInstants);
+    context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceInstants);
     __weak UIView *weakHeader = header;
-    __block SCIInstantsResolverResult *resolvedResult = nil;
+    __block SPKInstantsResolverResult *resolvedResult = nil;
     __block BOOL clearScheduled = NO;
     void (^scheduleClear)(void) = ^{
         if (clearScheduled) return;
         clearScheduled = YES;
         dispatch_async(dispatch_get_main_queue(), ^{ resolvedResult = nil; clearScheduled = NO; });
     };
-    SCIInstantsResolverResult *(^resolve)(NSString *) = ^SCIInstantsResolverResult *(NSString *reason) {
-        if (!resolvedResult) { resolvedResult = SCIInstantsResolveForHeader(weakHeader, reason); scheduleClear(); }
+    SPKInstantsResolverResult *(^resolve)(NSString *) = ^SPKInstantsResolverResult *(NSString *reason) {
+        if (!resolvedResult) { resolvedResult = SPKInstantsResolveForHeader(weakHeader, reason); scheduleClear(); }
         return resolvedResult;
     };
-    context.mediaResolver = ^id (__unused SCIActionButtonContext *ctx) {
-        SCIInstantsResolverResult *r = resolve(@"media");
+    context.mediaResolver = ^id (__unused SPKActionButtonContext *ctx) {
+        SPKInstantsResolverResult *r = resolve(@"media");
         if (!r) return nil;
         // Prefer the directly-resolved active snap (always the on-screen item).
         if (r.activeSnap) return r.activeSnap;
@@ -98,11 +98,11 @@ static SCIActionButtonContext *SCIInstantsActionContext(UIView *header, UIButton
         NSInteger idx = r.activeIndex;
         return (idx >= 0 && idx < (NSInteger)r.snaps.count) ? r.snaps[idx] : nil;
     };
-    context.bulkMediaResolver = ^id (__unused SCIActionButtonContext *ctx) {
+    context.bulkMediaResolver = ^id (__unused SPKActionButtonContext *ctx) {
         return resolve(@"bulk").snaps ?: @[];
     };
-    context.currentIndexResolver = ^NSInteger (__unused SCIActionButtonContext *ctx) {
-        SCIInstantsResolverResult *r = resolve(@"index");
+    context.currentIndexResolver = ^NSInteger (__unused SPKActionButtonContext *ctx) {
+        SPKInstantsResolverResult *r = resolve(@"index");
         return r ? r.activeIndex : 0;
     };
     return context;
@@ -113,7 +113,7 @@ static SCIActionButtonContext *SCIInstantsActionContext(UIView *header, UIButton
 /// Frame match used only for deciding whether to reposition. Does NOT consider
 /// hidden/alpha — during the iOS 26 menu morph UIKit hides the real button and animates
 /// a snapshot, and we must not treat that transient state as "needs replacing".
-static BOOL SCIInstantsActionFrameMatches(UIButton *button, CGRect frame) {
+static BOOL SPKInstantsActionFrameMatches(UIButton *button, CGRect frame) {
     if (![button isKindOfClass:[UIButton class]] || !button.superview) return NO;
     return ABS(CGRectGetMinX(button.frame) - CGRectGetMinX(frame)) < 0.5 &&
            ABS(CGRectGetMinY(button.frame) - CGRectGetMinY(frame)) < 0.5 &&
@@ -121,9 +121,9 @@ static BOOL SCIInstantsActionFrameMatches(UIButton *button, CGRect frame) {
            ABS(CGRectGetHeight(button.frame) - CGRectGetHeight(frame)) < 0.5;
 }
 
-static CGRect SCIInstantsButtonFrame(UIView *header, UIButton *button) {
+static CGRect SPKInstantsButtonFrame(UIView *header, UIButton *button) {
     CGFloat side = 44.0;
-    UIView *anchor = SCIInstantsHeaderArchiveButton(header) ?: SCIInstantsFallbackRightAnchor(header, button);
+    UIView *anchor = SPKInstantsHeaderArchiveButton(header) ?: SPKInstantsFallbackRightAnchor(header, button);
     if (anchor) {
         return CGRectMake(CGRectGetMinX(anchor.frame) - side,
                           CGRectGetMidY(anchor.frame) - side / 2.0, side, side);
@@ -132,10 +132,10 @@ static CGRect SCIInstantsButtonFrame(UIView *header, UIButton *button) {
                       (header.bounds.size.height - side) / 2.0, side, side);
 }
 
-static void SCIInstantsPlaceButton(UIView *header) {
+static void SPKInstantsPlaceButton(UIView *header) {
     if (!header) return;
 
-    UIButton *existing = (UIButton *)[header viewWithTag:kSCIInstantsActionButtonTag];
+    UIButton *existing = (UIButton *)[header viewWithTag:kSPKInstantsActionButtonTag];
 
     // CRITICAL (iOS 26 menu morph): if the button already exists, has a menu, is in the
     // header, and is correctly positioned, return immediately and touch NOTHING. During the
@@ -145,16 +145,16 @@ static void SCIInstantsPlaceButton(UIView *header) {
     // this same early-return. We must NOT gate this on button.hidden/alpha — those belong to
     // the animation, not us.
     if (existing && existing.menu != nil && existing.superview == header) {
-        CGRect expectedFrame = SCIInstantsButtonFrame(header, existing);
-        if (SCIInstantsActionFrameMatches(existing, expectedFrame)) {
+        CGRect expectedFrame = SPKInstantsButtonFrame(header, existing);
+        if (SPKInstantsActionFrameMatches(existing, expectedFrame)) {
             return; // Placed and configured — leave it entirely alone.
         }
     }
 
-    if (![SCIUtils getBoolPref:@"instants_action_btn"]) {
+    if (![SPKUtils getBoolPref:@"instants_action_btn"]) {
         [existing removeFromSuperview]; return;
     }
-    if (!SCIInstantsHeaderIsVisible(header)) {
+    if (!SPKInstantsHeaderIsVisible(header)) {
         [existing removeFromSuperview]; return;
     }
 
@@ -162,23 +162,23 @@ static void SCIInstantsPlaceButton(UIView *header) {
     // Even if the service cache is empty (all snaps "seen"), the view fallback in
     // the resolver will extract media from the live stack view.
     // Only skip if we're not actually consuming (e.g. creation/camera header).
-    if (!SCIInstantsHeaderIsConsumption(header)) {
+    if (!SPKInstantsHeaderIsConsumption(header)) {
         [existing removeFromSuperview]; return;
     }
 
     UIButton *button = existing;
     BOOL isNew = (button == nil);
     if (isNew) {
-        button = SCIActionButtonWithTag(header, kSCIInstantsActionButtonTag);
+        button = SPKActionButtonWithTag(header, kSPKInstantsActionButtonTag);
         button.translatesAutoresizingMaskIntoConstraints = YES;
         [header addSubview:button];
-        SCIApplyButtonStyle(button, SCIActionButtonSourceInstants);
+        SPKApplyButtonStyle(button, SPKActionButtonSourceInstants);
     }
 
     // Configure the menu only once per button lifecycle (when created or when the menu is
     // still nil from a prior failed resolve). Do NOT reconfigure on count changes.
     if (button.menu == nil) {
-        SCIConfigureActionButton(button, SCIInstantsActionContext(header, button));
+        SPKConfigureActionButton(button, SPKInstantsActionContext(header, button));
 
         // If configure resulted in no menu (resolver returned nil because the stack view
         // isn't populated yet), schedule a single retry after a short delay.
@@ -187,9 +187,9 @@ static void SCIInstantsPlaceButton(UIView *header) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 UIView *strongHeader = weakHeader;
                 if (!strongHeader || !strongHeader.window) return;
-                UIButton *retryButton = (UIButton *)[strongHeader viewWithTag:kSCIInstantsActionButtonTag];
+                UIButton *retryButton = (UIButton *)[strongHeader viewWithTag:kSPKInstantsActionButtonTag];
                 if (retryButton && !retryButton.menu) {
-                    SCIConfigureActionButton(retryButton, SCIInstantsActionContext(strongHeader, retryButton));
+                    SPKConfigureActionButton(retryButton, SPKInstantsActionContext(strongHeader, retryButton));
                     retryButton.hidden = NO;
                     retryButton.alpha = 1.0;
                 }
@@ -197,8 +197,8 @@ static void SCIInstantsPlaceButton(UIView *header) {
         }
     }
 
-    CGRect expectedFrame = SCIInstantsButtonFrame(header, button);
-    if (!SCIInstantsActionFrameMatches(button, expectedFrame)) button.frame = expectedFrame;
+    CGRect expectedFrame = SPKInstantsButtonFrame(header, button);
+    if (!SPKInstantsActionFrameMatches(button, expectedFrame)) button.frame = expectedFrame;
     button.hidden = NO;
     button.alpha = 1.0;
     [header bringSubviewToFront:button];
@@ -206,19 +206,19 @@ static void SCIInstantsPlaceButton(UIView *header) {
 
 // MARK: - Hook
 
-typedef void (*SCIInstantsHeaderLayoutIMP)(id, SEL);
-static SCIInstantsHeaderLayoutIMP orig_instantsHeaderLayoutSubviews = NULL;
+typedef void (*SPKInstantsHeaderLayoutIMP)(id, SEL);
+static SPKInstantsHeaderLayoutIMP orig_instantsHeaderLayoutSubviews = NULL;
 
 static void replaced_instantsHeaderLayoutSubviews(id self, SEL _cmd) {
     if (orig_instantsHeaderLayoutSubviews) orig_instantsHeaderLayoutSubviews(self, _cmd);
-    SCIInstantsPlaceButton((UIView *)self);
+    SPKInstantsPlaceButton((UIView *)self);
 }
 
-static void SCIHookInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
+static void SPKHookInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
     Class cls = objc_getClass(className);
     Method method = cls ? class_getInstanceMethod(cls, selector) : NULL;
     if (!cls || !method) {
-        SCILog(@"Instants", @"[SCInsta] Missing hook target %s %@", className, NSStringFromSelector(selector));
+        SPKLog(@"Instants", @"[Sparkle] Missing hook target %s %@", className, NSStringFromSelector(selector));
         return;
     }
     MSHookMessageEx(cls, selector, replacement, original);
@@ -226,40 +226,40 @@ static void SCIHookInstanceMethod(const char *className, SEL selector, IMP repla
 
 // MARK: - Retry & Installation
 
-static BOOL sSCIInstantsActionButtonHooksInstalled = NO;
-static BOOL sSCIInstantsActionButtonRetryScheduled = NO;
+static BOOL sSPKInstantsActionButtonHooksInstalled = NO;
+static BOOL sSPKInstantsActionButtonRetryScheduled = NO;
 
-static void SCIInstallInstantsActionButtonHooksAttempt(NSUInteger attempt) {
-    if (sSCIInstantsActionButtonHooksInstalled) return;
+static void SPKInstallInstantsActionButtonHooksAttempt(NSUInteger attempt) {
+    if (sSPKInstantsActionButtonHooksInstalled) return;
 
     Class headerClass = objc_getClass("_TtC45IGQuickSnapNavigationV3HeaderButtonController39IGQuickSnapNavigationV3HeaderButtonView");
     if (!headerClass) {
         if (attempt == 0 || attempt == 5 || attempt == 15 || attempt == 30) {
-            SCILog(@"Instants", @"QuickSnap header class missing; retry attempt=%lu", (unsigned long)attempt);
+            SPKLog(@"Instants", @"QuickSnap header class missing; retry attempt=%lu", (unsigned long)attempt);
         }
         if (attempt >= 60) {
-            SCILog(@"Instants", @"QuickSnap header class still missing after retries; Instants action button inactive");
+            SPKLog(@"Instants", @"QuickSnap header class still missing after retries; Instants action button inactive");
             return;
         }
-        if (!sSCIInstantsActionButtonRetryScheduled) {
-            sSCIInstantsActionButtonRetryScheduled = YES;
+        if (!sSPKInstantsActionButtonRetryScheduled) {
+            sSPKInstantsActionButtonRetryScheduled = YES;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                sSCIInstantsActionButtonRetryScheduled = NO;
-                SCIInstallInstantsActionButtonHooksAttempt(attempt + 1);
+                sSPKInstantsActionButtonRetryScheduled = NO;
+                SPKInstallInstantsActionButtonHooksAttempt(attempt + 1);
             });
         }
         return;
     }
 
-    SCIHookInstanceMethod("_TtC45IGQuickSnapNavigationV3HeaderButtonController39IGQuickSnapNavigationV3HeaderButtonView",
+    SPKHookInstanceMethod("_TtC45IGQuickSnapNavigationV3HeaderButtonController39IGQuickSnapNavigationV3HeaderButtonView",
                           @selector(layoutSubviews),
                           (IMP)replaced_instantsHeaderLayoutSubviews,
                           (IMP *)&orig_instantsHeaderLayoutSubviews);
-    SCIInstallInstantsResolverHooks();
-    sSCIInstantsActionButtonHooksInstalled = YES;
-    SCILog(@"Instants", @"[SCInsta] Instants action button hooks installed");
+    SPKInstallInstantsResolverHooks();
+    sSPKInstantsActionButtonHooksInstalled = YES;
+    SPKLog(@"Instants", @"[Sparkle] Instants action button hooks installed");
 }
 
-extern "C" void SCIInstallInstantsActionButtonHooksIfEnabled(void) {
-    SCIInstallInstantsActionButtonHooksAttempt(0);
+extern "C" void SPKInstallInstantsActionButtonHooksIfEnabled(void) {
+    SPKInstallInstantsActionButtonHooksAttempt(0);
 }

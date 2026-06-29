@@ -7,7 +7,7 @@
 
 #import "../../Utils.h"
 
-id SCIObjectForSelector(id target, NSString *selectorName) {
+id SPKObjectForSelector(id target, NSString *selectorName) {
 	if (!target || selectorName.length == 0) return nil;
 
 	SEL selector = NSSelectorFromString(selectorName);
@@ -20,7 +20,7 @@ id SCIObjectForSelector(id target, NSString *selectorName) {
 	return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-id SCIKVCObject(id target, NSString *key) {
+id SPKKVCObject(id target, NSString *key) {
 	if (!target || key.length == 0) return nil;
 
 	@try {
@@ -30,7 +30,7 @@ id SCIKVCObject(id target, NSString *key) {
 	}
 }
 
-NSArray *SCIArrayFromCollection(id collection) {
+NSArray *SPKArrayFromCollection(id collection) {
 	if (!collection ||
 		[collection isKindOfClass:[NSDictionary class]] ||
 		[collection isKindOfClass:[NSString class]] ||
@@ -61,7 +61,7 @@ NSArray *SCIArrayFromCollection(id collection) {
 	return nil;
 }
 
-NSURL *SCIURLFromValue(id value) {
+NSURL *SPKURLFromValue(id value) {
 	if (!value) return nil;
 
 	if ([value isKindOfClass:[NSURL class]]) {
@@ -77,27 +77,27 @@ NSURL *SCIURLFromValue(id value) {
 	return nil;
 }
 
-NSString *SCIStringFromValue(id value) {
+NSString *SPKStringFromValue(id value) {
 	if ([value isKindOfClass:[NSString class]]) return value;
 	if ([value respondsToSelector:@selector(stringValue)]) return [value stringValue];
 	return nil;
 }
 
-NSString *SCIClassName(id object) {
+NSString *SPKClassName(id object) {
 	return object ? NSStringFromClass([object class]) : @"(nil)";
 }
 
-static NSString *SCIShallowUsernameFromObject(id object);
+static NSString *SPKShallowUsernameFromObject(id object);
 
-static void SCIDMTrace(NSString *format, ...) {
+static void SPKDMTrace(NSString *format, ...) {
 	va_list args;
 	va_start(args, format);
 	NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
 	va_end(args);
-	SCILog(@"DMTrace", @"%@", message ?: @"(nil)");
+	SPKLog(@"DMTrace", @"%@", message ?: @"(nil)");
 }
 
-static BOOL SCIRelationNameLooksRelevant(NSString *name) {
+static BOOL SPKRelationNameLooksRelevant(NSString *name) {
 	if (name.length == 0) return NO;
 	NSString *lower = name.lowercaseString;
 	for (NSString *token in @[@"user", @"sender", @"author", @"owner", @"participant", @"thread", @"message", @"item", @"media"]) {
@@ -106,7 +106,7 @@ static BOOL SCIRelationNameLooksRelevant(NSString *name) {
 	return NO;
 }
 
-static BOOL SCIAppendUniqueObject(NSMutableArray<NSDictionary *> *queue,
+static BOOL SPKAppendUniqueObject(NSMutableArray<NSDictionary *> *queue,
 								  NSMutableSet<NSValue *> *seen,
 								  id object,
 								  NSString *path,
@@ -126,7 +126,7 @@ static BOOL SCIAppendUniqueObject(NSMutableArray<NSDictionary *> *queue,
 	return YES;
 }
 
-static NSArray<NSString *> *SCIUsernameTraversalKeys(void) {
+static NSArray<NSString *> *SPKUsernameTraversalKeys(void) {
 	static NSArray<NSString *> *keys;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
@@ -142,7 +142,7 @@ static NSArray<NSString *> *SCIUsernameTraversalKeys(void) {
 	return keys;
 }
 
-static BOOL SCIPathLooksLikeSessionPath(NSString *path) {
+static BOOL SPKPathLooksLikeSessionPath(NSString *path) {
 	if (path.length == 0) return NO;
 	NSString *lower = path.lowercaseString;
 	return ([lower containsString:@"usersession"] ||
@@ -151,7 +151,7 @@ static BOOL SCIPathLooksLikeSessionPath(NSString *path) {
 			[lower containsString:@".session"]);
 }
 
-static NSString *SCIUsernameFromObjectGraph(id root,
+static NSString *SPKUsernameFromObjectGraph(id root,
 											NSUInteger maxDepth,
 											NSString *usernameToAvoid,
 											NSString *__autoreleasing *outPath) {
@@ -159,7 +159,7 @@ static NSString *SCIUsernameFromObjectGraph(id root,
 
 	NSMutableArray<NSDictionary *> *queue = [NSMutableArray array];
 	NSMutableSet<NSValue *> *seen = [NSMutableSet set];
-	SCIAppendUniqueObject(queue, seen, root, @"root", 0);
+	SPKAppendUniqueObject(queue, seen, root, @"root", 0);
 
 	NSUInteger processed = 0;
 	const NSUInteger kMaxNodes = 220;
@@ -173,11 +173,11 @@ static NSString *SCIUsernameFromObjectGraph(id root,
 		NSString *path = node[@"path"];
 		NSUInteger depth = [node[@"depth"] unsignedIntegerValue];
 
-		NSString *username = SCIShallowUsernameFromObject(object);
+		NSString *username = SPKShallowUsernameFromObject(object);
 		if (username.length > 0) {
 			BOOL isAvoided = (usernameToAvoid.length > 0 &&
 							  [username caseInsensitiveCompare:usernameToAvoid] == NSOrderedSame);
-			BOOL isSessionPath = SCIPathLooksLikeSessionPath(path);
+			BOOL isSessionPath = SPKPathLooksLikeSessionPath(path);
 			if (!isAvoided && !isSessionPath) {
 				if (outPath) *outPath = path;
 				return username;
@@ -185,22 +185,22 @@ static NSString *SCIUsernameFromObjectGraph(id root,
 		}
 		if (depth >= maxDepth) continue;
 
-		for (NSString *key in SCIUsernameTraversalKeys()) {
-			id child = SCIObjectForSelector(object, key);
-			if (!child) child = SCIKVCObject(object, key);
+		for (NSString *key in SPKUsernameTraversalKeys()) {
+			id child = SPKObjectForSelector(object, key);
+			if (!child) child = SPKKVCObject(object, key);
 			if (!child) continue;
 
-			NSArray *array = SCIArrayFromCollection(child);
+			NSArray *array = SPKArrayFromCollection(child);
 			if (array) {
 				NSUInteger index = 0;
 				for (id item in array) {
-					SCIAppendUniqueObject(queue, seen, item, [NSString stringWithFormat:@"%@.%@[%lu]", path, key, (unsigned long)index], depth + 1);
+					SPKAppendUniqueObject(queue, seen, item, [NSString stringWithFormat:@"%@.%@[%lu]", path, key, (unsigned long)index], depth + 1);
 					index++;
 				}
 				continue;
 			}
 
-			SCIAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@.%@", path, key], depth + 1);
+			SPKAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@.%@", path, key], depth + 1);
 		}
 
 		unsigned int ivarCount = 0;
@@ -213,11 +213,11 @@ static NSString *SCIUsernameFromObjectGraph(id root,
 			const char *rawName = ivar_getName(ivar);
 			if (!rawName) continue;
 			NSString *name = [NSString stringWithUTF8String:rawName];
-			if (!SCIRelationNameLooksRelevant(name)) continue;
+			if (!SPKRelationNameLooksRelevant(name)) continue;
 
 			id child = object_getIvar(object, ivar);
 			if (!child) continue;
-			SCIAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@->%@", path, name], depth + 1);
+			SPKAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@->%@", path, name], depth + 1);
 		}
 		free(ivars);
 	}
@@ -225,24 +225,24 @@ static NSString *SCIUsernameFromObjectGraph(id root,
 	return nil;
 }
 
-static NSString *SCIUsernameFromUserObject(id user) {
+static NSString *SPKUsernameFromUserObject(id user) {
 	if (!user) return nil;
 
-	id username = SCIObjectForSelector(user, @"username");
+	id username = SPKObjectForSelector(user, @"username");
 	if (!username) {
-		username = SCIKVCObject(user, @"username");
+		username = SPKKVCObject(user, @"username");
 	}
 	if (!username) {
-		username = SCIObjectForSelector(user, @"authorUsername");
+		username = SPKObjectForSelector(user, @"authorUsername");
 	}
 	if (!username) {
-		username = SCIKVCObject(user, @"authorUsername");
+		username = SPKKVCObject(user, @"authorUsername");
 	}
 	if (!username) {
-		username = SCIObjectForSelector(user, @"senderUsername");
+		username = SPKObjectForSelector(user, @"senderUsername");
 	}
 	if (!username) {
-		username = SCIKVCObject(user, @"senderUsername");
+		username = SPKKVCObject(user, @"senderUsername");
 	}
 
 	if ([username isKindOfClass:[NSString class]] && [(NSString *)username length] > 0) {
@@ -252,7 +252,7 @@ static NSString *SCIUsernameFromUserObject(id user) {
 	return nil;
 }
 
-NSString *SCICaptionFromMediaObject(id media) {
+NSString *SPKCaptionFromMediaObject(id media) {
 	if (!media) return nil;
 
 	for (NSString *selectorName in @[@"fullCaptionString", @"captionString", @"caption", @"captionText", @"text"]) {
@@ -282,7 +282,7 @@ NSString *SCICaptionFromMediaObject(id media) {
 		}
 	}
 
-	id capObj = SCIKVCObject(media, @"caption");
+	id capObj = SPKKVCObject(media, @"caption");
 	if ([capObj isKindOfClass:[NSDictionary class]]) {
 		id text = ((NSDictionary *)capObj)[@"text"];
 		if ([text isKindOfClass:[NSString class]] && [(NSString *)text length] > 0) {
@@ -305,7 +305,7 @@ NSString *SCICaptionFromMediaObject(id media) {
 	return nil;
 }
 
-static NSString *SCIShallowUsernameFromObject(id object) {
+static NSString *SPKShallowUsernameFromObject(id object) {
 	if (!object) return nil;
 
 	for (NSString *stringSelector in @[
@@ -315,9 +315,9 @@ static NSString *SCIShallowUsernameFromObject(id object) {
 		@"senderUsername",
 		@"ownerUsername"
 	]) {
-		id value = SCIObjectForSelector(object, stringSelector);
-		if (!value) value = SCIKVCObject(object, stringSelector);
-		NSString *s = SCIStringFromValue(value);
+		id value = SPKObjectForSelector(object, stringSelector);
+		if (!value) value = SPKKVCObject(object, stringSelector);
+		NSString *s = SPKStringFromValue(value);
 		if (s.length > 0) return s;
 	}
 
@@ -332,36 +332,36 @@ static NSString *SCIShallowUsernameFromObject(id object) {
 		@"threadUser",
 		@"participantUser"
 	]) {
-		id userObject = SCIObjectForSelector(object, userSelector);
-		if (!userObject) userObject = SCIKVCObject(object, userSelector);
-		NSString *username = SCIUsernameFromUserObject(userObject);
+		id userObject = SPKObjectForSelector(object, userSelector);
+		if (!userObject) userObject = SPKKVCObject(object, userSelector);
+		NSString *username = SPKUsernameFromUserObject(userObject);
 		if (username.length > 0) return username;
 	}
 
 	return nil;
 }
 
-NSString *SCISessionUsernameFromController(UIViewController *controller) {
+NSString *SPKSessionUsernameFromController(UIViewController *controller) {
 	if (!controller) return nil;
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
-	id userSession = [SCIUtils getIvarForObj:controller name:"_userSession"];
-	if (!userSession) userSession = SCIKVCObject(controller, @"userSession");
+	id userSession = [SPKUtils getIvarForObj:controller name:"_userSession"];
+	if (!userSession) userSession = SPKKVCObject(controller, @"userSession");
 	if (!userSession && dataSource) {
-		userSession = [SCIUtils getIvarForObj:dataSource name:"_userSession"];
+		userSession = [SPKUtils getIvarForObj:dataSource name:"_userSession"];
 	}
 	if (!userSession && dataSource) {
-		userSession = SCIKVCObject(dataSource, @"userSession");
+		userSession = SPKKVCObject(dataSource, @"userSession");
 	}
 
-	id user = SCIObjectForSelector(userSession, @"user");
-	if (!user) user = SCIKVCObject(userSession, @"user");
-	return SCIUsernameFromUserObject(user);
+	id user = SPKObjectForSelector(userSession, @"user");
+	if (!user) user = SPKKVCObject(userSession, @"user");
+	return SPKUsernameFromUserObject(user);
 }
 
-static NSArray<Class> *SCIClassesRespondingToClassSelector(NSString *selectorName) {
+static NSArray<Class> *SPKClassesRespondingToClassSelector(NSString *selectorName) {
 	if (selectorName.length == 0) return @[];
 
 	static NSMutableDictionary<NSString *, id> *cache;
@@ -399,8 +399,8 @@ static NSArray<Class> *SCIClassesRespondingToClassSelector(NSString *selectorNam
 	return matches;
 }
 
-static NSString *SCINonSessionUsernameFromUser(id user, NSString *sessionUsername) {
-	NSString *username = SCIUsernameFromUserObject(user);
+static NSString *SPKNonSessionUsernameFromUser(id user, NSString *sessionUsername) {
+	NSString *username = SPKUsernameFromUserObject(user);
 	if (username.length == 0) return nil;
 	if (sessionUsername.length > 0 && [username caseInsensitiveCompare:sessionUsername] == NSOrderedSame) {
 		return nil;
@@ -408,9 +408,9 @@ static NSString *SCINonSessionUsernameFromUser(id user, NSString *sessionUsernam
 	return username;
 }
 
-static NSString *SCIPKStringFromValue(id value) {
+static NSString *SPKPKStringFromValue(id value) {
 	if (!value) return nil;
-	NSString *string = SCIStringFromValue(value);
+	NSString *string = SPKStringFromValue(value);
 	if (string.length > 0) return [string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 	if ([value respondsToSelector:@selector(integerValue)]) {
 		return [NSString stringWithFormat:@"%lld", (long long)[value integerValue]];
@@ -418,13 +418,13 @@ static NSString *SCIPKStringFromValue(id value) {
 	return nil;
 }
 
-static BOOL SCIIsAllDigits(NSString *value) {
+static BOOL SPKIsAllDigits(NSString *value) {
 	if (value.length == 0) return NO;
 	NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
 	return [value rangeOfCharacterFromSet:nonDigits].location == NSNotFound;
 }
 
-static NSString *SCINormalizedNumericString(NSString *value) {
+static NSString *SPKNormalizedNumericString(NSString *value) {
 	if (value.length == 0) return nil;
 	NSUInteger index = 0;
 	while (index + 1 < value.length && [value characterAtIndex:index] == '0') {
@@ -433,36 +433,36 @@ static NSString *SCINormalizedNumericString(NSString *value) {
 	return [value substringFromIndex:index];
 }
 
-static BOOL SCIPKStringsEqual(NSString *lhs, NSString *rhs) {
+static BOOL SPKPKStringsEqual(NSString *lhs, NSString *rhs) {
 	if (lhs.length == 0 || rhs.length == 0) return NO;
 	lhs = [lhs stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 	rhs = [rhs stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-	if (SCIIsAllDigits(lhs) && SCIIsAllDigits(rhs)) {
-		return [SCINormalizedNumericString(lhs) isEqualToString:SCINormalizedNumericString(rhs)];
+	if (SPKIsAllDigits(lhs) && SPKIsAllDigits(rhs)) {
+		return [SPKNormalizedNumericString(lhs) isEqualToString:SPKNormalizedNumericString(rhs)];
 	}
 	return [lhs caseInsensitiveCompare:rhs] == NSOrderedSame;
 }
 
-static NSString *SCIUserPKStringFromObject(id object) {
+static NSString *SPKUserPKStringFromObject(id object) {
 	if (!object) return nil;
 	for (NSString *key in @[
 		@"pk", @"PK", @"userPk", @"userPK", @"userId", @"userID", @"id", @"identifier",
 		@"senderPk", @"senderPK", @"authorPk", @"authorPK", @"participantPk", @"participantPK"
 	]) {
-		id value = SCIObjectForSelector(object, key);
-		if (!value) value = SCIKVCObject(object, key);
-		NSString *pk = SCIPKStringFromValue(value);
+		id value = SPKObjectForSelector(object, key);
+		if (!value) value = SPKKVCObject(object, key);
+		NSString *pk = SPKPKStringFromValue(value);
 		if (pk.length > 0) return pk;
 	}
 	return nil;
 }
 
-static NSString *SCIUsernameForSenderPKInObjectGraph(id root, NSString *senderPk, NSString *sessionUsername, NSString *__autoreleasing *outPath) {
+static NSString *SPKUsernameForSenderPKInObjectGraph(id root, NSString *senderPk, NSString *sessionUsername, NSString *__autoreleasing *outPath) {
 	if (!root || senderPk.length == 0) return nil;
 
 	NSMutableArray<NSDictionary *> *queue = [NSMutableArray array];
 	NSMutableSet<NSValue *> *seen = [NSMutableSet set];
-	SCIAppendUniqueObject(queue, seen, root, @"root", 0);
+	SPKAppendUniqueObject(queue, seen, root, @"root", 0);
 
 	NSUInteger processed = 0;
 	const NSUInteger kMaxNodes = 260;
@@ -489,9 +489,9 @@ static NSString *SCIUsernameForSenderPKInObjectGraph(id root, NSString *senderPk
 		NSString *path = node[@"path"];
 		NSUInteger depth = [node[@"depth"] unsignedIntegerValue];
 
-		NSString *objectPk = SCIUserPKStringFromObject(object);
-		if (SCIPKStringsEqual(senderPk, objectPk)) {
-			NSString *username = SCIUsernameFromUserObject(object);
+		NSString *objectPk = SPKUserPKStringFromObject(object);
+		if (SPKPKStringsEqual(senderPk, objectPk)) {
+			NSString *username = SPKUsernameFromUserObject(object);
 			if (username.length > 0 &&
 				(sessionUsername.length == 0 || [username caseInsensitiveCompare:sessionUsername] != NSOrderedSame)) {
 				if (outPath) *outPath = path;
@@ -502,21 +502,21 @@ static NSString *SCIUsernameForSenderPKInObjectGraph(id root, NSString *senderPk
 		if (depth >= 7) continue;
 
 		for (NSString *key in traversalKeys) {
-			id child = SCIObjectForSelector(object, key);
-			if (!child) child = SCIKVCObject(object, key);
+			id child = SPKObjectForSelector(object, key);
+			if (!child) child = SPKKVCObject(object, key);
 			if (!child) continue;
 
-			NSArray *array = SCIArrayFromCollection(child);
+			NSArray *array = SPKArrayFromCollection(child);
 			if (array) {
 				NSUInteger index = 0;
 				for (id item in array) {
-					SCIAppendUniqueObject(queue, seen, item, [NSString stringWithFormat:@"%@.%@[%lu]", path, key, (unsigned long)index], depth + 1);
+					SPKAppendUniqueObject(queue, seen, item, [NSString stringWithFormat:@"%@.%@[%lu]", path, key, (unsigned long)index], depth + 1);
 					index++;
 				}
 				continue;
 			}
 
-			SCIAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@.%@", path, key], depth + 1);
+			SPKAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@.%@", path, key], depth + 1);
 		}
 
 		unsigned int ivarCount = 0;
@@ -529,11 +529,11 @@ static NSString *SCIUsernameForSenderPKInObjectGraph(id root, NSString *senderPk
 			const char *rawName = ivar_getName(ivar);
 			if (!rawName) continue;
 			NSString *name = [NSString stringWithUTF8String:rawName];
-			if (!SCIRelationNameLooksRelevant(name)) continue;
+			if (!SPKRelationNameLooksRelevant(name)) continue;
 
 			id child = object_getIvar(object, ivar);
 			if (!child) continue;
-			SCIAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@->%@", path, name], depth + 1);
+			SPKAppendUniqueObject(queue, seen, child, [NSString stringWithFormat:@"%@->%@", path, name], depth + 1);
 		}
 		free(ivars);
 	}
@@ -541,51 +541,51 @@ static NSString *SCIUsernameForSenderPKInObjectGraph(id root, NSString *senderPk
 	return nil;
 }
 
-static NSString *SCIDirectSenderPKFromMessage(id message) {
+static NSString *SPKDirectSenderPKFromMessage(id message) {
 	if (!message) return nil;
 
 	NSMutableArray *candidates = [NSMutableArray arrayWithObject:message];
-	id envelope = SCIObjectForSelector(message, @"message");
-	if (!envelope) envelope = SCIKVCObject(message, @"message");
+	id envelope = SPKObjectForSelector(message, @"message");
+	if (!envelope) envelope = SPKKVCObject(message, @"message");
 	if (envelope) [candidates addObject:envelope];
 
-	id metadata = SCIObjectForSelector(envelope ?: message, @"metadata");
-	if (!metadata) metadata = SCIKVCObject(envelope ?: message, @"metadata");
+	id metadata = SPKObjectForSelector(envelope ?: message, @"metadata");
+	if (!metadata) metadata = SPKKVCObject(envelope ?: message, @"metadata");
 	if (metadata) [candidates addObject:metadata];
 
 	for (id candidate in candidates) {
 		for (NSString *key in @[@"senderPk", @"senderPK", @"senderId", @"senderID", @"authorPk", @"authorPK", @"userPk", @"userPK"]) {
-			id value = SCIObjectForSelector(candidate, key);
-			if (!value) value = SCIKVCObject(candidate, key);
-			NSString *pk = SCIPKStringFromValue(value);
+			id value = SPKObjectForSelector(candidate, key);
+			if (!value) value = SPKKVCObject(candidate, key);
+			NSString *pk = SPKPKStringFromValue(value);
 			if (pk.length > 0) {
-				SCIDMTrace(@"senderPk resolved from %@.%@ = %@", SCIClassName(candidate), key, pk);
+				SPKDMTrace(@"senderPk resolved from %@.%@ = %@", SPKClassName(candidate), key, pk);
 				return pk;
 			}
 		}
 	}
 
-	SCIDMTrace(@"senderPk not found on currentMessage/message.metadata");
+	SPKDMTrace(@"senderPk not found on currentMessage/message.metadata");
 	return nil;
 }
 
-static id SCIDirectCacheFromController(UIViewController *controller) {
+static id SPKDirectCacheFromController(UIViewController *controller) {
 	if (!controller) return nil;
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
 	for (id root in @[dataSource ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
 		if (!root || root == (id)NSNull.null) continue;
 
 		for (NSString *key in @[@"directCache", @"_directCache"]) {
-			id cache = SCIObjectForSelector(root, key);
-			if (!cache) cache = SCIKVCObject(root, key);
+			id cache = SPKObjectForSelector(root, key);
+			if (!cache) cache = SPKKVCObject(root, key);
 			if (!cache && [key hasPrefix:@"_"]) {
-				cache = [SCIUtils getIvarForObj:root name:key.UTF8String];
+				cache = [SPKUtils getIvarForObj:root name:key.UTF8String];
 			}
 			if (cache) {
-				SCIDMTrace(@"resolved directCache from %@.%@", SCIClassName(root), key);
+				SPKDMTrace(@"resolved directCache from %@.%@", SPKClassName(root), key);
 				return cache;
 			}
 		}
@@ -594,23 +594,23 @@ static id SCIDirectCacheFromController(UIViewController *controller) {
 	return nil;
 }
 
-static id SCIDirectCacheUpdatesApplicatorFromController(UIViewController *controller) {
+static id SPKDirectCacheUpdatesApplicatorFromController(UIViewController *controller) {
 	if (!controller) return nil;
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
 	for (id root in @[dataSource ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
 		if (!root || root == (id)NSNull.null) continue;
 
 		for (NSString *key in @[@"directCacheUpdatesApplicator", @"cacheUpdatesApplicator", @"_directCacheUpdatesApplicator"]) {
-			id value = SCIObjectForSelector(root, key);
-			if (!value) value = SCIKVCObject(root, key);
+			id value = SPKObjectForSelector(root, key);
+			if (!value) value = SPKKVCObject(root, key);
 			if (!value && [key hasPrefix:@"_"]) {
-				value = [SCIUtils getIvarForObj:root name:key.UTF8String];
+				value = [SPKUtils getIvarForObj:root name:key.UTF8String];
 			}
 			if (value) {
-				SCIDMTrace(@"resolved directCacheUpdatesApplicator from %@.%@", SCIClassName(root), key);
+				SPKDMTrace(@"resolved directCacheUpdatesApplicator from %@.%@", SPKClassName(root), key);
 				return value;
 			}
 		}
@@ -619,26 +619,26 @@ static id SCIDirectCacheUpdatesApplicatorFromController(UIViewController *contro
 	return nil;
 }
 
-static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id message, NSString *sessionUsername) {
-	NSString *senderPk = SCIDirectSenderPKFromMessage(message);
+static NSString *SPKDirectUsernameFromSenderPK(UIViewController *controller, id message, NSString *sessionUsername) {
+	NSString *senderPk = SPKDirectSenderPKFromMessage(message);
 	if (senderPk.length == 0) return nil;
 
-	id envelope = SCIObjectForSelector(message, @"message");
-	if (!envelope) envelope = SCIKVCObject(message, @"message");
+	id envelope = SPKObjectForSelector(message, @"message");
+	if (!envelope) envelope = SPKKVCObject(message, @"message");
 	NSArray *messageCandidates = envelope && envelope != message ? @[message, envelope] : @[message];
 
-	id directCache = SCIDirectCacheFromController(controller);
-	id applicator = SCIDirectCacheUpdatesApplicatorFromController(controller);
+	id directCache = SPKDirectCacheFromController(controller);
+	id applicator = SPKDirectCacheUpdatesApplicatorFromController(controller);
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
 	for (id root in @[message ?: (id)NSNull.null, dataSource ?: (id)NSNull.null, directCache ?: (id)NSNull.null, applicator ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
 		if (!root || root == (id)NSNull.null) continue;
 		NSString *path = nil;
-		NSString *u = SCIUsernameForSenderPKInObjectGraph(root, senderPk, sessionUsername, &path);
+		NSString *u = SPKUsernameForSenderPKInObjectGraph(root, senderPk, sessionUsername, &path);
 		if (u.length > 0) {
-			SCIDMTrace(@"username from senderPk graph on %@ path=%@: %@", SCIClassName(root), path ?: @"(unknown)", u);
+			SPKDMTrace(@"username from senderPk graph on %@ path=%@: %@", SPKClassName(root), path ?: @"(unknown)", u);
 			return u;
 		}
 	}
@@ -649,26 +649,26 @@ static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id 
 	}
 	NSArray *pkCandidates = senderPkNumber ? @[senderPk, senderPkNumber] : @[senderPk];
 
-	for (Class cls in SCIClassesRespondingToClassSelector(@"userFromCurrentSessionDirectCacheWithPK:")) {
+	for (Class cls in SPKClassesRespondingToClassSelector(@"userFromCurrentSessionDirectCacheWithPK:")) {
 		SEL sel = NSSelectorFromString(@"userFromCurrentSessionDirectCacheWithPK:");
 		for (id pkValue in pkCandidates) {
 			id user = ((id (*)(id, SEL, id))objc_msgSend)(cls, sel, pkValue);
-			NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+			NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 			if (u.length > 0) {
-				SCIDMTrace(@"username from %@ userFromCurrentSessionDirectCacheWithPK:(%@): %@", NSStringFromClass(cls), SCIClassName(pkValue), u);
+				SPKDMTrace(@"username from %@ userFromCurrentSessionDirectCacheWithPK:(%@): %@", NSStringFromClass(cls), SPKClassName(pkValue), u);
 				return u;
 			}
 		}
 	}
 
 	if (directCache) {
-		for (Class cls in SCIClassesRespondingToClassSelector(@"userFromPK:inDirectCache:")) {
+		for (Class cls in SPKClassesRespondingToClassSelector(@"userFromPK:inDirectCache:")) {
 			SEL sel = NSSelectorFromString(@"userFromPK:inDirectCache:");
 			for (id pkValue in pkCandidates) {
 				id user = ((id (*)(id, SEL, id, id))objc_msgSend)(cls, sel, pkValue, directCache);
-				NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+				NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 				if (u.length > 0) {
-					SCIDMTrace(@"username from %@ userFromPK:inDirectCache:(%@): %@", NSStringFromClass(cls), SCIClassName(pkValue), u);
+					SPKDMTrace(@"username from %@ userFromPK:inDirectCache:(%@): %@", NSStringFromClass(cls), SPKClassName(pkValue), u);
 					return u;
 				}
 			}
@@ -676,13 +676,13 @@ static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id 
 	}
 
 	if (applicator) {
-		for (Class cls in SCIClassesRespondingToClassSelector(@"userFromPK:fromDirectCacheUpdatesApplicator:")) {
+		for (Class cls in SPKClassesRespondingToClassSelector(@"userFromPK:fromDirectCacheUpdatesApplicator:")) {
 			SEL sel = NSSelectorFromString(@"userFromPK:fromDirectCacheUpdatesApplicator:");
 			for (id pkValue in pkCandidates) {
 				id user = ((id (*)(id, SEL, id, id))objc_msgSend)(cls, sel, pkValue, applicator);
-				NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+				NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 				if (u.length > 0) {
-					SCIDMTrace(@"username from %@ userFromPK:fromDirectCacheUpdatesApplicator:(%@): %@", NSStringFromClass(cls), SCIClassName(pkValue), u);
+					SPKDMTrace(@"username from %@ userFromPK:fromDirectCacheUpdatesApplicator:(%@): %@", NSStringFromClass(cls), SPKClassName(pkValue), u);
 					return u;
 				}
 			}
@@ -690,13 +690,13 @@ static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id 
 	}
 
 	if (directCache) {
-		for (Class cls in SCIClassesRespondingToClassSelector(@"senderFromMessage:directCache:")) {
+		for (Class cls in SPKClassesRespondingToClassSelector(@"senderFromMessage:directCache:")) {
 			SEL sel = NSSelectorFromString(@"senderFromMessage:directCache:");
 			for (id messageCandidate in messageCandidates) {
 				id user = ((id (*)(id, SEL, id, id))objc_msgSend)(cls, sel, messageCandidate, directCache);
-				NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+				NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 				if (u.length > 0) {
-					SCIDMTrace(@"username from %@ senderFromMessage:directCache: %@", NSStringFromClass(cls), u);
+					SPKDMTrace(@"username from %@ senderFromMessage:directCache: %@", NSStringFromClass(cls), u);
 					return u;
 				}
 			}
@@ -704,13 +704,13 @@ static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id 
 	}
 
 	if (applicator) {
-		for (Class cls in SCIClassesRespondingToClassSelector(@"senderFromMessage:directCacheUpdatesApplicator:")) {
+		for (Class cls in SPKClassesRespondingToClassSelector(@"senderFromMessage:directCacheUpdatesApplicator:")) {
 			SEL sel = NSSelectorFromString(@"senderFromMessage:directCacheUpdatesApplicator:");
 			for (id messageCandidate in messageCandidates) {
 				id user = ((id (*)(id, SEL, id, id))objc_msgSend)(cls, sel, messageCandidate, applicator);
-				NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+				NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 				if (u.length > 0) {
-					SCIDMTrace(@"username from %@ senderFromMessage:directCacheUpdatesApplicator: %@", NSStringFromClass(cls), u);
+					SPKDMTrace(@"username from %@ senderFromMessage:directCacheUpdatesApplicator: %@", NSStringFromClass(cls), u);
 					return u;
 				}
 			}
@@ -722,9 +722,9 @@ static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id 
 		if (directCache && [directCache respondsToSelector:sel]) {
 			for (id pkValue in pkCandidates) {
 				id user = ((id (*)(id, SEL, id))objc_msgSend)(directCache, sel, pkValue);
-				NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+				NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 				if (u.length > 0) {
-					SCIDMTrace(@"username from directCache %@ (%@): %@", selectorName, SCIClassName(pkValue), u);
+					SPKDMTrace(@"username from directCache %@ (%@): %@", selectorName, SPKClassName(pkValue), u);
 					return u;
 				}
 			}
@@ -732,23 +732,23 @@ static NSString *SCIDirectUsernameFromSenderPK(UIViewController *controller, id 
 		if (applicator && [applicator respondsToSelector:sel]) {
 			for (id pkValue in pkCandidates) {
 				id user = ((id (*)(id, SEL, id))objc_msgSend)(applicator, sel, pkValue);
-				NSString *u = SCINonSessionUsernameFromUser(user, sessionUsername);
+				NSString *u = SPKNonSessionUsernameFromUser(user, sessionUsername);
 				if (u.length > 0) {
-					SCIDMTrace(@"username from directCacheUpdatesApplicator %@ (%@): %@", selectorName, SCIClassName(pkValue), u);
+					SPKDMTrace(@"username from directCacheUpdatesApplicator %@ (%@): %@", selectorName, SPKClassName(pkValue), u);
 					return u;
 				}
 			}
 		}
 	}
 
-	SCIDMTrace(@"senderPk fallback could not resolve a non-session username");
+	SPKDMTrace(@"senderPk fallback could not resolve a non-session username");
 	return nil;
 }
 
-NSString *SCIUsernameFromMediaObject(id media) {
+NSString *SPKUsernameFromMediaObject(id media) {
 	if (!media) return nil;
 
-	NSString *username = SCIShallowUsernameFromObject(media);
+	NSString *username = SPKShallowUsernameFromObject(media);
 	if (username.length > 0) return username;
 
 	for (NSString *nestedSelector in @[
@@ -762,17 +762,17 @@ NSString *SCIUsernameFromMediaObject(id media) {
 		@"currentMessage",
 		@"parentMessage"
 	]) {
-		id nested = SCIObjectForSelector(media, nestedSelector);
-		if (!nested) nested = SCIKVCObject(media, nestedSelector);
+		id nested = SPKObjectForSelector(media, nestedSelector);
+		if (!nested) nested = SPKKVCObject(media, nestedSelector);
 		if (!nested || nested == media) continue;
 
-		username = SCIShallowUsernameFromObject(nested);
+		username = SPKShallowUsernameFromObject(nested);
 		if (username.length > 0) return username;
 
-		NSArray *nestedItems = SCIArrayFromCollection(nested);
+		NSArray *nestedItems = SPKArrayFromCollection(nested);
 		for (id nestedItem in nestedItems) {
 			if (!nestedItem || nestedItem == media) continue;
-			username = SCIShallowUsernameFromObject(nestedItem);
+			username = SPKShallowUsernameFromObject(nestedItem);
 			if (username.length > 0) return username;
 		}
 	}
@@ -785,24 +785,24 @@ NSString *SCIUsernameFromMediaObject(id media) {
 // item list on `_dataSource.visualMessages`. The generic data-source paths used for
 // the thread viewer don't apply, so resolve this viewer explicitly — otherwise the
 // current item stays frozen at index 0 as the user swipes.
-static BOOL SCIIsDirectVisualMessageViewer(UIViewController *controller) {
+static BOOL SPKIsDirectVisualMessageViewer(UIViewController *controller) {
 	Class cls = NSClassFromString(@"IGDirectVisualMessageViewerController");
 	return cls && [controller isKindOfClass:cls];
 }
 
-static NSArray *SCIDirectVisualViewerMessages(UIViewController *controller) {
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
-	id value = SCIObjectForSelector(dataSource, @"visualMessages");
-	if (!value) value = SCIKVCObject(dataSource, @"visualMessages");
-	NSArray *messages = SCIArrayFromCollection(value);
+static NSArray *SPKDirectVisualViewerMessages(UIViewController *controller) {
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
+	id value = SPKObjectForSelector(dataSource, @"visualMessages");
+	if (!value) value = SPKKVCObject(dataSource, @"visualMessages");
+	NSArray *messages = SPKArrayFromCollection(value);
 	return messages.count > 0 ? messages : nil;
 }
 
 // Returns the `_currentVisualMessageIndex` (a primitive long long ivar), or -1 when
 // unset. The controller uses a max-value "not set" sentinel during transitions;
 // treat that (and negatives) as unknown so callers don't index past the end.
-static NSInteger SCIDirectVisualViewerIndex(UIViewController *controller) {
+static NSInteger SPKDirectVisualViewerIndex(UIViewController *controller) {
 	Ivar idxIvar = class_getInstanceVariable([controller class], "_currentVisualMessageIndex");
 	if (!idxIvar) return -1;
 	ptrdiff_t offset = ivar_getOffset(idxIvar);
@@ -811,175 +811,175 @@ static NSInteger SCIDirectVisualViewerIndex(UIViewController *controller) {
 	return (NSInteger)idx;
 }
 
-id SCIDirectCurrentMessageFromController(UIViewController *controller) {
+id SPKDirectCurrentMessageFromController(UIViewController *controller) {
 	if (!controller) return nil;
 
-	if (SCIIsDirectVisualMessageViewer(controller)) {
-		NSArray *messages = SCIDirectVisualViewerMessages(controller);
+	if (SPKIsDirectVisualMessageViewer(controller)) {
+		NSArray *messages = SPKDirectVisualViewerMessages(controller);
 		if (messages.count > 0) {
-			NSInteger idx = SCIDirectVisualViewerIndex(controller);
+			NSInteger idx = SPKDirectVisualViewerIndex(controller);
 			if (idx < 0) idx = 0;
 			if ((NSUInteger)idx >= messages.count) idx = (NSInteger)messages.count - 1;
 			id current = messages[idx];
-			SCIDMTrace(@"visual viewer current message idx=%ld/%lu class=%@", (long)idx, (unsigned long)messages.count, SCIClassName(current));
+			SPKDMTrace(@"visual viewer current message idx=%ld/%lu class=%@", (long)idx, (unsigned long)messages.count, SPKClassName(current));
 			return current;
 		}
 	}
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
-	id message = [SCIUtils getIvarForObj:dataSource name:"_currentMessage"];
-	if (!message) message = SCIKVCObject(dataSource, @"currentMessage");
+	id message = [SPKUtils getIvarForObj:dataSource name:"_currentMessage"];
+	if (!message) message = SPKKVCObject(dataSource, @"currentMessage");
 
 	return message;
 }
 
-static NSArray *SCIItemsFromMediaContainer(id media) {
+static NSArray *SPKItemsFromMediaContainer(id media) {
 	if (!media) return nil;
 
-	NSArray *items = SCIArrayFromCollection(SCIObjectForSelector(media, @"items"));
+	NSArray *items = SPKArrayFromCollection(SPKObjectForSelector(media, @"items"));
 	if (items.count == 0) {
-		items = SCIArrayFromCollection(SCIKVCObject(media, @"items"));
+		items = SPKArrayFromCollection(SPKKVCObject(media, @"items"));
 	}
 	return items.count > 0 ? items : nil;
 }
 
-id SCIDirectResolvedMediaFromController(UIViewController *controller) {
-	id message = SCIDirectCurrentMessageFromController(controller);
-	SCIDMTrace(@"resolved currentMessage class=%@", SCIClassName(message));
+id SPKDirectResolvedMediaFromController(UIViewController *controller) {
+	id message = SPKDirectCurrentMessageFromController(controller);
+	SPKDMTrace(@"resolved currentMessage class=%@", SPKClassName(message));
 	if (!message) return nil;
 
-	if (SCIItemsFromMediaContainer(message).count > 0) {
-		SCIDMTrace(@"using currentMessage as media container (items=%lu)", (unsigned long)SCIItemsFromMediaContainer(message).count);
+	if (SPKItemsFromMediaContainer(message).count > 0) {
+		SPKDMTrace(@"using currentMessage as media container (items=%lu)", (unsigned long)SPKItemsFromMediaContainer(message).count);
 		return message;
 	}
 
 	for (NSString *nestedKey in @[@"media", @"visualMessage", @"item"]) {
-		id nested = SCIObjectForSelector(message, nestedKey);
-		if (!nested) nested = SCIKVCObject(message, nestedKey);
+		id nested = SPKObjectForSelector(message, nestedKey);
+		if (!nested) nested = SPKKVCObject(message, nestedKey);
 		if (!nested || nested == message) continue;
 
-		if (SCIItemsFromMediaContainer(nested).count > 0) {
-			SCIDMTrace(@"using nested %@ as media container class=%@ (items=%lu)", nestedKey, SCIClassName(nested), (unsigned long)SCIItemsFromMediaContainer(nested).count);
+		if (SPKItemsFromMediaContainer(nested).count > 0) {
+			SPKDMTrace(@"using nested %@ as media container class=%@ (items=%lu)", nestedKey, SPKClassName(nested), (unsigned long)SPKItemsFromMediaContainer(nested).count);
 			return nested;
 		}
 	}
 
-	SCIDMTrace(@"falling back to currentMessage without items");
+	SPKDMTrace(@"falling back to currentMessage without items");
 	return message;
 }
 
-NSInteger SCIDirectCurrentIndexFromController(UIViewController *controller) {
+NSInteger SPKDirectCurrentIndexFromController(UIViewController *controller) {
 	if (!controller) return 0;
 
-	if (SCIIsDirectVisualMessageViewer(controller)) {
-		NSInteger idx = SCIDirectVisualViewerIndex(controller);
+	if (SPKIsDirectVisualMessageViewer(controller)) {
+		NSInteger idx = SPKDirectVisualViewerIndex(controller);
 		if (idx >= 0) {
-			SCIDMTrace(@"visual viewer current index = %ld", (long)idx);
+			SPKDMTrace(@"visual viewer current index = %ld", (long)idx);
 			return idx;
 		}
 	}
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
 	for (NSString *selectorName in @[@"currentItemIndex", @"currentIndex", @"itemIndex"]) {
-		NSNumber *n = [SCIUtils numericValueForObj:dataSource selectorName:selectorName];
+		NSNumber *n = [SPKUtils numericValueForObj:dataSource selectorName:selectorName];
 		if (n && n.integerValue >= 0) {
-			SCIDMTrace(@"resolved current index via selector %@ = %ld", selectorName, (long)n.integerValue);
+			SPKDMTrace(@"resolved current index via selector %@ = %ld", selectorName, (long)n.integerValue);
 			return n.integerValue;
 		}
 	}
 
 	for (NSString *key in @[@"currentItemIndex", @"currentIndex", @"itemIndex"]) {
-		id v = SCIKVCObject(dataSource, key);
+		id v = SPKKVCObject(dataSource, key);
 		if ([v respondsToSelector:@selector(integerValue)] && [v integerValue] >= 0) {
-			SCIDMTrace(@"resolved current index via KVC %@ = %ld", key, (long)[v integerValue]);
+			SPKDMTrace(@"resolved current index via KVC %@ = %ld", key, (long)[v integerValue]);
 			return [v integerValue];
 		}
 	}
 
 	for (NSString *key in @[@"_currentItemIndex", @"_currentIndex", @"_itemIndex"]) {
-		id v = [SCIUtils getIvarForObj:dataSource name:key.UTF8String];
+		id v = [SPKUtils getIvarForObj:dataSource name:key.UTF8String];
 		if ([v respondsToSelector:@selector(integerValue)] && [v integerValue] >= 0) {
-			SCIDMTrace(@"resolved current index via ivar %@ = %ld", key, (long)[v integerValue]);
+			SPKDMTrace(@"resolved current index via ivar %@ = %ld", key, (long)[v integerValue]);
 			return [v integerValue];
 		}
 	}
 
-	SCIDMTrace(@"could not resolve current index; defaulting to 0");
+	SPKDMTrace(@"could not resolve current index; defaulting to 0");
 	return 0;
 }
 
-NSString *SCIDirectUsernameFromController(UIViewController *controller) {
-	id message = SCIDirectCurrentMessageFromController(controller);
-	SCIDMTrace(@"resolving username from currentMessage class=%@", SCIClassName(message));
-	NSString *sessionUsername = SCISessionUsernameFromController(controller);
+NSString *SPKDirectUsernameFromController(UIViewController *controller) {
+	id message = SPKDirectCurrentMessageFromController(controller);
+	SPKDMTrace(@"resolving username from currentMessage class=%@", SPKClassName(message));
+	NSString *sessionUsername = SPKSessionUsernameFromController(controller);
 	if (sessionUsername.length > 0) {
-		SCIDMTrace(@"current session username=%@", sessionUsername);
+		SPKDMTrace(@"current session username=%@", sessionUsername);
 	}
-	NSString *username = SCIUsernameFromMediaObject(message);
+	NSString *username = SPKUsernameFromMediaObject(message);
 	if (username.length > 0) {
 		if (sessionUsername.length > 0 &&
 			[username caseInsensitiveCompare:sessionUsername] == NSOrderedSame) {
-			SCIDMTrace(@"username on currentMessage matched session user; continuing search");
+			SPKDMTrace(@"username on currentMessage matched session user; continuing search");
 		} else {
-			SCIDMTrace(@"username found on currentMessage: %@", username);
+			SPKDMTrace(@"username found on currentMessage: %@", username);
 			return username;
 		}
 	}
 
-	NSArray *items = SCIItemsFromMediaContainer(message);
-	SCIDMTrace(@"username fallback scanning items count=%lu", (unsigned long)items.count);
+	NSArray *items = SPKItemsFromMediaContainer(message);
+	SPKDMTrace(@"username fallback scanning items count=%lu", (unsigned long)items.count);
 	for (id item in items) {
-		SCIDMTrace(@"checking item class=%@", SCIClassName(item));
-		username = SCIUsernameFromMediaObject(item);
+		SPKDMTrace(@"checking item class=%@", SPKClassName(item));
+		username = SPKUsernameFromMediaObject(item);
 		if (username.length > 0) {
 			if (sessionUsername.length > 0 &&
 				[username caseInsensitiveCompare:sessionUsername] == NSOrderedSame) {
-				SCIDMTrace(@"username on item matched session user; continuing search");
+				SPKDMTrace(@"username on item matched session user; continuing search");
 			} else {
-				SCIDMTrace(@"username found on item: %@", username);
+				SPKDMTrace(@"username found on item: %@", username);
 				return username;
 			}
 		}
 
 		for (NSString *nestedKey in @[@"media", @"visualMessage", @"item"]) {
-			id nested = SCIObjectForSelector(item, nestedKey);
-			if (!nested) nested = SCIKVCObject(item, nestedKey);
-			username = SCIUsernameFromMediaObject(nested);
+			id nested = SPKObjectForSelector(item, nestedKey);
+			if (!nested) nested = SPKKVCObject(item, nestedKey);
+			username = SPKUsernameFromMediaObject(nested);
 			if (username.length > 0) {
 				if (sessionUsername.length > 0 &&
 					[username caseInsensitiveCompare:sessionUsername] == NSOrderedSame) {
-					SCIDMTrace(@"username on item.%@ matched session user; continuing search", nestedKey);
+					SPKDMTrace(@"username on item.%@ matched session user; continuing search", nestedKey);
 				} else {
-					SCIDMTrace(@"username found on item.%@: %@", nestedKey, username);
+					SPKDMTrace(@"username found on item.%@: %@", nestedKey, username);
 					return username;
 				}
 			}
 		}
 	}
 
-	id dataSource = [SCIUtils getIvarForObj:controller name:"_dataSource"];
-	if (!dataSource) dataSource = SCIKVCObject(controller, @"dataSource");
+	id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
+	if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
 
 	for (id root in @[message ?: (id)NSNull.null, dataSource ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
 		if (!root || root == (id)NSNull.null) continue;
 		NSString *foundPath = nil;
 		NSUInteger depth = (root == controller) ? 4 : 6;
-		username = SCIUsernameFromObjectGraph(root, depth, sessionUsername, &foundPath);
+		username = SPKUsernameFromObjectGraph(root, depth, sessionUsername, &foundPath);
 		if (username.length > 0) {
-			SCIDMTrace(@"username found via graph on %@ path=%@: %@", SCIClassName(root), foundPath ?: @"(unknown)", username);
+			SPKDMTrace(@"username found via graph on %@ path=%@: %@", SPKClassName(root), foundPath ?: @"(unknown)", username);
 			return username;
 		}
 	}
 
-	username = SCIDirectUsernameFromSenderPK(controller, message, sessionUsername);
+	username = SPKDirectUsernameFromSenderPK(controller, message, sessionUsername);
 	if (username.length > 0) {
 		return username;
 	}
 
-	SCIDMTrace(@"username not found on currentMessage or any items");
+	SPKDMTrace(@"username not found on currentMessage or any items");
 	return nil;
 }

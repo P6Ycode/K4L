@@ -3,44 +3,44 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 
-static char kSCISwipeCloseCommentsInstalledKey;
-static char kSCISwipeCloseCommentsTargetKey;
+static char kSPKSwipeCloseCommentsInstalledKey;
+static char kSPKSwipeCloseCommentsTargetKey;
 
-static NSString * const kSCISwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
-static NSString * const kSCISwipeCloseCommentsDirectionLeft = @"left";
-static NSString * const kSCISwipeCloseCommentsDirectionRight = @"right";
-static NSString * const kSCISwipeCloseCommentsDirectionBoth = @"both";
+static NSString * const kSPKSwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
+static NSString * const kSPKSwipeCloseCommentsDirectionLeft = @"left";
+static NSString * const kSPKSwipeCloseCommentsDirectionRight = @"right";
+static NSString * const kSPKSwipeCloseCommentsDirectionBoth = @"both";
 
-typedef NS_OPTIONS(NSUInteger, SCISwipeCloseCommentsDirection) {
-    SCISwipeCloseCommentsDirectionLeft = 1 << 0,
-    SCISwipeCloseCommentsDirectionRight = 1 << 1,
+typedef NS_OPTIONS(NSUInteger, SPKSwipeCloseCommentsDirection) {
+    SPKSwipeCloseCommentsDirectionLeft = 1 << 0,
+    SPKSwipeCloseCommentsDirectionRight = 1 << 1,
 };
 
-static CGFloat const kSCICommentsSwipeMinimumHorizontalDistance = 8.0;
-static CGFloat const kSCICommentsSwipeCommitProgress = 0.3;
-static CGFloat const kSCICommentsSwipeVelocityCommitMinimumDistance = 70.0;
-static CGFloat const kSCICommentsSwipeCommitVelocity = 800.0;
+static CGFloat const kSPKCommentsSwipeMinimumHorizontalDistance = 8.0;
+static CGFloat const kSPKCommentsSwipeCommitProgress = 0.3;
+static CGFloat const kSPKCommentsSwipeVelocityCommitMinimumDistance = 70.0;
+static CGFloat const kSPKCommentsSwipeCommitVelocity = 800.0;
 
-static SCISwipeCloseCommentsDirection SCISwipeCloseCommentsDirectionFromPref(void) {
-    NSString *value = [SCIUtils getStringPref:kSCISwipeCloseCommentsDirectionKey];
-    if ([value isEqualToString:kSCISwipeCloseCommentsDirectionLeft]) {
-        return SCISwipeCloseCommentsDirectionLeft;
+static SPKSwipeCloseCommentsDirection SPKSwipeCloseCommentsDirectionFromPref(void) {
+    NSString *value = [SPKUtils getStringPref:kSPKSwipeCloseCommentsDirectionKey];
+    if ([value isEqualToString:kSPKSwipeCloseCommentsDirectionLeft]) {
+        return SPKSwipeCloseCommentsDirectionLeft;
     }
-    if ([value isEqualToString:kSCISwipeCloseCommentsDirectionRight]) {
-        return SCISwipeCloseCommentsDirectionRight;
+    if ([value isEqualToString:kSPKSwipeCloseCommentsDirectionRight]) {
+        return SPKSwipeCloseCommentsDirectionRight;
     }
-    if ([value isEqualToString:kSCISwipeCloseCommentsDirectionBoth]) {
-        return SCISwipeCloseCommentsDirectionLeft | SCISwipeCloseCommentsDirectionRight;
+    if ([value isEqualToString:kSPKSwipeCloseCommentsDirectionBoth]) {
+        return SPKSwipeCloseCommentsDirectionLeft | SPKSwipeCloseCommentsDirectionRight;
     }
-    return SCISwipeCloseCommentsDirectionLeft | SCISwipeCloseCommentsDirectionRight;
+    return SPKSwipeCloseCommentsDirectionLeft | SPKSwipeCloseCommentsDirectionRight;
 }
 
-static NSString *SCICommentsSwipeDescribe(id object) {
+static NSString *SPKCommentsSwipeDescribe(id object) {
     if (!object) return @"nil";
     return [NSString stringWithFormat:@"%@<%p>", NSStringFromClass([object class]), object];
 }
 
-static NSString *SCICommentsSwipeStateName(UIGestureRecognizerState state) {
+static NSString *SPKCommentsSwipeStateName(UIGestureRecognizerState state) {
     switch (state) {
         case UIGestureRecognizerStatePossible: return @"possible";
         case UIGestureRecognizerStateBegan: return @"began";
@@ -52,27 +52,27 @@ static NSString *SCICommentsSwipeStateName(UIGestureRecognizerState state) {
     }
 }
 
-static CGFloat SCICommentsSwipeSignedHorizontalProgress(CGFloat translationX, SCISwipeCloseCommentsDirection direction) {
-    if ((direction & SCISwipeCloseCommentsDirectionLeft) && translationX < 0.0) {
+static CGFloat SPKCommentsSwipeSignedHorizontalProgress(CGFloat translationX, SPKSwipeCloseCommentsDirection direction) {
+    if ((direction & SPKSwipeCloseCommentsDirectionLeft) && translationX < 0.0) {
         return -translationX;
     }
-    if ((direction & SCISwipeCloseCommentsDirectionRight) && translationX > 0.0) {
+    if ((direction & SPKSwipeCloseCommentsDirectionRight) && translationX > 0.0) {
         return translationX;
     }
     return 0.0;
 }
 
-static CGFloat SCICommentsSwipeSignedHorizontalVelocity(CGFloat velocityX, SCISwipeCloseCommentsDirection direction) {
-    if ((direction & SCISwipeCloseCommentsDirectionLeft) && velocityX < 0.0) {
+static CGFloat SPKCommentsSwipeSignedHorizontalVelocity(CGFloat velocityX, SPKSwipeCloseCommentsDirection direction) {
+    if ((direction & SPKSwipeCloseCommentsDirectionLeft) && velocityX < 0.0) {
         return -velocityX;
     }
-    if ((direction & SCISwipeCloseCommentsDirectionRight) && velocityX > 0.0) {
+    if ((direction & SPKSwipeCloseCommentsDirectionRight) && velocityX > 0.0) {
         return velocityX;
     }
     return 0.0;
 }
 
-static NSNumber *SCICommentsSwipeNumberFromSelector(id object, SEL selector) {
+static NSNumber *SPKCommentsSwipeNumberFromSelector(id object, SEL selector) {
     if (!object || ![object respondsToSelector:selector]) return nil;
     @try {
         double (*sendDouble)(id, SEL) = (double (*)(id, SEL))objc_msgSend;
@@ -82,7 +82,7 @@ static NSNumber *SCICommentsSwipeNumberFromSelector(id object, SEL selector) {
     }
 }
 
-static NSNumber *SCICommentsSwipeUnsignedNumberFromSelector(id object, SEL selector) {
+static NSNumber *SPKCommentsSwipeUnsignedNumberFromSelector(id object, SEL selector) {
     if (!object || ![object respondsToSelector:selector]) return nil;
     @try {
         unsigned long long (*sendUnsigned)(id, SEL) = (unsigned long long (*)(id, SEL))objc_msgSend;
@@ -92,7 +92,7 @@ static NSNumber *SCICommentsSwipeUnsignedNumberFromSelector(id object, SEL selec
     }
 }
 
-static NSNumber *SCICommentsSwipeBoolNumberFromSelector(id object, SEL selector) {
+static NSNumber *SPKCommentsSwipeBoolNumberFromSelector(id object, SEL selector) {
     if (!object || ![object respondsToSelector:selector]) return nil;
     @try {
         BOOL (*sendBool)(id, SEL) = (BOOL (*)(id, SEL))objc_msgSend;
@@ -102,11 +102,11 @@ static NSNumber *SCICommentsSwipeBoolNumberFromSelector(id object, SEL selector)
     }
 }
 
-static BOOL SCICommentsSwipeStringLooksCommentRelated(NSString *value) {
+static BOOL SPKCommentsSwipeStringLooksCommentRelated(NSString *value) {
     return [value rangeOfString:@"comment" options:NSCaseInsensitiveSearch].location != NSNotFound;
 }
 
-static BOOL SCICommentsSwipeStringLooksShareRelated(NSString *value) {
+static BOOL SPKCommentsSwipeStringLooksShareRelated(NSString *value) {
     if (value.length == 0) return NO;
     NSArray<NSString *> *patterns = @[
         @"share",
@@ -124,38 +124,38 @@ static BOOL SCICommentsSwipeStringLooksShareRelated(NSString *value) {
     return NO;
 }
 
-static BOOL SCICommentsSwipeViewTreeLooksShareRelated(UIView *view, NSUInteger depth, NSUInteger *visitedCount, NSString **reason) {
+static BOOL SPKCommentsSwipeViewTreeLooksShareRelated(UIView *view, NSUInteger depth, NSUInteger *visitedCount, NSString **reason) {
     if (!view || depth > 8 || *visitedCount > 180) {
         return NO;
     }
     *visitedCount += 1;
 
     NSString *className = NSStringFromClass([view class]);
-    if (SCICommentsSwipeStringLooksShareRelated(className)) {
+    if (SPKCommentsSwipeStringLooksShareRelated(className)) {
         if (reason) *reason = [NSString stringWithFormat:@"view class %@", className];
         return YES;
     }
 
     NSString *identifier = view.accessibilityIdentifier;
-    if (SCICommentsSwipeStringLooksShareRelated(identifier)) {
+    if (SPKCommentsSwipeStringLooksShareRelated(identifier)) {
         if (reason) *reason = [NSString stringWithFormat:@"view accessibilityIdentifier %@", identifier];
         return YES;
     }
 
     NSString *label = view.accessibilityLabel;
-    if (SCICommentsSwipeStringLooksShareRelated(label)) {
+    if (SPKCommentsSwipeStringLooksShareRelated(label)) {
         if (reason) *reason = [NSString stringWithFormat:@"view accessibilityLabel %@", label];
         return YES;
     }
 
     UIResponder *responder = view.nextResponder;
-    if (responder && SCICommentsSwipeStringLooksShareRelated(NSStringFromClass([responder class]))) {
+    if (responder && SPKCommentsSwipeStringLooksShareRelated(NSStringFromClass([responder class]))) {
         if (reason) *reason = [NSString stringWithFormat:@"nextResponder %@", NSStringFromClass([responder class])];
         return YES;
     }
 
     for (UIView *subview in view.subviews) {
-        if (SCICommentsSwipeViewTreeLooksShareRelated(subview, depth + 1, visitedCount, reason)) {
+        if (SPKCommentsSwipeViewTreeLooksShareRelated(subview, depth + 1, visitedCount, reason)) {
             return YES;
         }
     }
@@ -163,32 +163,32 @@ static BOOL SCICommentsSwipeViewTreeLooksShareRelated(UIView *view, NSUInteger d
     return NO;
 }
 
-static BOOL SCICommentsSwipeControllerTreeLooksShareRelated(UIViewController *controller, NSUInteger depth, NSString **reason) {
+static BOOL SPKCommentsSwipeControllerTreeLooksShareRelated(UIViewController *controller, NSUInteger depth, NSString **reason) {
     if (!controller || depth > 5) {
         return NO;
     }
 
     NSString *className = NSStringFromClass([controller class]);
-    if (SCICommentsSwipeStringLooksShareRelated(className)) {
+    if (SPKCommentsSwipeStringLooksShareRelated(className)) {
         if (reason) *reason = [NSString stringWithFormat:@"controller class %@", className];
         return YES;
     }
 
     NSString *title = controller.title;
-    if (SCICommentsSwipeStringLooksShareRelated(title)) {
+    if (SPKCommentsSwipeStringLooksShareRelated(title)) {
         if (reason) *reason = [NSString stringWithFormat:@"controller title %@", title];
         return YES;
     }
 
     for (UIViewController *child in controller.childViewControllers) {
-        if (SCICommentsSwipeControllerTreeLooksShareRelated(child, depth + 1, reason)) {
+        if (SPKCommentsSwipeControllerTreeLooksShareRelated(child, depth + 1, reason)) {
             return YES;
         }
     }
 
     UIViewController *presented = controller.presentedViewController;
     if (presented && presented != controller) {
-        if (SCICommentsSwipeControllerTreeLooksShareRelated(presented, depth + 1, reason)) {
+        if (SPKCommentsSwipeControllerTreeLooksShareRelated(presented, depth + 1, reason)) {
             return YES;
         }
     }
@@ -196,38 +196,38 @@ static BOOL SCICommentsSwipeControllerTreeLooksShareRelated(UIViewController *co
     return NO;
 }
 
-static BOOL SCICommentsSwipeViewTreeLooksCommentRelated(UIView *view, NSUInteger depth, NSUInteger *visitedCount, NSString **reason) {
+static BOOL SPKCommentsSwipeViewTreeLooksCommentRelated(UIView *view, NSUInteger depth, NSUInteger *visitedCount, NSString **reason) {
     if (!view || depth > 8 || *visitedCount > 180) {
         return NO;
     }
     *visitedCount += 1;
 
     NSString *className = NSStringFromClass([view class]);
-    if (SCICommentsSwipeStringLooksCommentRelated(className)) {
+    if (SPKCommentsSwipeStringLooksCommentRelated(className)) {
         if (reason) *reason = [NSString stringWithFormat:@"view class %@", className];
         return YES;
     }
 
     NSString *identifier = view.accessibilityIdentifier;
-    if (SCICommentsSwipeStringLooksCommentRelated(identifier)) {
+    if (SPKCommentsSwipeStringLooksCommentRelated(identifier)) {
         if (reason) *reason = [NSString stringWithFormat:@"view accessibilityIdentifier %@", identifier];
         return YES;
     }
 
     NSString *label = view.accessibilityLabel;
-    if (SCICommentsSwipeStringLooksCommentRelated(label)) {
+    if (SPKCommentsSwipeStringLooksCommentRelated(label)) {
         if (reason) *reason = [NSString stringWithFormat:@"view accessibilityLabel %@", label];
         return YES;
     }
 
     UIResponder *responder = view.nextResponder;
-    if (responder && SCICommentsSwipeStringLooksCommentRelated(NSStringFromClass([responder class]))) {
+    if (responder && SPKCommentsSwipeStringLooksCommentRelated(NSStringFromClass([responder class]))) {
         if (reason) *reason = [NSString stringWithFormat:@"nextResponder %@", NSStringFromClass([responder class])];
         return YES;
     }
 
     for (UIView *subview in view.subviews) {
-        if (SCICommentsSwipeViewTreeLooksCommentRelated(subview, depth + 1, visitedCount, reason)) {
+        if (SPKCommentsSwipeViewTreeLooksCommentRelated(subview, depth + 1, visitedCount, reason)) {
             return YES;
         }
     }
@@ -235,32 +235,32 @@ static BOOL SCICommentsSwipeViewTreeLooksCommentRelated(UIView *view, NSUInteger
     return NO;
 }
 
-static BOOL SCICommentsSwipeControllerTreeLooksCommentRelated(UIViewController *controller, NSUInteger depth, NSString **reason) {
+static BOOL SPKCommentsSwipeControllerTreeLooksCommentRelated(UIViewController *controller, NSUInteger depth, NSString **reason) {
     if (!controller || depth > 5) {
         return NO;
     }
 
     NSString *className = NSStringFromClass([controller class]);
-    if (SCICommentsSwipeStringLooksCommentRelated(className)) {
+    if (SPKCommentsSwipeStringLooksCommentRelated(className)) {
         if (reason) *reason = [NSString stringWithFormat:@"controller class %@", className];
         return YES;
     }
 
     NSString *title = controller.title;
-    if (SCICommentsSwipeStringLooksCommentRelated(title)) {
+    if (SPKCommentsSwipeStringLooksCommentRelated(title)) {
         if (reason) *reason = [NSString stringWithFormat:@"controller title %@", title];
         return YES;
     }
 
     for (UIViewController *child in controller.childViewControllers) {
-        if (SCICommentsSwipeControllerTreeLooksCommentRelated(child, depth + 1, reason)) {
+        if (SPKCommentsSwipeControllerTreeLooksCommentRelated(child, depth + 1, reason)) {
             return YES;
         }
     }
 
     UIViewController *presented = controller.presentedViewController;
     if (presented && presented != controller) {
-        if (SCICommentsSwipeControllerTreeLooksCommentRelated(presented, depth + 1, reason)) {
+        if (SPKCommentsSwipeControllerTreeLooksCommentRelated(presented, depth + 1, reason)) {
             return YES;
         }
     }
@@ -268,7 +268,7 @@ static BOOL SCICommentsSwipeControllerTreeLooksCommentRelated(UIViewController *
     return NO;
 }
 
-static UIView *SCICommentsSwipeContentView(UIViewController *controller) {
+static UIView *SPKCommentsSwipeContentView(UIViewController *controller) {
     UIView *root = controller.view;
     if ([root.accessibilityIdentifier isEqualToString:@"ig-partial-modal-sheet-view-controller-content"]) {
         return root;
@@ -286,7 +286,7 @@ static UIView *SCICommentsSwipeContentView(UIViewController *controller) {
     return root;
 }
 
-static UIView *SCICommentsSwipeSheetContainerView(UIViewController *controller, UIView *contentView) {
+static UIView *SPKCommentsSwipeSheetContainerView(UIViewController *controller, UIView *contentView) {
     if (!controller) return contentView;
 
     UIView *root = controller.view;
@@ -318,7 +318,7 @@ static UIView *SCICommentsSwipeSheetContainerView(UIViewController *controller, 
     return contentView ?: view ?: root;
 }
 
-static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controller, UIView *sheetView) {
+static CGFloat SPKCommentsSwipeDismissDistanceForView(UIViewController *controller, UIView *sheetView) {
     CGRect rootFrame = [controller.view convertRect:controller.view.bounds toView:nil];
     CGRect sheetFrame = [sheetView convertRect:sheetView.bounds toView:nil];
     CGFloat screenHeight = CGRectGetHeight(rootFrame);
@@ -330,16 +330,16 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
     return MAX(distanceToMoveTopBelowScreen, 180.0);
 }
 
-@interface SCISwipeCloseCommentsTarget : NSObject <UIGestureRecognizerDelegate>
+@interface SPKSwipeCloseCommentsTarget : NSObject <UIGestureRecognizerDelegate>
 @property (nonatomic, weak) UIViewController *controller;
-@property (nonatomic) SCISwipeCloseCommentsDirection direction;
+@property (nonatomic) SPKSwipeCloseCommentsDirection direction;
 @property (nonatomic) BOOL hasLoggedSheetState;
 @property (nonatomic, weak) UIView *activeSheetView;
 @property (nonatomic) CGAffineTransform originalTransform;
 @property (nonatomic) CGFloat activeDismissDistance;
 @end
 
-@implementation SCISwipeCloseCommentsTarget
+@implementation SPKSwipeCloseCommentsTarget
 
 - (void)logSheetStateIfNeededForController:(UIViewController *)controller contentView:(UIView *)contentView {
     if (self.hasLoggedSheetState) {
@@ -347,36 +347,36 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
     }
     self.hasLoggedSheetState = YES;
 
-    SCILog(@"General", @"[SCInsta CommentsSwipe] Sheet state controller=%@ content=%@ target=%@ sheetOffset=%@ disablePanToClose=%@ disableVerticalPan=%@ shouldSuppressDismiss=%@",
-           SCICommentsSwipeDescribe(controller),
-           SCICommentsSwipeDescribe(contentView),
-           SCICommentsSwipeUnsignedNumberFromSelector(controller, @selector(targetSheetState)) ?: @"n/a",
-           SCICommentsSwipeNumberFromSelector(controller, @selector(sheetOffset)) ?: @"n/a",
-           SCICommentsSwipeBoolNumberFromSelector(controller, @selector(disablePanToClose)) ?: @"n/a",
-           SCICommentsSwipeBoolNumberFromSelector(controller, @selector(disableVerticalPan)) ?: @"n/a",
-           SCICommentsSwipeBoolNumberFromSelector(controller, @selector(shouldSuppressDismiss)) ?: @"n/a");
+    SPKLog(@"General", @"[Sparkle CommentsSwipe] Sheet state controller=%@ content=%@ target=%@ sheetOffset=%@ disablePanToClose=%@ disableVerticalPan=%@ shouldSuppressDismiss=%@",
+           SPKCommentsSwipeDescribe(controller),
+           SPKCommentsSwipeDescribe(contentView),
+           SPKCommentsSwipeUnsignedNumberFromSelector(controller, @selector(targetSheetState)) ?: @"n/a",
+           SPKCommentsSwipeNumberFromSelector(controller, @selector(sheetOffset)) ?: @"n/a",
+           SPKCommentsSwipeBoolNumberFromSelector(controller, @selector(disablePanToClose)) ?: @"n/a",
+           SPKCommentsSwipeBoolNumberFromSelector(controller, @selector(disableVerticalPan)) ?: @"n/a",
+           SPKCommentsSwipeBoolNumberFromSelector(controller, @selector(shouldSuppressDismiss)) ?: @"n/a");
 }
 
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     UIView *contentView = gesture.view;
-    UIViewController *controller = self.controller ?: [SCIUtils viewControllerForView:contentView];
+    UIViewController *controller = self.controller ?: [SPKUtils viewControllerForView:contentView];
     CGPoint translation = [gesture translationInView:contentView];
     CGPoint velocity = [gesture velocityInView:contentView];
 
-    CGFloat verticalTranslation = SCICommentsSwipeSignedHorizontalProgress(translation.x, self.direction);
-    CGFloat verticalVelocity = SCICommentsSwipeSignedHorizontalVelocity(velocity.x, self.direction);
+    CGFloat verticalTranslation = SPKCommentsSwipeSignedHorizontalProgress(translation.x, self.direction);
+    CGFloat verticalVelocity = SPKCommentsSwipeSignedHorizontalVelocity(velocity.x, self.direction);
 
     if (gesture.state == UIGestureRecognizerStateBegan) {
         self.hasLoggedSheetState = NO;
         [self logSheetStateIfNeededForController:controller contentView:contentView];
-        self.activeSheetView = SCICommentsSwipeSheetContainerView(controller, contentView);
+        self.activeSheetView = SPKCommentsSwipeSheetContainerView(controller, contentView);
         self.originalTransform = self.activeSheetView.transform;
-        self.activeDismissDistance = SCICommentsSwipeDismissDistanceForView(controller, self.activeSheetView);
+        self.activeDismissDistance = SPKCommentsSwipeDismissDistanceForView(controller, self.activeSheetView);
         CGRect sheetWindowFrame = [self.activeSheetView convertRect:self.activeSheetView.bounds toView:nil];
         CGRect contentWindowFrame = [contentView convertRect:contentView.bounds toView:nil];
         CGRect rootWindowFrame = [controller.view convertRect:controller.view.bounds toView:nil];
-        SCILog(@"General", @"[SCInsta CommentsSwipe] Interactive begin sheet=%@ sheetFrame=%@ contentFrame=%@ rootFrame=%@ dismissDistance=%.1f originalTransform=%@",
-               SCICommentsSwipeDescribe(self.activeSheetView),
+        SPKLog(@"General", @"[Sparkle CommentsSwipe] Interactive begin sheet=%@ sheetFrame=%@ contentFrame=%@ rootFrame=%@ dismissDistance=%.1f originalTransform=%@",
+               SPKCommentsSwipeDescribe(self.activeSheetView),
                NSStringFromCGRect(sheetWindowFrame),
                NSStringFromCGRect(contentWindowFrame),
                NSStringFromCGRect(rootWindowFrame),
@@ -384,7 +384,7 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
                NSStringFromCGAffineTransform(self.originalTransform));
     }
 
-    UIView *sheetView = self.activeSheetView ?: SCICommentsSwipeSheetContainerView(controller, contentView);
+    UIView *sheetView = self.activeSheetView ?: SPKCommentsSwipeSheetContainerView(controller, contentView);
     CGFloat clampedTranslation = MAX(0.0, MIN(verticalTranslation, self.activeDismissDistance));
     CGFloat progress = self.activeDismissDistance > 1.0 ? clampedTranslation / self.activeDismissDistance : 0.0;
 
@@ -393,15 +393,15 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
                      gesture.state == UIGestureRecognizerStateCancelled ||
                      gesture.state == UIGestureRecognizerStateFailed;
     if (shouldLog) {
-        SCILog(@"General", @"[SCInsta CommentsSwipe] Interactive pan state=%@ rawX=%.1f rawVX=%.1f mappedY=%.1f mappedVY=%.1f progress=%.2f controller=%@ sheet=%@",
-               SCICommentsSwipeStateName(gesture.state),
+        SPKLog(@"General", @"[Sparkle CommentsSwipe] Interactive pan state=%@ rawX=%.1f rawVX=%.1f mappedY=%.1f mappedVY=%.1f progress=%.2f controller=%@ sheet=%@",
+               SPKCommentsSwipeStateName(gesture.state),
                translation.x,
                velocity.x,
                clampedTranslation,
                verticalVelocity,
                progress,
-               SCICommentsSwipeDescribe(controller),
-               SCICommentsSwipeDescribe(sheetView));
+               SPKCommentsSwipeDescribe(controller),
+               SPKCommentsSwipeDescribe(sheetView));
     }
 
     BOOL finished = gesture.state == UIGestureRecognizerStateEnded ||
@@ -412,14 +412,14 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
         return;
     }
 
-    BOOL distanceCommitted = progress >= kSCICommentsSwipeCommitProgress;
-    BOOL velocityCommitted = clampedTranslation >= kSCICommentsSwipeVelocityCommitMinimumDistance && verticalVelocity >= kSCICommentsSwipeCommitVelocity;
+    BOOL distanceCommitted = progress >= kSPKCommentsSwipeCommitProgress;
+    BOOL velocityCommitted = clampedTranslation >= kSPKCommentsSwipeVelocityCommitMinimumDistance && verticalVelocity >= kSPKCommentsSwipeCommitVelocity;
     BOOL committed = gesture.state == UIGestureRecognizerStateEnded && (distanceCommitted || velocityCommitted);
     if (!committed) {
         [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState animations:^{
             sheetView.transform = self.originalTransform;
         } completion:nil];
-        SCILog(@"General", @"[SCInsta CommentsSwipe] Interactive cancel progress=%.2f translationY=%.1f velocityY=%.1f distanceCommitted=%d velocityCommitted=%d",
+        SPKLog(@"General", @"[Sparkle CommentsSwipe] Interactive cancel progress=%.2f translationY=%.1f velocityY=%.1f distanceCommitted=%d velocityCommitted=%d",
                progress,
                clampedTranslation,
                verticalVelocity,
@@ -428,7 +428,7 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
         return;
     }
 
-    SCILog(@"General", @"[SCInsta CommentsSwipe] Interactive commit progress=%.2f translationY=%.1f velocityY=%.1f distanceCommitted=%d velocityCommitted=%d usingNativeDismiss=1",
+    SPKLog(@"General", @"[Sparkle CommentsSwipe] Interactive commit progress=%.2f translationY=%.1f velocityY=%.1f distanceCommitted=%d velocityCommitted=%d usingNativeDismiss=1",
            progress,
            clampedTranslation,
            verticalVelocity,
@@ -462,12 +462,12 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
     UIPanGestureRecognizer *pan = (UIPanGestureRecognizer *)gestureRecognizer;
     CGPoint translation = [pan translationInView:pan.view];
     CGPoint velocity = [pan velocityInView:pan.view];
-    CGFloat allowedProgress = SCICommentsSwipeSignedHorizontalProgress(translation.x, self.direction);
-    CGFloat allowedVelocity = SCICommentsSwipeSignedHorizontalVelocity(velocity.x, self.direction);
+    CGFloat allowedProgress = SPKCommentsSwipeSignedHorizontalProgress(translation.x, self.direction);
+    CGFloat allowedVelocity = SPKCommentsSwipeSignedHorizontalVelocity(velocity.x, self.direction);
     BOOL horizontalEnough = fabs(velocity.x) > fabs(velocity.y) * 1.15 || fabs(translation.x) > fabs(translation.y) * 1.15;
-    BOOL shouldBegin = horizontalEnough && (allowedProgress >= kSCICommentsSwipeMinimumHorizontalDistance || allowedVelocity > 160.0);
+    BOOL shouldBegin = horizontalEnough && (allowedProgress >= kSPKCommentsSwipeMinimumHorizontalDistance || allowedVelocity > 160.0);
 
-    SCILog(@"General", @"[SCInsta CommentsSwipe] Pan shouldBegin=%d translation=(%.1f, %.1f) velocity=(%.1f, %.1f) allowedProgress=%.1f allowedVelocity=%.1f direction=%lu",
+    SPKLog(@"General", @"[Sparkle CommentsSwipe] Pan shouldBegin=%d translation=(%.1f, %.1f) velocity=(%.1f, %.1f) allowedProgress=%.1f allowedVelocity=%.1f direction=%lu",
            shouldBegin,
            translation.x,
            translation.y,
@@ -487,51 +487,51 @@ static CGFloat SCICommentsSwipeDismissDistanceForView(UIViewController *controll
 
 @end
 
-static void SCIInstallSwipeCloseCommentsGesture(UIViewController *controller) {
-    if (![SCIUtils getBoolPref:@"general_comments_swipe_close"]) {
+static void SPKInstallSwipeCloseCommentsGesture(UIViewController *controller) {
+    if (![SPKUtils getBoolPref:@"general_comments_swipe_close"]) {
         return;
     }
 
-    UIView *contentView = SCICommentsSwipeContentView(controller);
+    UIView *contentView = SPKCommentsSwipeContentView(controller);
     if (!contentView) {
-        SCIWarnLog(@"General", @"[SCInsta CommentsSwipe] Skipping %@: content view not found", SCICommentsSwipeDescribe(controller));
+        SPKWarnLog(@"General", @"[Sparkle CommentsSwipe] Skipping %@: content view not found", SPKCommentsSwipeDescribe(controller));
         return;
     }
 
-    if ([objc_getAssociatedObject(contentView, &kSCISwipeCloseCommentsInstalledKey) boolValue]) {
+    if ([objc_getAssociatedObject(contentView, &kSPKSwipeCloseCommentsInstalledKey) boolValue]) {
         return;
     }
 
     NSString *excludedReason = nil;
     NSUInteger excludedVisitedCount = 0;
-    if (SCICommentsSwipeControllerTreeLooksShareRelated(controller, 0, &excludedReason) ||
-        SCICommentsSwipeViewTreeLooksShareRelated(contentView, 0, &excludedVisitedCount, &excludedReason)) {
-        SCILog(@"General", @"[SCInsta CommentsSwipe] Skipping %@ content=%@: share-sheet surface detected reason=%@ visited=%lu",
-               SCICommentsSwipeDescribe(controller),
-               SCICommentsSwipeDescribe(contentView),
+    if (SPKCommentsSwipeControllerTreeLooksShareRelated(controller, 0, &excludedReason) ||
+        SPKCommentsSwipeViewTreeLooksShareRelated(contentView, 0, &excludedVisitedCount, &excludedReason)) {
+        SPKLog(@"General", @"[Sparkle CommentsSwipe] Skipping %@ content=%@: share-sheet surface detected reason=%@ visited=%lu",
+               SPKCommentsSwipeDescribe(controller),
+               SPKCommentsSwipeDescribe(contentView),
                excludedReason ?: @"unknown",
                (unsigned long)excludedVisitedCount);
         return;
     }
 
     NSString *reason = nil;
-    if (!SCICommentsSwipeControllerTreeLooksCommentRelated(controller, 0, &reason)) {
+    if (!SPKCommentsSwipeControllerTreeLooksCommentRelated(controller, 0, &reason)) {
         NSUInteger visitedCount = 0;
-        if (!SCICommentsSwipeViewTreeLooksCommentRelated(contentView, 0, &visitedCount, &reason)) {
-            SCILog(@"General", @"[SCInsta CommentsSwipe] Skipping %@ content=%@: no comment-related controller/view found, visited=%lu",
-                   SCICommentsSwipeDescribe(controller),
-                   SCICommentsSwipeDescribe(contentView),
+        if (!SPKCommentsSwipeViewTreeLooksCommentRelated(contentView, 0, &visitedCount, &reason)) {
+            SPKLog(@"General", @"[Sparkle CommentsSwipe] Skipping %@ content=%@: no comment-related controller/view found, visited=%lu",
+                   SPKCommentsSwipeDescribe(controller),
+                   SPKCommentsSwipeDescribe(contentView),
                    (unsigned long)visitedCount);
             return;
         }
     }
 
-    SCISwipeCloseCommentsTarget *target = [[SCISwipeCloseCommentsTarget alloc] init];
+    SPKSwipeCloseCommentsTarget *target = [[SPKSwipeCloseCommentsTarget alloc] init];
     target.controller = controller;
-    target.direction = SCISwipeCloseCommentsDirectionFromPref();
+    target.direction = SPKSwipeCloseCommentsDirectionFromPref();
 
     if (target.direction == 0) {
-        SCIWarnLog(@"General", @"[SCInsta CommentsSwipe] Skipping %@: no swipe directions enabled", SCICommentsSwipeDescribe(controller));
+        SPKWarnLog(@"General", @"[Sparkle CommentsSwipe] Skipping %@: no swipe directions enabled", SPKCommentsSwipeDescribe(controller));
         return;
     }
 
@@ -540,31 +540,31 @@ static void SCIInstallSwipeCloseCommentsGesture(UIViewController *controller) {
     pan.cancelsTouchesInView = NO;
     [contentView addGestureRecognizer:pan];
 
-    objc_setAssociatedObject(contentView, &kSCISwipeCloseCommentsTargetKey, target, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(contentView, &kSCISwipeCloseCommentsInstalledKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(contentView, &kSPKSwipeCloseCommentsTargetKey, target, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(contentView, &kSPKSwipeCloseCommentsInstalledKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    SCILog(@"General", @"[SCInsta CommentsSwipe] Installed horizontal pan recognizer on content=%@ controller=%@ directionPref=%@ directionMask=%lu reason=%@ existingGestures=%lu",
-           SCICommentsSwipeDescribe(contentView),
-           SCICommentsSwipeDescribe(controller),
-           [SCIUtils getStringPref:kSCISwipeCloseCommentsDirectionKey] ?: @"both",
+    SPKLog(@"General", @"[Sparkle CommentsSwipe] Installed horizontal pan recognizer on content=%@ controller=%@ directionPref=%@ directionMask=%lu reason=%@ existingGestures=%lu",
+           SPKCommentsSwipeDescribe(contentView),
+           SPKCommentsSwipeDescribe(controller),
+           [SPKUtils getStringPref:kSPKSwipeCloseCommentsDirectionKey] ?: @"both",
            (unsigned long)target.direction,
            reason ?: @"unknown",
            (unsigned long)contentView.gestureRecognizers.count);
 }
 
-%group SCISwipeCloseCommentsHooks
+%group SPKSwipeCloseCommentsHooks
 
 %hook IGDSDefaultPartialModalSheetViewController
 
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    SCIInstallSwipeCloseCommentsGesture((UIViewController *)self);
+    SPKInstallSwipeCloseCommentsGesture((UIViewController *)self);
 
     __weak UIViewController *weakController = (UIViewController *)self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         UIViewController *controller = weakController;
         if (controller) {
-            SCIInstallSwipeCloseCommentsGesture(controller);
+            SPKInstallSwipeCloseCommentsGesture(controller);
         }
     });
 }
@@ -573,12 +573,12 @@ static void SCIInstallSwipeCloseCommentsGesture(UIViewController *controller) {
 
 %end
 
-extern "C" void SCIInstallSwipeCloseCommentsHooksIfEnabled(void) {
-    if (![SCIUtils getBoolPref:@"general_comments_swipe_close"]) return;
+extern "C" void SPKInstallSwipeCloseCommentsHooksIfEnabled(void) {
+    if (![SPKUtils getBoolPref:@"general_comments_swipe_close"]) return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SCILog(@"General", @"[SCInsta CommentsSwipe] Installing hooks");
-        %init(SCISwipeCloseCommentsHooks);
+        SPKLog(@"General", @"[Sparkle CommentsSwipe] Installing hooks");
+        %init(SPKSwipeCloseCommentsHooks);
     });
 }

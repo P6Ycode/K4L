@@ -2,13 +2,13 @@
 
 #import "../../Utils.h"
 
-static NSString * const kSCIInstantsConfirmReactionPref = @"instants_confirm_reaction";
+static NSString * const kSPKInstantsConfirmReactionPref = @"instants_confirm_reaction";
 
-static BOOL SCIInstantsConfirmReactionEnabled(void) {
-    return [SCIUtils getBoolPref:kSCIInstantsConfirmReactionPref];
+static BOOL SPKInstantsConfirmReactionEnabled(void) {
+    return [SPKUtils getBoolPref:kSPKInstantsConfirmReactionPref];
 }
 
-static BOOL SCIInstantsResponderChainContainsQuickSnap(UIResponder *responder) {
+static BOOL SPKInstantsResponderChainContainsQuickSnap(UIResponder *responder) {
     UIResponder *current = responder;
     while (current) {
         if ([NSStringFromClass(current.class) containsString:@"QuickSnap"]) return YES;
@@ -17,7 +17,7 @@ static BOOL SCIInstantsResponderChainContainsQuickSnap(UIResponder *responder) {
     return NO;
 }
 
-static NSString *SCIInstantsControlText(UIControl *control) {
+static NSString *SPKInstantsControlText(UIControl *control) {
     if (!control) return nil;
     id text = nil;
     @try { text = [control valueForKey:@"text"]; } @catch (__unused NSException *exception) {}
@@ -25,7 +25,7 @@ static NSString *SCIInstantsControlText(UIControl *control) {
     return control.accessibilityLabel;
 }
 
-static BOOL SCIInstantsLooksLikeEmojiText(NSString *text) {
+static BOOL SPKInstantsLooksLikeEmojiText(NSString *text) {
     if (text.length == 0 || text.length > 16) return NO;
     for (NSUInteger i = 0; i < text.length; i++) {
         unichar c = [text characterAtIndex:i];
@@ -38,19 +38,19 @@ static BOOL SCIInstantsLooksLikeEmojiText(NSString *text) {
     return YES;
 }
 
-%group SCIInstantsReactionConfirmHooks
+%group SPKInstantsReactionConfirmHooks
 
 %hook IGBouncyTextButton
 - (void)sendAction:(SEL)action to:(id)target forEvent:(UIEvent *)event {
     if (!sel_isEqual(action, @selector(didTapToReact:)) ||
-        !SCIInstantsConfirmReactionEnabled() ||
-        !SCIInstantsResponderChainContainsQuickSnap((UIResponder *)self) ||
-        !SCIInstantsLooksLikeEmojiText(SCIInstantsControlText((UIControl *)self))) {
+        !SPKInstantsConfirmReactionEnabled() ||
+        !SPKInstantsResponderChainContainsQuickSnap((UIResponder *)self) ||
+        !SPKInstantsLooksLikeEmojiText(SPKInstantsControlText((UIControl *)self))) {
         %orig;
         return;
     }
 
-    [SCIUtils showConfirmation:^{
+    [SPKUtils showConfirmation:^{
         %orig;
     }
                          title:@"Confirm Instant Reaction"
@@ -60,10 +60,10 @@ static BOOL SCIInstantsLooksLikeEmojiText(NSString *text) {
 
 %end
 
-extern "C" void SCIInstallInstantsReactionConfirmHooksIfEnabled(void) {
+extern "C" void SPKInstallInstantsReactionConfirmHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SCIInstantsReactionConfirmHooks);
-        SCILog(@"Instants", @"[SCInsta] Instants reaction confirm hooks installed");
+        %init(SPKInstantsReactionConfirmHooks);
+        SPKLog(@"Instants", @"[Sparkle] Instants reaction confirm hooks installed");
     });
 }
