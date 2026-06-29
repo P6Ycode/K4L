@@ -206,8 +206,15 @@ static NSArray *spkSundialFilterAndLimit(NSArray *list) {
 }
 %end
 
-// Demangled name: IGSundialFeed.IGSundialFeedDataSource
+// Demangled name: IGSundialFeed.IGSundialFeedDataSource (IG <= 433)
 %hook _TtC13IGSundialFeed23IGSundialFeedDataSource
+- (NSArray *)objectsForListAdapter:(id)arg1 {
+    return spkSundialFilterAndLimit(%orig);
+}
+%end
+
+// Demangled name: IGSundialFeedDataSource.IGSundialFeedDataSource (IG 434+, class moved module)
+%hook _TtC23IGSundialFeedDataSource23IGSundialFeedDataSource
 - (NSArray *)objectsForListAdapter:(id)arg1 {
     return spkSundialFilterAndLimit(%orig);
 }
