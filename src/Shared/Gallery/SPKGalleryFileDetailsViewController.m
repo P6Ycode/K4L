@@ -3,6 +3,7 @@
 #import "SPKGalleryCoreDataStack.h"
 #import "../Account/SPKAccountManager.h"
 #import "../UI/SPKIGAlertPresenter.h"
+#import "../UI/SPKMediaChrome.h"
 #import "../../Utils.h"
 
 typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
@@ -95,12 +96,12 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
     [super viewDidLoad];
     self.title = @"Edit Details";
     self.view.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
-                                                                                          target:self
-                                                                                          action:@selector(cancel)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave
-                                                                                           target:self
-                                                                                           action:@selector(save)];
+
+    UIBarButtonItem *cancelItem = SPKMediaChromeTopBarButtonItem(@"xmark", self, @selector(cancel));
+    cancelItem.accessibilityLabel = @"Cancel";
+    UIBarButtonItem *saveItem = SPKMediaChromeTopBarButtonItemWithStyle(@"check", self, @selector(save), UIBarButtonItemStyleDone, [SPKUtils SPKColor_InstagramBlue], @"Save");
+    SPKMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ cancelItem ]);
+    SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ saveItem ]);
 }
 
 - (void)cancel {

@@ -8,6 +8,7 @@
 #import "Shared/Gallery/SPKGalleryLockViewController.h"
 #import "Shared/Settings/SPKSettingsLockManager.h"
 #import "Shared/UI/SPKIGAlertPresenter.h"
+#import "Shared/UI/SPKMediaChrome.h"
 #import "Settings/SPKPreferenceAvailability.h"
 #import "Settings/SPKPreferences.h"
 #import "App/SPKStabilityGuard.h"
@@ -484,7 +485,7 @@ static NSArray<NSURLQueryItem *> *SPKSanitizedInstagramQueryItems(NSArray<NSURLQ
     return kept.count > 0 ? kept : nil;
 }
 
-@interface SPKSettingsNavigationController : UINavigationController
+@interface SPKSettingsNavigationController : SPKChromeNavigationController
 @end
 
 @implementation SPKSettingsNavigationController

@@ -178,10 +178,9 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
         [[SPKBulkMediaSelectionViewController alloc] initWithItems:items
                                                       destinations:destinations
                                                         completion:completion];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
     nav.modalPresentationStyle = UIModalPresentationFormSheet;
     nav.navigationBar.prefersLargeTitles = NO;
-    SPKApplyMediaChromeNavigationBar(nav.navigationBar);
     [host presentViewController:nav animated:YES completion:nil];
 }
 

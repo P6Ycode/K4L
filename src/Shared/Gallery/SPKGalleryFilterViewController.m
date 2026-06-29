@@ -1,6 +1,7 @@
 #import "SPKGalleryFilterViewController.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../UI/SPKMediaChrome.h"
 #import "SPKGalleryHiddenSources.h"
 #import "SPKGalleryUserPickerViewController.h"
 
@@ -372,7 +373,7 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     // Present as its own full-height sheet rather than pushing into the filter's
     // single-size sheet, so the searchable list gets full height and the filter
     // sheet keeps one fixed size.
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:picker];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     if (@available(iOS 16.0, *)) {
         nav.sheetPresentationController.detents = @[UISheetPresentationControllerDetent.largeDetent];

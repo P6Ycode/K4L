@@ -487,7 +487,7 @@ typedef NS_ENUM(NSUInteger, SPKDownloadsHistoryRowKind) {
     if (self.navigationController) {
         [self.navigationController pushViewController:vc animated:YES];
     } else {
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
         [self presentViewController:nav animated:YES completion:nil];
     }
 }

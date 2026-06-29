@@ -5,6 +5,7 @@
 #import "SPKDownloadsHistoryViewController.h"
 #import "../../Utils.h"
 #import "../UI/SPKIGAlertPresenter.h"
+#import "../UI/SPKMediaChrome.h"
 #import "../UI/SPKNotificationCenter.h"
 
 @interface SPKDownloadService ()
@@ -50,7 +51,7 @@
             return;
         }
         SPKDownloadsHistoryViewController *vc = [SPKDownloadsHistoryViewController new];
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
         nav.modalPresentationStyle = UIModalPresentationPageSheet;
         UISheetPresentationController *sheet = nav.sheetPresentationController;
         sheet.prefersGrabberVisible = YES;

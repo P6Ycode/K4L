@@ -12,8 +12,87 @@ UIBlurEffect *SPKMediaChromeBlurEffect(void) {
 }
 
 void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar) {
-    (void)bar;
+    if (!bar) {
+        return;
+    }
+
+    // Neutral, non-blue bar tint on every OS version (including iOS 26, where the
+    // back chevron and any system-tinted items would otherwise use the accent).
+    bar.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
+
+    // Sparkle's custom back chevron (the same glyph used to back out of a Gallery
+    // folder), applied to every navigation state so the system blue chevron with
+    // the previous screen's title never shows.
+    UIImage *chevron = [SPKAssetUtils instagramIconNamed:@"chevron_left"
+                                               pointSize:24.0
+                                           renderingMode:UIImageRenderingModeAlwaysTemplate];
+
+    if (@available(iOS 26.0, *)) {
+        // iOS 26 Liquid Glass manages the bar background (and adapts on scroll) on
+        // its own — don't reconfigure it, just swap the chevron on copies of the
+        // existing appearances so the glass look is preserved.
+        UINavigationBarAppearance *standard = [bar.standardAppearance copy] ?: [[UINavigationBarAppearance alloc] init];
+        UINavigationBarAppearance *scrollEdge = [(bar.scrollEdgeAppearance ?: bar.standardAppearance) copy] ?: standard;
+        UINavigationBarAppearance *compact = [(bar.compactAppearance ?: bar.standardAppearance) copy] ?: standard;
+        if (chevron) {
+            [standard setBackIndicatorImage:chevron transitionMaskImage:chevron];
+            [scrollEdge setBackIndicatorImage:chevron transitionMaskImage:chevron];
+            [compact setBackIndicatorImage:chevron transitionMaskImage:chevron];
+        }
+        bar.standardAppearance = standard;
+        bar.scrollEdgeAppearance = scrollEdge;
+        bar.compactAppearance = compact;
+        return;
+    }
+
+    // iOS 18 and lower: opaque material only while content scrolls behind the bar
+    // (standard/compact), transparent at the scroll edge, a neutral non-blue tint,
+    // and the custom chevron in every state.
+    UINavigationBarAppearance *opaque = [[UINavigationBarAppearance alloc] init];
+    [opaque configureWithDefaultBackground];
+    UINavigationBarAppearance *transparent = [[UINavigationBarAppearance alloc] init];
+    [transparent configureWithTransparentBackground];
+    if (chevron) {
+        [opaque setBackIndicatorImage:chevron transitionMaskImage:chevron];
+        [transparent setBackIndicatorImage:chevron transitionMaskImage:chevron];
+    }
+    bar.standardAppearance = opaque;
+    bar.compactAppearance = opaque;
+    bar.scrollEdgeAppearance = transparent;
 }
+
+// Match iOS 26's title-less back button on iOS 18 and lower (it already does this
+// natively on iOS 26). The back button shown on a pushed controller is derived
+// from the previous controller's navigation item, so applying it to every
+// controller in the stack covers every transition, including back to the root.
+static void SPKApplyMediaChromeBackButtonDisplayMode(UIViewController *viewController) {
+    if (@available(iOS 26.0, *)) return;
+    viewController.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeMinimal;
+}
+
+@implementation SPKChromeNavigationController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    SPKApplyMediaChromeNavigationBar(self.navigationBar);
+    for (UIViewController *viewController in self.viewControllers) {
+        SPKApplyMediaChromeBackButtonDisplayMode(viewController);
+    }
+}
+
+- (void)pushViewController:(UIViewController *)viewController animated:(BOOL)animated {
+    SPKApplyMediaChromeBackButtonDisplayMode(viewController);
+    [super pushViewController:viewController animated:animated];
+}
+
+- (void)setViewControllers:(NSArray<UIViewController *> *)viewControllers animated:(BOOL)animated {
+    for (UIViewController *viewController in viewControllers) {
+        SPKApplyMediaChromeBackButtonDisplayMode(viewController);
+    }
+    [super setViewControllers:viewControllers animated:animated];
+}
+
+@end
 
 UILabel *SPKMediaChromeTitleLabel(NSString *text) {
     UILabel *label = [[UILabel alloc] init];
@@ -67,16 +146,21 @@ UIImage *SPKMediaChromeTopBarIcon(NSString *resourceName) {
 }
 
 UIBarButtonItem *SPKMediaChromeTopBarButtonItem(NSString *resourceName, id target, SEL action) {
-    return SPKMediaChromeTopBarButtonItemWithTint(resourceName,
-                                                 target,
-                                                 action,
-                                                 [SPKUtils SPKColor_InstagramPrimaryText],
-                                                 nil);
+    return SPKMediaChromeTopBarButtonItemWithStyle(resourceName,
+                                                  target,
+                                                  action,
+                                                  UIBarButtonItemStylePlain,
+                                                  [SPKUtils SPKColor_InstagramPrimaryText],
+                                                  nil);
 }
 
 UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithTint(NSString *resourceName, id target, SEL action, UIColor *tintColor, NSString *accessibilityLabel) {
+    return SPKMediaChromeTopBarButtonItemWithStyle(resourceName, target, action, UIBarButtonItemStylePlain, tintColor, accessibilityLabel);
+}
+
+UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithStyle(NSString *resourceName, id target, SEL action, UIBarButtonItemStyle style, UIColor *tintColor, NSString *accessibilityLabel) {
     UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:SPKMediaChromeTopBarIcon(resourceName)
-                                                             style:UIBarButtonItemStylePlain
+                                                             style:style
                                                             target:target
                                                             action:action];
     item.tintColor = tintColor ?: [SPKUtils SPKColor_InstagramPrimaryText];
@@ -85,9 +169,25 @@ UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithTint(NSString *resourceName, 
 }
 
 UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMenu *menu, NSString *accessibilityLabel) {
+    return SPKMediaChromeTopBarMenuButtonItemWithTint(resourceName, menu, [SPKUtils SPKColor_InstagramPrimaryText], accessibilityLabel);
+}
+
+// A real (not custom-view) bar button item that opens `menu` on tap and honors
+// `style`, so a menu-backed "Done" looks identical to a plain Done button
+// (prominent glass on iOS 26, bold/tinted otherwise). Use this instead of the
+// custom-UIButton variant when you don't need forced menu-element ordering.
+UIBarButtonItem *SPKMediaChromeTopBarMenuBarButtonItemWithStyle(NSString *resourceName, UIMenu *menu, UIBarButtonItemStyle style, UIColor *tintColor, NSString *accessibilityLabel) {
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:SPKMediaChromeTopBarIcon(resourceName) menu:menu];
+    item.style = style;
+    item.tintColor = tintColor ?: [SPKUtils SPKColor_InstagramPrimaryText];
+    item.accessibilityLabel = accessibilityLabel;
+    return item;
+}
+
+UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItemWithTint(NSString *resourceName, UIMenu *menu, UIColor *tintColor, NSString *accessibilityLabel) {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     [button setImage:SPKMediaChromeTopBarIcon(resourceName) forState:UIControlStateNormal];
-    button.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
+    button.tintColor = tintColor ?: [SPKUtils SPKColor_InstagramPrimaryText];
     button.menu = menu;
     button.showsMenuAsPrimaryAction = YES;
     // Force the menu to keep the order we declare (navigation first, destructive last)

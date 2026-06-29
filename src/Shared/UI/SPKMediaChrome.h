@@ -7,15 +7,40 @@ FOUNDATION_EXPORT CGFloat const SPKMediaChromeTopBarContentHeight;
 UIBlurEffect *SPKMediaChromeBlurEffect(void);
 void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar);
 
+/// Shared navigation controller for Sparkle's modal stacks (settings, gallery,
+/// downloads, etc.). Applies the media-chrome navigation bar styling (custom
+/// back chevron everywhere, neutral non-blue tint and scroll-driven material on
+/// iOS 18 and lower) and a title-less back button, so every Sparkle top bar is
+/// consistent. Liquid Glass is left to the system on iOS 26+.
+@interface SPKChromeNavigationController : UINavigationController
+@end
+
 UILabel *SPKMediaChromeTitleLabel(NSString *text);
 UIImage *SPKMediaChromeTopIcon(NSString *resourceName);
 UIImage *SPKMediaChromeBottomIcon(NSString *resourceName);
 UIImage *SPKMediaChromeTopBarIcon(NSString *resourceName);
 UIBarButtonItem *SPKMediaChromeTopBarButtonItem(NSString *resourceName, id target, SEL action);
-UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithTint(NSString *resourceName, id target, SEL action, UIColor *_Nullable tintColor, NSString *_Nullable accessibilityLabel);
+UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithTint(NSString *resourceName, id target, SEL action,
+                                                        UIColor *_Nullable tintColor,
+                                                        NSString *_Nullable accessibilityLabel);
+/// Same as WithTint, but lets the caller pick the bar-button style. Use
+/// `UIBarButtonItemStyleDone` for a prominent/emphasized button (rendered as a
+/// prominent glass capsule on iOS 26 and bold on earlier systems); others should
+/// stay `UIBarButtonItemStylePlain`.
+UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithStyle(NSString *resourceName, id target, SEL action,
+                                                         UIBarButtonItemStyle style,
+                                                         UIColor *_Nullable tintColor,
+                                                         NSString *_Nullable accessibilityLabel);
 // Top-bar button styled like the others but backed by a UIButton that opens
 // `menu` as its primary action (single tap), matching the gallery chrome.
 UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMenu *menu, NSString *_Nullable accessibilityLabel);
+/// Same as the menu button above, but with a caller-supplied tint (e.g. IG blue
+/// for a prominent "Done"-equivalent menu button).
+UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItemWithTint(NSString *resourceName, UIMenu *menu, UIColor *_Nullable tintColor, NSString *_Nullable accessibilityLabel);
+/// A real (non custom-view) bar button item that opens `menu` on tap and honors
+/// `style` — use `UIBarButtonItemStyleDone` so a menu-backed Done matches a plain
+/// Done button (prominent glass on iOS 26). Doesn't support forced menu ordering.
+UIBarButtonItem *SPKMediaChromeTopBarMenuBarButtonItemWithStyle(NSString *resourceName, UIMenu *menu, UIBarButtonItemStyle style, UIColor *_Nullable tintColor, NSString *_Nullable accessibilityLabel);
 void SPKMediaChromeSetLeadingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items);
 void SPKMediaChromeSetTrailingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items);
 

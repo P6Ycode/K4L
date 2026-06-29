@@ -336,9 +336,10 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
     NSArray<UIBarButtonItem *> *trailingItems = @[];
     if (self.defersRestartPrompt) {
-        UIBarButtonItem *applyItem = SPKMediaChromeTopBarButtonItemWithTint(@"check",
+        UIBarButtonItem *applyItem = SPKMediaChromeTopBarButtonItemWithStyle(@"check",
                                                                            self,
                                                                            @selector(applyRestartChanges),
+                                                                           UIBarButtonItemStyleDone,
                                                                            [SPKUtils SPKColor_InstagramPrimaryText],
                                                                            @"Apply Liquid Glass changes");
         applyItem.enabled = self.hasPendingRestartChanges;

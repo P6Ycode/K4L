@@ -1,4 +1,5 @@
 #import "SPKGalleryUserPickerViewController.h"
+#include <UIKit/UIKit.h>
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 
@@ -55,13 +56,14 @@
     self.definesPresentationContext = YES;
 
     UIBarButtonItem *done = [[UIBarButtonItem alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"check" pointSize:24.0]
-                                                             style:UIBarButtonItemStylePlain
+                                                             style:UIBarButtonItemStyleDone
                                                             target:self
                                                             action:@selector(dismissPicker)];
+    done.tintColor = [SPKUtils SPKColor_InstagramBlue];
     done.accessibilityLabel = @"Done";
     self.navigationItem.rightBarButtonItem = done;
 
-    UIBarButtonItem *clear = [[UIBarButtonItem alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"circle_xmark" pointSize:24.0]
+    UIBarButtonItem *clear = [[UIBarButtonItem alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"backspace" pointSize:24.0]
                                                               style:UIBarButtonItemStylePlain
                                                              target:self
                                                              action:@selector(clearSelection)];

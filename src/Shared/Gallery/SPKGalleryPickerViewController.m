@@ -11,6 +11,7 @@
 #import "SPKGalleryManager.h"
 #import "SPKGalleryLockViewController.h"
 #import "SPKGalleryHiddenSources.h"
+#import "../UI/SPKMediaChrome.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -79,7 +80,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
                                                            allowedMediaTypes:allowedMediaTypes
                                                      allowsMultipleSelection:allowsMultipleSelection
                                                                   completion:completion];
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
+        UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:picker];
         nav.modalPresentationStyle = UIModalPresentationFullScreen;
         [presenter presentViewController:nav animated:YES completion:nil];
     };

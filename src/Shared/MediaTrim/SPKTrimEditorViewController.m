@@ -126,8 +126,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     if (_configuration.doneOptions.count > 0) {
         doneItem = SPKMediaChromeTopBarMenuButtonItem(@"check", [self buildDoneMenu], @"Save");
     } else {
-        doneItem = SPKMediaChromeTopBarButtonItem(@"check", self, @selector(doneTapped));
-        doneItem.accessibilityLabel = @"Save";
+        doneItem = SPKMediaChromeTopBarButtonItemWithStyle(@"check", self, @selector(doneTapped), UIBarButtonItemStyleDone, [SPKUtils SPKColor_InstagramBlue], @"Save");
     }
     SPKMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ cancelItem ]);
     SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ doneItem ]);

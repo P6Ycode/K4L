@@ -82,7 +82,7 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
 + (void)presentFromViewController:(UIViewController *)presenter {
     UIViewController *root = presenter ?: UIApplication.sharedApplication.keyWindow.rootViewController;
     while (root.presentedViewController) root = root.presentedViewController;
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[SPKDeletedMessagesViewController new]];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:[SPKDeletedMessagesViewController new]];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     [root presentViewController:nav animated:YES completion:nil];
 }
@@ -95,7 +95,7 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     while (root.presentedViewController) root = root.presentedViewController;
 
     SPKDeletedMessagesViewController *list = [SPKDeletedMessagesViewController new];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:list];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:list];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
 
     // Prefer threadId (reliable from an open chat); fall back to senderPK.

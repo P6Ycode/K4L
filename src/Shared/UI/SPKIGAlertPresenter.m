@@ -664,10 +664,9 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
 
     NSMutableArray *nativeActions = [NSMutableArray arrayWithCapacity:actions.count];
     for (SPKIGAlertAction *action in actions) {
-        // The native IGActionSheetController already provides its own Cancel button,
-        // so skip cancel-style actions to avoid duplicates.
-        if (action.style == SPKIGAlertActionStyleCancel) continue;
-
+        // Include caller-provided cancel actions: the native IGActionSheetController
+        // does not render a built-in Cancel on iOS 18 and lower, so skipping them
+        // left the sheet with no way to dismiss. (iOS 26 takes the alert path above.)
         id nativeAction = ((id (*)(id, SEL, id, id, long long, id, id, id))objc_msgSend)([actionClass alloc],
                                                                                         actionSelector,
                                                                                         action.title,

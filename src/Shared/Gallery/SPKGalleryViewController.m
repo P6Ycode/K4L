@@ -146,7 +146,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
     void (^presentGalleryNav)(void) = ^{
         SPKGalleryViewController *vc = [[SPKGalleryViewController alloc] init];
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
         nav.modalPresentationStyle = UIModalPresentationFullScreen;
         [presenter presentViewController:nav animated:YES completion:nil];
     };
@@ -1800,7 +1800,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     SPKGalleryFileDetailsViewController *vc = [[SPKGalleryFileDetailsViewController alloc] initWithFile:file];
     __weak typeof(self) weakSelf = self;
     vc.onSaved = ^{ [weakSelf refetch]; };
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     if (@available(iOS 16.0, *)) {
         nav.sheetPresentationController.detents = @[
@@ -2052,7 +2052,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     vc.delegate = self;
     vc.currentSortMode = self.sortMode;
     vc.currentGroupByMediaType = self.sortGroupByMediaType;
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
     [self configureGallerySheetForNavigation:nav];
 
     UISheetPresentationController *sheet = nav.sheetPresentationController;
@@ -2099,7 +2099,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSArray<NSString *> *availableUsernames = [self availableSourceUsernamesForCurrentFilterContext];
     BOOL showsUsernameSection = availableUsernames.count > 1;
     vc.availableUsernames = showsUsernameSection ? [self usernamesForFilterDisplayFromUsernames:availableUsernames] : @[];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
     [self configureGallerySheetForNavigation:nav];
 
     UISheetPresentationController *sheet = nav.sheetPresentationController;

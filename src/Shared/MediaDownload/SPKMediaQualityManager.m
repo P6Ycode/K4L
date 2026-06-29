@@ -9,6 +9,7 @@
 #import "../../Utils.h"
 #import "../Downloads/SPKDownloadHelpers.h"
 #import "../Downloads/SPKDownloadDestinationWriter.h"
+#import "../UI/SPKMediaChrome.h"
 #import "../Downloads/SPKDownloadTypes.h"
 #import "../Gallery/SPKGalleryFile.h"
 #import "../Gallery/SPKGallerySaveMetadata.h"
@@ -2001,8 +2002,7 @@ SPKMediaPresentOptionsSheet(UIViewController *presenter, UIView *sourceView,
                destination:destination
           selectionHandler:selectionHandler];
   controller.dismissHandler = dismissHandler;
-  UINavigationController *nav =
-      [[UINavigationController alloc] initWithRootViewController:controller];
+  UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:controller];
   nav.modalPresentationStyle = UIModalPresentationPageSheet;
   UISheetPresentationController *sheet = nav.sheetPresentationController;
   if (sheet) {

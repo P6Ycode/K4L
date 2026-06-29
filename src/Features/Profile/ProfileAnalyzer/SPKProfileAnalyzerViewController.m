@@ -282,7 +282,7 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
         probe = probe.presentingViewController;
     }
     SPKProfileAnalyzerViewController *analyzer = [SPKProfileAnalyzerViewController new];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:analyzer];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:analyzer];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     [root presentViewController:nav animated:YES completion:nil];
 }
