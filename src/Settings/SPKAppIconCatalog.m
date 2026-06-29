@@ -198,7 +198,8 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
 }
 
 + (UIImage *)imageForAppIcon:(SPKAppIconItem *)item {
-    for (NSString *file in [item.iconFiles reverseObjectEnumerator]) {
+    NSArray *files = item.iconFiles;
+    for (NSString *file in [files reverseObjectEnumerator]) {
         UIImage *image = SPKAppIconImageNamed(file);
         if (image) return image;
     }

@@ -1,5 +1,7 @@
 #import "SPKAppIconPickerViewController.h"
 
+#import <errno.h>
+
 #import "SPKAppIconCatalog.h"
 #import "../AssetUtils.h"
 #import "../Shared/UI/SPKIGAlertPresenter.h"
@@ -98,6 +100,11 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
 @property (nonatomic, copy) NSString *selectedIdentifier;
 @property (nonatomic, copy) void (^onSelect)(NSString *identifier);
+
+- (void)spk_setAlternateIconName:(NSString *)name
+                         attempt:(NSInteger)attempt
+                     maxAttempts:(NSInteger)maxAttempts
+                      completion:(void (^)(NSError *error))completion;
 
 @end
 
@@ -260,7 +267,22 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
         return;
     }
 
-    if (!UIApplication.sharedApplication.supportsAlternateIcons) {
+    BOOL supportsAlternate = UIApplication.sharedApplication.supportsAlternateIcons;
+    SPKLog(@"AppIcon", @"[Sparkle] select id='%@' name='%@' primary=%d supportsAlternate=%d currentAlt='%@'",
+           identifier, item.displayName, item.isPrimary, supportsAlternate,
+           UIApplication.sharedApplication.alternateIconName ?: @"(nil)");
+
+    // Verify the alternate's PNG files actually resolve inside this (re-signed)
+    // bundle. A missing loose icon file is the classic cause of the POSIX 35
+    // ("resource temporarily unavailable") failure from setAlternateIconName.
+    for (NSString *file in item.iconFiles) {
+        NSString *resolved = [NSBundle.mainBundle pathForResource:file ofType:@"png"]
+            ?: [NSBundle.mainBundle pathForResource:file ofType:nil];
+        SPKLog(@"AppIcon", @"[Sparkle]  iconFile '%@' -> %@", file, resolved ?: @"MISSING");
+    }
+
+    if (!supportsAlternate) {
+        SPKLog(@"AppIcon", @"[Sparkle] abort: supportsAlternateIcons == NO");
         [SPKIGAlertPresenter presentAlertFromViewController:self
                                                       title:@"App Icons Unavailable"
                                                     message:@"This device or app build does not allow alternate app icons."
@@ -270,25 +292,60 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
 
     NSString *alternateIconName = item.isPrimary ? nil : identifier;
     __weak typeof(self) weakSelf = self;
-    [UIApplication.sharedApplication setAlternateIconName:alternateIconName completionHandler:^(NSError *error) {
+    [self spk_setAlternateIconName:alternateIconName attempt:1 maxAttempts:4 completion:^(NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        if (error) {
+            [SPKIGAlertPresenter presentAlertFromViewController:self
+                                                          title:@"Changing App Icon Failed"
+                                                        message:error.localizedDescription ?: @"Unable to change the app icon."
+                                                        actions:@[[SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil]]];
+            return;
+        }
+
+        self.selectedIdentifier = identifier;
+        [SPKAppIconCatalog setStoredSelectedIdentifier:identifier];
+        if (self.onSelect) self.onSelect(identifier);
+        [collectionView reloadData];
+        SPKNotify(@"settings_app_icon", @"App icon changed", item.displayName, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
+        [self.navigationController popViewControllerAnimated:YES];
+    }];
+}
+
+// `setAlternateIconName:` frequently fails on sideloaded/iOS 26 installs with
+// NSPOSIXErrorDomain code 35 (EAGAIN) because iconservicesagent transiently
+// rejects the request — typically after a re-sideload churns the app's
+// LaunchServices registration. The first (failed) call often wakes the daemon,
+// so we back off and retry on the main thread; `completion` runs once, on main,
+// with the final result.
+- (void)spk_setAlternateIconName:(NSString *)name
+                         attempt:(NSInteger)attempt
+                     maxAttempts:(NSInteger)maxAttempts
+                      completion:(void (^)(NSError *error))completion {
+    SPKLog(@"AppIcon", @"[Sparkle] calling setAlternateIconName:'%@' (attempt %ld/%ld)",
+           name ?: @"(nil=primary)", (long)attempt, (long)maxAttempts);
+    __weak typeof(self) weakSelf = self;
+    [UIApplication.sharedApplication setAlternateIconName:name completionHandler:^(NSError *error) {
+        BOOL isEAGAIN = error
+            && [error.domain isEqualToString:NSPOSIXErrorDomain]
+            && error.code == EAGAIN;
+        SPKLog(@"AppIcon", @"[Sparkle] completion attempt %ld/%ld: domain='%@' code=%ld eagain=%d",
+               (long)attempt, (long)maxAttempts, error.domain ?: @"(none)", (long)error.code, isEAGAIN);
+
+        if (isEAGAIN && attempt < maxAttempts) {
+            NSTimeInterval delay = 0.4 * (NSTimeInterval)attempt;  // 0.4s, 0.8s, 1.2s
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                [self spk_setAlternateIconName:name attempt:attempt + 1 maxAttempts:maxAttempts completion:completion];
+            });
+            return;
+        }
+
         dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-
-            if (error) {
-                [SPKIGAlertPresenter presentAlertFromViewController:self
-                                                              title:@"Changing App Icon Failed"
-                                                            message:error.localizedDescription ?: @"Unable to change the app icon."
-                                                            actions:@[[SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil]]];
-                return;
-            }
-
-            self.selectedIdentifier = identifier;
-            [SPKAppIconCatalog setStoredSelectedIdentifier:identifier];
-            if (self.onSelect) self.onSelect(identifier);
-            [collectionView reloadData];
-            SPKNotify(@"settings_app_icon", @"App icon changed", item.displayName, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
-            [self.navigationController popViewControllerAnimated:YES];
+            if (completion) completion(error);
         });
     }];
 }
