@@ -2,13 +2,36 @@
 
 #import "../SPKAppIconCatalog.h"
 #import "../SPKAppIconPickerViewController.h"
+#import "../SPKActionSectionIconPickerViewController.h"
 #import "../SPKTopicSettingsSupport.h"
 #import "../../Utils.h"
 #import "../../Shared/Account/SPKAccountManager.h"
+#import "../../Shared/ActionButton/ActionButtonCore.h"
 #import "../../Shared/UI/SPKIGAlertPresenter.h"
 #import "../../AssetUtils.h"
 
 @implementation SPKGeneralSettingsProvider
+
++ (SPKSetting *)defaultMenuIconSetting {
+    SPKActionSectionIconPickerViewController *controller =
+        [[SPKActionSectionIconPickerViewController alloc] initWithSelectedIconName:SPKActionButtonOpenMenuIconName()
+                                                                         onSelect:^(NSString *iconName) {
+            SPKPreferenceSetObject(iconName.length > 0 ? iconName : @"action", @"general_action_btn_default_menu_icon");
+            [[NSNotificationCenter defaultCenter] postNotificationName:SPKActionButtonConfigurationDidChangeNotification object:nil];
+        }];
+    controller.title = @"Open Menu Icon";
+
+    SPKSetting *setting = [SPKSetting navigationCellWithTitle:@"Open Menu Icon"
+                                                     subtitle:@""
+                                                         icon:SPKSettingsIcon(@"action")
+                                               viewController:controller];
+    // The row's icon mirrors the chosen glyph, so the (cryptic) catalog name is
+    // redundant as accessory text — let the adaptive icon convey the selection.
+    setting.iconProvider = ^UIImage *{
+        return SPKSettingsIcon(SPKActionButtonOpenMenuIconName());
+    };
+    return setting;
+}
 
 + (SPKSetting *)appIconSetting {
     SPKAppIconPickerViewController *controller = [[SPKAppIconPickerViewController alloc] initWithSelectedIdentifier:[SPKAppIconCatalog currentAppIconIdentifier]
@@ -61,8 +84,11 @@
 
 + (SPKSetting *)rootSetting {
     SPKSetting *clearCacheSetting = [SPKSetting buttonCellWithTitle:@"Clear Cache" subtitle:@"" icon:SPKSettingsIcon(@"trash") action:^(void) {
-        [SPKUtils cleanCache];
-        SPKNotify(kSPKNotificationSettingsClearCache, @"Cache cleared", nil, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
+        unsigned long long freedBytes = [SPKUtils cleanCacheReturningFreedBytes];
+        NSString *subtitle = freedBytes > 0
+            ? [NSString stringWithFormat:@"Freed %@", [NSByteCountFormatter stringFromByteCount:(long long)freedBytes countStyle:NSByteCountFormatterCountStyleFile]]
+            : @"Cache was already empty";
+        SPKNotify(kSPKNotificationSettingsClearCache, @"Cache cleared", subtitle, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
     }];
     clearCacheSetting.tintColor = [SPKUtils SPKColor_InstagramDestructive];
     clearCacheSetting.iconTintColor = [SPKUtils SPKColor_InstagramDestructive];
@@ -154,8 +180,9 @@
         ], @"Automatic clearing is checked whenever Instagram becomes active."),
         SPKTopicSection(@"App", @[
             [self appIconSetting],
+            [self defaultMenuIconSetting],
             [SPKSetting switchCellWithTitle:@"Disable App Haptics" icon:SPKSettingsIcon(@"haptics") defaultsKey:@"general_disable_haptics"]
-        ], @"Choose an app icon directly from the icons exposed by the installed Instagram bundle. Disable App Haptics turns off haptics and vibrations within the app."),
+        ], @"Choose an app icon directly from the icons exposed by the installed Instagram bundle. Open Menu Icon sets the glyph shown on every action button whose default tap action is Open Menu. Disable App Haptics turns off haptics and vibrations within the app."),
     ]);
 }
 

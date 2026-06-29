@@ -40,6 +40,13 @@ typedef NS_ENUM(NSInteger, SPKResolvedImageSource) {
                                   source:(SPKResolvedImageSource)source
                            renderingMode:(UIImageRenderingMode)renderingMode;
 
+// Resolves a name (shorthand alias like "carousel"/"action", or a raw
+// "ig_icon_*" catalog name) to the canonical Instagram catalog asset name that
+// actually renders for it — i.e. the inverse direction of instagramIconNamed:.
+// Returns nil if nothing resolves. Used to match a stored icon name against the
+// runtime Instagram icon list.
++ (nullable NSString *)resolvedInstagramIconNameForName:(NSString *)name;
+
 @end
 
 NS_ASSUME_NONNULL_END

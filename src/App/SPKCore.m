@@ -74,6 +74,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"profile_analyzer_track_visits": @(NO),
         @"feed_action_btn": @(NO),
         @"feed_action_btn_default_action": @"none",
+        @"general_action_btn_default_menu_icon": @"action",
         @"reels_action_btn": @(NO),
         @"reels_action_btn_default_action": @"none",
         @"stories_action_btn": @(NO),

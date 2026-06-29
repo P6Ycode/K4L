@@ -140,21 +140,63 @@ static NSString *SPKGalleryShortcutTabIdentifier(void) {
     return target;
 }
 
-static BOOL SPKTabIdentifierMatchesGalleryShortcut(NSString *identifier, NSString *label) {
-    NSString *target = SPKGalleryShortcutTabIdentifier();
-    if ([target isEqualToString:kSPKGalleryQuickAccessDisabledValue]) return NO;
+static BOOL SPKTabButtonMatchesTarget(NSString *identifier, NSString *label, NSString *target) {
+    if (target.length == 0 || [target isEqualToString:kSPKGalleryQuickAccessDisabledValue]) return NO;
 
     NSString *candidate = [NSString stringWithFormat:@"%@ %@", identifier ?: @"", label ?: @""].lowercaseString;
     if ([identifier isEqualToString:target]) return YES;
     if ([target isEqualToString:@"mainfeed-tab"] && ([candidate containsString:@"mainfeed"] || [candidate containsString:@"home"])) return YES;
     if ([target isEqualToString:@"reels-tab"] && ([candidate containsString:@"clips"] || [candidate containsString:@"reels"])) return YES;
     if ([target isEqualToString:@"camera-tab"] && [candidate containsString:@"create"]) return YES;
+    if ([target isEqualToString:@"explore-tab"] && ([candidate containsString:@"explore"] || [candidate containsString:@"search"])) return YES;
     if ([target isEqualToString:@"direct-inbox-tab"] && ([candidate containsString:@"direct"] ||
                                                          [candidate containsString:@"inbox"] ||
                                                          [candidate containsString:@"message"])) return YES;
     if ([target isEqualToString:@"profile-tab"] && ([candidate containsString:@"profile"] ||
                                                     [candidate containsString:@"tab_avatar"])) return YES;
     return NO;
+}
+
+static BOOL SPKTabIdentifierMatchesGalleryShortcut(NSString *identifier, NSString *label) {
+    return SPKTabButtonMatchesTarget(identifier, label, SPKGalleryShortcutTabIdentifier());
+}
+
+// Maps a canonical tab identifier to its "Hide Tabs" preference so we can tell,
+// up front, whether that tab's button will exist in the bar at all.
+static BOOL SPKTabHiddenForIdentifier(NSString *identifier) {
+    if ([identifier isEqualToString:@"mainfeed-tab"]) return [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+    if ([identifier isEqualToString:@"reels-tab"]) return [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
+    if ([identifier isEqualToString:@"direct-inbox-tab"]) return [SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+    if ([identifier isEqualToString:@"camera-tab"]) return [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+    if ([identifier isEqualToString:@"explore-tab"]) return [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
+    if ([identifier isEqualToString:@"profile-tab"]) return [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
+    return NO;
+}
+
+// Settings-access safeguard: the tab the Quick Settings long-press should live on.
+// Normally the Home tab, but if Home is hidden — or claimed by the Gallery
+// shortcut — we fall back to the highest-priority *visible* tab that the Gallery
+// shortcut isn't already using, so the user can never hide their way out of
+// reaching Sparkle Settings. Ordered to avoid tabs with their own long-press
+// (profile account switcher, explore clipboard opener) unless nothing else is
+// left. As an absolute last resort (only one tab visible and the Gallery
+// shortcut wants it) Settings wins, since lockout is the worse outcome.
+static NSString *SPKResolvedSettingsShortcutTabIdentifier(void) {
+    if (![SPKUtils getBoolPref:@"tools_settings_shortcut"]) return nil;
+
+    NSArray<NSString *> *priority = @[@"mainfeed-tab", @"reels-tab", @"direct-inbox-tab", @"camera-tab", @"explore-tab", @"profile-tab"];
+    NSString *galleryTarget = SPKGalleryShortcutTabIdentifier();
+
+    for (NSString *identifier in priority) {
+        if (SPKTabHiddenForIdentifier(identifier)) continue;
+        if ([identifier isEqualToString:galleryTarget]) continue;
+        return identifier;
+    }
+    for (NSString *identifier in priority) {
+        if (SPKTabHiddenForIdentifier(identifier)) continue;
+        return identifier;
+    }
+    return nil;
 }
 
 static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *label) {
@@ -173,12 +215,19 @@ static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
     NSString *identifier = self.accessibilityIdentifier ?: @"";
     NSString *label = self.accessibilityLabel ?: @"";
-    if ([identifier isEqualToString:@"mainfeed-tab"] && [SPKUtils getBoolPref:@"tools_settings_shortcut"]) {
-        if (![SPKGalleryShortcutTabIdentifier() isEqualToString:@"mainfeed-tab"]) {
-            [self spk_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSPKHomeTabSettingsLongPressAssocKey minimumDuration:kSPKHomeTabLongPressDuration];
-        }
+
+    NSString *settingsHost = SPKResolvedSettingsShortcutTabIdentifier();
+    BOOL hostsSettings = settingsHost && SPKTabButtonMatchesTarget(identifier, label, settingsHost);
+    if (hostsSettings) {
+        [self spk_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSPKHomeTabSettingsLongPressAssocKey minimumDuration:kSPKHomeTabLongPressDuration];
     }
-    if (SPKTabIdentifierMatchesGalleryShortcut(identifier, label)) {
+
+    BOOL matchesGallery = SPKTabIdentifierMatchesGalleryShortcut(identifier, label);
+    // Only skip the Gallery shortcut here when Settings was forced onto this exact
+    // button (last-resort case where the only visible tab is the Gallery's tab) —
+    // Settings access takes priority.
+    BOOL settingsTookGalleryTab = hostsSettings && [settingsHost isEqualToString:SPKGalleryShortcutTabIdentifier()];
+    if (matchesGallery && !settingsTookGalleryTab) {
         if (SPKShouldReplaceProfileTabLongPress(identifier, label)) {
             [self spk_removeProfileAccountPickerLongPressIfNeeded];
         }

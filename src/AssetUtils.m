@@ -441,6 +441,34 @@ static BOOL SPKAssetHasExplicitOverride(NSString *name) {
     return SPKAssetResolvedDescriptor(SPKAssetNormalizeInternalName(name)) != nil;
 }
 
+static NSString *SPKAssetResolvedIconCandidateName(NSString *name, CGFloat pointSize, SPKAssetCatalogSource source) {
+    NSString *normalizedName = SPKAssetNormalizeInternalName(name);
+    if (normalizedName.length == 0) {
+        return nil;
+    }
+
+    CGFloat resolvedPointSize = SPKAssetResolvedPointSize(normalizedName, pointSize);
+    SPKAssetCatalogSource defaultSource = SPKAssetDefaultSourceForInternalName(normalizedName);
+    NSArray<NSNumber *> *sourceOrder = SPKAssetSearchOrderForSource(source, defaultSource);
+    NSArray<NSString *> *candidates = SPKAssetCandidatesForInternalName(normalizedName, resolvedPointSize);
+
+    for (NSNumber *sourceValue in sourceOrder) {
+        NSBundle *bundle = SPKAssetBundleForSource((SPKAssetCatalogSource)sourceValue.integerValue);
+        if (!bundle) {
+            continue;
+        }
+
+        for (NSString *candidate in candidates) {
+            UIImage *image = [UIImage imageNamed:candidate inBundle:bundle compatibleWithTraitCollection:nil];
+            if (image) {
+                return candidate;
+            }
+        }
+    }
+
+    return nil;
+}
+
 static UIImage *SPKAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, SPKAssetCatalogSource source, UIImageRenderingMode renderingMode) {
     NSString *normalizedName = SPKAssetNormalizeInternalName(name);
     if (normalizedName.length == 0) {
@@ -511,6 +539,13 @@ static UIImage *SPKAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
         return image;
     }
     return SPKAssetFallbackImage(pointSize, renderingMode);
+}
+
++ (NSString *)resolvedInstagramIconNameForName:(NSString *)name {
+    if (name.length == 0) {
+        return nil;
+    }
+    return SPKAssetResolvedIconCandidateName(name, 24.0, SPKAssetCatalogSourceAutomatic);
 }
 
 + (UIImage *)resolvedImageNamed:(NSString *)name

@@ -2,9 +2,11 @@
 
 #import <UIKit/UIKit.h>
 
+#import "SPKIconPickerViewController.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
-@interface SPKActionSectionIconPickerViewController : UIViewController
+@interface SPKActionSectionIconPickerViewController : SPKIconPickerViewController
 
 - (instancetype)initWithSelectedIconName:(NSString *)selectedIconName
                                 onSelect:(void (^)(NSString *iconName))onSelect;

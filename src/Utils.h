@@ -82,6 +82,7 @@ FOUNDATION_EXPORT BOOL SPKPreferenceKeyIsGlobal(NSString *key);
 + (BOOL)spk_isLiquidGlassEffectivelyEnabled;
 
 + (void)cleanCache;
++ (unsigned long long)cleanCacheReturningFreedBytes;
 + (unsigned long long)cacheSizeBytes;
 + (NSString *)formattedCacheSize;
 + (NSString *)cacheAutoClearMode;

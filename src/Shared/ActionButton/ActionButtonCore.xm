@@ -944,12 +944,19 @@ static BOOL SPKStoryMediaHasMentions(id media) {
     return mentions.count > 0;
 }
 
+NSString *SPKActionButtonOpenMenuIconName(void) {
+	NSString *name = [SPKUtils getStringPref:@"general_action_btn_default_menu_icon"];
+	return name.length > 0 ? name : @"action";
+}
+
 static UIImage *SPKIconForActionIdentifier(NSString *identifier, SPKActionButtonSource source, CGFloat size, SPKActionButtonContext *context) {
 	if (SPKIsBulkChildActionIdentifier(identifier)) {
 		return SPKIconForActionIdentifier(SPKBaseActionIdentifierForBulkChild(identifier), source, size, context);
 	}
 
-	NSString *iconName = SPKActionDescriptorIconName(identifier);
+	NSString *iconName = [identifier isEqualToString:kSPKActionNone]
+		? SPKActionButtonOpenMenuIconName()
+		: SPKActionDescriptorIconName(identifier);
 
 	if (source == SPKActionButtonSourceReels) {
 		NSString *reelsIconName = [NSString stringWithFormat:@"%@_reels", iconName];

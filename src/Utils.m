@@ -808,6 +808,13 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     [SPKUtils markCacheClearedNow];
 }
 
++ (unsigned long long)cleanCacheReturningFreedBytes {
+    unsigned long long bytesBefore = [self cacheSizeBytes];
+    [self cleanCache];
+    unsigned long long bytesAfter = [self cacheSizeBytes];
+    return bytesBefore > bytesAfter ? bytesBefore - bytesAfter : 0;
+}
+
 + (unsigned long long)cacheSizeBytes {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *libraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) firstObject];

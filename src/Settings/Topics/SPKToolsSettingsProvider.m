@@ -252,7 +252,8 @@ static NSArray *SPKManageSettingsDataSections(void) {
                 SPKStabilityGuardReset();
                 [SPKUtils showRestartConfirmation];
             }],
-        ], @"Quick Settings Access opens settings when long pressing the Home tab. Reset Safe Startup Mode clears failed-launch counters and temporary hook suppression."),
+        ], @"1. Quick Settings Access opens settings when long pressing the Home tab or the next visible tab if the Home tab is hidden.\n"
+           @"5. Reset Safe Startup Mode clears failed-launch counters and temporary hook suppression."),
         SPKSettingsLockSection(),
         SPKTopicSection(@"Instagram", @[
             [SPKSetting switchCellWithTitle:@"Hide TestFlight Popup" defaultsKey:@"tools_hide_testflight_popup" requiresRestart:YES],

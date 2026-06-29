@@ -84,6 +84,9 @@ void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context)
 SPKActionButtonContext *SPKActionButtonContextFromButton(UIButton *button);
 NSString *SPKActionButtonTitleForIdentifier(NSString *identifier);
 UIImage *SPKActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size);
+// Glyph name shown on the action button when its default tap action is "Open
+// Menu" (kSPKActionNone). User-configurable; defaults to "action".
+NSString *SPKActionButtonOpenMenuIconName(void);
 BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *context, BOOL isDefaultTap);
 NSArray<NSString *> *SPKConfiguredBulkActionIdentifiersForSource(SPKActionButtonSource source);
 NSArray *SPKActionButtonCarouselChildren(id _Nullable media);

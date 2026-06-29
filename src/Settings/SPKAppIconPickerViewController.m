@@ -8,260 +8,64 @@
 #import "../Shared/UI/SPKNotificationCenter.h"
 #import "../Utils.h"
 
-static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell";
-@interface SPKAppIconPickerCell : UICollectionViewCell
-@property (nonatomic, strong) UIImageView *iconView;
-@property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UIImageView *checkmarkView;
-- (void)configureWithItem:(SPKAppIconItem *)item image:(UIImage *)image selected:(BOOL)selected;
-@end
-
-@implementation SPKAppIconPickerCell
-
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (!self) return nil;
-
-    self.contentView.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
-    self.contentView.layer.cornerRadius = 8.0;
-    self.contentView.layer.borderWidth = 0.0;
-
-    _iconView = [[UIImageView alloc] initWithFrame:CGRectZero];
-    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconView.contentMode = UIViewContentModeScaleAspectFill;
-    _iconView.clipsToBounds = YES;
-    _iconView.layer.cornerRadius = 14.0;
-    [self.contentView addSubview:_iconView];
-
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    _titleLabel.textColor = [SPKUtils SPKColor_InstagramPrimaryText];
-    _titleLabel.textAlignment = NSTextAlignmentCenter;
-    _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    _titleLabel.numberOfLines = 2;
-    [self.contentView addSubview:_titleLabel];
-
-    _checkmarkView = [[UIImageView alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"circle_check_filled" pointSize:20.0]];
-    _checkmarkView.translatesAutoresizingMaskIntoConstraints = NO;
-    _checkmarkView.tintColor = [SPKUtils SPKColor_InstagramBlue];
-    _checkmarkView.hidden = YES;
-    [self.contentView addSubview:_checkmarkView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_iconView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
-        [_iconView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [_iconView.widthAnchor constraintEqualToConstant:72.0],
-        [_iconView.heightAnchor constraintEqualToConstant:72.0],
-
-        [_titleLabel.topAnchor constraintEqualToAnchor:_iconView.bottomAnchor constant:10.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:8.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8.0],
-        [_titleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-10.0],
-
-        [_checkmarkView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:8.0],
-        [_checkmarkView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8.0],
-        [_checkmarkView.widthAnchor constraintEqualToConstant:20.0],
-        [_checkmarkView.heightAnchor constraintEqualToConstant:20.0]
-    ]];
-
-    return self;
-}
-
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    self.iconView.image = nil;
-    self.titleLabel.text = nil;
-    [self configureSelected:NO];
-}
-
-- (void)configureSelected:(BOOL)selected {
-    self.checkmarkView.hidden = !selected;
-    if (selected) self.contentView.layer.borderColor = [SPKUtils SPKColor_InstagramBlue].CGColor;
-    self.contentView.layer.borderWidth = selected ? 2.0 : 0.0;
-    self.contentView.backgroundColor = selected
-        ? [[SPKUtils SPKColor_InstagramBlue] colorWithAlphaComponent:0.12]
-        : [SPKUtils SPKColor_InstagramSecondaryBackground];
-}
-
-- (void)configureWithItem:(SPKAppIconItem *)item image:(UIImage *)image selected:(BOOL)selected {
-    self.titleLabel.text = item.displayName;
-    self.iconView.image = image ?: [SPKAssetUtils instagramIconNamed:@"app" pointSize:44.0];
-    [self configureSelected:selected];
-}
-
-@end
-
-@interface SPKAppIconPickerViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UISearchResultsUpdating>
-
-@property (nonatomic, strong) UICollectionView *collectionView;
-@property (nonatomic, strong) NSArray<SPKAppIconItem *> *allItems;
-@property (nonatomic, strong) NSArray<SPKAppIconItem *> *filteredItems;
-@property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
-@property (nonatomic, copy) NSString *selectedIdentifier;
+@interface SPKAppIconPickerViewController ()
 @property (nonatomic, copy) void (^onSelect)(NSString *identifier);
 
 - (void)spk_setAlternateIconName:(NSString *)name
                          attempt:(NSInteger)attempt
                      maxAttempts:(NSInteger)maxAttempts
                       completion:(void (^)(NSError *error))completion;
-
 @end
 
 @implementation SPKAppIconPickerViewController
 
 - (instancetype)initWithSelectedIdentifier:(NSString *)selectedIdentifier
-                                  onSelect:(void (^)(NSString *identifier))onSelect
-{
+                                  onSelect:(void (^)(NSString *identifier))onSelect {
     self = [super init];
     if (self) {
-        _selectedIdentifier = [selectedIdentifier copy] ?: @"";
+        self.selectedIdentifier = [selectedIdentifier copy] ?: @"";
         _onSelect = [onSelect copy];
-        _imageCache = [[NSCache alloc] init];
-        _imageCache.countLimit = 64;
         self.title = @"App Icon";
     }
     return self;
 }
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    self.navigationController.navigationBar.prefersLargeTitles = NO;
-    self.view.backgroundColor = [SPKUtils SPKColor_InstagramGroupedBackground];
-
-    self.allItems = [SPKAppIconCatalog availableAppIcons];
-    self.filteredItems = self.allItems;
-
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.minimumInteritemSpacing = 12.0;
-    layout.minimumLineSpacing = 12.0;
-    layout.sectionInset = UIEdgeInsetsMake(14.0, 14.0, 24.0, 14.0);
-
-    self.collectionView = [[UICollectionView alloc] initWithFrame:self.view.bounds collectionViewLayout:layout];
-    self.collectionView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.collectionView.backgroundColor = [SPKUtils SPKColor_InstagramGroupedBackground];
-    self.collectionView.dataSource = self;
-    self.collectionView.delegate = self;
-    self.collectionView.alwaysBounceVertical = YES;
-    self.collectionView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    [self.collectionView registerClass:[SPKAppIconPickerCell class] forCellWithReuseIdentifier:kSPKAppIconPickerCellIdentifier];
-    [self.view addSubview:self.collectionView];
-
-    UISearchController *searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
-    searchController.searchResultsUpdater = self;
-    searchController.obscuresBackgroundDuringPresentation = NO;
-    searchController.hidesNavigationBarDuringPresentation = NO;
-    searchController.searchBar.placeholder = @"Search Icons";
-    [searchController.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0]
-                        forSearchBarIcon:UISearchBarIconSearch
-                                    state:UIControlStateNormal];
-    self.navigationItem.searchController = searchController;
-    self.navigationItem.hidesSearchBarWhenScrolling = YES;
-    self.definesPresentationContext = YES;
-}
-
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    // The icon can change underneath us (or fail silently); resync from the system.
     self.selectedIdentifier = [SPKAppIconCatalog currentAppIconIdentifier];
-    [self.collectionView reloadData];
-    [self scrollToSelectedIconIfNeeded];
+    [self refreshSelectionHighlight];
 }
 
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
-    CGFloat horizontalInset = layout.sectionInset.left + layout.sectionInset.right;
-    CGFloat availableWidth = MAX(1.0, self.view.bounds.size.width - horizontalInset);
-    NSInteger columns = availableWidth >= 500.0 ? 4 : 3;
-    CGFloat itemWidth = floor((availableWidth - (columns - 1) * layout.minimumInteritemSpacing) / columns);
-    layout.itemSize = CGSizeMake(itemWidth, 124.0);
-}
+#pragma mark - SPKIconPickerViewController
 
-- (UIImage *)imageForItem:(SPKAppIconItem *)item {
-    NSString *cacheKey = item.identifier ?: @"";
-    UIImage *cached = [self.imageCache objectForKey:cacheKey];
-    if (cached) return cached;
+- (SPKIconPickerCellStyle)cellStyle { return SPKIconPickerCellStyleAppIcon; }
+- (NSInteger)columnCountForWidth:(CGFloat)width { return width >= 500.0 ? 4 : 3; }
 
-    UIImage *image = [SPKAppIconCatalog imageForAppIcon:item];
-    if (image) {
-        [self.imageCache setObject:image forKey:cacheKey];
+- (NSArray<SPKIconPickerSection *> *)buildSections {
+    NSMutableArray<SPKIconPickerItem *> *items = [NSMutableArray array];
+    for (SPKAppIconItem *icon in [SPKAppIconCatalog availableAppIcons]) {
+        NSString *search = [NSString stringWithFormat:@"%@ %@ %@",
+                            icon.identifier ?: @"", icon.displayName ?: @"", [icon.iconFiles componentsJoinedByString:@" "]];
+        SPKIconPickerItem *item = [SPKIconPickerItem itemWithIdentifier:icon.identifier ?: @""
+                                                                 title:icon.displayName
+                                                            searchText:search];
+        item.userInfo = icon;
+        [items addObject:item];
     }
-    return image;
+    return @[[SPKIconPickerSection sectionWithTitle:nil items:items]];
 }
 
-- (void)scrollToSelectedIconIfNeeded {
-    NSUInteger index = [self.filteredItems indexOfObjectPassingTest:^BOOL(SPKAppIconItem *item, NSUInteger idx, BOOL *stop) {
-        (void)idx;
-        (void)stop;
-        return [item.identifier isEqualToString:self.selectedIdentifier];
-    }];
-    if (index != NSNotFound) {
-        [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:index inSection:0]
-                                    atScrollPosition:UICollectionViewScrollPositionCenteredVertically
-                                            animated:NO];
-    }
+- (UIImage *)imageForItem:(SPKIconPickerItem *)item {
+    SPKAppIconItem *icon = item.userInfo;
+    return icon ? [SPKAppIconCatalog imageForAppIcon:icon] : nil;
 }
 
-- (NSArray<NSString *> *)searchTokensForText:(NSString *)text {
-    NSString *normalized = [[[text ?: @"" stringByReplacingOccurrencesOfString:@"_" withString:@" "] stringByReplacingOccurrencesOfString:@"-" withString:@" "] lowercaseString];
-    NSArray<NSString *> *parts = [normalized componentsSeparatedByCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    NSMutableArray<NSString *> *tokens = [NSMutableArray array];
-    for (NSString *part in parts) {
-        if (part.length > 0) [tokens addObject:part];
-    }
-    return tokens;
-}
-
-- (void)filterForSearchText:(NSString *)searchText {
-    NSArray<NSString *> *tokens = [self searchTokensForText:searchText];
-    if (tokens.count == 0) {
-        self.filteredItems = self.allItems;
-        [self.collectionView reloadData];
-        return;
-    }
-
-    NSMutableArray<SPKAppIconItem *> *matches = [NSMutableArray array];
-    for (SPKAppIconItem *item in self.allItems) {
-        NSString *searchText = [[[NSString stringWithFormat:@"%@ %@ %@", item.identifier ?: @"", item.displayName ?: @"", [item.iconFiles componentsJoinedByString:@" "]]
-                                 stringByReplacingOccurrencesOfString:@"_" withString:@" "] lowercaseString];
-        BOOL matchesAllTokens = YES;
-        for (NSString *token in tokens) {
-            if ([searchText rangeOfString:token].location == NSNotFound) {
-                matchesAllTokens = NO;
-                break;
-            }
-        }
-        if (matchesAllTokens) [matches addObject:item];
-    }
-    self.filteredItems = matches;
-    [self.collectionView reloadData];
-}
-
-#pragma mark - UICollectionViewDataSource
-
-- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
-    (void)collectionView;
-    return 1;
-}
-
-- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    (void)collectionView;
-    (void)section;
-    return self.filteredItems.count;
-}
-
-- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    SPKAppIconPickerCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kSPKAppIconPickerCellIdentifier forIndexPath:indexPath];
-    SPKAppIconItem *item = self.filteredItems[indexPath.item];
-    [cell configureWithItem:item image:[self imageForItem:item] selected:[item.identifier isEqualToString:self.selectedIdentifier]];
-    return cell;
-}
-
-#pragma mark - UICollectionViewDelegate
-
-- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    SPKAppIconItem *item = self.filteredItems[indexPath.item];
+- (void)didSelectItem:(SPKIconPickerItem *)item {
+    SPKAppIconItem *appIcon = item.userInfo;
     NSString *identifier = item.identifier ?: @"";
+    if (!appIcon) return;
+
     if ([identifier isEqualToString:self.selectedIdentifier]) {
         [self.navigationController popViewControllerAnimated:YES];
         return;
@@ -269,13 +73,13 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
 
     BOOL supportsAlternate = UIApplication.sharedApplication.supportsAlternateIcons;
     SPKLog(@"AppIcon", @"[Sparkle] select id='%@' name='%@' primary=%d supportsAlternate=%d currentAlt='%@'",
-           identifier, item.displayName, item.isPrimary, supportsAlternate,
+           identifier, appIcon.displayName, appIcon.isPrimary, supportsAlternate,
            UIApplication.sharedApplication.alternateIconName ?: @"(nil)");
 
     // Verify the alternate's PNG files actually resolve inside this (re-signed)
     // bundle. A missing loose icon file is the classic cause of the POSIX 35
     // ("resource temporarily unavailable") failure from setAlternateIconName.
-    for (NSString *file in item.iconFiles) {
+    for (NSString *file in appIcon.iconFiles) {
         NSString *resolved = [NSBundle.mainBundle pathForResource:file ofType:@"png"]
             ?: [NSBundle.mainBundle pathForResource:file ofType:nil];
         SPKLog(@"AppIcon", @"[Sparkle]  iconFile '%@' -> %@", file, resolved ?: @"MISSING");
@@ -290,7 +94,7 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
         return;
     }
 
-    NSString *alternateIconName = item.isPrimary ? nil : identifier;
+    NSString *alternateIconName = appIcon.isPrimary ? nil : identifier;
     __weak typeof(self) weakSelf = self;
     [self spk_setAlternateIconName:alternateIconName attempt:1 maxAttempts:4 completion:^(NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -307,8 +111,8 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
         self.selectedIdentifier = identifier;
         [SPKAppIconCatalog setStoredSelectedIdentifier:identifier];
         if (self.onSelect) self.onSelect(identifier);
-        [collectionView reloadData];
-        SPKNotify(@"settings_app_icon", @"App icon changed", item.displayName, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
+        [self refreshSelectionHighlight];
+        SPKNotify(@"settings_app_icon", @"App icon changed", appIcon.displayName, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
         [self.navigationController popViewControllerAnimated:YES];
     }];
 }
@@ -348,12 +152,6 @@ static NSString * const kSPKAppIconPickerCellIdentifier = @"SPKAppIconPickerCell
             if (completion) completion(error);
         });
     }];
-}
-
-#pragma mark - UISearchResultsUpdating
-
-- (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
-    [self filterForSearchText:searchController.searchBar.text];
 }
 
 @end
