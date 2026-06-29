@@ -203,6 +203,41 @@ strip_appex_bundles() {
     rm -rf "$temp_dir"
 }
 
+embed_safari_extension() {
+    local input_ipa="$1"
+    local output_ipa="$2"
+    local appex_src="$ROOT_DIR/modules/OpenInstagramSafariExtension.appex"
+    local temp_dir
+    local app_dir
+
+    [ -d "$appex_src" ] || {
+        echo -e "\033[1m\033[0;31mSafari extension source not found at ${appex_src}\033[0m"
+        return 1
+    }
+
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-embed-safari.XXXXXX")"
+
+    unzip -q "$input_ipa" -d "$temp_dir"
+
+    app_dir="$(find "$temp_dir/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+    if [ -z "$app_dir" ]; then
+        echo -e '\033[1m\033[0;31mCould not find Payload/*.app in IPA.\033[0m'
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    mkdir -p "$app_dir/PlugIns"
+    rm -rf "$app_dir/PlugIns/OpenInstagramSafariExtension.appex"
+    cp -R "$appex_src" "$app_dir/PlugIns/"
+
+    rm -f "$output_ipa"
+    (
+        cd "$temp_dir"
+        zip -qry "$output_ipa" Payload
+    )
+    rm -rf "$temp_dir"
+}
+
 # Args: instagram ipa basename without .ipa; globals OPT_* must be set
 sparkle_sideload_output_ipa() {
     local ig_base="$1"
@@ -405,6 +440,11 @@ then
         echo -e '\033[1m\033[32mStripping app extensions...\033[0m'
         strip_appex_bundles "$ipa_stage_input" "$ipa_strip_tmp"
         mv -f "$ipa_strip_tmp" "$ipa_stage_input"
+    else
+        echo -e '\033[1m\033[32mEmbedding Safari extension...\033[0m'
+        ipa_embed_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-embed.ipa"
+        embed_safari_extension "$ipa_stage_input" "$ipa_embed_tmp"
+        mv -f "$ipa_embed_tmp" "$ipa_stage_input"
     fi
 
     echo -e '\033[1m\033[32mCreating the IPA file...\033[0m'
