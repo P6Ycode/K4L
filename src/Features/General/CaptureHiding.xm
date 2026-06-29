@@ -11,6 +11,16 @@ static const void *kSPKCaptureCanvasKey = &kSPKCaptureCanvasKey;
 
 const NSInteger kSPKCaptureFollowIndicatorTag = 926003;
 
+// All capture tags fall within [921341, 926003]. A fast integer range check lets
+// the vast majority of views (tag == 0) exit without boxing an NSNumber or
+// touching the NSSet.
+#define SPK_CAPTURE_TAG_MIN 921341
+#define SPK_CAPTURE_TAG_MAX 926003
+
+static inline BOOL SPKCaptureTagMayMatch(NSInteger tag) {
+    return tag >= SPK_CAPTURE_TAG_MIN && tag <= SPK_CAPTURE_TAG_MAX;
+}
+
 static NSSet<NSNumber *> *SPKCaptureHiddenTags(void) {
     static NSSet<NSNumber *> *tags;
     static dispatch_once_t onceToken;
@@ -22,6 +32,13 @@ static NSSet<NSNumber *> *SPKCaptureHiddenTags(void) {
         ]];
     });
     return tags;
+}
+
+static inline Class SPKChromeButtonClass(void) {
+    static Class cls;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{ cls = NSClassFromString(@"SPKChromeButton"); });
+    return cls;
 }
 
 static UIView *SPKFindCanvasView(UIView *root, int depth) {
@@ -147,15 +164,22 @@ static void SPKEnsureSecureCanvas(UIView *button) {
 
 - (void)didMoveToWindow {
     %orig;
+    // Fast path: 99.9% of views have tag 0 — exit without any ObjC messaging.
+    if (!SPKCaptureTagMayMatch(self.tag)) return;
     if (self.window &&
-        ![self isKindOfClass:NSClassFromString(@"SPKChromeButton")] &&
+        ![self isKindOfClass:SPKChromeButtonClass()] &&
         [SPKCaptureHiddenTags() containsObject:@(self.tag)]) {
         SPKEnsureSecureCanvas(self);
     }
 }
 
 - (void)addSubview:(UIView *)view {
-    if (![self isKindOfClass:NSClassFromString(@"SPKChromeButton")] &&
+    // Fast path: skip ObjC work for the overwhelming majority of views.
+    if (!SPKCaptureTagMayMatch(self.tag)) {
+        %orig;
+        return;
+    }
+    if (![self isKindOfClass:SPKChromeButtonClass()] &&
         [SPKCaptureHiddenTags() containsObject:@(self.tag)]) {
         // If this is the secure field itself, let it pass
         UITextField *secureField = objc_getAssociatedObject(self, kSPKCaptureFieldKey);
