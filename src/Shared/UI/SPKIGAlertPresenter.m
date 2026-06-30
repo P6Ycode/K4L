@@ -77,7 +77,12 @@ static long long SPKIGNativeAlertActionStyle(SPKIGAlertActionStyle style) {
 }
 
 static long long SPKIGNativeActionSheetStyle(SPKIGAlertActionStyle style) {
-    return (long long)style;
+    // IGActionSheetControllerAction uses IG's native action-style enum
+    // (0 = default, 1 = destructive, 2 = cancel) — the same mapping as alerts,
+    // NOT Sparkle's raw enum. Passing the raw value swapped cancel/destructive,
+    // which placed Cancel red at the top and put the destructive action into the
+    // dismiss (cancel) slot.
+    return SPKIGNativeAlertActionStyle(style);
 }
 
 static BOOL SPKIGActionsContainDestructiveAction(NSArray<SPKIGAlertAction *> *actions) {

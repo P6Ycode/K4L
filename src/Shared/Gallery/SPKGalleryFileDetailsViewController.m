@@ -225,7 +225,7 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
     [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
 
     [SPKIGAlertPresenter presentActionSheetFromViewController:self
-                                                       title:@"Account"
+                                                       title:@"Change File Owner"
                                                      message:@"Which account does this file belong to?"
                                                      actions:actions];
 }

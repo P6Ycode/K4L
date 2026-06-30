@@ -1852,15 +1852,37 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 - (void)presentMoveSheetForFiles:(NSArray<SPKGalleryFile *> *)files {
     NSArray<NSString *> *allFolders = [self allFolderPaths];
+
+    // The files' shared current folder (nil = Root). When every selected file
+    // already lives in the same folder, that folder is omitted as a destination —
+    // moving them there would be a no-op. With a mixed selection nothing is omitted.
+    NSString *currentFolder = nil;
+    BOOL sharesCurrentFolder = files.count > 0;
+    for (NSUInteger i = 0; i < files.count; i++) {
+        NSString *path = files[i].folderPath.length > 0 ? files[i].folderPath : nil;
+        if (i == 0) {
+            currentFolder = path;
+        } else if (!((path == nil && currentFolder == nil) || [path isEqualToString:currentFolder])) {
+            sharesCurrentFolder = NO;
+            break;
+        }
+    }
+    BOOL currentIsRoot = sharesCurrentFolder && currentFolder == nil;
+
     NSMutableArray<SPKIGAlertAction *> *actions = [NSMutableArray array];
 
-    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Root"
-                                                   style:SPKIGAlertActionStyleDefault
-                                                 handler:^{
-        [self assignFolderPath:nil toFiles:files];
-    }]];
+    if (!currentIsRoot) {
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Root"
+                                                       style:SPKIGAlertActionStyleDefault
+                                                     handler:^{
+            [self assignFolderPath:nil toFiles:files];
+        }]];
+    }
 
     for (NSString *folder in allFolders) {
+        if (sharesCurrentFolder && currentFolder != nil && [folder isEqualToString:currentFolder]) {
+            continue;
+        }
         [actions addObject:[SPKIGAlertAction actionWithTitle:folder
                                                        style:SPKIGAlertActionStyleDefault
                                                      handler:^{
@@ -1891,9 +1913,15 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     }]];
 
     [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
+
+    NSString *message = @"Choose where to move the selected file(s).";
+    if (sharesCurrentFolder) {
+        NSString *currentName = currentFolder.length > 0 ? [currentFolder lastPathComponent] : @"Root";
+        message = [NSString stringWithFormat:@"Currently in %@. Choose where to move the selected file(s).", currentName];
+    }
     [SPKIGAlertPresenter presentActionSheetFromViewController:self
                                                         title:@"Move to Folder"
-                                                      message:@"Choose where to move the selected file(s)."
+                                                      message:message
                                                       actions:actions];
 }
 
