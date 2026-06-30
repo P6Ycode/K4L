@@ -298,6 +298,8 @@ void SPKInstallNoSuggestedUsersHooksIfEnabled(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKNoSuggestedUsersHooks);
+        %init(SPKNoSuggestedUsersHooks,
+              IGSuggestionsUnitViewModel = SPKResolveIGClass(@"IGSuggestionsUnit.IGSuggestionsUnitViewModel", @"IGSuggestionsUnitViewModel"),
+              IGProfileHeaderView = SPKResolveIGClass(@"IGProfileHeader.IGProfileHeaderView", @"IGProfileHeaderView"));
     });
 }

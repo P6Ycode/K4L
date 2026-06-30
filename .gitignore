@@ -59,3 +59,4 @@ headers/
 plans/
 .cache/
 modules/*
+!modules/OpenInstagramSafariExtension.appex/

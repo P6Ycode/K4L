@@ -56,7 +56,23 @@ static id SPKValueForSelectorOrKey(id object, NSString *name) {
 static BOOL SPKObjectIsKindOfClassNamed(id object, NSString *className) {
     if (!object || className.length == 0) return NO;
     Class cls = NSClassFromString(className);
-    return cls && [object isKindOfClass:cls];
+    if (cls && [object isKindOfClass:cls]) return YES;
+
+    // IG 436+ : several of these view models became Swift classes whose runtime
+    // name is mangled (_TtC<len><Module><len><Class>) or dotted (Module.Class), so
+    // NSClassFromString(bareName) returns nil. Walk the class chain and compare the
+    // simple (last dotted component) name, with a mangled-suffix backstop.
+    for (Class c = [object class]; c; c = class_getSuperclass(c)) {
+        NSString *name = NSStringFromClass(c);
+        if (name.length == 0) continue;
+        if ([name isEqualToString:className]) return YES;
+        NSString *simple = [[name componentsSeparatedByString:@"."] lastObject];
+        if ([simple isEqualToString:className]) return YES;
+        // Mangled form ".._TtC..NN<ClassName>" ends with the digit-length-prefixed name.
+        NSString *mangledSuffix = [NSString stringWithFormat:@"%lu%@", (unsigned long)className.length, className];
+        if ([name hasSuffix:mangledSuffix]) return YES;
+    }
+    return NO;
 }
 
 static NSArray *SPKFilterDirectInboxObjects(NSArray *originalObjs) {
@@ -497,7 +513,7 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
             }
 
             // Meta AI suggested search results
-            else if ([obj isKindOfClass:%c(IGSearchResultViewModel)]) {
+            else if ([obj isKindOfClass:SPKResolveIGClass(@"IGSearchViewModels.IGSearchResultViewModel", @"IGSearchResultViewModel")]) {
 
                 // itemType 6 is meta ai suggestions
                 if ([obj itemType] == 6) {
@@ -701,12 +717,24 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 %group SPKTweakReelsConfirmHooks
 
 %hook IGSundialViewerVerticalUFI
-- (void)_didTapLikeButton:(id)arg1 {
-    %orig;
-}
+// IG 436+ variant: handler renamed to `didTapRepostButton` (no underscore, no arg).
+- (void)didTapRepostButton {
+    if ([SPKUtils getBoolPref:@"reels_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered");
 
-- (void)_didLongPressLikeButton:(id)arg1 {
-    %orig;
+        [SPKUtils showConfirmation:^(void) {
+            %orig;
+            SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceReels);
+        } cancelHandler:^{
+            SPKConsumePendingRepostFeedback(SPKActionButtonSourceReels);
+        } title:@"Confirm Reel Repost"
+          message:@"Are you sure you want to repost this reel?"];
+    }
+    else {
+        %orig;
+        SPKShowPendingRepostFeedbackIfNeeded(SPKActionButtonSourceReels);
+        return;
+    }
 }
 
 - (void)_didTapRepostButton {
@@ -748,6 +776,16 @@ BOOL showSearchSectionLabelForTag(NSInteger tag) {
 }
 
 - (void)_didLongPressRepostButton:(id)arg1 {
+    if ([SPKUtils getBoolPref:@"reels_confirm_repost"]) {
+        SPKLog(@"General", @"[Sparkle] Confirm repost triggered (long press ignored)");
+    }
+    else {
+        return %orig;
+    }
+}
+
+// IG 436+ renamed this handler to drop the leading underscore.
+- (void)didLongPressRepostButton:(id)arg1 {
     if ([SPKUtils getBoolPref:@"reels_confirm_repost"]) {
         SPKLog(@"General", @"[Sparkle] Confirm repost triggered (long press ignored)");
     }
@@ -874,7 +912,10 @@ static void SPKInstallTweakPrivacyHooksIfNeeded(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKTweakPrivacyHooks);
+        %init(SPKTweakPrivacyHooks,
+              IGDirectVisualMessageViewerSession = SPKResolveIGClass(@"IGDirectVisualMessageViewerSession.IGDirectVisualMessageViewerSession", @"IGDirectVisualMessageViewerSession"),
+              IGDirectVisualMessageReplayService = SPKResolveIGClass(@"IGDirectVisualMessageServiceKit.IGDirectVisualMessageReplayService", @"IGDirectVisualMessageReplayService"),
+              IGDirectMediaViewerViewController = SPKResolveIGClass(@"IGDirectMediaViewerKitSwift.IGDirectMediaViewerViewController", @"IGDirectMediaViewerViewController"));
     });
 }
 
@@ -918,7 +959,8 @@ void SPKInstallTweakFeedHooksIfNeeded(void) {
     ])) {
         static dispatch_once_t feedOnceToken;
         dispatch_once(&feedOnceToken, ^{
-            %init(SPKTweakFeedHooks);
+            %init(SPKTweakFeedHooks,
+                  IGMainStoryTrayDataSource = SPKResolveIGClass(@"IGMainStoryTrayDataSource.IGMainStoryTrayDataSource", @"IGMainStoryTrayDataSource"));
         });
     }
 
@@ -948,7 +990,7 @@ void SPKInstallTweakReelsHooksIfNeeded(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKTweakReelsConfirmHooks);
+        %init(SPKTweakReelsConfirmHooks, IGSundialViewerVerticalUFI = SPKReelsVerticalUFIClass());
     });
 }
 
@@ -977,7 +1019,8 @@ void SPKInstallTweakGeneralUIHooksIfNeeded(void) {
     ])) {
         static dispatch_once_t generalOnceToken;
         dispatch_once(&generalOnceToken, ^{
-            %init(SPKTweakGeneralUIHooks);
+            %init(SPKTweakGeneralUIHooks,
+                  IGSearchListKitDataSource = SPKResolveIGClass(@"IGGenericSearch.IGSearchListKitDataSource", @"IGSearchListKitDataSource"));
         });
     }
 

@@ -23,6 +23,7 @@ void SPKInstallHideStoryTrayHooksIfEnabled(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKHideStoryTrayHooks);
+        %init(SPKHideStoryTrayHooks,
+              IGMainStoryTrayDataSource = SPKResolveIGClass(@"IGMainStoryTrayDataSource.IGMainStoryTrayDataSource", @"IGMainStoryTrayDataSource"));
     });
 }

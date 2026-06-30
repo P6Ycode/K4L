@@ -236,16 +236,32 @@ static CGFloat const kZoomEpsilon = 0.02;
     if (format != SPKImageFormatGIF && format != SPKImageFormatWebP) return;
 
     Class factory = NSClassFromString(@"FLAnimatedImageFactory");
-    SEL decode = format == SPKImageFormatGIF
-        ? NSSelectorFromString(@"animatedImageWithGIFData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:")
-        : NSSelectorFromString(@"animatedImageWithWebPData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:");
     SEL setAnimatedImage = NSSelectorFromString(@"setAnimatedImage:");
-    if (!factory || ![factory respondsToSelector:decode] || ![_imageView respondsToSelector:setAnimatedImage]) return;
+    if (!factory || ![_imageView respondsToSelector:setAnimatedImage]) return;
 
     NSData *data = [NSData dataWithContentsOfURL:localURL options:NSDataReadingMappedIfSafe error:nil];
     if (!data.length) return;
-    id animatedImage = ((id (*)(id, SEL, NSData *, CGSize, id, BOOL))objc_msgSend)(
-        factory, decode, data, _imageView.image.size, nil, YES);
+
+    BOOL isGIF = format == SPKImageFormatGIF;
+    CGSize size = _imageView.image.size;
+
+    // IG <=435 took a trailing `flAnimatedFrameCacheOOMFixEnabled:` BOOL; IG 436+
+    // dropped it. Prefer the 4-arg variant, fall back to the 3-arg one.
+    SEL decode4 = NSSelectorFromString(isGIF
+        ? @"animatedImageWithGIFData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:"
+        : @"animatedImageWithWebPData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:");
+    SEL decode3 = NSSelectorFromString(isGIF
+        ? @"animatedImageWithGIFData:size:targetQueueForFrameCache:"
+        : @"animatedImageWithWebPData:size:targetQueueForFrameCache:");
+
+    id animatedImage = nil;
+    if ([factory respondsToSelector:decode4]) {
+        animatedImage = ((id (*)(id, SEL, NSData *, CGSize, id, BOOL))objc_msgSend)(
+            factory, decode4, data, size, nil, YES);
+    } else if ([factory respondsToSelector:decode3]) {
+        animatedImage = ((id (*)(id, SEL, NSData *, CGSize, id))objc_msgSend)(
+            factory, decode3, data, size, nil);
+    }
     if (!animatedImage) return;
     ((void (*)(id, SEL, id))objc_msgSend)(_imageView, setAnimatedImage, animatedImage);
     SEL play = NSSelectorFromString(@"play");

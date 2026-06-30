@@ -1,22 +1,77 @@
 #import "../../Utils.h"
+#import <objc/message.h>
+#import <objc/runtime.h>
+
+// IG 436+ : the reels vertical UFI no longer drives the visible counts through
+// its setNumLikes:/setNumComments:/… setters. Counts are rendered by per-type
+// lazy count buttons (IGSundialLikeCountButton / IGSundialUFIButtonWithCount)
+// that the UFI configures from an immutable IGSundialViewerUFIViewModel. We can't
+// mutate that value object, so instead we reach the type-specific buttons after
+// the UFI configures/lays out and suppress just their count display.
+
+// Hides a lazily-created count button (stored as an IGLazyView ivar). The like
+// and repost counts live in dedicated count buttons, so hiding the whole lazy
+// view removes only the number, not the action button.
+static void SPKHideLazyCountView(id owner, const char *ivarName) {
+    id lazy = [SPKUtils getIvarForObj:owner name:ivarName];
+    if (!lazy) return;
+    if ([lazy respondsToSelector:@selector(hide)]) {
+        ((void (*)(id, SEL))objc_msgSend)(lazy, @selector(hide));
+    }
+}
+
+// Clears the count label on an IGSundialUFIButtonWithCount-style button (save /
+// comment / reshare counts share the icon button, so we blank just the label).
+static void SPKHideButtonCountLabel(id button) {
+    if (!button || ![button respondsToSelector:@selector(label)]) return;
+    id label = ((id (*)(id, SEL))objc_msgSend)(button, @selector(label));
+    if ([label isKindOfClass:[UILabel class]]) {
+        ((UILabel *)label).text = @"";
+        ((UILabel *)label).hidden = YES;
+    }
+}
+
+static id SPKControlForSelector(id ufi, SEL sel) {
+    if (![ufi respondsToSelector:sel]) return nil;
+    return ((id (*)(id, SEL))objc_msgSend)(ufi, sel);
+}
+
+static void SPKApplyReelsMetricHiding(id ufi) {
+    if (!ufi) return;
+
+    if ([SPKUtils getBoolPref:@"reels_hide_like_count"]) {
+        SPKHideLazyCountView(ufi, "lazyLikeCountButton");
+        SPKHideLazyCountView(ufi, "lazyLikesLabelButton");
+    }
+    if ([SPKUtils getBoolPref:@"reels_hide_repost_count"]) {
+        SPKHideLazyCountView(ufi, "lazyRepostCountButton");
+        SPKHideButtonCountLabel(SPKControlForSelector(ufi, @selector(repostButton)));
+    }
+    if ([SPKUtils getBoolPref:@"reels_hide_save_count"]) {
+        SPKHideButtonCountLabel([SPKUtils getIvarForObj:ufi name:"saveButton"]);
+    }
+    if ([SPKUtils getBoolPref:@"reels_hide_comment_count"]) {
+        SPKHideButtonCountLabel(SPKControlForSelector(ufi, @selector(commentButton)));
+    }
+    if ([SPKUtils getBoolPref:@"reels_hide_reshare_count"]) {
+        SPKHideButtonCountLabel(SPKControlForSelector(ufi, @selector(sendButton)));
+    }
+}
 
 %group SPKHideMetricsHooks
 
 %hook IGSundialViewerVerticalUFI
-- (void)setNumLikes:(NSInteger)num {
-    return %orig([SPKUtils getBoolPref:@"reels_hide_like_count"] ? 0 : num);
+- (void)configureWithViewModel:(id)model {
+    %orig;
+    SPKApplyReelsMetricHiding(self);
 }
-- (void)setNumReshares:(NSInteger)num {
-    return %orig([SPKUtils getBoolPref:@"reels_hide_reshare_count"] ? 0 : num);
+- (void)configureWithMedia:(id)media interactionCountVisibilityHelper:(id)helper {
+    %orig;
+    SPKApplyReelsMetricHiding(self);
 }
-- (void)setNumComments:(NSInteger)num {
-    return %orig([SPKUtils getBoolPref:@"reels_hide_comment_count"] ? 0 : num);
-}
-- (void)setNumReposts:(NSInteger)num {
-    return %orig([SPKUtils getBoolPref:@"reels_hide_repost_count"] ? 0 : num);
-}
-- (void)setNumSaves:(NSInteger)num {
-    return %orig([SPKUtils getBoolPref:@"reels_hide_save_count"] ? 0 : num);
+- (void)layoutSubviews {
+    %orig;
+    SPKApplyReelsMetricHiding(self);
 }
 %end
 
@@ -58,6 +113,6 @@ void SPKInstallHideMetricsHooksIfEnabled(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKHideMetricsHooks);
+        %init(SPKHideMetricsHooks, IGSundialViewerVerticalUFI = SPKReelsVerticalUFIClass());
     });
 }

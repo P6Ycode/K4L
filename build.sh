@@ -238,6 +238,73 @@ embed_safari_extension() {
     rm -rf "$temp_dir"
 }
 
+inject_custom_icons() {
+    local input_ipa="$1"
+    local output_ipa="$2"
+    local temp_dir
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-icons-ipa.XXXXXX")"
+
+    unzip -q "$input_ipa" -d "$temp_dir"
+
+    local app_dir
+    app_dir="$(find "$temp_dir/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+    if [ -z "$app_dir" ]; then
+        echo -e '\033[1m\033[0;31mCould not find Payload/*.app in IPA.\033[0m'
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    echo -e '\033[1m\033[32mInjecting Sparkle app icons...\033[0m'
+
+    # Copy precompiled @2x PNGs and create @3x copies (required for modern iPhones)
+    cp "$ROOT_DIR/resources/sparkle_icons"/*.png "$app_dir/"
+    for f in "$app_dir"/sparkle*@2x.png; do
+        cp "$f" "${f/@2x/@3x}"
+    done
+
+    local plist="$app_dir/Info.plist"
+    local pb=/usr/libexec/PlistBuddy
+
+    # Register one alternate icon under a CFBundleIcons container (PlistBuddy
+    # operates on binary plists in place). Args: <container> <name> <file...>
+    spk_add_alt_icon() {
+        local container="$1" name="$2"; shift 2
+        local base=":${container}:CFBundleAlternateIcons:${name}"
+        # Start clean in case a previous run already added this entry.
+        "$pb" -c "Delete ${base}" "$plist" 2>/dev/null || true
+        "$pb" -c "Add ${base} dict" "$plist"
+        "$pb" -c "Add ${base}:CFBundleIconFiles array" "$plist"
+        local i=0
+        for f in "$@"; do
+            "$pb" -c "Add ${base}:CFBundleIconFiles:${i} string ${f}" "$plist"
+            i=$((i + 1))
+        done
+        "$pb" -c "Add ${base}:UIPrerenderedIcon bool false" "$plist"
+    }
+
+    # Ensure the CFBundleIcons containers exist (ignore if IG already has them).
+    "$pb" -c "Add :CFBundleIcons dict" "$plist" 2>/dev/null || true
+    "$pb" -c "Add :CFBundleIcons:CFBundleAlternateIcons dict" "$plist" 2>/dev/null || true
+    "$pb" -c "Add :CFBundleIcons~ipad dict" "$plist" 2>/dev/null || true
+    "$pb" -c "Add :CFBundleIcons~ipad:CFBundleAlternateIcons dict" "$plist" 2>/dev/null || true
+
+    for icon in sparkle sparkle-dark sparkle-neutral; do
+        spk_add_alt_icon "CFBundleIcons" "$icon" \
+            "${icon}60x60@2x" "${icon}60x60@3x"
+        spk_add_alt_icon "CFBundleIcons~ipad" "$icon" \
+            "${icon}60x60@2x" "${icon}60x60@3x" "${icon}76x76@2x" "${icon}76x76@3x"
+    done
+
+    echo '  Added 3 Sparkle alternate icon entries to Info.plist'
+
+    rm -f "$output_ipa"
+    (
+        cd "$temp_dir"
+        zip -qry "$output_ipa" Payload
+    )
+    rm -rf "$temp_dir"
+}
+
 # Args: instagram ipa basename without .ipa; globals OPT_* must be set
 sparkle_sideload_output_ipa() {
     local ig_base="$1"
@@ -420,7 +487,8 @@ then
     ipa_stage_input="$ROOT_DIR/packages/.sparkle-build-stage-input.ipa"
     ipa_flex_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-flex.ipa"
     ipa_strip_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-strip.ipa"
-    rm -f "$ipa_out" "$ipa_ffmpeg_tmp" "$ipa_stage_input" "$ipa_flex_tmp" "$ipa_strip_tmp"
+    ipa_icons_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-icons.ipa"
+    rm -f "$ipa_out" "$ipa_ffmpeg_tmp" "$ipa_stage_input" "$ipa_flex_tmp" "$ipa_strip_tmp" "$ipa_icons_tmp"
 
     if [ "$OPT_FFMPEG" -eq 1 ]; then
         echo -e '\033[1m\033[32mInjecting FFmpeg frameworks...\033[0m'
@@ -446,6 +514,10 @@ then
         embed_safari_extension "$ipa_stage_input" "$ipa_embed_tmp"
         mv -f "$ipa_embed_tmp" "$ipa_stage_input"
     fi
+
+    # Inject Sparkle alternate icons
+    inject_custom_icons "$ipa_stage_input" "$ipa_icons_tmp"
+    mv -f "$ipa_icons_tmp" "$ipa_stage_input"
 
     echo -e '\033[1m\033[32mCreating the IPA file...\033[0m'
     CYAN_FILES=()

@@ -258,7 +258,7 @@ static BOOL SPKBypassFeedPostLikeConfirm = NO;
     }
 
 #define CONFIRMCOMMENTLIKE(context, button, orig) \
-    if ([SPKUtils getBoolPref:@"feed_confirm_comment_like"]) { \
+    if ([SPKUtils getBoolPref:@"general_comments_confirm_like"]) { \
         BOOL isUnlike = SPKCommentLikeIsUnlike((button), (context)); \
         SPKLog(@"General", @"[Sparkle] Confirm comment %@ triggered", isUnlike ? @"unlike" : @"like"); \
         SPKPresentLikeToggleConfirmation( \
@@ -385,6 +385,10 @@ static BOOL SPKBypassFeedPostLikeConfirm = NO;
 - (void)commentCell:(id)arg1 didTapLikeButton:(id)arg2 {
     CONFIRMCOMMENTLIKE(arg1, arg2, %orig);
 }
+// IG 436+ (comment dislikes): like taps route through this combined handler.
+- (void)commentCell:(id)arg1 didTapLikeOrDislikeButton:(id)arg2 likeButton:(id)arg3 dislikeUpdate:(long long)arg4 {
+    CONFIRMCOMMENTLIKE(arg1, arg3, %orig);
+}
 - (void)commentCell:(id)arg1 didTapLikedByButtonForUser:(id)arg2 {
     CONFIRMCOMMENTLIKE(nil, nil, %orig);
 }
@@ -401,6 +405,19 @@ static BOOL SPKBypassFeedPostLikeConfirm = NO;
 %hook IGFeedItemPreviewCommentCell
 - (void)_didTapLikeButton {
     CONFIRMCOMMENTLIKE(self, nil, %orig);
+}
+%end
+// IG 436+ : in the comment thread/detail view the like (and like/dislike) tap
+// lands on the Swift comment cell (IGCommentCells.IGCommentCell) before it
+// forwards to its UFI delegate (IGCommentCellController). Gating here is the
+// reliable chokepoint regardless of whether comment-dislikes routing is active —
+// the controller-level hooks below alone don't fire on this build.
+%hook IGCommentCell
+- (void)contentViewDidTapLike:(id)arg1 {
+    CONFIRMCOMMENTLIKE(self, arg1, %orig);
+}
+- (void)contentViewDidTapLikeOrDislikeButtonWithDislikeButton:(id)arg1 likeButton:(id)arg2 dislikeUpdate:(long long)arg3 {
+    CONFIRMCOMMENTLIKE(self, arg2, %orig);
 }
 %end
 
@@ -719,7 +736,7 @@ static void SPKInstallReelsSwiftLikeConfirmHookIfNeeded(void) {
 void SPKInstallLikeConfirmHooksIfNeeded(void) {
     if (![SPKUtils getBoolPref:@"feed_confirm_post_like"] &&
         ![SPKUtils getBoolPref:@"feed_confirm_double_tap_like"] &&
-        ![SPKUtils getBoolPref:@"feed_confirm_comment_like"] &&
+        ![SPKUtils getBoolPref:@"general_comments_confirm_like"] &&
         ![SPKUtils getBoolPref:@"reels_confirm_like"] &&
         ![SPKUtils getBoolPref:@"reels_confirm_double_tap_like"] &&
         !SPKStoryInteractionHooksNeeded()) {
@@ -728,7 +745,9 @@ void SPKInstallLikeConfirmHooksIfNeeded(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKLikeConfirmHooks);
+        %init(SPKLikeConfirmHooks,
+              IGVideoPlayerOverlayContainerView = SPKResolveIGClass(@"IGModernFeedVideoOverlays.IGVideoPlayerOverlayContainerView", @"IGVideoPlayerOverlayContainerView"),
+              IGCommentCell = SPKResolveIGClass(@"IGCommentCells.IGCommentCell", @"IGCommentCell"));
     });
 
     SPKInstallStoryLikeConfirmHookIfNeeded();

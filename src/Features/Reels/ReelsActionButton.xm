@@ -294,16 +294,25 @@ static NSString *SPKReelsCaptionForContext(SPKActionButtonContext *context, id m
 static BOOL SPKReelsTriggerRepost(SPKActionButtonContext *context) {
 	if (!context.view) return NO;
 
-	SEL noArgSelector = NSSelectorFromString(@"_didTapRepostButton");
-	if ([context.view respondsToSelector:noArgSelector]) {
-		((void (*)(id, SEL))objc_msgSend)(context.view, noArgSelector);
-		return YES;
+	// IG 436+ renamed these to drop the leading underscore (`didTapRepostButton`);
+	// older versions used `_didTapRepostButton` / `_didTapRepostButton:`. Try every
+	// known variant so the action button's repost works across versions.
+	NSArray<NSString *> *noArgSelectors = @[@"didTapRepostButton", @"_didTapRepostButton"];
+	for (NSString *selectorName in noArgSelectors) {
+		SEL selector = NSSelectorFromString(selectorName);
+		if ([context.view respondsToSelector:selector]) {
+			((void (*)(id, SEL))objc_msgSend)(context.view, selector);
+			return YES;
+		}
 	}
 
-	SEL oneArgSelector = @selector(_didTapRepostButton:);
-	if ([context.view respondsToSelector:oneArgSelector]) {
-		((void (*)(id, SEL, id))objc_msgSend)(context.view, oneArgSelector, nil);
-		return YES;
+	NSArray<NSString *> *oneArgSelectors = @[@"didTapRepostButton:", @"_didTapRepostButton:"];
+	for (NSString *selectorName in oneArgSelectors) {
+		SEL selector = NSSelectorFromString(selectorName);
+		if ([context.view respondsToSelector:selector]) {
+			((void (*)(id, SEL, id))objc_msgSend)(context.view, selector, nil);
+			return YES;
+		}
 	}
 
 	return NO;
@@ -432,8 +441,14 @@ void SPKInstallReelsActionButton(UIView *verticalUFIView) {
 extern "C" void SPKInstallReelsActionButtonHooksIfEnabled(void) {
 	if (![SPKUtils getBoolPref:@"reels_action_btn"]) return;
 
+	// IG 436+ renamed the Reels UFI class to a Swift-mangled symbol; resolve it at
+	// runtime and bind the hook group to it. Bail (without burning the once token)
+	// if the class isn't registered yet so a later pass can retry.
+	Class ufiClass = SPKReelsVerticalUFIClass();
+	if (!ufiClass) return;
+
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-	%init(SPKReelsActionButtonHooks);
+	%init(SPKReelsActionButtonHooks, IGSundialViewerVerticalUFI = ufiClass);
 	});
 }

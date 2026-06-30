@@ -140,11 +140,23 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     %orig;
 
     if ([SPKUtils getBoolPref:@"interface_hide_msgs_tab"]) {
-        UIButton *rightButton = [self valueForKey:@"rightButton"];
-        if (rightButton) {
+        // IG 436+ is a Swift class: the DM button is the `directButton` @property
+        // (KVC-safe). `rightButton` is a bare Swift ivar on 436 (KVC throws) but the
+        // KVC key on older ObjC builds — resolve via selector first, guard the rest.
+        UIView *msgsButton = nil;
+        for (NSString *key in @[@"directButton", @"rightButton"]) {
+            SEL getter = NSSelectorFromString(key);
+            if (![self respondsToSelector:getter]) continue;
+            id candidate = ((id (*)(id, SEL))objc_msgSend)(self, getter);
+            if ([candidate isKindOfClass:[UIView class]]) {
+                msgsButton = candidate;
+                break;
+            }
+        }
+        if (msgsButton) {
             SPKLog(@"General", @"[Sparkle] Hiding messages tab (on feed)");
 
-            [rightButton removeFromSuperview];
+            [msgsButton removeFromSuperview];
         }
     }
 }
@@ -166,6 +178,7 @@ extern "C" void SPKInstallNavigationHooksIfNeeded(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKNavigationHooks);
+        %init(SPKNavigationHooks,
+              IGHomeFeedHeaderView = SPKResolveIGClass(@"IGHomeFeedHeader.IGHomeFeedHeaderView", @"IGHomeFeedHeaderView"));
     });
 }

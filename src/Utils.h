@@ -37,6 +37,22 @@ FOUNDATION_EXPORT BOOL SPKPerAccountModeActive(void);
 /// therefore never stored per-account. Used to decide what a per-account export carries.
 FOUNDATION_EXPORT BOOL SPKPreferenceKeyIsGlobal(NSString *key);
 
+/// Resolves the Reels vertical-UFI class across IG versions. On IG <=435 the class
+/// was exposed to the ObjC runtime as plain `IGSundialViewerVerticalUFI`; on IG 436+
+/// it moved into a Swift module and is registered under the mangled name
+/// `_TtC26IGSundialViewerVerticalUFI26IGSundialViewerVerticalUFI`. Hook groups bind
+/// to the result via `%init(Group, IGSundialViewerVerticalUFI = SPKReelsVerticalUFIClass())`.
+FOUNDATION_EXPORT Class _Nullable SPKReelsVerticalUFIClass(void);
+
+/// Resolves an IG class whose ObjC runtime name changed between versions. Many
+/// classes that were plain ObjC on IG <=435 became Swift classes on IG 436+, so
+/// their runtime name is now the mangled `_TtC<len><Module><len><Class>` form and a
+/// bare `%hook`/`NSClassFromString(@"Bare")` resolves to nil. Pass the IG 436+
+/// Swift `@"Module.Class"` name as `qualified` and the legacy plain name as
+/// `legacy`; returns whichever the runtime currently has (or nil). Hook groups bind
+/// to it via `%init(Group, BareName = SPKResolveIGClass(@"Module.Class", @"BareName"))`.
+FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSString * _Nullable legacy);
+
 #define SPKLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
 #define SPKWarnLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
 #define SPKErrorLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_FAULT, (fmt), ##__VA_ARGS__)

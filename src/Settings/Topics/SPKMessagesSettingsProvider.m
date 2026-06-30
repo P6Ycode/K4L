@@ -124,10 +124,8 @@ static NSArray *SPKMessagesSettingsSections(void) {
         SPKTopicSection(@"Notes", @[
             [SPKSetting switchCellWithTitle:@"Hide Notes Tray" icon:SPKSettingsIcon(@"notes") defaultsKey:@"msgs_hide_notes_tray"],
             [SPKSetting switchCellWithTitle:@"Hide Friends Map" icon:SPKSettingsIcon(@"map") defaultsKey:@"msgs_hide_friends_map"],
-            [SPKSetting switchCellWithTitle:@"Note Theming" icon:SPKSettingsIcon(@"palette") defaultsKey:@"msgs_notes_customization"],
-            [SPKSetting switchCellWithTitle:@"Custom Note Themes" icon:SPKSettingsIcon(@"eyedropper") defaultsKey:@"msgs_custom_note_themes"],
             [SPKSetting switchCellWithTitle:@"Download Notes Audio" icon:SPKSettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio"]
-        ], @"Note Theming enables Instagram's note theme picker. Custom Note Themes add custom emoji, background, and text color options."),
+        ], nil),
         SPKTopicSection(@"Audio", @[
             [SPKSetting switchCellWithTitle:@"Download Voice Messages" icon:SPKSettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages"],
             [SPKSetting switchCellWithTitle:@"Upload Audio" icon:SPKSettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages"]

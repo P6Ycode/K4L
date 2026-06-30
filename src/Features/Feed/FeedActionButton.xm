@@ -834,15 +834,17 @@ extern "C" void SPKInstallFeedActionButtonHooksIfEnabled(void) {
 
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		%init(SPKFeedActionButtonHooks);
+		%init(SPKFeedActionButtonHooks,
+		      IGPageMediaView = SPKResolveIGClass(@"IGFeedItemPageCell.IGPageMediaView", @"IGPageMediaView"),
+		      IGFeedItemPagePhotoCell = SPKResolveIGClass(@"IGFeedItemPageCell.IGFeedItemPagePhotoCell", @"IGFeedItemPagePhotoCell"));
 		SPKInstallNativeFeedLongPressSuppressionHooks();
 
 		Class modernObjCName = objc_getClass("IGModernFeedVideoCell");
-	Class modernSwiftRuntime = objc_getClass("IGModernFeedVideoCell.IGModernFeedVideoCell");
-	if (modernSwiftRuntime && modernSwiftRuntime != modernObjCName) {
-		class_addMethod(modernSwiftRuntime, @selector(spk_handleExpandLongPress:), (IMP)SPKExpandFeedLongPressAction, "v@:@");
-		MSHookMessageEx(modernSwiftRuntime, @selector(didMoveToSuperview), (IMP)SPKHookSwiftModernFeedVideoDidMove, (IMP *)&orig_swiftModernFeedVideo_didMove);
-		MSHookMessageEx(modernSwiftRuntime, @selector(layoutSubviews), (IMP)SPKHookSwiftModernFeedVideoLayout, (IMP *)&orig_swiftModernFeedVideo_layout);
-	}
+		Class modernSwiftRuntime = objc_getClass("IGModernFeedVideoCell.IGModernFeedVideoCell");
+		if (modernSwiftRuntime && modernSwiftRuntime != modernObjCName) {
+			class_addMethod(modernSwiftRuntime, @selector(spk_handleExpandLongPress:), (IMP)SPKExpandFeedLongPressAction, "v@:@");
+			MSHookMessageEx(modernSwiftRuntime, @selector(didMoveToSuperview), (IMP)SPKHookSwiftModernFeedVideoDidMove, (IMP *)&orig_swiftModernFeedVideo_didMove);
+			MSHookMessageEx(modernSwiftRuntime, @selector(layoutSubviews), (IMP)SPKHookSwiftModernFeedVideoLayout, (IMP *)&orig_swiftModernFeedVideo_layout);
+		}
 	});
 }

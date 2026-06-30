@@ -732,6 +732,9 @@ extern "C" void SPKInstallHideMetaAIHooksIfEnabled(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKHideMetaAIHooks);
+        %init(SPKHideMetaAIHooks,
+              IGCreationTextToolView = SPKResolveIGClass(@"IGStoryPostCaptureTextControls.IGCreationTextToolView", @"IGCreationTextToolView"),
+              IGDirectInboxNavigationHeaderView = SPKResolveIGClass(@"IGDirectInboxNavigationHeaderView.IGDirectInboxNavigationHeaderView", @"IGDirectInboxNavigationHeaderView"),
+              IGDirectThreadViewMetaAISummaryFeatureController = SPKResolveIGClass(@"IGDirectThreadViewMetaAISummaryFeatureController.IGDirectThreadViewMetaAISummaryFeatureController", @"IGDirectThreadViewMetaAISummaryFeatureController"));
     });
 }

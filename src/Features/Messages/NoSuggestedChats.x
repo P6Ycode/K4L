@@ -27,6 +27,7 @@ void SPKInstallNoSuggestedChatsHooksIfEnabled(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKNoSuggestedChatsHooks);
+        %init(SPKNoSuggestedChatsHooks,
+              IGDirectInboxHeaderSectionController = SPKResolveIGClass(@"IGDirectInboxViewControllerSwift.IGDirectInboxHeaderSectionController", @"IGDirectInboxHeaderSectionController"));
     });
 }

@@ -16,6 +16,38 @@
 
 NSString * const kSPKPrefPerAccountSettings = @"general_per_account_settings";
 
+Class SPKReelsVerticalUFIClass(void) {
+    // IG 436+ : Swift-mangled name (module + class both "IGSundialViewerVerticalUFI").
+    Class cls = objc_getClass("_TtC26IGSundialViewerVerticalUFI26IGSundialViewerVerticalUFI");
+    // IG <=435 : class exposed to ObjC under its plain name.
+    if (!cls) cls = objc_getClass("IGSundialViewerVerticalUFI");
+    // Defensive: demangled "Module.Class" form some runtimes report.
+    if (!cls) cls = objc_getClass("IGSundialViewerVerticalUFI.IGSundialViewerVerticalUFI");
+    return cls;
+}
+
+Class SPKResolveIGClass(NSString *qualified, NSString *legacy) {
+    Class c = Nil;
+    if (qualified.length) {
+        // NSClassFromString demangles a Swift "Module.Class" spelling (IG 436+).
+        c = NSClassFromString(qualified);
+        if (!c) {
+            // Fall back to building the mangled _TtC<len><Module><len><Class> symbol.
+            NSArray<NSString *> *p = [qualified componentsSeparatedByString:@"."];
+            if (p.count == 2) {
+                NSString *m = p[0], *n = p[1];
+                NSString *mangled = [NSString stringWithFormat:@"_TtC%lu%@%lu%@",
+                                     (unsigned long)m.length, m, (unsigned long)n.length, n];
+                c = objc_getClass(mangled.UTF8String);
+            }
+        }
+    }
+    // IG <=435 : plain ObjC name.
+    if (!c && legacy.length) c = NSClassFromString(legacy);
+    return c;
+}
+
+
 static NSString *SPKTrimmedLogBody(NSString *body) {
     return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }

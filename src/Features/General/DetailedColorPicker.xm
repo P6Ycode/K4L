@@ -60,7 +60,7 @@
         [presentingVC textViewControllerDidUpdateWithColor:color colorSource:0];
     }
     else if (
-        [presentingVC isKindOfClass:%c(IGStoryCreationDrawingViewController)]
+        [presentingVC isKindOfClass:SPKResolveIGClass(@"IGStoryPostCaptureDrawing.IGStoryCreationDrawingViewController", @"IGStoryCreationDrawingViewController")]
         || [presentingVC isKindOfClass:%c(IGDirectThreadViewDrawingViewController)]
     ) {
         [presentingVC drawingControls:nil didSelectColor:color];
@@ -74,7 +74,7 @@
     UIView *colorPickingControls = [self superview];
 
     if (
-        [colorPickingControls isKindOfClass:%c(IGStoryColorPickingControls)]
+        [colorPickingControls isKindOfClass:SPKResolveIGClass(@"IGStoryPostCaptureDrawingControls.IGStoryColorPickingControls", @"IGStoryColorPickingControls")]
         || [colorPickingControls isKindOfClass:%c(IGDirectThreadColorPickingControls)]
     ) {
         IGStoryEyedropperToggleButton *_eyedropperToggleButton = MSHookIvar<IGStoryEyedropperToggleButton *>(colorPickingControls, "_eyedropperToggleButton");

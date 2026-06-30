@@ -38,6 +38,17 @@ static BOOL SPKShouldHideStoryAds(void) {
     return [SPKUtils getBoolPref:@"general_hide_ads_stories"];
 }
 
+// IG 436+ moved this model into the IGInFeedStories Swift module (mangled runtime
+// name), so a bare %c() resolves to nil. Resolve across versions, cached.
+static Class SPKInFeedStoriesTrayModelClass(void) {
+    static Class cls;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        cls = SPKResolveIGClass(@"IGInFeedStories.IGInFeedStoriesTrayModel", @"IGInFeedStoriesTrayModel");
+    });
+    return cls;
+}
+
 static void SPKStoryAdBlockingLogClassAvailability(void) {
     for (NSString *className in @[
         @"IGStoryAdPool",
@@ -70,7 +81,7 @@ static NSArray *removeItemsInList(NSArray *list, SPKFeedFilterSurface surface) {
             }
 
             // Suggested stories (carousel)
-            if ([obj isKindOfClass:%c(IGInFeedStoriesTrayModel)]) {
+            if ([obj isKindOfClass:SPKInFeedStoriesTrayModelClass()]) {
                 SPKLog(@"General", @"[Sparkle] Hiding suggested stories carousel");
 
                 continue;
@@ -480,7 +491,9 @@ extern "C" void SPKInstallAdBlockingEarlyHooksIfEnabled(void) {
 
     static dispatch_once_t earlyAdsOnceToken;
     dispatch_once(&earlyAdsOnceToken, ^{
-        %init(SPKAdBlockingEarlyHooks);
+        %init(SPKAdBlockingEarlyHooks,
+              IGContextualFeedViewController = SPKResolveIGClass(@"IGContextualFeedViewController.IGContextualFeedViewController", @"IGContextualFeedViewController"),
+              IGChainingFeedViewController = SPKResolveIGClass(@"IGPostChainingFeed.IGChainingFeedViewController", @"IGChainingFeedViewController"));
     });
 }
 
@@ -493,6 +506,8 @@ extern "C" void SPKInstallStoryAdBlockingHooksIfEnabled(void) {
 
     static dispatch_once_t storyAdsOnceToken;
     dispatch_once(&storyAdsOnceToken, ^{
-        %init(SPKStoryAdBlockingHooks);
+        %init(SPKStoryAdBlockingHooks,
+              IGStoryAdsManager = SPKResolveIGClass(@"IGStoryAdsManager.IGStoryAdsManager", @"IGStoryAdsManager"),
+              IGStoryAdsOptInTextView = SPKResolveIGClass(@"IGStoryAdsUI.IGStoryAdsOptInTextView", @"IGStoryAdsOptInTextView"));
     });
 }

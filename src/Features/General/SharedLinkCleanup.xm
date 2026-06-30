@@ -26,14 +26,22 @@ static void SPKPollClipboardAndSanitize(NSInteger countBefore, int polls, double
     }
 }
 
-static void (*orig_shareToClipboardFromVC)(id, SEL, id);
-static void replaced_shareToClipboardFromVC(id self, SEL _cmd, id vc) {
+// IG 436+ : the external share sheet became Swift
+// (IGExternalShareOptions.IGExternalShareOptionsViewController) and the dedicated
+// `_shareToClipboardFromVC:` method is gone. Every share button now routes through
+// `shareTo:` with an IGExternalShareOptionsType enum value. The copy-link value
+// isn't recoverable from the dumped headers, so instead of matching a specific
+// value we poll the pasteboard after any share: the sanitizer only rewrites when
+// the clipboard actually changed AND contains an Instagram URL, so non-copy
+// shares are inherently no-ops.
+static void (*orig_shareTo)(id, SEL, long long);
+static void replaced_shareTo(id self, SEL _cmd, long long shareType) {
     if (!SPKShouldSanitizeCopiedShareLinks()) {
-        orig_shareToClipboardFromVC(self, _cmd, vc);
+        orig_shareTo(self, _cmd, shareType);
         return;
     }
     NSInteger countBefore = [UIPasteboard generalPasteboard].changeCount;
-    orig_shareToClipboardFromVC(self, _cmd, vc);
+    orig_shareTo(self, _cmd, shareType);
     SPKPollClipboardAndSanitize(countBefore, 30, 0.05);
 }
 
@@ -42,11 +50,9 @@ extern "C" void SPKInstallSharedLinkCleanupHooksIfEnabled(void) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    Class cls = NSClassFromString(@"IGExternalShareOptionsViewController");
-    SEL selector = NSSelectorFromString(@"_shareToClipboardFromVC:");
-    if (!cls || !class_getInstanceMethod(cls, selector)) {
-        return;
-    }
-    MSHookMessageEx(cls, selector, (IMP)replaced_shareToClipboardFromVC, (IMP *)&orig_shareToClipboardFromVC);
+        Class cls = SPKResolveIGClass(@"IGExternalShareOptions.IGExternalShareOptionsViewController", @"IGExternalShareOptionsViewController");
+        SEL selector = NSSelectorFromString(@"shareTo:");
+        if (!cls || !class_getInstanceMethod(cls, selector)) return;
+        MSHookMessageEx(cls, selector, (IMP)replaced_shareTo, (IMP *)&orig_shareTo);
     });
 }

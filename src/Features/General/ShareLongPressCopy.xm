@@ -542,7 +542,7 @@ static void SPKInstallShareLongPressInContainer(UIView *container, NSArray<NSStr
 extern "C" void SPKInstallShareLongPressCopyHooksIfNeeded(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKShareLongPressCopyHooks);
+        %init(SPKShareLongPressCopyHooks, IGSundialViewerVerticalUFI = SPKReelsVerticalUFIClass());
         [[NSNotificationCenter defaultCenter] addObserverForName:NSUserDefaultsDidChangeNotification
                                                           object:nil
                                                            queue:nil

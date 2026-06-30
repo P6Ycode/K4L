@@ -41,7 +41,7 @@ static NSString * const kSPKFeedActionButtonEnabledKey = @"feed_action_btn";
         ], @"Prevents refreshes from re-tapping the Home tab or from background app activity."),
         SPKTopicSection(@"Confirmation", @[
             [SPKSetting switchCellWithTitle:@"Confirm Like" icon:SPKSettingsIcon(@"heart") defaultsKey:@"feed_confirm_post_like"],
-            [SPKSetting switchCellWithTitle:@"Confirm Double-Tap Like" icon:SPKSettingsIcon(@"heart") defaultsKey:@"feed_confirm_double_tap_like"],
+            [SPKSetting switchCellWithTitle:@"Confirm Double Tap" icon:SPKSettingsIcon(@"heart") defaultsKey:@"feed_confirm_double_tap_like"],
             [SPKSetting switchCellWithTitle:@"Confirm Repost" icon:SPKSettingsIcon(@"repost") defaultsKey:@"feed_confirm_repost"],
             [SPKSetting switchCellWithTitle:@"Confirm Posting Comment" icon:SPKSettingsIcon(@"comment") defaultsKey:@"feed_confirm_post_comment"]
         ], @"Shows confirmation alerts before the enabled feed actions are performed.")
