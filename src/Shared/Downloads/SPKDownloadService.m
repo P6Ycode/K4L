@@ -128,7 +128,6 @@
 - (void)retryJobID:(NSString *)jobID { [self.scheduler retryJobID:jobID]; }
 - (void)retryItemID:(NSString *)itemID inJobID:(NSString *)jobID { [self.scheduler retryItemID:itemID inJobID:jobID]; }
 - (void)clearFinishedHistory { [self.scheduler clearFinishedHistory]; }
-- (void)refreshSettings { [self.scheduler refreshConcurrencyLimit]; }
 - (void)removeJobID:(NSString *)jobID { [self.scheduler removeJobID:jobID]; }
 
 - (BOOL)hasActiveJobWithHiddenPill {

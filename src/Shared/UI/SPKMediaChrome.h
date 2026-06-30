@@ -4,7 +4,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 FOUNDATION_EXPORT CGFloat const SPKMediaChromeTopBarContentHeight;
 
-UIBlurEffect *SPKMediaChromeBlurEffect(void);
 void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar);
 
 /// Shared navigation controller for Sparkle's modal stacks (settings, gallery,
@@ -15,7 +14,6 @@ void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar);
 @interface SPKChromeNavigationController : UINavigationController
 @end
 
-UILabel *SPKMediaChromeTitleLabel(NSString *text);
 UIImage *SPKMediaChromeTopIcon(NSString *resourceName);
 UIImage *SPKMediaChromeBottomIcon(NSString *resourceName);
 UIImage *SPKMediaChromeTopBarIcon(NSString *resourceName);
@@ -37,10 +35,6 @@ UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMe
 /// Same as the menu button above, but with a caller-supplied tint (e.g. IG blue
 /// for a prominent "Done"-equivalent menu button).
 UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItemWithTint(NSString *resourceName, UIMenu *menu, UIColor *_Nullable tintColor, NSString *_Nullable accessibilityLabel);
-/// A real (non custom-view) bar button item that opens `menu` on tap and honors
-/// `style` — use `UIBarButtonItemStyleDone` so a menu-backed Done matches a plain
-/// Done button (prominent glass on iOS 26). Doesn't support forced menu ordering.
-UIBarButtonItem *SPKMediaChromeTopBarMenuBarButtonItemWithStyle(NSString *resourceName, UIMenu *menu, UIBarButtonItemStyle style, UIColor *_Nullable tintColor, NSString *_Nullable accessibilityLabel);
 void SPKMediaChromeSetLeadingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items);
 void SPKMediaChromeSetTrailingTopBarItems(UINavigationItem *navigationItem, NSArray<UIBarButtonItem *> *items);
 

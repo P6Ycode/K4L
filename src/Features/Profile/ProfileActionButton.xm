@@ -13,33 +13,14 @@
 #import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "../../AssetUtils.h"
 
-static NSString * const kSPKProfileActionButtonDefaultKey = @"profile_action_btn_default_action";
-static NSString * const kSPKProfileActionButtonDefaultCopyInfoKey = @"profile_action_btn_default_copy_info_action";
-static NSString * const kSPKProfileActionNone = @"none";
-static NSString * const kSPKProfileActionCopyInfo = @"copy_info";
-static NSString * const kSPKProfileActionViewPicture = @"view_picture";
-static NSString * const kSPKProfileActionSharePicture = @"share_picture";
-static NSString * const kSPKProfileActionSavePictureToGallery = @"save_picture_gallery";
-static NSString * const kSPKProfileActionOpenSettings = @"profile_settings";
-static NSString * const kSPKProfileCopyInfoID = @"id";
-static NSString * const kSPKProfileCopyInfoUsername = @"username";
-static NSString * const kSPKProfileCopyInfoName = @"name";
-static NSString * const kSPKProfileCopyInfoBio = @"bio";
-static NSString * const kSPKProfileCopyInfoLink = @"link";
 static CGFloat const kSPKProfileActionButtonWidth = 44.0;
 static CGFloat const kSPKProfileActionButtonHeight = 44.0;
 static CGFloat const kSPKProfileActionIconPointSize = 24.0;
-static CGFloat const kSPKProfileActionMenuIconPointSize = 22.0;
 static const void *kSPKProfileHeaderActionButtonAssocKey = &kSPKProfileHeaderActionButtonAssocKey;
 static const void *kSPKProfileHeaderTitleViewKey = &kSPKProfileHeaderTitleViewKey;
 static const void *kSPKProfileLastExpectedFrameKey = &kSPKProfileLastExpectedFrameKey;
 static const void *kSPKProfileTitleIsCenteredKey = &kSPKProfileTitleIsCenteredKey;
 static NSInteger const kSPKProfileActionButtonMaxInstallAttempts = 6;
-
-static UIImage *SPKProfileMenuIcon(NSString *resourceName) {
-    return [SPKAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
-                                   pointSize:kSPKProfileActionMenuIconPointSize];
-}
 
 static id SPKProfileSafeValue(id target, NSString *key) {
     if (!target || key.length == 0) return nil;

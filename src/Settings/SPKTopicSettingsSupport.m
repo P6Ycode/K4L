@@ -338,25 +338,3 @@ UIMenu *SPKGalleryShortcutTargetMenu(void) {
 
     return [UIMenu menuWithChildren:commands];
 }
-
-NSArray *SPKDevExampleSections(void) {
-    return @[
-        SPKTopicSection(@"_ Example", @[
-            [SPKSetting staticCellWithTitle:@"Static Cell" subtitle:@"" icon:SPKSettingsSystemIcon(@"tablecells", SPKSettingsCellIconPointSize, UIImageSymbolWeightRegular)],
-            [SPKSetting switchCellWithTitle:@"Switch Cell" subtitle:@"Tap the switch" defaultsKey:@"test_switch_cell"],
-            [SPKSetting switchCellWithTitle:@"Switch Cell (Restart)" subtitle:@"Tap the switch" defaultsKey:@"test_switch_cell_restart" requiresRestart:YES],
-            [SPKSetting stepperCellWithTitle:@"Stepper Cell" subtitle:@"I have %@%@" defaultsKey:@"test_stepper_cell" min:-10 max:1000 step:5.5 label:@"$" singularLabel:@"$"],
-            SPKSettingApplyIconTint([SPKSetting linkCellWithTitle:@"Link Cell" subtitle:@"Using icon" icon:SPKSettingsSystemIcon(@"link", SPKSettingsCellIconPointSize, UIImageSymbolWeightRegular) url:@"https://google.com"], [UIColor systemTealColor]),
-            [SPKSetting linkCellWithTitle:@"Link Cell" subtitle:@"Using image" imageUrl:@"https://i.imgur.com/c9CbytZ.png" url:@"https://google.com"],
-            [SPKSetting buttonCellWithTitle:@"Button Cell" subtitle:@"" icon:SPKSettingsSystemIcon(@"oval.inset.filled", SPKSettingsCellIconPointSize, UIImageSymbolWeightRegular) action:^(void) { [SPKUtils showConfirmation:^(void){} title:@"Run Example Action?" message:@"Are you sure you want to run this example settings action?"]; }],
-            [SPKSetting menuCellWithTitle:@"Menu Cell" subtitle:@"Change the value on the right" menu:[UIMenu menuWithChildren:@[
-                [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
-                    SPKMenuCommand(@"ABC", nil, nil, @"test_menu_cell", @"abc", NO),
-                    SPKMenuCommand(@"123", nil, nil, @"test_menu_cell", @"123", NO)
-                ]],
-                SPKMenuCommand(@"Requires Restart", nil, nil, @"test_menu_cell", @"requires_restart", YES)
-            ]]],
-            [SPKSetting navigationCellWithTitle:@"Navigation Cell" subtitle:@"" icon:SPKSettingsSystemIcon(@"rectangle.stack", SPKSettingsCellIconPointSize, UIImageSymbolWeightRegular) navSections:@[SPKTopicSection(@"", @[], nil)]]
-        ], @"_ Example")
-    ];
-}

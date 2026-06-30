@@ -20,7 +20,6 @@ typedef NS_ENUM(NSInteger, SPKResolvedImageSource) {
 + (nullable UIImage *)instagramIconNamed:(NSString *)name;
 + (nullable UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize;
 + (nullable UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize renderingMode:(UIImageRenderingMode)renderingMode;
-+ (nullable UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize source:(SPKAssetCatalogSource)source;
 
 + (nullable UIImage *)instagramIconNamed:(NSString *)name
                                pointSize:(CGFloat)pointSize

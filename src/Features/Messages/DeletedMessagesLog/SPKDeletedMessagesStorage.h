@@ -16,7 +16,6 @@ extern NSNotificationName const SPKDeletedMessagesDidChangeNotification;
 
 + (NSArray<SPKDeletedMessage *> *)allMessagesForOwnerPK:(NSString *)ownerPK;
 + (NSArray<NSString *> *)allOwnerPKs;
-+ (NSArray<SPKDeletedMessageGroup *> *)groupedBySenderForOwnerPK:(NSString *)ownerPK;
 
 // Thread-aware grouping for the top list: group threads collapse into one entry
 // (keyed by threadId, isGroup == YES), while 1:1 chats stay keyed by sender. A

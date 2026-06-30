@@ -267,8 +267,6 @@ static NSArray *SPKManageSettingsDataSections(void) {
         ], nil)
     ]];
 
-    [sections addObjectsFromArray:SPKDevExampleSections()];
-
     return SPKTopicNavigationSetting(@"Tools", @"toolbox", 24.0, sections);
 }
 

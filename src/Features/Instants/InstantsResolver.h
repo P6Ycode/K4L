@@ -3,12 +3,6 @@
 
 @class SPKInstantsResolvedSnap, SPKInstantsResolverResult;
 
-/// Returns YES if the service cache has at least one pending Instant.
-BOOL SPKInstantsHasCachedMedia(void);
-
-/// Returns the count of cached Instants (for button visibility decisions).
-NSUInteger SPKInstantsCachedMediaCount(void);
-
 /// Primary resolution entry point. Called at action execution time only.
 /// @param header The QuickSnap header view (used to locate stack view for active index).
 /// @param reason Debug string: "media", "bulk", or "index".

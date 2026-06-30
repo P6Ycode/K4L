@@ -709,14 +709,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 @implementation SPKInstantsFrameInjector
 
-+ (BOOL)hasLiveFrame {
-    __block BOOL has = NO;
-    dispatch_sync(SPKInstantsFreezeQueue(), ^{
-        has = (sSPKInstantsLatestLivePixelBuffer != NULL);
-    });
-    return has;
-}
-
 + (void)freezeNow {
     dispatch_sync(SPKInstantsFreezeQueue(), ^{
         if (!sSPKInstantsLatestLivePixelBuffer) return;
@@ -736,10 +728,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             sSPKInstantsFrozenPixelBuffer = NULL;
         }
     });
-}
-
-+ (BOOL)isFrozen {
-    return sSPKInstantsIsFrozen;
 }
 
 @end

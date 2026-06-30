@@ -39,7 +39,6 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSURL *)bestAudioDownloadURLFromMediaObject:(nullable id)mediaObject;
 
 + (NSString *)processingBasenameForAudioItem:(SPKAudioItem *)item;
-+ (BOOL)shouldConvertAudioURL:(NSURL *)url explicitConvert:(BOOL)explicitConvert;
 + (void)convertAudioAtURL:(NSURL *)sourceURL
                  basename:(NSString *)basename
                  progress:(void (^)(float progress, NSString * _Nullable title))progress

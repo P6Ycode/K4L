@@ -78,7 +78,6 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 // Misc
 + (BOOL)tabOrderSetTo:(NSString *)ordering;
 + (NSString *)IGVersionString;
-+ (BOOL)isNotch;
 
 // Session / user
 // Active IG user session (walks connected scenes for the first window with a
@@ -88,8 +87,6 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 + (nullable NSString *)pkFromIGUser:(nullable id)user;
 // Current logged-in user's PK via the active session, or nil when unavailable.
 + (nullable NSString *)currentUserPK;
-
-+ (BOOL)existingLongPressGestureRecognizerForView:(UIView *)view;
 
 /// IGDSLauncherConfig hooks: when Liquid Glass is on, returns YES; otherwise returns `fallback` (stock).
 + (_Bool)spk_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback;
@@ -107,7 +104,6 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 + (void)evaluateAutomaticCacheClearIfNeeded;
 
 // Display View Controllers
-+ (void)showMediaPreview:(NSURL *)fileURL;
 + (void)showShareVC:(id)item;
 + (void)showSettingsVC:(UIWindow *)window;
 + (void)showSettingsForTopicTitle:(NSString *)title;
@@ -127,8 +123,6 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 + (UIColor *)SPKColor_InstagramDestructive;
 + (UIColor *)SPKColor_InstagramPressedBackground;
 + (UIColor *)SPKColor_ListRowPressedOverlay;
-+ (UIColor *)SPKColor_SettingsSwitchOnTint;
-+ (UIColor *)SPKColor_SettingsSwitchThumbTint;
 + (UIColor *)SPKColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection;
 + (UIColor *)SPKColor_SettingsSwitchThumbTintForTraitCollection:(UITraitCollection *)traitCollection;
 

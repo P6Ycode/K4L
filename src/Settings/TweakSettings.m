@@ -58,8 +58,4 @@
     return @"Sparkle";
 }
 
-+ (NSDictionary *)menus {
-    return @{};
-}
-
 @end

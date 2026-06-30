@@ -9,7 +9,6 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)v2RootDirectory;
 + (NSString *)historyFilePath;
 + (NSString *)stagingDirectoryForJobID:(NSString *)jobID;
-+ (NSString *)sourcesDirectoryForJobID:(NSString *)jobID;
 
 - (NSArray<SPKDownloadJob *> *)loadJobsMarkingInterrupted:(BOOL)markInterrupted;
 - (void)replaceJobs:(NSArray<SPKDownloadJob *> *)jobs;

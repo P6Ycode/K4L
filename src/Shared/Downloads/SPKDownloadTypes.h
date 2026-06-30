@@ -110,9 +110,7 @@ FOUNDATION_EXPORT NSError *SPKDownloadError(SPKDownloadErrorCode code, NSString 
 FOUNDATION_EXPORT BOOL SPKDownloadStateIsTerminal(SPKDownloadState state);
 FOUNDATION_EXPORT BOOL SPKDownloadStateAllowsTransition(SPKDownloadState from, SPKDownloadState to);
 FOUNDATION_EXPORT SPKDownloadState SPKDownloadDerivedJobState(NSArray<NSNumber *> *itemStates);
-FOUNDATION_EXPORT NSString *SPKDownloadStateDisplayName(SPKDownloadState state);
 FOUNDATION_EXPORT NSString *SPKDownloadDestinationDisplayName(SPKDownloadDestination destination);
 FOUNDATION_EXPORT NSString *SPKDownloadSourceSurfaceDisplayName(SPKDownloadSourceSurface surface);
-FOUNDATION_EXPORT NSString *SPKDownloadMediaKindDisplayName(SPKDownloadMediaKind kind);
 
 NS_ASSUME_NONNULL_END

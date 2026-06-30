@@ -56,9 +56,6 @@ typedef NS_ENUM(NSInteger, SPKGalleryBiometryType) {
 - (BOOL)isBiometricsAvailable;
 - (SPKGalleryBiometryType)biometryType;
 
-/// The user-visible label for the current biometry type, e.g. "Face ID", "Touch ID".
-- (NSString *)biometryLabel;
-
 /// Authenticates with biometrics. Calls `completion` on the main queue with success + optional error.
 - (void)authenticateWithBiometricsWithCompletion:(void (^)(BOOL success, NSError *_Nullable error))completion;
 

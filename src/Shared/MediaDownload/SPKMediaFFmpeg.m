@@ -1367,24 +1367,6 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     }
 }
 
-+ (void)shareLogsFromViewController:(UIViewController *)controller {
-    NSArray<NSString *> *files = SPKFFmpegSortedLogFiles();
-    if (files.count == 0) {
-        SPKFFmpegEnsureLoaded();
-        files = SPKFFmpegSortedLogFiles();
-    }
-    if (files.count == 0) {
-        SPKNotify(kSPKNotificationMediaEncodingLogs, @"No encoding logs", @"FFmpeg runs will appear here after merge attempts.", @"info_filled", SPKNotificationToneInfo);
-        return;
-    }
-
-    NSString *exportPath = SPKFFmpegExportLogsFile();
-    if (exportPath.length > 0) {
-        [SPKUtils showShareVC:[NSURL fileURLWithPath:exportPath]];
-    }
-    (void)controller;
-}
-
 + (UIViewController *)logsViewController {
     SPKFFmpegEnsureLoaded();
     return [[_SPKMediaFFmpegLogListViewController alloc] init];

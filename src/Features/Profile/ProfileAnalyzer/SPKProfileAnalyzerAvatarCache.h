@@ -30,9 +30,6 @@ NS_ASSUME_NONNULL_BEGIN
 // Drops all cached avatars (memory + disk). Used by the reset action.
 - (void)purge;
 
-// Total size (bytes) of the on-disk avatar cache.
-- (unsigned long long)diskSizeBytes;
-
 @end
 
 NS_ASSUME_NONNULL_END

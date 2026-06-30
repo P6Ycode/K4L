@@ -23,10 +23,6 @@
     return [[[self v2RootDirectory] stringByAppendingPathComponent:@"staging"] stringByAppendingPathComponent:jobID ?: @"unknown"];
 }
 
-+ (NSString *)sourcesDirectoryForJobID:(NSString *)jobID {
-    return [[[self v2RootDirectory] stringByAppendingPathComponent:@"sources"] stringByAppendingPathComponent:jobID ?: @"unknown"];
-}
-
 - (void)ensureDirectories {
     NSFileManager *fm = NSFileManager.defaultManager;
     NSArray *paths = @[

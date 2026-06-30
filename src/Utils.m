@@ -698,21 +698,6 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 + (NSString *)IGVersionString {
     return [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
 };
-+ (BOOL)isNotch {
-    return [[[UIApplication sharedApplication] keyWindow] safeAreaInsets].bottom > 0;
-};
-
-+ (BOOL)existingLongPressGestureRecognizerForView:(UIView *)view {
-    NSArray *allRecognizers = view.gestureRecognizers;
-
-    for (UIGestureRecognizer *recognizer in allRecognizers) {
-        if ([[recognizer class] isSubclassOfClass:[UILongPressGestureRecognizer class]]) {
-            return YES;
-        }
-    }
-
-    return NO;
-}
 
 + (_Bool)spk_liquidGlassLauncherPrefKey:(NSString *)key orig:(_Bool)fallback {
     return [SPKUtils spk_isLiquidGlassEffectivelyEnabled] ? YES : fallback;
@@ -927,9 +912,6 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 // MARK: Display View Controllers
-+ (void)showMediaPreview:(NSURL *)fileURL {
-    [SPKFullScreenMediaPlayer showFileURL:fileURL];
-}
 + (void)showShareVC:(id)item {
     UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[item] applicationActivities:nil];
     if (is_iPad()) {
@@ -1081,18 +1063,6 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     // history) so their tap feedback matches the gallery rather than the heavier
     // settings-cell pressed background.
     return [[SPKUtils SPKColor_InstagramPrimaryText] colorWithAlphaComponent:0.06];
-}
-
-+ (UIColor *)SPKColor_SettingsSwitchOnTint {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIColor.whiteColor : UIColor.blackColor;
-    }];
-}
-
-+ (UIColor *)SPKColor_SettingsSwitchThumbTint {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIColor.blackColor : UIColor.whiteColor;
-    }];
 }
 
 + (UIColor *)SPKColor_SettingsSwitchOnTintForTraitCollection:(UITraitCollection *)traitCollection {
@@ -1447,31 +1417,6 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     } else {
         return stringValue.length - (decimalRange.location + decimalRange.length);
     }
-}
-
-+ (UIImage *)spk_scaleImage:(UIImage *)image maxPointDimension:(CGFloat)maxPt {
-    if (!image || maxPt <= 0) {
-        return image;
-    }
-    CGFloat w = image.size.width;
-    CGFloat h = image.size.height;
-    CGFloat maxdim = MAX(w, h);
-    if (maxdim <= maxPt + 0.01) {
-        return image;
-    }
-    CGFloat ratio = maxPt / maxdim;
-    CGSize newSize = CGSizeMake(round(w * ratio), round(h * ratio));
-    UIGraphicsImageRendererFormat *fmt = [UIGraphicsImageRendererFormat defaultFormat];
-    fmt.scale = image.scale;
-    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:newSize format:fmt];
-    UIImage *out = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
-        [image drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
-    }];
-    UIImageRenderingMode mode = image.renderingMode;
-    if (mode != UIImageRenderingModeAutomatic) {
-        out = [out imageWithRenderingMode:mode];
-    }
-    return out;
 }
 
 // Ivars

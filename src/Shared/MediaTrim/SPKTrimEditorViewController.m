@@ -431,19 +431,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     if (self.finished) return;
     self.finished = YES;
     void (^completion)(SPKTrimResult *_Nullable) = self.completion;
-    id<SPKTrimEditorDelegate> delegate = self.delegate;
-    __weak typeof(self) weakSelf = self;
     [self dismissViewControllerAnimated:YES completion:^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (result) {
-            if ([delegate respondsToSelector:@selector(trimEditor:didFinishWithResult:)]) {
-                [delegate trimEditor:strongSelf didFinishWithResult:result];
-            }
-        } else {
-            if ([delegate respondsToSelector:@selector(trimEditorDidCancel:)]) {
-                [delegate trimEditorDidCancel:strongSelf];
-            }
-        }
         if (completion) completion(result);
     }];
 }

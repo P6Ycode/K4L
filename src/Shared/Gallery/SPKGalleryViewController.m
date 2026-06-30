@@ -47,15 +47,6 @@ static UIImage *SPKGalleryMenuActionIcon(NSString *resourceName) {
                                    pointSize:kGalleryMenuIconPointSize];
 }
 
-static UIBarButtonItem *SPKGalleryTextBarButtonItem(NSString *title, id target, SEL action) {
-    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithTitle:title
-                                                             style:UIBarButtonItemStylePlain
-                                                            target:target
-                                                            action:action];
-    item.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
-    return item;
-}
-
 static NSInteger SPKGalleryItemCountForFolderPath(NSManagedObjectContext *context, NSString *folderPath) {
     if (folderPath.length == 0) return 0;
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];

@@ -19,7 +19,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setPlayerControlOverlayInsets:(UIEdgeInsets)insets animated:(BOOL)animated;
 - (void)play;
 - (void)pause;
-- (void)stop;
 
 @end
 

@@ -18,17 +18,6 @@ static CGFloat const kSPKReelsActionButtonBottomOffset = -5.0;
 
 // MARK: - View hierarchy helpers
 
-static UIView *SPKReelsFindSuperviewOfClass(UIView *view, NSString *className) {
-	Class cls = NSClassFromString(className);
-	if (!cls) return nil;
-	UIView *current = view.superview;
-	for (NSInteger depth = 0; current && depth < 20; depth++) {
-		if ([current isKindOfClass:cls]) return current;
-		current = current.superview;
-	}
-	return nil;
-}
-
 // MARK: - Deterministic resolution from IGUnifiedVideoCollectionView (Layer 2)
 
 /// Walk up from `view` to find the paging collection view that holds all reel cells.
@@ -162,15 +151,6 @@ static NSInteger SPKReelsCarouselCurrentIndex(UICollectionViewCell *carouselCell
 	if ((NSUInteger)currentIdx >= children.count) return (NSInteger)children.count - 1;
 
 	return currentIdx;
-}
-
-static id SPKReelsCurrentCarouselChildMedia(UICollectionViewCell *carouselCell, id parentMedia) {
-	if (!carouselCell || !parentMedia) return parentMedia;
-
-	NSArray *children = SPKReelsCarouselChildren(parentMedia);
-	NSInteger currentIdx = SPKReelsCarouselCurrentIndex(carouselCell, parentMedia);
-	if (currentIdx < 0) return parentMedia;
-	return (children.count > 0 && (NSUInteger)currentIdx < children.count) ? children[currentIdx] : parentMedia;
 }
 
 // MARK: - Media resolution (deterministic, with BFS fallback)

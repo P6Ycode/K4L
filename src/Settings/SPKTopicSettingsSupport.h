@@ -28,6 +28,5 @@ UIMenu *SPKNotificationPillPositionMenu(void);
 UIMenu *SPKMediaVideoQualityMenu(void);
 UIMenu *SPKMediaPhotoQualityMenu(void);
 UIMenu *SPKGalleryShortcutTargetMenu(void);
-NSArray *SPKDevExampleSections(void);
 
 NS_ASSUME_NONNULL_END

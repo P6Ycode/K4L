@@ -11,7 +11,6 @@ typedef void (^SPKMediaFFmpegCancelBlockPublisher)(dispatch_block_t cancelBlock)
 
 + (BOOL)isAvailable;
 + (void)cancelAll;
-+ (void)shareLogsFromViewController:(nullable UIViewController *)controller;
 + (UIViewController *)logsViewController;
 
 + (void)mergeVideoFileURL:(NSURL *)videoFileURL

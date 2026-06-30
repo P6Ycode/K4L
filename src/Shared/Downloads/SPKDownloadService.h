@@ -32,7 +32,6 @@ typedef void (^SPKDownloadSubmissionCompletion)(NSString * _Nullable jobID, NSEr
 - (void)retryJobID:(NSString *)jobID;
 - (void)retryItemID:(NSString *)itemID inJobID:(NSString *)jobID;
 - (void)clearFinishedHistory;
-- (void)refreshSettings;
 - (void)removeJobID:(NSString *)jobID;
 
 @end

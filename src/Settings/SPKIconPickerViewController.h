@@ -34,8 +34,6 @@ typedef NS_ENUM(NSInteger, SPKIconPickerCellStyle) {
 
 @property (nonatomic, copy, nullable) NSString *selectedIdentifier;
 
-/// Rebuilds the data set (calls -buildSections) and refreshes the grid.
-- (void)reloadIconSections;
 /// Updates the highlighted cell and scrolls it into view.
 - (void)refreshSelectionHighlight;
 

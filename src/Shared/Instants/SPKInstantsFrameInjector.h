@@ -17,18 +17,12 @@ NS_ASSUME_NONNULL_BEGIN
 // QuickSnap camera is active, so `freezeNow` can snapshot it instantly.
 @interface SPKInstantsFrameInjector : NSObject
 
-/// YES once the injector has seen at least one live camera frame this session.
-+ (BOOL)hasLiveFrame;
-
 /// Snapshot the most recent live frame and start replaying it downstream so the
 /// preview (and any subsequent capture) is frozen on that exact frame.
 + (void)freezeNow;
 
 /// Stop replaying the frozen frame; the live camera feed resumes.
 + (void)clearFrozen;
-
-/// Whether a frozen frame is currently being replayed.
-+ (BOOL)isFrozen;
 
 @end
 

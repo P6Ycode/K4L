@@ -374,12 +374,6 @@ static CGFloat const kZoomEpsilon = 0.02;
     [self notifyZoomStateIfChanged];
 }
 
-- (void)forceResetZoom {
-    [_scrollView setZoomScale:kMinZoom animated:NO];
-    [self updateImageViewFrame];
-    [self notifyZoomStateIfChanged];
-}
-
 #pragma mark - Cleanup
 
 - (void)cleanup {

@@ -35,7 +35,9 @@
     if ([SPKUtils getBoolPref:@"reels_prevent_doom_scroll"] && arg2) {
         IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
         [_refreshControl finishLoading];
-        [self finishPullToRefreshLoading];
+        if ([self respondsToSelector:@selector(finishPullToRefreshLoading)]) {
+            [self finishPullToRefreshLoading];
+        }
 
         return;
     }
@@ -47,7 +49,9 @@
                      cancelHandler:^(void) {
                          IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
                          [_refreshControl finishLoading];
-                         [self finishPullToRefreshLoading];
+                         if ([self respondsToSelector:@selector(finishPullToRefreshLoading)]) {
+                             [self finishPullToRefreshLoading];
+                         }
                      }
                              title:@"Confirm Reels Refresh"
                            message:@"Are you sure you want to refresh the reels feed?"];

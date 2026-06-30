@@ -7,18 +7,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class SPKTrimEditorViewController;
 
-@protocol SPKTrimEditorDelegate <NSObject>
-@optional
-- (void)trimEditor:(SPKTrimEditorViewController *)editor didFinishWithResult:(SPKTrimResult *)result;
-- (void)trimEditorDidCancel:(SPKTrimEditorViewController *)editor;
-@end
-
 /// Full-screen media trim editor: preview + filmstrip scrubber + in/out handles
 /// + optional single-frame mode. On confirm it renders a temp file and reports
 /// an `SPKTrimResult`. The editor never saves — the caller routes the result.
 @interface SPKTrimEditorViewController : UIViewController
 
-@property (nonatomic, weak) id<SPKTrimEditorDelegate> delegate;
 @property (nonatomic, copy, nullable) void (^completion)(SPKTrimResult *_Nullable result);
 
 - (instancetype)initWithConfiguration:(SPKTrimConfiguration *)configuration;

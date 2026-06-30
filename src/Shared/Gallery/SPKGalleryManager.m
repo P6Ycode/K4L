@@ -256,15 +256,6 @@ static size_t const kPBKDF2KeyLength = 32;
     }
 }
 
-- (NSString *)biometryLabel {
-    switch ([self biometryType]) {
-        case SPKGalleryBiometryTypeTouchID: return @"Touch ID";
-        case SPKGalleryBiometryTypeFaceID:  return @"Face ID";
-        case SPKGalleryBiometryTypeOther:   return @"Biometrics";
-        default:                          return @"";
-    }
-}
-
 - (void)authenticateWithBiometricsWithCompletion:(void (^)(BOOL, NSError *))completion {
     [self cancelBiometricAuthentication];
 

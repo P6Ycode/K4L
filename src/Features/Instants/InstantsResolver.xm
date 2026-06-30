@@ -140,12 +140,6 @@ void SPKInstantsCacheServiceSnaps(id timeOrdered, id peekPreview, NSString *sour
     }
 }
 
-/// Returns YES when either cache array has at least one item.
-/// This is a lightweight check suitable for use in layoutSubviews.
-BOOL SPKInstantsHasCachedMedia(void) {
-    return (sCachedTimeOrderedSnaps.count > 0 || sCachedPeekPreviewSnaps.count > 0);
-}
-
 /// Returns the merged, deduplicated media list from both cache arrays.
 /// Time-ordered snaps come first, then peek preview snaps that aren't already present.
 /// Deduplication is by media PK.
@@ -180,18 +174,6 @@ NSArray *SPKInstantsMergedMediaList(void) {
     }
 
     return [merged copy];
-}
-
-/// Returns the count of the merged deduplicated list.
-/// Includes the store snapshot (which retains seen/topmost snaps) when available,
-/// so the button reconfigures correctly even after the service has filtered snaps out.
-NSUInteger SPKInstantsCachedMediaCount(void) {
-    NSArray *storeMedia = SPKInstantsStoreSnapshot();
-    NSArray *cacheMedia = SPKInstantsMergedMediaList();
-    if (storeMedia.count > 0) {
-        return SPKInstantsUnionMediaLists(storeMedia, cacheMedia).count;
-    }
-    return cacheMedia.count;
 }
 
 #pragma mark - Media-to-Snap Conversion

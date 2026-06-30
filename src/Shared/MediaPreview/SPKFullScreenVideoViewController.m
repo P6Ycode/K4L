@@ -402,12 +402,6 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     _isPlaying = NO;
 }
 
-- (void)stop {
-    [_player pause];
-    [_player seekToTime:kCMTimeZero];
-    _isPlaying = NO;
-}
-
 #pragma mark - Cleanup
 
 - (void)tearDownPlayer {

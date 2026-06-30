@@ -343,6 +343,11 @@ static BOOL SPKBypassFeedPostLikeConfirm = NO;
 - (void)_handleDoubleTapGesture:(id)arg1 {
     CONFIRMFEEDDOUBLETAPLIKE(self, %orig);
 }
+// IG 436+ : the Swift-rewritten IGModernFeedVideoOverlays.IGVideoPlayerOverlayContainerView
+// dropped the leading underscore from this selector.
+- (void)handleDoubleTapGesture:(id)arg1 {
+    CONFIRMFEEDDOUBLETAPLIKE(self, %orig);
+}
 %end
 
 // Liking reels

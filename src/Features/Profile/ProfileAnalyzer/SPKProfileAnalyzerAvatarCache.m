@@ -145,20 +145,6 @@ static NSString *SPKPAAvatarPathForPK(NSString *pk) {
     });
 }
 
-- (unsigned long long)diskSizeBytes {
-    NSString *dir = SPKPAAvatarDir();
-    NSDirectoryEnumerator *en = [[NSFileManager defaultManager] enumeratorAtPath:dir];
-    unsigned long long total = 0;
-    for (NSString *name in en) {
-        NSDictionary *attrs = [en fileAttributes];
-        if ([attrs[NSFileType] isEqualToString:NSFileTypeRegular]) {
-            total += [attrs[NSFileSize] unsignedLongLongValue];
-        }
-        (void)name;
-    }
-    return total;
-}
-
 #pragma mark - Helpers
 
 // Center-crop to a square and downscale so we don't store full-res CDN images.

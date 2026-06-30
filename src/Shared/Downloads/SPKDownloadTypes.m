@@ -90,26 +90,6 @@ SPKDownloadState SPKDownloadDerivedJobState(NSArray<NSNumber *> *itemStates) {
     return SPKDownloadStatePartial;
 }
 
-static NSString *SPKStateName(SPKDownloadState state) {
-    switch (state) {
-        case SPKDownloadStatePending: return @"Pending";
-        case SPKDownloadStateWaitingForPreflight: return @"Waiting";
-        case SPKDownloadStateQueued: return @"Queued";
-        case SPKDownloadStateRunning: return @"Running";
-        case SPKDownloadStateFinalizing: return @"Saving";
-        case SPKDownloadStateSucceeded: return @"Completed";
-        case SPKDownloadStatePartial: return @"Partial";
-        case SPKDownloadStateFailed: return @"Failed";
-        case SPKDownloadStateCancelled: return @"Cancelled";
-        case SPKDownloadStateInterrupted: return @"Interrupted";
-    }
-    return @"Unknown";
-}
-
-NSString *SPKDownloadStateDisplayName(SPKDownloadState state) {
-    return SPKStateName(state);
-}
-
 NSString *SPKDownloadDestinationDisplayName(SPKDownloadDestination destination) {
     switch (destination) {
         case SPKDownloadDestinationPhotos: return @"Photos";
@@ -134,14 +114,5 @@ NSString *SPKDownloadSourceSurfaceDisplayName(SPKDownloadSourceSurface surface) 
         case SPKDownloadSourceSurfaceInstants: return @"Instants";
         case SPKDownloadSourceSurfaceComments: return @"Comments";
         default: return @"Other";
-    }
-}
-
-NSString *SPKDownloadMediaKindDisplayName(SPKDownloadMediaKind kind) {
-    switch (kind) {
-        case SPKDownloadMediaKindImage: return @"Image";
-        case SPKDownloadMediaKindVideo: return @"Video";
-        case SPKDownloadMediaKindAudio: return @"Audio";
-        default: return @"Media";
     }
 }

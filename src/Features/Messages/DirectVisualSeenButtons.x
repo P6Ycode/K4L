@@ -93,15 +93,6 @@ static id SPKObjectForSelector(id target, NSString *selectorName) {
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
-static id SPKFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
-    if (!target || selectors.count == 0) return nil;
-    for (NSString *selectorName in selectors) {
-        id value = SPKObjectForSelector(target, selectorName);
-        if (value) return value;
-    }
-    return nil;
-}
-
 static void SPKPlayButtonTappedHaptic(void) {
     UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
     [feedback selectionChanged];

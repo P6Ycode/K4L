@@ -9,7 +9,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (NSArray *)sections;
 + (NSString *)title;
-+ (NSDictionary *)menus;
 
 @end
 

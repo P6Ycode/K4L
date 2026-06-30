@@ -297,13 +297,6 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
 
 #pragma mark Public
 
-- (void)reloadIconSections {
-    [self.imageCache removeAllObjects];
-    self.allSections = [self buildSections];
-    [self updateFilteredSectionsForSearch:self.navigationItem.searchController.searchBar.text];
-    [self refreshSelectionHighlight];
-}
-
 - (void)refreshSelectionHighlight {
     [self.collectionView reloadData];
     [self scrollToSelectedItem];

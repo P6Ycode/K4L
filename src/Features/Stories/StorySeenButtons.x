@@ -376,10 +376,6 @@ static void SPKMarkCurrentStoryAsSeenFromOverlay(UIView *overlayView) {
     SPKMarkCurrentStoryAsSeenFromOverlayWithAdvancePref(overlayView, @"stories_advance_on_manual_seen");
 }
 
-void SPKMarkStoryAsSeenForView(UIView *view) {
-    SPKMarkStoryAsSeenForViewWithAdvancePref(view, nil);
-}
-
 void SPKMarkStoryAsSeenForViewWithAdvancePref(UIView *view, NSString *advancePrefKey) {
     UIView *walker = view;
     for (NSInteger depth = 0; walker && depth < 24; depth++, walker = walker.superview) {

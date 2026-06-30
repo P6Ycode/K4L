@@ -20,7 +20,6 @@ FOUNDATION_EXPORT void SPKCoreRegisterBootstrapDefaults(void);
 FOUNDATION_EXPORT void SPKCoreRegisterDefaults(void);
 FOUNDATION_EXPORT NSDictionary<NSString *, id> *SPKCoreRegisteredDefaults(void);
 FOUNDATION_EXPORT void SPKCoreInstallLaunchCriticalHooks(void);
-FOUNDATION_EXPORT void SPKCoreInstallEnabledFeatureHooks(void);
 FOUNDATION_EXPORT void SPKCoreInstallSurfaceHooks(SPKSurface surface);
 FOUNDATION_EXPORT void SPKCoreShowSettingsIfNeeded(UIWindow *window);
 

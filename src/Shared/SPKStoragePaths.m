@@ -31,10 +31,6 @@ static NSString *SPKStorageFeatureDirectory(NSString *featureName) {
 
 @implementation SPKStoragePaths
 
-+ (NSString *)sparkleDocumentsDirectory {
-    return SPKStorageRoot();
-}
-
 + (NSString *)galleryDirectory {
     return SPKStorageFeatureDirectory(@"Gallery");
 }

@@ -322,51 +322,6 @@ static UIView *spkFindCanvasDeep(UIView *root, NSInteger depth) {
 
 @end
 
-@interface SPKChromeLabel ()
-@property (nonatomic, strong) SPKChromeCanvas *chromeCanvas;
-@property (nonatomic, strong) UILabel *label;
-@end
-
-@implementation SPKChromeLabel
-
-- (instancetype)initWithText:(NSString *)text {
-	self = [super initWithFrame:CGRectZero];
-
-	if (self) {
-		self.translatesAutoresizingMaskIntoConstraints = NO;
-
-		_chromeCanvas = [SPKChromeCanvas new];
-		_chromeCanvas.userInteractionEnabled = NO;
-		[self addSubview:_chromeCanvas];
-		spkPinEdges(_chromeCanvas, self);
-
-		_label = [UILabel new];
-		_label.translatesAutoresizingMaskIntoConstraints = NO;
-		_label.text = text;
-
-		UIView *host = _chromeCanvas.contentContainer;
-		[host addSubview:_label];
-		spkPinEdges(_label, host);
-	}
-
-	return self;
-}
-
-- (void)layoutSubviews {
-	[super layoutSubviews];
-}
-
-- (NSString *)text { return _label.text; }
-- (void)setText:(NSString *)text { _label.text = text; }
-- (UIFont *)font { return _label.font; }
-- (void)setFont:(UIFont *)font { _label.font = font; }
-- (UIColor *)textColor { return _label.textColor; }
-- (void)setTextColor:(UIColor *)textColor { _label.textColor = textColor; }
-- (NSTextAlignment)textAlignment { return _label.textAlignment; }
-- (void)setTextAlignment:(NSTextAlignment)textAlignment { _label.textAlignment = textAlignment; }
-
-@end
-
 UIBarButtonItem *SPKChromeBarButtonItem(NSString *symbol, CGFloat pointSize, id target, SEL action, SPKChromeButton **outButton) {
 	SPKChromeButton *button = [[SPKChromeButton alloc] initWithSymbol:symbol pointSize:pointSize diameter:44.0];
 	button.iconOffset = UIOffsetMake(-2.0, 0.0);
@@ -378,9 +333,4 @@ UIBarButtonItem *SPKChromeBarButtonItem(NSString *symbol, CGFloat pointSize, id 
 
 	if (outButton) *outButton = button;
 	return [[UIBarButtonItem alloc] initWithCustomView:button];
-}
-
-SPKChromeButton *SPKChromeButtonForBarItem(UIBarButtonItem *item) {
-	UIView *view = item.customView;
-	return [view isKindOfClass:SPKChromeButton.class] ? (SPKChromeButton *)view : nil;
 }

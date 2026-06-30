@@ -34,30 +34,6 @@ static UIImage *SPKAssetScaleImage(UIImage *image, CGFloat maxPointSize) {
     return scaled;
 }
 
-static UIImage *SPKAssetRotateImage(UIImage *image, CGFloat radians) {
-    if (!image) {
-        return nil;
-    }
-
-    CGRect rect = CGRectApplyAffineTransform((CGRect){.origin = CGPointZero, .size = image.size}, CGAffineTransformMakeRotation(radians));
-    CGSize rotatedSize = CGSizeMake(fabs(rect.size.width), fabs(rect.size.height));
-    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
-    format.scale = image.scale;
-
-    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:rotatedSize format:format];
-    UIImage *rotated = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
-        CGContextRef cgContext = context.CGContext;
-        CGContextTranslateCTM(cgContext, rotatedSize.width / 2.0, rotatedSize.height / 2.0);
-        CGContextRotateCTM(cgContext, radians);
-        [image drawInRect:CGRectMake(-image.size.width / 2.0, -image.size.height / 2.0, image.size.width, image.size.height)];
-    }];
-
-    if (image.renderingMode != UIImageRenderingModeAutomatic) {
-        rotated = [rotated imageWithRenderingMode:image.renderingMode];
-    }
-    return rotated;
-}
-
 static NSArray<NSNumber *> *SPKAssetCandidateSizes(CGFloat pointSize) {
     NSInteger rounded = (NSInteger)lround(MAX(pointSize, 0.0));
     NSMutableOrderedSet<NSNumber *> *sizes = [NSMutableOrderedSet orderedSet];
@@ -521,13 +497,6 @@ static UIImage *SPKAssetLookupInstagramIcon(NSString *name, CGFloat pointSize, S
                           pointSize:pointSize
                              source:SPKAssetCatalogSourceAutomatic
                       renderingMode:renderingMode];
-}
-
-+ (UIImage *)instagramIconNamed:(NSString *)name pointSize:(CGFloat)pointSize source:(SPKAssetCatalogSource)source {
-    return [self instagramIconNamed:name
-                          pointSize:pointSize
-                             source:source
-                      renderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
 + (UIImage *)instagramIconNamed:(NSString *)name

@@ -4,7 +4,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SPKStoragePaths : NSObject
 
-+ (NSString *)sparkleDocumentsDirectory;
 + (NSString *)galleryDirectory;
 + (NSString *)deletedMessagesDirectory;
 + (NSString *)deletedMessagesPendingDirectory;

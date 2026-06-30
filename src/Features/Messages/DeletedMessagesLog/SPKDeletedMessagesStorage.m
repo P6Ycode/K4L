@@ -338,40 +338,6 @@ static NSString *spkGeneratedGroupTitle(NSArray<SPKDeletedMessage *> *msgs, NSSt
     return groups;
 }
 
-+ (NSArray<SPKDeletedMessageGroup *> *)groupedBySenderForOwnerPK:(NSString *)ownerPK {
-    NSArray<SPKDeletedMessage *> *all = [self allMessagesForOwnerPK:ownerPK];
-    NSMutableDictionary<NSString *, NSMutableArray<SPKDeletedMessage *> *> *byPk = [NSMutableDictionary dictionary];
-    for (SPKDeletedMessage *m in all) {
-        if (!m.senderPk.length) continue;
-        NSMutableArray *list = byPk[m.senderPk];
-        if (!list) { list = [NSMutableArray array]; byPk[m.senderPk] = list; }
-        [list addObject:m];
-    }
-
-    NSMutableArray<SPKDeletedMessageGroup *> *groups = [NSMutableArray array];
-    for (NSString *pk in byPk) {
-        NSArray *msgs = byPk[pk];
-        SPKDeletedMessage *latest = msgs.firstObject;   // already newest-first
-        SPKDeletedMessageGroup *g = [SPKDeletedMessageGroup new];
-        g.senderPk            = pk;
-        g.senderUsername      = latest.senderUsername;
-        g.senderFullName      = latest.senderFullName;
-        g.senderProfilePicURL = latest.senderProfilePicURL;
-        NSDictionary *flags   = spkSenderFlags(pk, ownerPK);
-        g.isPinned            = [flags[@"pinned"] boolValue];
-        g.isBlocked           = [flags[@"blocked"] boolValue];
-        g.messages            = msgs;
-        [groups addObject:g];
-    }
-    [groups sortUsingComparator:^NSComparisonResult(SPKDeletedMessageGroup *a, SPKDeletedMessageGroup *b) {
-        if (a.isPinned != b.isPinned) return a.isPinned ? NSOrderedAscending : NSOrderedDescending;
-        NSDate *da = a.lastDeletedAt ?: [NSDate distantPast];
-        NSDate *db = b.lastDeletedAt ?: [NSDate distantPast];
-        return [db compare:da];
-    }];
-    return groups;
-}
-
 + (SPKDeletedMessageGroup *)groupForSenderPK:(NSString *)senderPK ownerPK:(NSString *)ownerPK {
     if (!senderPK.length) return nil;
     NSArray<SPKDeletedMessage *> *msgs = [self messagesForSenderPK:senderPK ownerPK:ownerPK];

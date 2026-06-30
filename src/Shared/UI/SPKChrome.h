@@ -53,19 +53,6 @@ BOOL SPKChromeCanvasOwnsSecureField(UITextField *field);
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
 @end
 
-// MARK: - SPKChromeLabel
-
-@interface SPKChromeLabel : UIView
-- (instancetype)initWithText:(NSString *)text NS_DESIGNATED_INITIALIZER;
-@property (nonatomic, copy) NSString *text;
-@property (nonatomic, strong) UIFont *font;
-@property (nonatomic, strong) UIColor *textColor;
-@property (nonatomic, assign) NSTextAlignment textAlignment;
-- (instancetype)init NS_UNAVAILABLE;
-- (instancetype)initWithFrame:(CGRect)frame NS_UNAVAILABLE;
-- (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
-@end
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -77,8 +64,6 @@ UIBarButtonItem *SPKChromeBarButtonItem(NSString *symbol,
                                          id _Nullable target,
                                          SEL _Nullable action,
                                          SPKChromeButton * _Nullable * _Nullable outButton);
-
-SPKChromeButton * _Nullable SPKChromeButtonForBarItem(UIBarButtonItem *item);
 
 #ifdef __cplusplus
 }

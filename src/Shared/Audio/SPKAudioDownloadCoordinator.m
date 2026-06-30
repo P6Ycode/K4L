@@ -959,11 +959,6 @@ static void SPKAudioDownloadForSaveToFiles(SPKAudioItem *item, BOOL convert,
   return SPKAudioBasename(item);
 }
 
-+ (BOOL)shouldConvertAudioURL:(NSURL *)url
-              explicitConvert:(BOOL)explicitConvert {
-  return SPKAudioShouldConvertURL(url, explicitConvert);
-}
-
 + (void)convertAudioAtURL:(NSURL *)sourceURL
                  basename:(NSString *)basename
                  progress:(void (^)(float, NSString *))progress

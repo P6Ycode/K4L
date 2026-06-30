@@ -178,7 +178,6 @@ static NSSet<NSString *> *SPKExportedPreferenceKeys(void) {
         @"general_cache_last_cleared_at",
         // Runtime-only prefs whose keys use a non-surface prefix, so they are
         // neither registered as defaults nor caught by the prefix scan below.
-        @"enable_hidden_texteffectsstyles",
         @"dm_log_date_format"
     ]];
 
@@ -822,60 +821,6 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     return manager;
 }
 
-- (void)exportSettingsAndGalleryFromController:(UIViewController *)controller {
-    [self exportFromController:controller includeSettings:YES includeGallery:YES];
-}
-
-- (void)importSettingsAndGalleryFromController:(UIViewController *)controller {
-    [self importFromController:controller includeSettings:YES includeGallery:YES];
-}
-
-- (void)presentExportOptionsFromController:(UIViewController *)controller {
-    __weak typeof(self) weakSelf = self;
-    [SPKIGAlertPresenter presentActionSheetFromViewController:controller
-                                                        title:@"Export Backup"
-                                                      message:@"Choose what to include in the export."
-                                                      actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Export Settings Only" style:SPKIGAlertActionStyleDefault handler:^{
-        [weakSelf exportFromController:controller includeSettings:YES includeGallery:NO];
-    }],
-        [SPKIGAlertAction actionWithTitle:@"Export Gallery Only" style:SPKIGAlertActionStyleDefault handler:^{
-        [weakSelf exportFromController:controller includeSettings:NO includeGallery:YES];
-    }],
-        [SPKIGAlertAction actionWithTitle:@"Export Settings + Gallery" style:SPKIGAlertActionStyleDefault handler:^{
-        [weakSelf exportFromController:controller includeSettings:YES includeGallery:YES];
-    }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-    ]];
-}
-
-- (void)presentImportOptionsFromController:(UIViewController *)controller {
-    __weak typeof(self) weakSelf = self;
-    [SPKIGAlertPresenter presentActionSheetFromViewController:controller
-                                                        title:@"Import Backup"
-                                                      message:@"Choose what to restore from the backup."
-                                                      actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Import Settings Only" style:SPKIGAlertActionStyleDefault handler:^{
-        [weakSelf importFromController:controller includeSettings:YES includeGallery:NO];
-    }],
-        [SPKIGAlertAction actionWithTitle:@"Import Gallery Only" style:SPKIGAlertActionStyleDefault handler:^{
-        [weakSelf importFromController:controller includeSettings:NO includeGallery:YES];
-    }],
-        [SPKIGAlertAction actionWithTitle:@"Import Settings + Gallery" style:SPKIGAlertActionStyleDefault handler:^{
-        [weakSelf importFromController:controller includeSettings:YES includeGallery:YES];
-    }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-    ]];
-}
-
-- (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery {
-    [self exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:NO];
-}
-
-- (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages {
-    [self exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:NO];
-}
-
 - (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer {
     // When per-account settings is on, let the user choose whether to back up every
     // account or just the active one — this scopes both preferences and the Gallery.
@@ -1016,14 +961,6 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
             [presenter presentViewController:picker animated:YES completion:nil];
         });
     });
-}
-
-- (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery {
-    [self importFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:NO];
-}
-
-- (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages {
-    [self importFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:NO];
 }
 
 - (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer {

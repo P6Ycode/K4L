@@ -7,10 +7,6 @@ CGFloat const SPKMediaChromeTopBarContentHeight = 44.0;
 static CGFloat const kSPKMediaChromeTopIconPointSize = 24.0;
 static CGFloat const kSPKMediaChromeBottomIconPointSize = 24.0;
 
-UIBlurEffect *SPKMediaChromeBlurEffect(void) {
-    return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-}
-
 void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar) {
     if (!bar) {
         return;
@@ -94,16 +90,6 @@ static void SPKApplyMediaChromeBackButtonDisplayMode(UIViewController *viewContr
 
 @end
 
-UILabel *SPKMediaChromeTitleLabel(NSString *text) {
-    UILabel *label = [[UILabel alloc] init];
-    label.text = text ?: @"";
-    label.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
-    label.textColor = [UIColor labelColor];
-    label.textAlignment = NSTextAlignmentCenter;
-    [label sizeToFit];
-    return label;
-}
-
 UIImage *SPKMediaChromeTopIcon(NSString *resourceName) {
     return [SPKAssetUtils instagramIconNamed:(resourceName.length > 0 ? resourceName : @"more")
                                    pointSize:kSPKMediaChromeTopIconPointSize];
@@ -170,18 +156,6 @@ UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithStyle(NSString *resourceName,
 
 UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMenu *menu, NSString *accessibilityLabel) {
     return SPKMediaChromeTopBarMenuButtonItemWithTint(resourceName, menu, [SPKUtils SPKColor_InstagramPrimaryText], accessibilityLabel);
-}
-
-// A real (not custom-view) bar button item that opens `menu` on tap and honors
-// `style`, so a menu-backed "Done" looks identical to a plain Done button
-// (prominent glass on iOS 26, bold/tinted otherwise). Use this instead of the
-// custom-UIButton variant when you don't need forced menu-element ordering.
-UIBarButtonItem *SPKMediaChromeTopBarMenuBarButtonItemWithStyle(NSString *resourceName, UIMenu *menu, UIBarButtonItemStyle style, UIColor *tintColor, NSString *accessibilityLabel) {
-    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:SPKMediaChromeTopBarIcon(resourceName) menu:menu];
-    item.style = style;
-    item.tintColor = tintColor ?: [SPKUtils SPKColor_InstagramPrimaryText];
-    item.accessibilityLabel = accessibilityLabel;
-    return item;
 }
 
 UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItemWithTint(NSString *resourceName, UIMenu *menu, UIColor *tintColor, NSString *accessibilityLabel) {
