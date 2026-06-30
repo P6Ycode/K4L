@@ -86,7 +86,11 @@ static UIImage *SPKSelectedMenuIconInMenu(UIMenu *menu) {
         NSString *iconName = propertyList[@"iconName"];
         if (defaultsKey.length == 0 || value.length == 0 || iconName.length == 0) continue;
 
-        NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:defaultsKey];
+        // Read through the namespaced accessor so the selected-icon lookup
+        // matches how menuChanged: writes (per-account effective key). A raw
+        // standardUserDefaults read misses the value when per-account prefs are
+        // enabled, leaving the cell stuck on its fallback icon.
+        NSString *saved = [SPKUtils getStringPref:defaultsKey];
         if ([saved isEqualToString:value]) {
             return SPKSettingsIcon(iconName);
         }
@@ -180,8 +184,8 @@ UIMenu *SPKReelsTapControlMenu(void) {
 
 UIMenu *SPKMainFeedModeMenu(void) {
     return [UIMenu menuWithChildren:@[
-        SPKMenuCommand(@"For You", @"heart", nil, @"main_feed_mode", @"default", YES),
-        SPKMenuCommand(@"Following", @"users", nil, @"main_feed_mode", @"following", YES)
+        SPKMenuCommand(@"For You", @"heart", nil, @"feed_mode", @"default", YES),
+        SPKMenuCommand(@"Following", @"users", nil, @"feed_mode", @"following", YES)
     ]];
 }
 

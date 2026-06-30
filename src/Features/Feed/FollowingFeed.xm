@@ -2,18 +2,22 @@
 // https://github.com/n3d1117/InstaSane
 
 #import <Foundation/Foundation.h>
+#import <objc/runtime.h>
+#import <objc/message.h>
 #import <substrate.h>
 
 #import "../../Utils.h"
 
-static NSInteger const IGHomeFeedPickerMenuItemForYou = 0;
+// IGHomeFeedPickerMenuItem enum value (stable across 410→436).
 static NSInteger const IGHomeFeedPickerMenuItemFollowing = 5;
 
 static BOOL SPKFollowingFeedEnabled(void) {
-    return [[SPKUtils getStringPref:@"main_feed_mode"] isEqualToString:@"following"];
+    return [[SPKUtils getStringPref:@"feed_mode"] isEqualToString:@"following"];
 }
 
 %group SPKFollowingFeedHooks
+
+#pragma mark - Picker dropdown order
 
 %hook IGHomeFeedPickerMenuController
 
@@ -23,46 +27,40 @@ static BOOL SPKFollowingFeedEnabled(void) {
           analyticsModule:(id)analyticsModule
      navigationController:(id)navigationController
 isForYouContentLaneEnabled:(BOOL)forYouEnabled {
+    if (!SPKFollowingFeedEnabled() || ![menuItems isKindOfClass:[NSArray class]])
+        return %orig;
+    // Surface "Following" at the top of the picker dropdown.
     NSMutableArray *items = menuItems.mutableCopy;
     [items removeObject:@(IGHomeFeedPickerMenuItemFollowing)];
-    [items removeObject:@(IGHomeFeedPickerMenuItemForYou)];
     [items insertObject:@(IGHomeFeedPickerMenuItemFollowing) atIndex:0];
-    return %orig(userSession, items, homeViewModel, analyticsModule, navigationController, YES);
+    return %orig(userSession, items, homeViewModel, analyticsModule, navigationController, forYouEnabled);
 }
 
-- (void)_didSelectItem:(id)item {
-    if (MSHookIvar<NSInteger>(item, "_feed_type") == IGHomeFeedPickerMenuItemFollowing) {
-        return;
+%end
+
+#pragma mark - Selected feed (drives the model used for the main surface)
+
+%hook IGUserSession
+
+- (id)selectedMainFeedViewModel {
+    if (SPKFollowingFeedEnabled()) {
+        id following = ((id (*)(id, SEL))objc_msgSend)(self, @selector(_followingMainFeedViewModel));
+        if (following) return following;
     }
-    %orig;
+    return %orig;
 }
 
 %end
 
-%hook _TtC14IGHomeMainFeed28IGHomeMainFeedViewController
+#pragma mark - Content forcing
 
-- (void)viewWillAppear:(BOOL)animated {
-    MSHookIvar<id>(self, "currentFeedMenuItem") = @(IGHomeFeedPickerMenuItemFollowing);
-    %orig;
-}
+%hook IGDSAGatingManager
 
-%end
-
-%hook IGHomeFeedHeaderView
-
-- (void)setTitle:(id)title animated:(BOOL)animated {
-    if ([title isEqual:@"For you"]) {
-        %orig(@"Following", animated);
-        return;
-    }
-    %orig;
-}
-
-%end
-
-%hook _TtC11IGDSAShared18IGDSAGatingManager
-
+// Persisted "preferred content lane" (EU DSA): returning 1 = Following. Kept for
+// versions/paths that read it (not always called on 436).
 - (NSInteger)feedStickyContentLaneSelection {
+    if (!SPKFollowingFeedEnabled())
+        return %orig;
     return 1;
 }
 
@@ -84,6 +82,7 @@ disableFlashFeedTLI:(BOOL)disableFlashFeedTLI
 disableFlashFeedOnColdStart:(BOOL)disableColdStart
 disableResponseDeferral:(BOOL)disableResponseDeferral
   hidesStoriesTray:(BOOL)hidesStoriesTray
+shouldRegisterAsStoryDataListener:(BOOL)shouldRegisterAsStoryDataListener
    isSecondaryFeed:(BOOL)isSecondaryFeed
 collectionViewBackgroundColorOverride:(id)backgroundColor
 minWarmStartFetchInterval:(double)minWarmStart
@@ -95,13 +94,17 @@ headerTitleOverride:(id)headerTitle
   isInFollowingTab:(BOOL)isInFollowingTab
 useShimmerLoadingWhenNoStoriesTray:(BOOL)useShimmer
 mainFeedDataFetcher:(id)dataFetcher {
-    paginationSource = @"following";
-    isInFollowingTab = YES;
+    if (SPKFollowingFeedEnabled()) {
+        paginationSource = @"following";
+        isInFollowingTab = YES;
+    }
     return %orig;
 }
 
 %end
 
+// IGMainFeedNetworkSource lost its instance methods in 436 (refactored to Swift);
+// these only install on 410/428 and no-op elsewhere. Kept for back-compat.
 %hook IGMainFeedNetworkSource
 
 - (id)initWithPosts:(id)posts
@@ -113,22 +116,23 @@ mainFeedNetworkSourceSessionDeps:(id)deps
      sessionTracker:(id)sessionTracker
     analyticsModule:(id)analyticsModule
       useNewUIGraph:(BOOL)useNewGraph {
-    paginationSource = @"following";
+    if (SPKFollowingFeedEnabled())
+        paginationSource = @"following";
     return %orig;
 }
 
 - (void)updatePaginationSource:(id)paginationSource nextMaxID:(id)nextMaxID {
-    %orig(@"following", nextMaxID);
-}
-
-- (void)_updatePaginationSource:(id)paginationSource nextMaxID:(id)nextMaxID {
-    %orig(@"following", nextMaxID);
+    if (SPKFollowingFeedEnabled())
+        return %orig(@"following", nextMaxID);
+    %orig;
 }
 
 %end
 
-%hook _TtC24IGMainFeedDataFetcherKit30IGMainFeedRequestConfigFactory
+%hook IGMainFeedRequestConfigFactory
 
+// When the pagination source is "following", use reason 3 so cold starts pull
+// the chronological Following feed.
 - (id)generateHeadLoadRequestConfigWithReason:(NSInteger)reason
                                  trackingWith:(id)tracking
                            cancelOngoingFetch:(BOOL)cancel
@@ -142,7 +146,7 @@ mainFeedNetworkSourceSessionDeps:(id)deps
                              paginationSource:(id)paginationSource
                           secondaryFeedFilter:(id)secondaryFeedFilter
                                   vpvdSeenIds:(id)seenIds {
-    if ([paginationSource isEqual:@"following"]) {
+    if (SPKFollowingFeedEnabled() && [paginationSource isEqual:@"following"]) {
         reason = 3;
     }
     return %orig;
@@ -150,12 +154,20 @@ mainFeedNetworkSourceSessionDeps:(id)deps
 
 %end
 
-// Instagram 410.1.0 exposes a feed-only model without the newer shared Swift
-// runtime name. Its Following tray still needs the original sizing workaround.
+// IG's Following feed shrinks the home story-tray avatars (module
+// "feed_timeline_following", adjustment 10.0 vs For-You's). Restore the larger
+// sizing, gated to the home-feed module so profile highlights ("self_profile")
+// and other trays that share IGStoryTrayCellViewModel are left untouched.
 %hook IGStoryTrayCellViewModel
 
 - (double)avatarSizeAdjustment {
-    return 28.5;
+    if (SPKFollowingFeedEnabled()) {
+        NSString *module = ((NSString *(*)(id, SEL))objc_msgSend)(self, @selector(module));
+        if ([module isKindOfClass:[NSString class]] && [module hasPrefix:@"feed_timeline"]) {
+            return 28.5;
+        }
+    }
+    return %orig;
 }
 
 %end
@@ -163,12 +175,23 @@ mainFeedNetworkSourceSessionDeps:(id)deps
 %end
 
 extern "C" void SPKInstallFollowingFeedHooksIfEnabled(void) {
-    if (!SPKFollowingFeedEnabled()) {
-        return;
-    }
-
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKFollowingFeedHooks);
+        Class picker  = SPKResolveIGClass(@"IGHomeFeedPicker.IGHomeFeedPickerMenuController", @"IGHomeFeedPickerMenuController");
+        Class dsa     = SPKResolveIGClass(@"IGDSAShared.IGDSAGatingManager", @"IGDSAGatingManager");
+        Class factory = SPKResolveIGClass(@"IGMainFeedDataFetcherKit.IGMainFeedRequestConfigFactory", @"IGMainFeedRequestConfigFactory");
+        Class tray    = SPKResolveIGClass(@"IGStoryTrayUIModels.IGStoryTrayCellViewModel", @"IGStoryTrayCellViewModel");
+
+        SPKLog(@"FollowingFeed", @"installing hooks — picker=%@ dsa=%@ factory=%@ tray=%@ session=%@ viewModel=%@",
+               picker ? @"OK" : @"NIL", dsa ? @"OK" : @"NIL", factory ? @"OK" : @"NIL",
+               tray ? @"OK" : @"NIL",
+               objc_getClass("IGUserSession") ? @"OK" : @"NIL",
+               objc_getClass("IGMainFeedViewModel") ? @"OK" : @"NIL");
+
+        %init(SPKFollowingFeedHooks,
+              IGHomeFeedPickerMenuController = picker,
+              IGDSAGatingManager = dsa,
+              IGMainFeedRequestConfigFactory = factory,
+              IGStoryTrayCellViewModel = tray);
     });
 }

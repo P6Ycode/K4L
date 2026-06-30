@@ -157,7 +157,7 @@ static NSSet<NSString *> *SPKExportedPreferenceKeys(void) {
     // Every key registered as an Sparkle default is, by construction, one of
     // ours — include them all rather than prefix-filtering. The old prefix
     // allowlist silently dropped whole feature groups whose keys don't start
-    // with a "surface" prefix (downloads_, instants_, trim_, main_feed_mode, ...),
+    // with a "surface" prefix (downloads_, instants_, trim_, app_first_run, ...),
     // which is why those settings were lost across export/import.
     for (NSString *key in SPKCoreRegisteredDefaults()) {
         [keys addObject:key];

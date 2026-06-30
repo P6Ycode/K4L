@@ -23,7 +23,7 @@ static NSString * const kSPKFeedActionButtonEnabledKey = @"feed_action_btn";
             [SPKSetting switchCellWithTitle:@"Hide Suggested Reels" icon:SPKSettingsIcon(@"reels_gallery") defaultsKey:@"feed_hide_suggested_reels"],
             [SPKSetting switchCellWithTitle:@"Hide Suggested Threads" icon:SPKSettingsIcon(@"threads") defaultsKey:@"feed_hide_suggested_threads"],
             [SPKSetting switchCellWithTitle:@"Hide Repost Button" icon:SPKSettingsIcon(@"repost") defaultsKey:@"feed_hide_repost_btn" requiresRestart:YES]
-        ], @"Main Feed can force Instagram's chronological Following feed instead of the algorithmic For You feed."),
+        ], @"1. Force Instagram's chronological Following feed instead of the algorithmic For You feed. Title stays \"For you\"."),
         SPKTopicSection(@"Metrics", @[
             [SPKSetting switchCellWithTitle:@"Hide Like Count" icon:SPKSettingsIcon(@"heart") defaultsKey:@"feed_hide_like_count"],
             [SPKSetting switchCellWithTitle:@"Hide Comment Count" icon:SPKSettingsIcon(@"comment") defaultsKey:@"feed_hide_comment_count"],

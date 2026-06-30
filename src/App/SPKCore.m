@@ -31,7 +31,7 @@ static NSDictionary *SPKBootstrapDefaults(void) {
         @"tools_disable_all": @(NO),
         @"app_safe_startup": @(NO),
         @"general_hide_ads_stories": @(YES),
-        @"main_feed_mode": @"default",
+        @"feed_mode": @"default",
     };
 }
 

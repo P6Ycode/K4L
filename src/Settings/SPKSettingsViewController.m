@@ -1025,13 +1025,17 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 - (void)menuChanged:(UICommand *)command {
     NSDictionary *properties = command.propertyList;
 
-    [[NSUserDefaults standardUserDefaults] setValue:properties[@"value"] forKey:SPKEffectivePreferenceKey(properties[@"defaultsKey"])];
     NSString *defaultsKey = properties[@"defaultsKey"];
+    NSString *writeKey = SPKEffectivePreferenceKey(defaultsKey);
+    [[NSUserDefaults standardUserDefaults] setValue:properties[@"value"] forKey:writeKey];
+    // Flush immediately: a requiresRestart change may kill the app before the
+    // automatic NSUserDefaults sync, losing the just-written value.
+    [[NSUserDefaults standardUserDefaults] synchronize];
     if ([defaultsKey containsString:@"_action_btn"]) {
         [[NSNotificationCenter defaultCenter] postNotificationName:SPKActionButtonConfigurationDidChangeNotification object:nil];
     }
 
-    SPKLog(@"General", @"Menu changed: %@", command.propertyList[@"value"]);
+    SPKLog(@"General", @"Menu changed: %@ = %@", writeKey, properties[@"value"]);
 
     [self reloadCellForView:command.sender animated:YES];
 

@@ -606,6 +606,9 @@ static BOOL SPKPrefIsGlobalKey(NSString *key) {
             @"interface_nav_order",
             @"interface_swipe_tabs",
             @"interface_launch_tab",
+            // Main feed mode (For You / Following) is read during early feed
+            // setup before the account resolves, so it stays global.
+            @"feed_mode",
         ]];
     });
     if ([globalExact containsObject:key]) return YES;
