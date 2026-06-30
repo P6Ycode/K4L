@@ -34,7 +34,11 @@ jobs:
               uses: actions/checkout@v4
               with:
                 repository: theos/theos
-                ref: master
+                # Pinned to a known-good commit. theos master tracks the latest
+                # Logos, and commit 777925d (#114) regressed bare %orig parsing
+                # (single-line `{ %orig; }`, `%orig]`, etc.). This commit references
+                # Logos a623700, the last version that builds this project.
+                ref: 405e5c6ddb288615c030eeaedc6b265aae748285
                 path: ${{ github.workspace }}/theos
                 submodules: recursive
         
