@@ -2,6 +2,7 @@
 #import "SPKGalleryManager.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import <LocalAuthentication/LocalAuthentication.h>
 
 static NSInteger const kPasscodeLength = 4;
 
@@ -43,8 +44,21 @@ static NSInteger const kPasscodeLength = 4;
         [mgr authenticateWithBiometricsWithCompletion:^(BOOL success, NSError *err) {
             if (success) {
                 if (completion) completion(YES);
-            } else {
-                [self presentMode:SPKGalleryLockModeUnlock forManager:mgr fromViewController:presenter completion:completion];
+                return;
+            }
+
+            // A deliberate cancel should abort the unlock entirely rather than
+            // dropping the user into the passcode keypad. Only genuine auth
+            // failures (or an explicit fallback request) open the keypad.
+            switch (err.code) {
+                case LAErrorUserCancel:
+                case LAErrorSystemCancel:
+                case LAErrorAppCancel:
+                    if (completion) completion(NO);
+                    return;
+                default:
+                    [self presentMode:SPKGalleryLockModeUnlock forManager:mgr fromViewController:presenter completion:completion];
+                    return;
             }
         }];
     } else {
@@ -131,13 +145,6 @@ static NSInteger const kPasscodeLength = 4;
     self.keyPressFeedbackGenerator = [[UISelectionFeedbackGenerator alloc] init];
     [self.keyPressFeedbackGenerator prepare];
 
-    self.biometricButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.biometricButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.biometricButton addTarget:self
-                             action:@selector(triggerBiometrics)
-                   forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:self.biometricButton];
-
     self.cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
     [self.cancelButton setTitleColor:[SPKUtils SPKColor_InstagramPrimaryText] forState:UIControlStateNormal];
@@ -160,9 +167,6 @@ static NSInteger const kPasscodeLength = 4;
         [self.keypadStackView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.keypadStackView.topAnchor constraintEqualToAnchor:self.dotsStackView.bottomAnchor constant:48],
 
-        [self.biometricButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.biometricButton.topAnchor constraintEqualToAnchor:self.keypadStackView.bottomAnchor constant:24],
-
         [self.cancelButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.cancelButton.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-20],
     ]];
@@ -180,7 +184,7 @@ static NSInteger const kPasscodeLength = 4;
         @[@1, @2, @3],
         @[@4, @5, @6],
         @[@7, @8, @9],
-        @[@(-1), @0, @(-2)], // -1 = empty, -2 = delete
+        @[@(-3), @0, @(-2)], // -3 = biometric, -2 = delete
     ];
 
     for (NSArray<NSNumber *> *row in layout) {
@@ -199,6 +203,20 @@ static NSInteger const kPasscodeLength = 4;
                     [spacer.heightAnchor constraintEqualToConstant:75],
                 ]];
                 [rowStack addArrangedSubview:spacer];
+            } else if (n == -3) {
+                // Biometric unlock, mirroring the backspace button's position.
+                // Always present so the keypad stays symmetric; visibility is
+                // toggled per-mode in -updateUIForMode.
+                UIButton *bio = [self createKeypadButton:nil tag:-3];
+                bio.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
+                [bio addTarget:self action:@selector(triggerBiometrics) forControlEvents:UIControlEventTouchUpInside];
+                [bio addTarget:self action:@selector(keyTouchDown:) forControlEvents:UIControlEventTouchDown];
+                [bio addTarget:self action:@selector(keyTouchUp:) forControlEvents:UIControlEventTouchUpInside];
+                [bio addTarget:self action:@selector(keyTouchUp:) forControlEvents:UIControlEventTouchUpOutside];
+                [bio addTarget:self action:@selector(keyTouchUp:) forControlEvents:UIControlEventTouchCancel];
+                [bio addTarget:self action:@selector(keyTouchUp:) forControlEvents:UIControlEventTouchDragExit];
+                self.biometricButton = bio;
+                [rowStack addArrangedSubview:bio];
             } else if (n == -2) {
                 UIButton *del = [self createKeypadButton:nil tag:-2];
                 UIImage *deleteIcon = [SPKAssetUtils instagramIconNamed:@"backspace" pointSize:24.0];
@@ -231,9 +249,9 @@ static NSInteger const kPasscodeLength = 4;
 - (UIButton *)createKeypadButton:(NSString *)title tag:(NSInteger)tag {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
     btn.tag = tag;
-    BOOL isDeleteButton = (tag == -2);
-    btn.layer.cornerRadius = isDeleteButton ? 0.0 : 37.5;
-    btn.backgroundColor = isDeleteButton ? [UIColor clearColor] : [SPKUtils SPKColor_InstagramSecondaryBackground];
+    BOOL isIconButton = (tag == -2 || tag == -3);
+    btn.layer.cornerRadius = isIconButton ? 0.0 : 37.5;
+    btn.backgroundColor = isIconButton ? [UIColor clearColor] : [SPKUtils SPKColor_InstagramSecondaryBackground];
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
         [btn.widthAnchor constraintEqualToConstant:75],
@@ -289,15 +307,19 @@ static NSInteger const kPasscodeLength = 4;
             break;
     }
 
-    // Biometrics button only shown during unlock, when available.
+    // Biometrics button only active during unlock, when available. We keep the
+    // slot occupied (alpha 0 rather than hidden) so the keypad stays symmetric.
     SPKGalleryManager *mgr = self.lockManager;
     BOOL showBiometrics = (self.mode == SPKGalleryLockModeUnlock) && [mgr isBiometricsAvailable];
-    self.biometricButton.hidden = !showBiometrics;
+    self.biometricButton.alpha = showBiometrics ? 1.0 : 0.0;
+    self.biometricButton.userInteractionEnabled = showBiometrics;
     if (showBiometrics) {
         NSString *icon = [mgr biometryType] == SPKGalleryBiometryTypeFaceID ? @"faceid" : @"touchid";
         UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:28 weight:UIImageSymbolWeightRegular];
         [self.biometricButton setImage:[UIImage systemImageNamed:icon withConfiguration:cfg] forState:UIControlStateNormal];
         self.biometricButton.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
+    } else {
+        [self.biometricButton setImage:nil forState:UIControlStateNormal];
     }
 
     [self updateDots];
