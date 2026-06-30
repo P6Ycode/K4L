@@ -678,6 +678,14 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     }
   }
 
+  // The video page (and the embedded AVPlayerViewController transport controls)
+  // live inside this paging scroll view. With delaysContentTouches = YES (the
+  // default) the scroll view withholds touch-began from those controls while it
+  // decides whether a scroll is starting, which on iOS 18 and lower leaves the
+  // player controls unresponsive to taps. Deliver touches immediately; paging
+  // still works because canCancelContentTouches stays on for actual drags.
+  _pageScrollView.delaysContentTouches = NO;
+
   UIViewController *initialVC = [self viewControllerForIndex:_currentIndex];
   if (initialVC) {
     [_pageViewController
@@ -2392,16 +2400,48 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 
   UIView *fromView =
       [transitionContext viewForKey:UITransitionContextFromViewKey];
+  UIView *toView = [transitionContext viewForKey:UITransitionContextToViewKey];
+
+  // Reveal the real screen behind the preview during the tap-X fade. The blind
+  // fade (fromView.alpha = 0) faded the whole opaque preview as one unit: under
+  // UIModalPresentationFullScreen the presenting screen is no longer in the
+  // hierarchy, so it faded through black and snapped. Drop the real screen
+  // behind the preview into the transition container, then fade the page
+  // content and black backdrop out so the underlying screen is progressively
+  // revealed (a cross-fade rather than a black flash) while keeping content in
+  // place — no slide.
+  if (toView && !toView.superview) {
+    UIViewController *toViewController = [transitionContext
+        viewControllerForKey:UITransitionContextToViewControllerKey];
+    toView.frame =
+        [transitionContext finalFrameForViewController:toViewController];
+    if (![toView isDescendantOfView:transitionContext.containerView]) {
+      [transitionContext.containerView addSubview:toView];
+    }
+    [transitionContext.containerView bringSubviewToFront:fromView ?: self.view];
+  }
+
+  // iOS 26's glass toolbar ignores alpha; hide its platter directly so it
+  // doesn't linger over the dismissing content.
+  if (@available(iOS 26.0, *)) {
+    [self.navigationController setToolbarHidden:YES animated:YES];
+  }
+
   [UIView animateWithDuration:kDismissFadeDuration
       delay:0
       options:UIViewAnimationOptionCurveEaseOut
       animations:^{
-        fromView.alpha = 0.0;
+        self.pageViewController.view.alpha = 0.0;
+        self.presentationBackdropView.alpha = 0.0;
+        self.navigationController.navigationBar.alpha = 0.0;
+        self.navigationController.toolbar.alpha = 0.0;
       }
       completion:^(__unused BOOL finished) {
         BOOL completed = !transitionContext.transitionWasCancelled;
         if (!completed) {
-          fromView.alpha = 1.0;
+          self.pageViewController.view.alpha = 1.0;
+          self.presentationBackdropView.alpha = 1.0;
+          [toView removeFromSuperview];
         }
         [transitionContext completeTransition:completed];
       }];

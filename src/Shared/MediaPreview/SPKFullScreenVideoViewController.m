@@ -6,6 +6,13 @@
 
 static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 
+// Private AVKit SPI (present iOS 16.3 → 26.1, verified via class-dump): lets us
+// stop the embedded player from ever entering its own full-screen presentation.
+@interface AVPlayerViewController (SPKFullScreenSuppression)
+- (void)setAllowsEnteringFullScreen:(BOOL)allowsEnteringFullScreen;
+- (void)setEntersFullScreenWhenTapped:(BOOL)entersFullScreenWhenTapped;
+@end
+
 @interface SPKFullScreenVideoViewController () <AVPlayerViewControllerDelegate, UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) AVPlayer *player;
@@ -48,6 +55,14 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     [self setupThumbnailView];
     [self setupLoadingIndicator];
     [self setupTapGesture];
+    // Add the AVPlayerViewController as a child now, before the appearance cycle,
+    // so it gets a proper viewWillAppear/viewDidAppear transition and builds its
+    // controls overlay. When it was created lazily in prepareForDisplay (run from
+    // viewDidAppear) on the first page, it was added too late and its controls
+    // never initialized until a page transition forced an appearance cycle — the
+    // player still received taps (center play/pause worked) but the chrome never
+    // showed. The player content is assigned later in startPlayback.
+    [self ensurePlayerViewControllerIfNeeded];
     if (self.mediaItem.thumbnail) {
         self.thumbnailView.image = self.mediaItem.thumbnail;
     }
@@ -72,6 +87,19 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     _playerViewController.allowsPictureInPicturePlayback = NO;
     _playerViewController.delegate = self;
     _playerViewController.view.backgroundColor = [UIColor clearColor];
+
+    // Stop AVKit from ever entering its own full-screen presentation. We provide
+    // our own chrome (close button + toolbars), and AVKit's full-screen state was
+    // being triggered by its expand button and by our partial dismiss-swipe
+    // reparenting the player — it then kept its own close (X) on return, leaving
+    // two X's. `allowsEnteringFullScreen` is private AVKit SPI confirmed on
+    // iOS 16.3–26.1; guarded so it's a no-op if the selector ever goes away.
+    if ([_playerViewController respondsToSelector:@selector(setAllowsEnteringFullScreen:)]) {
+        [_playerViewController setAllowsEnteringFullScreen:NO];
+    }
+    if ([_playerViewController respondsToSelector:@selector(setEntersFullScreenWhenTapped:)]) {
+        [_playerViewController setEntersFullScreenWhenTapped:NO];
+    }
 
     [self addChildViewController:_playerViewController];
     _playerViewController.view.translatesAutoresizingMaskIntoConstraints = NO;
@@ -153,6 +181,16 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     if (gestureRecognizer != _singleTapGesture) {
         return YES;
+    }
+
+    // Hand every touch inside the embedded AVPlayerViewController to AVKit so its
+    // transport controls reveal/operate normally. Our tap recognizer otherwise
+    // wins gesture arbitration on iOS 18 and lower and swallows the tap that
+    // would show/operate the controls (iOS 26 gives the touch to AVKit itself,
+    // which is why it "just works" there). The tap still toggles chrome on the
+    // letterbox area outside the player.
+    if (_playerViewController.isViewLoaded && [touch.view isDescendantOfView:_playerViewController.view]) {
+        return NO;
     }
 
     UIView *view = touch.view;
