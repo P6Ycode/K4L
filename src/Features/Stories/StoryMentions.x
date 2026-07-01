@@ -346,32 +346,6 @@ static NSArray<NSDictionary *> *SPKStoryMentionsEnriched(UIView *overlayView) {
 
 }
 
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    if (self.navigationController) {
-        UINavigationBar *navBar = self.navigationController.navigationBar;
-        
-        // Ensure standard translucent blur is active and not overridden by solid backgrounds
-        navBar.translucent = YES;
-        navBar.backgroundColor = [UIColor clearColor];
-        navBar.barTintColor = nil;
-        navBar.shadowImage = nil;
-        
-        // Match iOS Settings sheet top bar appearance exactly
-        UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
-        [appearance configureWithDefaultBackground]; // system default — matches Settings sheet style
-        appearance.titleTextAttributes = @{
-            NSForegroundColorAttributeName: [SPKUtils SPKColor_InstagramPrimaryText],
-            NSFontAttributeName: [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold]
-        };
-        
-        // Use identical appearance for all states — same as Settings sheets (no transparent edge)
-        navBar.standardAppearance = appearance;
-        navBar.scrollEdgeAppearance = appearance;
-        navBar.compactAppearance = appearance;
-    }
-}
-
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     // Resume story playback when mentions sheet is dismissed
@@ -568,8 +542,7 @@ void SPKPresentStoryMentionsSheet(UIView *overlayView) {
     vc.userInfos = enriched;
     vc.storyOverlayView = overlayView;
 
-    // Use a native UINavigationController wrapper to support standard dynamic page sheet behavior
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
 
     UISheetPresentationController *sheet = nav.sheetPresentationController;
