@@ -8,9 +8,10 @@ void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar);
 
 /// Shared navigation controller for Sparkle's modal stacks (settings, gallery,
 /// downloads, etc.). Applies the media-chrome navigation bar styling (custom
-/// back chevron everywhere, neutral non-blue tint and scroll-driven material on
-/// iOS 18 and lower) and a title-less back button, so every Sparkle top bar is
-/// consistent. Liquid Glass is left to the system on iOS 26+.
+/// back chevron everywhere, neutral non-blue tint and, on iOS 18 and lower, a
+/// solid background matching the settings/list view background instead of the
+/// system's scroll-driven material) and a title-less back button, so every
+/// Sparkle top bar is consistent. Liquid Glass is left to the system on iOS 26+.
 @interface SPKChromeNavigationController : UINavigationController
 @end
 
@@ -61,12 +62,17 @@ NSArray<UIBarButtonItem *> *SPKMediaChromeBottomToolbarItems(NSArray<UIBarButton
 /// distributed evenly across the standard bottom bar.
 NSArray<UIBarButtonItem *> *SPKMediaChromeBottomToolbarItemsWithTrailingGroup(NSArray<UIBarButtonItem *> *primaryItems, NSArray<UIBarButtonItem *> *trailingItems);
 
-/// Applies media-chrome styling (tint, dark appearance) to a bottom toolbar.
+/// Applies media-chrome styling to a bottom toolbar: neutral tint, and on iOS
+/// 18 and lower a solid background matching the settings/list view background
+/// (mirroring the navigation bar). No-op background on iOS 26+, where Liquid
+/// Glass renders its own capsule.
 void SPKMediaChromeConfigureBottomToolbar(UIToolbar *toolbar);
 
 /// Toggles a translucent material backing on the navigation bar and bottom
-/// toolbar. Use when content scrolls/zooms behind the bars so they stay legible.
-/// No-op on iOS 26+, where Liquid Glass already adapts automatically.
+/// toolbar. Used by the full-screen media preview so its bars stay transparent
+/// over letterboxed content and gain a material backing when content scrolls or
+/// zooms behind them. This is the deliberate exception to the solid-background
+/// chrome used elsewhere. No-op on iOS 26+, where Liquid Glass adapts itself.
 void SPKMediaChromeSetBarsMaterialActive(UINavigationController *navigationController, BOOL active);
 
 NS_ASSUME_NONNULL_END

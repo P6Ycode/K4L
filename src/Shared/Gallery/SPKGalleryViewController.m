@@ -314,7 +314,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     [controller.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
                          forSearchBarIcon:UISearchBarIconSearch 
                                     state:UIControlStateNormal];
-    controller.searchBar.placeholder = @"Search...";
+    controller.searchBar.placeholder = @"Search Gallery";
     // Scope toggle: search the current folder, or across all folders. Let the
     // search controller manage the scope bar's visibility (shown while searching).
     controller.searchBar.scopeButtonTitles = @[@"This Folder", @"All Folders"];

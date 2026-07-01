@@ -11,6 +11,8 @@ static CGFloat const kZoomEpsilon = 0.02;
 @interface SPKFullScreenImageViewController () <UIScrollViewDelegate>
 
 @property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, assign) UIEdgeInsets desiredContentInsets;
+@property (nonatomic, assign) BOOL hasDesiredContentInsets;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, strong) UIView *errorView;
@@ -50,6 +52,44 @@ static CGFloat const kZoomEpsilon = 0.02;
     [self updateImageViewFrame];
 }
 
+- (void)applyMediaContentInsets:(UIEdgeInsets)insets {
+    self.desiredContentInsets = insets;
+    self.hasDesiredContentInsets = YES;
+    // Insets only affect the min-zoom fit/centering. While zoomed the image
+    // uses the full screen, so there's nothing to update (and nothing jumps);
+    // the new insets take effect naturally when the user returns to min zoom.
+    if (self.isZoomed) return;
+    [self updateImageViewFrame];
+}
+
+- (UIEdgeInsets)effectiveMinZoomInsets {
+    UIEdgeInsets insets = self.hasDesiredContentInsets ? self.desiredContentInsets : UIEdgeInsetsZero;
+    if (UIEdgeInsetsEqualToEdgeInsets(insets, UIEdgeInsetsZero)) return UIEdgeInsetsZero;
+
+    UIImage *image = _imageView.image;
+    CGSize boundsSize = _scrollView.bounds.size;
+    if (!image || boundsSize.width <= 0 || boundsSize.height <= 0) return insets;
+
+    CGSize imageSize = image.size;
+    if (imageSize.width <= 0 || imageSize.height <= 0) return insets;
+
+    CGFloat availW = MAX(1.0, boundsSize.width - insets.left - insets.right);
+    CGFloat availH = MAX(1.0, boundsSize.height - insets.top - insets.bottom);
+    CGFloat ratioFull = MIN(boundsSize.width / imageSize.width,
+                            boundsSize.height / imageSize.height);
+    CGFloat ratioAvail = MIN(availW / imageSize.width, availH / imageSize.height);
+
+    // Only inset images the bars would actually cover. A width-constrained fit
+    // (square/landscape photos) already sits clear of the top/bottom bars, so
+    // the between-bars region doesn't shrink it any further (ratioAvail ==
+    // ratioFull). Insetting those would just shift/resize them and make them
+    // jump when the chrome toggles, so leave them full-bleed and centered.
+    // Height-constrained fits (tall ~9:16 photos) would run under the bars, so
+    // those do get inset.
+    if (ratioAvail >= ratioFull - 0.0001) return UIEdgeInsetsZero;
+    return insets;
+}
+
 #pragma mark - Setup
 
 - (void)setupScrollView {
@@ -64,6 +104,11 @@ static CGFloat const kZoomEpsilon = 0.02;
     _scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     [self.view addSubview:_scrollView];
 
+    // The scroll view always spans the full screen so a zoomed image can pan
+    // edge-to-edge with no black bars. The between-bars inset (pushed by the
+    // host via applyMediaContentInsets:) is applied only to the min-zoom fit and
+    // centering of the image, so toggling the chrome while zoomed changes
+    // nothing visible.
     [NSLayoutConstraint activateConstraints:@[
         [_scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [_scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
@@ -281,10 +326,22 @@ static CGFloat const kZoomEpsilon = 0.02;
 
 #pragma mark - Frame Management
 
-/// Centers the zoomed image inside the scroll view using frame origin (stable with `UIScrollView` zoom).
+/// Centers the image inside the scroll view using frame origin (stable with
+/// `UIScrollView` zoom). At minimum zoom the image is centered within the
+/// between-bars region; when zoomed it centers/pans across the full screen.
 - (void)spk_recenterZoomedImage {
     CGSize boundsSize = _scrollView.bounds.size;
     CGSize contentSize = _scrollView.contentSize;
+    BOOL atMinimumZoom = (_scrollView.zoomScale <= kMinZoom + kZoomEpsilon);
+
+    if (atMinimumZoom) {
+        UIEdgeInsets insets = [self effectiveMinZoomInsets];
+        CGFloat availW = MAX(1.0, boundsSize.width - insets.left - insets.right);
+        CGFloat availH = MAX(1.0, boundsSize.height - insets.top - insets.bottom);
+        _imageView.center = CGPointMake(insets.left + availW * 0.5,
+                                        insets.top + availH * 0.5);
+        return;
+    }
 
     CGFloat offsetX = (boundsSize.width > contentSize.width) ? (boundsSize.width - contentSize.width) * 0.5 : 0.0;
     CGFloat offsetY = (boundsSize.height > contentSize.height) ? (boundsSize.height - contentSize.height) * 0.5 : 0.0;
@@ -302,10 +359,14 @@ static CGFloat const kZoomEpsilon = 0.02;
     BOOL atMinimumZoom = (_scrollView.zoomScale <= kMinZoom + kZoomEpsilon);
 
     if (atMinimumZoom) {
+        // Fit into the between-bars region so the un-zoomed image never sits
+        // under the top/bottom chrome.
+        UIEdgeInsets insets = [self effectiveMinZoomInsets];
+        CGFloat availW = MAX(1.0, boundsSize.width - insets.left - insets.right);
+        CGFloat availH = MAX(1.0, boundsSize.height - insets.top - insets.bottom);
+
         CGSize imageSize = image.size;
-        CGFloat widthRatio = boundsSize.width / imageSize.width;
-        CGFloat heightRatio = boundsSize.height / imageSize.height;
-        CGFloat ratio = MIN(widthRatio, heightRatio);
+        CGFloat ratio = MIN(availW / imageSize.width, availH / imageSize.height);
 
         CGFloat newWidth = imageSize.width * ratio;
         CGFloat newHeight = imageSize.height * ratio;
@@ -326,6 +387,15 @@ static CGFloat const kZoomEpsilon = 0.02;
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView {
     [self spk_recenterZoomedImage];
+    [self notifyZoomStateIfChanged];
+}
+
+- (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale {
+    // Back at minimum zoom: re-fit into the current between-bars region (the
+    // insets may have changed via a chrome toggle while the image was zoomed).
+    if (!self.isZoomed) {
+        [self updateImageViewFrame];
+    }
     [self notifyZoomStateIfChanged];
 }
 
@@ -369,7 +439,7 @@ static CGFloat const kZoomEpsilon = 0.02;
 - (void)resetZoomIfNeeded {
     if (!self.isZoomed) {
         [_scrollView setZoomScale:kMinZoom animated:NO];
-        [self spk_recenterZoomedImage];
+        [self updateImageViewFrame];
     }
     [self notifyZoomStateIfChanged];
 }

@@ -36,7 +36,6 @@ static CGFloat const kDismissMinimumDuration = 0.12;
 static CGFloat const kDismissFinalBackdropAlpha = 0.1;
 static NSTimeInterval const kPresentationFadeDuration = 0.22;
 static NSTimeInterval const kDismissFadeDuration = 0.18;
-static NSTimeInterval const kPreviewChromeAnimationDuration = 0.25;
 // The bottom toolbar is a real UIToolbar now, so the navigation controller
 // folds it into the safe area that AVPlayerViewController already respects. No
 // manual control inset is needed; keep it at zero so the scrubber sits just
@@ -199,6 +198,20 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 /// Opaque black behind page content (letterboxing); alpha fades during
 /// interactive dismiss.
 @property(nonatomic, strong) UIView *presentationBackdropView;
+
+/// Fixed insets (top/bottom bar heights) applied to media content on
+/// non-notched devices so it sits between the bars. Captured only while the
+/// chrome is visible so the value survives a chrome toggle.
+@property(nonatomic, assign) UIEdgeInsets mediaContentBarInsets;
+
+/// The content insets actually applied right now: the bar heights while the
+/// chrome is visible, zero (full-screen) while it's hidden. Animated alongside
+/// the bar fade in toggleToolbar so the media expands/contracts smoothly.
+@property(nonatomic, assign) UIEdgeInsets currentContentInsets;
+
+/// Suppresses safe-area-driven inset recomputation while a chrome toggle
+/// animation is running (the toggle drives the insets explicitly).
+@property(nonatomic, assign) BOOL chromeToggleInProgress;
 
 @end
 
@@ -507,6 +520,44 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   [self prepareAdjacentViewControllersAroundIndex:self.currentIndex];
 }
 
+- (void)viewDidLayoutSubviews {
+  [super viewDidLayoutSubviews];
+  [self updateMediaContentBarInsetsIfNeeded];
+}
+
+// On non-notched devices the opaque top/bottom bars overlap edge-to-edge media,
+// so we inset the content between them while the chrome is visible. The bar
+// heights are captured only while the chrome is visible; the chrome toggle then
+// animates the applied inset between those heights and zero (full-screen).
+- (void)updateMediaContentBarInsetsIfNeeded {
+  if (!SPKFullScreenPreviewShouldInsetMediaBetweenBars())
+    return;
+  if (self.chromeToggleInProgress)
+    return;
+  if (!_isToolbarVisible)
+    return;
+
+  UIEdgeInsets insets = UIEdgeInsetsMake(self.view.safeAreaInsets.top, 0.0,
+                                         self.view.safeAreaInsets.bottom, 0.0);
+  if (UIEdgeInsetsEqualToEdgeInsets(insets, self.mediaContentBarInsets) &&
+      UIEdgeInsetsEqualToEdgeInsets(insets, self.currentContentInsets))
+    return;
+
+  self.mediaContentBarInsets = insets;
+  self.currentContentInsets = insets;
+  for (UIViewController *controller in self.pageViewController.viewControllers) {
+    [self applyMediaContentBarInsetsToController:controller];
+  }
+}
+
+- (void)applyMediaContentBarInsetsToController:(UIViewController *)controller {
+  if (!SPKFullScreenPreviewShouldInsetMediaBetweenBars())
+    return;
+  if ([controller respondsToSelector:@selector(applyMediaContentInsets:)]) {
+    [(id)controller applyMediaContentInsets:self.currentContentInsets];
+  }
+}
+
 - (BOOL)prefersStatusBarHidden {
   return !self.isToolbarVisible;
 }
@@ -766,6 +817,10 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                  isKindOfClass:[SPKFullScreenImageViewController class]]) {
     [(SPKFullScreenImageViewController *)controller preloadContent];
   }
+
+  // Keep the fixed between-bars inset applied to whatever page is shown.
+  [controller loadViewIfNeeded];
+  [self applyMediaContentBarInsetsToController:controller];
 }
 
 - (void)prepareAdjacentViewControllersAroundIndex:(NSInteger)index {
@@ -785,6 +840,10 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                    isKindOfClass:[SPKFullScreenImageViewController class]]) {
       [(SPKFullScreenImageViewController *)controller preloadContent];
     }
+    // Pre-apply the inset so paging onto this page shows content already
+    // fitted between the bars (no full-bleed flash on arrival).
+    [controller loadViewIfNeeded];
+    [self applyMediaContentBarInsetsToController:controller];
   }
 
   [self trimControllerCacheAroundIndex:index];
@@ -1203,51 +1262,42 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   _isToolbarVisible = !_isToolbarVisible;
   UINavigationController *navigationController = self.navigationController;
   BOOL visible = _isToolbarVisible;
-  [navigationController setNavigationBarHidden:NO animated:NO];
 
   navigationController.navigationBar.userInteractionEnabled = visible;
   navigationController.toolbar.userInteractionEnabled = visible;
   [self updateCurrentVideoPlayerControlInsetsAnimated:YES];
 
-  UIToolbar *toolbar = navigationController.toolbar;
-  BOOL fadeToolbarAlpha = YES;
-  if (@available(iOS 26.0, *)) {
-    // iOS 26's floating glass toolbar ignores alpha; drive it through the
-    // navigation controller's own hide transition instead.
-    fadeToolbarAlpha = NO;
-    if (visible)
-      toolbar.alpha = 1.0;
-    [navigationController setToolbarHidden:!visible animated:YES];
-  } else if (visible) {
-    // Unhide and reset to transparent, then settle layout so the upcoming
-    // fade starts from alpha 0 instead of being snapped by a layout pass
-    // that re-asserts the managed toolbar alpha.
-    [navigationController setToolbarHidden:NO animated:NO];
-    toolbar.alpha = 0.0;
-    [navigationController.view layoutIfNeeded];
-  }
+  // Expand the media to full-screen when hiding the chrome, or back between the
+  // bars when showing it. The inset is decoupled from the safe area (driven by
+  // explicit constraint constants), so it animates smoothly in lockstep with
+  // the bars below.
+  self.chromeToggleInProgress = YES;
+  self.currentContentInsets =
+      visible ? self.mediaContentBarInsets : UIEdgeInsetsZero;
 
-  [UIView animateWithDuration:kPreviewChromeAnimationDuration
+  // Slide the bars in/out via the navigation controller's own hide transition.
+  // This is OS-agnostic: it works identically on every version, including iOS
+  // 26's floating glass toolbar (which ignores alpha), so there's no per-OS
+  // special-casing. Content resize runs at the matching system bar duration.
+  navigationController.navigationBar.alpha = 1.0;
+  navigationController.toolbar.alpha = 1.0;
+  [navigationController setNavigationBarHidden:!visible animated:YES];
+  [navigationController setToolbarHidden:!visible animated:YES];
+
+  [UIView animateWithDuration:UINavigationControllerHideShowBarDuration
       delay:0.0
       options:UIViewAnimationOptionCurveEaseInOut |
               UIViewAnimationOptionBeginFromCurrentState
       animations:^{
         [self setNeedsStatusBarAppearanceUpdate];
         [navigationController setNeedsStatusBarAppearanceUpdate];
-        CGFloat alpha = visible ? 1.0 : 0.0;
-        navigationController.navigationBar.alpha = alpha;
-        if (fadeToolbarAlpha) {
-          toolbar.alpha = alpha;
+        for (UIViewController *controller in self.pageViewController
+                 .viewControllers) {
+          [self applyMediaContentBarInsetsToController:controller];
         }
       }
       completion:^(__unused BOOL finished) {
-        // On iOS <= 18 keep the hidden model in sync once the fade-out
-        // finishes, otherwise the controller re-asserts toolbar.alpha = 1 on a
-        // later layout pass and the bar pops back. Leave alpha at 0 - the show
-        // path resets it.
-        if (fadeToolbarAlpha && !visible) {
-          [navigationController setToolbarHidden:YES animated:NO];
-        }
+        self.chromeToggleInProgress = NO;
         [self updateCurrentVideoPlayerControlInsetsAnimated:NO];
       }];
 }

@@ -7,6 +7,18 @@ CGFloat const SPKMediaChromeTopBarContentHeight = 44.0;
 static CGFloat const kSPKMediaChromeTopIconPointSize = 24.0;
 static CGFloat const kSPKMediaChromeBottomIconPointSize = 24.0;
 
+// iOS 18 and lower: solid, opaque background used for Sparkle's list/settings
+// chrome (navigation bar + bottom toolbar). Matches the settings view's own
+// background (the plain view background, not the cell colour) so the bars read
+// as a seamless extension of the content instead of the default scroll-driven
+// translucent material. The custom full-screen media preview opts out of this
+// and keeps its transparent/material behaviour via
+// SPKMediaChromeSetBarsMaterialActive. No-op on iOS 26+, where Liquid Glass
+// manages the bar background itself.
+static UIColor *SPKMediaChromeSolidBarColor(void) {
+    return [SPKUtils SPKColor_InstagramGroupedBackground];
+}
+
 void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar) {
     if (!bar) {
         return;
@@ -41,20 +53,30 @@ void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar) {
         return;
     }
 
-    // iOS 18 and lower: opaque material only while content scrolls behind the bar
-    // (standard/compact), transparent at the scroll edge, a neutral non-blue tint,
-    // and the custom chevron in every state.
-    UINavigationBarAppearance *opaque = [[UINavigationBarAppearance alloc] init];
-    [opaque configureWithDefaultBackground];
-    UINavigationBarAppearance *transparent = [[UINavigationBarAppearance alloc] init];
-    [transparent configureWithTransparentBackground];
+    // iOS 18 and lower: a solid background matching the settings/list view
+    // background in every state (standard/compact and at the scroll edge)
+    // instead of the default scroll-driven translucent material, so the bar
+    // reads as a seamless extension of the content. A neutral non-blue tint and
+    // the custom chevron are applied in every state. (The full-screen media
+    // preview uses its own plain navigation controller and drives its bars
+    // through SPKMediaChromeSetBarsMaterialActive, so it is unaffected here.)
+    UINavigationBarAppearance *solid = [[UINavigationBarAppearance alloc] init];
+    [solid configureWithOpaqueBackground];
+    solid.backgroundColor = SPKMediaChromeSolidBarColor();
+    // Matching hairline separator, shown only once content scrolls behind the
+    // bar (standard/compact); hidden at the scroll edge so the bar stays
+    // seamless with the content when nothing is behind it.
+    solid.shadowColor = [SPKUtils SPKColor_InstagramSeparator];
     if (chevron) {
-        [opaque setBackIndicatorImage:chevron transitionMaskImage:chevron];
-        [transparent setBackIndicatorImage:chevron transitionMaskImage:chevron];
+        [solid setBackIndicatorImage:chevron transitionMaskImage:chevron];
     }
-    bar.standardAppearance = opaque;
-    bar.compactAppearance = opaque;
-    bar.scrollEdgeAppearance = transparent;
+
+    UINavigationBarAppearance *solidScrollEdge = [solid copy];
+    solidScrollEdge.shadowColor = UIColor.clearColor;
+
+    bar.standardAppearance = solid;
+    bar.compactAppearance = solid;
+    bar.scrollEdgeAppearance = solidScrollEdge;
 }
 
 // Match iOS 26's title-less back button on iOS 18 and lower (it already does this
@@ -293,6 +315,31 @@ void SPKMediaChromeConfigureBottomToolbar(UIToolbar *toolbar) {
     }
     toolbar.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
     toolbar.translucent = YES;
+
+    // iOS 26+ Liquid Glass renders its own capsule background; don't touch it.
+    if (@available(iOS 26.0, *)) {
+        return;
+    }
+
+    // iOS 18 and lower: a solid background matching the settings/list view
+    // background in every state, mirroring the navigation bar so the top and
+    // bottom chrome share one flat colour instead of the default translucent
+    // material. The full-screen media preview calls this and then immediately
+    // overrides it back to transparent/material via
+    // SPKMediaChromeSetBarsMaterialActive, so the preview is unaffected.
+    UIToolbarAppearance *solid = [[UIToolbarAppearance alloc] init];
+    [solid configureWithOpaqueBackground];
+    solid.backgroundColor = SPKMediaChromeSolidBarColor();
+    // Matching hairline separator along the toolbar's top edge, shown only once
+    // content scrolls behind it; hidden at the scroll edge so it stays seamless.
+    solid.shadowColor = [SPKUtils SPKColor_InstagramSeparator];
+
+    UIToolbarAppearance *solidScrollEdge = [solid copy];
+    solidScrollEdge.shadowColor = UIColor.clearColor;
+
+    toolbar.standardAppearance = solid;
+    toolbar.compactAppearance = solid;
+    toolbar.scrollEdgeAppearance = solidScrollEdge;
 }
 
 void SPKMediaChromeSetBarsMaterialActive(UINavigationController *navigationController, BOOL active) {
@@ -309,6 +356,7 @@ void SPKMediaChromeSetBarsMaterialActive(UINavigationController *navigationContr
     UINavigationBarAppearance *navAppearance = [[UINavigationBarAppearance alloc] init];
     if (active) {
         [navAppearance configureWithDefaultBackground];
+        navAppearance.shadowColor = [SPKUtils SPKColor_InstagramSeparator];
     } else {
         [navAppearance configureWithTransparentBackground];
     }
@@ -321,6 +369,7 @@ void SPKMediaChromeSetBarsMaterialActive(UINavigationController *navigationContr
     UIToolbarAppearance *toolbarAppearance = [[UIToolbarAppearance alloc] init];
     if (active) {
         [toolbarAppearance configureWithDefaultBackground];
+        toolbarAppearance.shadowColor = [SPKUtils SPKColor_InstagramSeparator];
     } else {
         [toolbarAppearance configureWithTransparentBackground];
     }

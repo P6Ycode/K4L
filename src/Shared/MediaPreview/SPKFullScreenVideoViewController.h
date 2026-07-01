@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)prepareForDisplay;
 - (void)cleanup;
 - (void)setPlayerControlOverlayInsets:(UIEdgeInsets)insets animated:(BOOL)animated;
+- (void)applyMediaContentInsets:(UIEdgeInsets)insets;
 - (void)play;
 - (void)pause;
 

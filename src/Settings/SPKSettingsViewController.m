@@ -359,7 +359,7 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     [self.searchController.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
                          forSearchBarIcon:UISearchBarIconSearch 
                                     state:UIControlStateNormal];
-    self.searchController.searchBar.placeholder = self.searchesAllSettings ? @"Search..." : [NSString stringWithFormat:@"Search %@", self.title ?: @"settings"];
+    self.searchController.searchBar.placeholder = self.searchesAllSettings ? @"Search All Settings" : [NSString stringWithFormat:@"Search %@", self.title ?: @"settings"];
     self.navigationItem.searchController = self.searchController;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
     self.definesPresentationContext = YES;

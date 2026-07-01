@@ -28,6 +28,10 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 @property (nonatomic, assign) BOOL isLoadingThumbnail;
 @property (nonatomic, assign) BOOL isObservingPlayerItemStatus;
 @property (nonatomic, assign) UIEdgeInsets playerControlOverlayInsets;
+@property (nonatomic, strong) NSLayoutConstraint *playerTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *playerBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *thumbnailTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *thumbnailBottomConstraint;
 @property (nonatomic, assign) NSInteger loadGeneration;
 
 @end
@@ -107,9 +111,18 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     [_playerViewController didMoveToParentViewController:self];
     _playerViewController.additionalSafeAreaInsets = self.playerControlOverlayInsets;
 
+    // Pinned full-bleed by default; the host media player pushes fixed insets
+    // (applyMediaContentInsets:) on non-notched devices so the player sits
+    // between the bars. Fixed insets mean toggling the chrome fades the bars
+    // over stationary content rather than animating a jarring resize.
+    _playerTopConstraint =
+        [_playerViewController.view.topAnchor constraintEqualToAnchor:self.view.topAnchor];
+    _playerBottomConstraint =
+        [_playerViewController.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+
     [NSLayoutConstraint activateConstraints:@[
-        [_playerViewController.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [_playerViewController.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        _playerTopConstraint,
+        _playerBottomConstraint,
         [_playerViewController.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_playerViewController.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
     ]];
@@ -123,12 +136,38 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     _thumbnailView.backgroundColor = [UIColor clearColor];
     [self.view addSubview:_thumbnailView];
 
+    // Match the player's inset behaviour so the thumbnail (shown until playback
+    // starts) lines up with the video.
+    _thumbnailTopConstraint =
+        [_thumbnailView.topAnchor constraintEqualToAnchor:self.view.topAnchor];
+    _thumbnailBottomConstraint =
+        [_thumbnailView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+
     [NSLayoutConstraint activateConstraints:@[
-        [_thumbnailView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [_thumbnailView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        _thumbnailTopConstraint,
+        _thumbnailBottomConstraint,
         [_thumbnailView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_thumbnailView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
     ]];
+}
+
+- (void)applyMediaContentInsets:(UIEdgeInsets)insets {
+    BOOL changed = NO;
+    if (_playerTopConstraint.constant != insets.top ||
+        _playerBottomConstraint.constant != -insets.bottom) {
+        _playerTopConstraint.constant = insets.top;
+        _playerBottomConstraint.constant = -insets.bottom;
+        changed = YES;
+    }
+    if (_thumbnailTopConstraint.constant != insets.top ||
+        _thumbnailBottomConstraint.constant != -insets.bottom) {
+        _thumbnailTopConstraint.constant = insets.top;
+        _thumbnailBottomConstraint.constant = -insets.bottom;
+        changed = YES;
+    }
+    if (changed) {
+        [self.view layoutIfNeeded];
+    }
 }
 
 - (void)setPlayerControlOverlayInsets:(UIEdgeInsets)insets animated:(BOOL)animated {
