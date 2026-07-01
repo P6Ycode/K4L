@@ -182,8 +182,11 @@ UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItem(NSString *resourceName, UIMe
 
 UIBarButtonItem *SPKMediaChromeTopBarMenuButtonItemWithTint(NSString *resourceName, UIMenu *menu, UIColor *tintColor, NSString *accessibilityLabel) {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    [button setImage:SPKMediaChromeTopBarIcon(resourceName) forState:UIControlStateNormal];
-    button.tintColor = tintColor ?: [SPKUtils SPKColor_InstagramPrimaryText];
+    UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+    config.image = SPKMediaChromeTopBarIcon(resourceName);
+    config.baseForegroundColor = tintColor ?: [SPKUtils SPKColor_InstagramPrimaryText];
+    config.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 6.0, 0.0, 6.0);
+    button.configuration = config;
     button.menu = menu;
     button.showsMenuAsPrimaryAction = YES;
     // Force the menu to keep the order we declare (navigation first, destructive last)

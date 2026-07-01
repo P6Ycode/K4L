@@ -19,6 +19,8 @@
 @property (nonatomic, strong) UISearchController *searchController;
 @property (nonatomic, strong) SPKDeletedMessagesChipBar *chipBar;
 @property (nonatomic, strong) NSLayoutConstraint *chipBarHeight;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, assign) BOOL titleShowingIdentity;
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UIImageView *emptyStateIcon;
 @property (nonatomic, strong) UILabel *emptyStateTitle;
@@ -86,6 +88,27 @@ static SPKDeletedMessageKind SPKDMDetailChipKindForIndex(NSInteger index) {
         ? (self.group.displayName.length ? self.group.displayName : @"Group Chat")
         : @"Deleted Messages";
     self.view.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
+
+    if (!self.group.isGroup) {
+        // Compact-bar title starts generic and morphs into the sender's identity
+        // once the (non-sticky) profile header scrolls out of view — see
+        // spk_updateTitleMorphForScrollView:. Groups keep a static title since
+        // there's no single identity to morph to.
+        UILabel *titleLabel = [UILabel new];
+        // Auto Layout (not a fixed frame) so the title view re-fits its intrinsic
+        // width every time the text changes — otherwise the frame stays locked to
+        // the initial "Deleted Messages" width and a longer @username truncates
+        // far too early. It now only truncates at the real space available between
+        // the back button and the trailing items.
+        titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+        titleLabel.textColor = [SPKUtils SPKColor_InstagramPrimaryText];
+        titleLabel.textAlignment = NSTextAlignmentCenter;
+        titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        titleLabel.text = @"Deleted Messages";
+        self.navigationItem.titleView = titleLabel;
+        self.titleLabel = titleLabel;
+    }
 
     UIBarButtonItem *moreItem = SPKMediaChromeTopBarMenuButtonItem(@"more", [self moreMenu], @"More");
     SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[moreItem]);
@@ -253,6 +276,32 @@ static SPKDeletedMessageKind SPKDMDetailChipKindForIndex(NSInteger index) {
         self.chipBar.hidden = hidden;
         self.chipBarHeight.constant = hidden ? 0.0 : 50.0;
     }
+}
+
+#pragma mark - Scroll-linked chrome
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    [self spk_updateTitleMorphForScrollView:scrollView];
+}
+
+// Morphs the compact-bar title from "Deleted Messages" to the sender's name/
+// username once the profile header (56pt tableHeaderView) has scrolled past.
+- (void)spk_updateTitleMorphForScrollView:(UIScrollView *)scrollView {
+    if (!self.titleLabel) return; // groups keep a static title
+    static const CGFloat kThreshold = 40.0;
+    BOOL shouldShowIdentity = scrollView.contentOffset.y > kThreshold;
+    if (shouldShowIdentity == self.titleShowingIdentity) return;
+    self.titleShowingIdentity = shouldShowIdentity;
+    NSString *text = shouldShowIdentity ? [self identityTitleText] : @"Deleted Messages";
+    [UIView transitionWithView:self.titleLabel duration:0.2 options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
+        self.titleLabel.text = text;
+    } completion:nil];
+}
+
+- (NSString *)identityTitleText {
+    if (self.group.senderUsername.length) return [@"@" stringByAppendingString:self.group.senderUsername];
+    if (self.group.senderFullName.length) return self.group.senderFullName;
+    return @"Unknown";
 }
 
 - (void)updateEmptyState {
