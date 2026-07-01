@@ -65,6 +65,7 @@
 
 @interface IGTabBarController : UIViewController
 - (NSInteger)tabBarStyle;
+- (void)_exploreButtonLongPressed:(id)gesture;
 @end
 
 @interface IGTableViewCell: UITableViewCell

@@ -3,8 +3,6 @@
 #import "../../InstagramHeaders.h"
 #import "../../Utils.h"
 
-static const void *kSPKClipboardExploreGestureKey = &kSPKClipboardExploreGestureKey;
-
 static NSURL *SPKNormalizedInstagramClipboardURL(NSString *raw) {
     if (raw.length == 0) return nil;
 
@@ -60,69 +58,49 @@ static BOOL SPKCanAttemptOpenInstagramClipboardURL(NSURL *url) {
     return NO;
 }
 
-@interface SPKClipboardExploreLinkHandler : NSObject <UIGestureRecognizerDelegate>
-+ (instancetype)sharedHandler;
-- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture;
-@end
+// Intercept the clipboard link at the moment IG's own long-press handler fires.
+// Returns YES if we consumed the gesture (opened a link), NO to let IG open search.
+static BOOL SPKHandleExploreLongPressClipboard(void) {
+    if (![SPKUtils getBoolPref:@"interface_open_clipboard_link"]) {
+        SPKLog(@"Interface", @"[Sparkle] Explore long-press: clipboard-link feature disabled, falling through to search");
+        return NO;
+    }
 
-@implementation SPKClipboardExploreLinkHandler
+    NSString *clipboard = UIPasteboard.generalPasteboard.string;
+    NSURL *url = SPKNormalizedInstagramClipboardURL(clipboard);
+    if (!SPKCanAttemptOpenInstagramClipboardURL(url)) {
+        SPKLog(@"Interface", @"[Sparkle] Explore long-press: clipboard (%@) is not an openable Instagram link, falling through to search", clipboard.length ? clipboard : @"<empty>");
+        return NO;
+    }
 
-+ (instancetype)sharedHandler {
-    static SPKClipboardExploreLinkHandler *handler = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        handler = [[SPKClipboardExploreLinkHandler alloc] init];
-    });
-    return handler;
-}
+    if (![SPKUtils openInstagramMediaURL:url]) {
+        SPKWarnLog(@"Interface", @"[Sparkle] Explore long-press: failed to open %@, falling through to search", url);
+        return NO;
+    }
 
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-    (void)gestureRecognizer;
-    if (![SPKUtils getBoolPref:@"interface_open_clipboard_link"]) return NO;
-
-    NSURL *url = SPKNormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
-    return SPKCanAttemptOpenInstagramClipboardURL(url);
-}
-
-- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state != UIGestureRecognizerStateBegan) return;
-
-    NSURL *url = SPKNormalizedInstagramClipboardURL(UIPasteboard.generalPasteboard.string);
-    if (!SPKCanAttemptOpenInstagramClipboardURL(url)) return;
-    if (![SPKUtils openInstagramMediaURL:url]) return;
-
+    SPKLog(@"Interface", @"[Sparkle] Explore long-press: opened clipboard link %@", url);
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
     [feedback impactOccurred];
-}
-
-@end
-
-static void SPKAttachClipboardGestureToExploreButton(UIButton *button) {
-    if (!button || objc_getAssociatedObject(button, kSPKClipboardExploreGestureKey)) return;
-
-    SPKClipboardExploreLinkHandler *handler = [SPKClipboardExploreLinkHandler sharedHandler];
-    UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc] initWithTarget:handler action:@selector(handleLongPress:)];
-    gesture.minimumPressDuration = 0.5;
-    gesture.delegate = handler;
-    gesture.cancelsTouchesInView = YES;
-    [button addGestureRecognizer:gesture];
-    objc_setAssociatedObject(button, kSPKClipboardExploreGestureKey, gesture, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    return YES;
 }
 
 %group SPKOpenLinkFromClipboardHooks
 
 %hook IGTabBarController
 
-- (void)viewDidLayoutSubviews {
-    %orig;
-
-    Ivar exploreButtonIvar = class_getInstanceVariable([self class], "_exploreButton");
-    if (!exploreButtonIvar) return;
-
-    id exploreButton = object_getIvar(self, exploreButtonIvar);
-    if ([exploreButton isKindOfClass:[UIButton class]]) {
-        SPKAttachClipboardGestureToExploreButton((UIButton *)exploreButton);
+- (void)_exploreButtonLongPressed:(id)gesture {
+    // IG's own long-press recognizer fires here (opening search). Only act on the
+    // gesture's initial recognition so we don't re-open on every update callback.
+    BOOL began = YES;
+    if ([gesture isKindOfClass:[UIGestureRecognizer class]]) {
+        began = ([(UIGestureRecognizer *)gesture state] == UIGestureRecognizerStateBegan);
     }
+
+    if (began && SPKHandleExploreLongPressClipboard()) {
+        return; // consumed: skip IG's search behavior
+    }
+
+    %orig;
 }
 
 %end
