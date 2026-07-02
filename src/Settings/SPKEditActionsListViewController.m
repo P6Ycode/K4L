@@ -145,6 +145,15 @@ static char kSPKActionsListSwitchAssocKey;
     return nil;
 }
 
+// YES when the section still holds an action whose enable switch is off — that action
+// stays assigned but is hidden from the runtime menu, so we flag the section row.
+- (BOOL)sectionHasDisabledAction:(SPKActionMenuSection *)section {
+    for (NSString *identifier in section.actions) {
+        if ([self.configuration.disabledActions containsObject:identifier]) return YES;
+    }
+    return NO;
+}
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     UIListContentConfiguration *config = cell.defaultContentConfiguration;
@@ -157,7 +166,29 @@ static char kSPKActionsListSwitchAssocKey;
     if (indexPath.section == 0) {
         SPKActionMenuSection *section = self.configuration.sections[indexPath.row];
         config.text = section.title;
-        config.secondaryText = section.collapsible ? @"Collapsible" : @"Inline";
+        NSString *stateText = section.collapsible ? @"Collapsible" : @"Inline";
+        if ([self sectionHasDisabledAction:section]) {
+            // Prefix the Collapsible/Inline subtitle with an amber warning triangle so
+            // it's obvious — while arranging sections — that this section contains an
+            // action switched off in "Available Actions" (hidden from the runtime menu).
+            UIFont *font = config.secondaryTextProperties.font ?: [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+            UIImage *warning = [[SPKAssetUtils instagramIconNamed:@"warning_filled" pointSize:16.0]
+                                imageWithTintColor:[UIColor systemOrangeColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+            NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+            attachment.image = warning;
+            CGFloat yOffset = (font.capHeight - warning.size.height) / 2.0;
+            attachment.bounds = CGRectMake(0.0, round(yOffset), warning.size.width, warning.size.height);
+            NSMutableAttributedString *subtitle = [[NSMutableAttributedString alloc] init];
+            [subtitle appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+            [subtitle appendAttributedString:[[NSAttributedString alloc] initWithString:[@"  " stringByAppendingString:stateText]
+                                                                             attributes:@{
+                                                                                 NSForegroundColorAttributeName: [SPKUtils SPKColor_InstagramSecondaryText],
+                                                                                 NSFontAttributeName: font
+                                                                             }]];
+            config.secondaryAttributedText = subtitle;
+        } else {
+            config.secondaryText = stateText;
+        }
         config.image = SPKSettingsIcon(section.iconName);
         config.imageProperties.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
@@ -328,6 +359,11 @@ static char kSPKActionsListSwitchAssocKey;
         [self.configuration.disabledActions addObject:identifier];
     }
     [self.configuration save];
+
+    // Refresh the section rows so the "disabled action" warning triangle appears/clears
+    // as this action is toggled. Reloading section 0 (the switch lives in a different
+    // section, so its toggle animation is untouched).
+    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationNone];
 }
 
 @end
