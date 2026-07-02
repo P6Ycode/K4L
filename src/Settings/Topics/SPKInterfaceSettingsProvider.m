@@ -8,17 +8,6 @@
 
 @implementation SPKInterfaceSettingsProvider
 
-+ (SPKSetting *)experimentalLiquidGlassSetting {
-    BOOL available = SPKPrefIsAvailable(kSPKPrefInterfaceLiquidGlass);
-    SPKSetting *setting = [SPKSetting switchCellWithTitle:@"Liquid Glass"
-                                                subtitle:available ? @"Force-enable Liquid Glass UI across Instagram" : @"Requires iOS 26 or later"
-                                             defaultsKey:kSPKPrefInterfaceLiquidGlass
-                                          requiresRestart:YES];
-    setting.icon = SPKSettingsIcon(@"warning_filled");
-    setting.userInfo = available ? @{@"deferRestartPrompt": @YES} : @{@"deferRestartPrompt": @YES, @"enabled": @NO};
-    return SPKSettingApplyIconTint(setting, [UIColor systemOrangeColor]);
-}
-
 + (SPKSetting *)rootSetting {
     NSMutableArray *sections = [NSMutableArray arrayWithArray:@[
         SPKTopicSection(@"Notifications", @[

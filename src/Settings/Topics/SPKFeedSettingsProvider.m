@@ -19,7 +19,6 @@ static NSString * const kSPKFeedActionButtonEnabledKey = @"feed_action_btn";
             [SPKSetting switchCellWithTitle:@"Hide Stories Tray" icon:SPKSettingsIcon(@"story") defaultsKey:@"feed_hide_stories_tray"],
             [SPKSetting switchCellWithTitle:@"Hide Entire Feed" icon:SPKSettingsIcon(@"feed") defaultsKey:@"feed_hide_entire_feed"],
             [SPKSetting switchCellWithTitle:@"Hide Suggested Posts" icon:SPKSettingsIcon(@"carousel") defaultsKey:@"feed_hide_suggested_posts"],
-            [SPKSetting switchCellWithTitle:@"Hide Suggested Accounts" icon:SPKSettingsIcon(@"users") defaultsKey:@"general_hide_suggested_users_feed"],
             [SPKSetting switchCellWithTitle:@"Hide Suggested Reels" icon:SPKSettingsIcon(@"reels_gallery") defaultsKey:@"feed_hide_suggested_reels"],
             [SPKSetting switchCellWithTitle:@"Hide Suggested Threads" icon:SPKSettingsIcon(@"threads") defaultsKey:@"feed_hide_suggested_threads"],
             [SPKSetting switchCellWithTitle:@"Hide Repost Button" icon:SPKSettingsIcon(@"repost") defaultsKey:@"feed_hide_repost_btn" requiresRestart:YES]

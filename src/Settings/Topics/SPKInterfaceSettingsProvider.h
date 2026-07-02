@@ -4,5 +4,4 @@
 
 @interface SPKInterfaceSettingsProvider : NSObject
 + (SPKSetting *)rootSetting;
-+ (SPKSetting *)experimentalLiquidGlassSetting;
 @end
