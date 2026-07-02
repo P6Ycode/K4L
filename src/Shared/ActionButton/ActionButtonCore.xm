@@ -1912,83 +1912,16 @@ static NSString *SPKResolvedBulkUsernameForContext(SPKActionButtonContext *conte
     return nil;
 }
 
-static id SPKCheapObjectValueForAudioKey(id object, NSString *key) {
-    if (!object || key.length == 0) return nil;
-    id value = SPKFieldCacheValue(object, key);
-    if (!value) value = SPKObjectForSelector(object, key);
-    if (!value) value = SPKKVCObject(object, key);
-    return [value isKindOfClass:[NSNull class]] ? nil : value;
-}
-
-static BOOL SPKCheapAudioValueExists(id object, NSArray<NSString *> *keys) {
-    for (NSString *key in keys) {
-        id value = SPKCheapObjectValueForAudioKey(object, key);
-        if (!value) continue;
-        if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] == 0) continue;
-        if ([value isKindOfClass:[NSArray class]] && [(NSArray *)value count] == 0) continue;
-        if ([value isKindOfClass:[NSDictionary class]] && [(NSDictionary *)value count] == 0) continue;
-        return YES;
-    }
-    return NO;
-}
-
-static BOOL SPKCheapAudioBoolValue(id object, NSArray<NSString *> *keys) {
-    for (NSString *key in keys) {
-        id value = SPKCheapObjectValueForAudioKey(object, key);
-        if ([value respondsToSelector:@selector(boolValue)] && [value boolValue]) return YES;
-    }
-    return NO;
-}
-
-static NSArray *SPKFeedAudioVisibilityCandidates(SPKResolvedMediaEntry *entry, id media) {
-    NSMutableArray *candidates = [NSMutableArray array];
-    for (id candidate in @[media ?: NSNull.null, entry.metadataObject ?: NSNull.null, entry.mediaObject ?: NSNull.null]) {
-        if (candidate == NSNull.null || [candidates containsObject:candidate]) continue;
-        [candidates addObject:candidate];
-    }
-    return candidates;
-}
-
-static BOOL SPKFeedEntryMayHaveDownloadableAudio(SPKResolvedMediaEntry *entry, id media) {
-    static NSArray<NSString *> *metadataKeys = nil;
-    static NSArray<NSString *> *boolKeys = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        metadataKeys = @[
-            @"audio", @"audio_url", @"audioURL", @"audioFileUrl", @"audioFileFastStartUrl", @"audioSrc",
-            @"music", @"music_info", @"musicInfo", @"music_metadata", @"musicMetadata", @"musicAssetInfo",
-            @"audio_asset", @"audioAsset", @"audio_asset_info", @"audioAssetInfo",
-            @"clips_audio", @"clipsAudio", @"clips_metadata", @"clipsMetadata",
-            @"original_audio", @"originalAudio", @"original_audio_info", @"originalAudioInfo",
-            @"original_sound_info", @"originalSoundInfo",
-            @"video_dash_manifest", @"videoDashManifest", @"dashManifest"
-        ];
-        boolKeys = @[@"has_audio", @"hasAudio", @"has_original_audio", @"hasOriginalAudio", @"contains_audio", @"containsAudio"];
-    });
-
-    for (id candidate in SPKFeedAudioVisibilityCandidates(entry, media)) {
-        if (SPKCheapAudioValueExists(candidate, metadataKeys) || SPKCheapAudioBoolValue(candidate, boolKeys)) {
-            return YES;
-        }
-    }
-
-    return NO;
-}
-
-static BOOL SPKFeedEntryMayHaveDirectAudioURL(SPKResolvedMediaEntry *entry, id media) {
-    static NSArray<NSString *> *directKeys = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        directKeys = @[
-            @"audio", @"audio_url", @"audioURL", @"audioFileUrl", @"audioFileFastStartUrl", @"audioSrc",
-            @"video_dash_manifest", @"videoDashManifest", @"dashManifest"
-        ];
-    });
-
-    for (id candidate in SPKFeedAudioVisibilityCandidates(entry, media)) {
-        if (SPKCheapAudioValueExists(candidate, directKeys)) return YES;
-    }
-    return NO;
+// Audio is downloadable when the item is a video — its dash manifest carries an
+// audio track. Reels are always videos (their videoURL resolves lazily and may be
+// nil at menu-build), so the Reels tab always qualifies. Every other source keys
+// off the already-resolved `videoURL` — the exact signal the video-download action
+// uses — so audio appears wherever video download does, with no deep/expensive
+// media traversal at menu-build time. Photos have no audio (no reliable cheap way
+// to detect a rare photo-with-song, and guessing caused false positives → errors).
+static BOOL SPKEntryHasDownloadableAudio(SPKActionButtonSource source, SPKResolvedMediaEntry *entry) {
+    if (source == SPKActionButtonSourceReels) return YES;
+    return entry.videoURL != nil;
 }
 
 static BOOL SPKIsActionVisible(SPKActionButtonContext *context,
@@ -2065,20 +1998,11 @@ static BOOL SPKIsActionVisible(SPKActionButtonContext *context,
 	}
     if ([identifier isEqualToString:kSPKActionDownloadAudio] ||
         [identifier isEqualToString:kSPKActionDownloadAudioShare] ||
-        [identifier isEqualToString:kSPKActionDownloadAudioGallery]) {
-        if (context.source == SPKActionButtonSourceFeed) {
-            return SPKFeedEntryMayHaveDownloadableAudio(currentEntry, media);
-        }
-        id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        return [SPKAudioDownloadCoordinator bestAudioDownloadURLFromMediaObject:audioMedia] != nil;
-    }
-    if ([identifier isEqualToString:kSPKActionPlayAudio] ||
+        [identifier isEqualToString:kSPKActionDownloadAudioGallery] ||
+        [identifier isEqualToString:kSPKActionPlayAudio] ||
         [identifier isEqualToString:kSPKActionCopyAudioURL]) {
-        if (context.source == SPKActionButtonSourceFeed) {
-            return SPKFeedEntryMayHaveDirectAudioURL(currentEntry, media);
-        }
-        id audioMedia = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
-        return [SPKAudioDownloadCoordinator bestAudioURLFromMediaObject:audioMedia] != nil;
+        if (![SPKUtils getBoolPref:@"downloads_audio_enabled"]) return NO;
+        return SPKEntryHasDownloadableAudio(context.source, currentEntry);
     }
 	if ([identifier isEqualToString:kSPKActionCopyCaption]) {
 		return context.captionResolver != nil && [context.captionResolver(context, media, entries, idx) length] > 0;
@@ -2294,6 +2218,17 @@ static BOOL SPKExecuteCommonAction(NSString *identifier,
 	}
     if (SPKIsBulkChildActionIdentifier(identifier)) {
         return SPKExecuteBulkChildAction(identifier, context, entries, username, media);
+    }
+
+    // Master audio-downloads toggle — guards here too in case a cached (stale) menu
+    // still exposes an audio action after the toggle was turned off.
+    if (([identifier isEqualToString:kSPKActionDownloadAudio] ||
+         [identifier isEqualToString:kSPKActionDownloadAudioShare] ||
+         [identifier isEqualToString:kSPKActionDownloadAudioGallery] ||
+         [identifier isEqualToString:kSPKActionPlayAudio] ||
+         [identifier isEqualToString:kSPKActionCopyAudioURL]) &&
+        ![SPKUtils getBoolPref:@"downloads_audio_enabled"]) {
+        return YES;
     }
 
     if ([identifier isEqualToString:kSPKActionDownloadAudio] ||

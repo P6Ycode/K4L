@@ -242,7 +242,9 @@ static UIButton *SPKAudioPageButtonForHost(UIView *host) {
 }
 
 static void SPKAudioPageInstallButton(UIView *bar) {
-    if (![SPKUtils getBoolPref:@"downloads_audio_page_button"]) {
+    // Master audio-downloads toggle also gates the audio-page button entirely.
+    if (![SPKUtils getBoolPref:@"downloads_audio_enabled"] ||
+        ![SPKUtils getBoolPref:@"downloads_audio_page_button"]) {
         [[bar viewWithTag:kSPKAudioPageDownloadButtonTag] removeFromSuperview];
         return;
     }

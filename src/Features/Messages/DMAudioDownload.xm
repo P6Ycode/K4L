@@ -561,6 +561,7 @@ static void SPKDMPresentDownloadAudioActionsForViewModel(id viewModel) {
 }
 
 static id SPKDMDownloadAudioMenuItemForViewModel(id viewModel) {
+    if (![SPKUtils getBoolPref:@"downloads_audio_enabled"]) return nil;
     if (![SPKUtils getBoolPref:@"msgs_download_audio_messages"]) return nil;
     if (![SPKAudioDownloadCoordinator bestAudioURLFromMediaObject:viewModel]) return nil;
 
@@ -700,7 +701,8 @@ static id SPKDMPrismMenuViewInit5(id self, SEL _cmd, NSArray *elements, id heade
                                userSession:(id)userSession
                                 tapHandler:(id)tapHandler {
     id config = %orig(options, viewModel, contentType, isSticker, isMusicSticker, directNuxManager, sessionUserDefaults, launcherSet, userSession, tapHandler);
-    if ([SPKUtils getBoolPref:@"msgs_download_audio_messages"] &&
+    if ([SPKUtils getBoolPref:@"downloads_audio_enabled"] &&
+        [SPKUtils getBoolPref:@"msgs_download_audio_messages"] &&
         [SPKAudioDownloadCoordinator bestAudioURLFromMediaObject:viewModel]) {
         sSPKDMAudioDownloadPrismMenuPending = YES;
         sSPKDMAudioDownloadViewModel = viewModel;

@@ -88,6 +88,11 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
                 kSPKActionCopyMedia,
                 kSPKActionDownloadGallery,
                 kSPKActionTrimSave,
+                kSPKActionDownloadAudio,
+                kSPKActionDownloadAudioShare,
+                kSPKActionDownloadAudioGallery,
+                kSPKActionPlayAudio,
+                kSPKActionCopyAudioURL,
                 kSPKActionExpand,
                 kSPKActionViewThumbnail,
                 kSPKActionDeletedMessagesLog,
@@ -206,7 +211,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
     ];
     NSArray<NSString *> *audioActions = (source == SPKActionButtonSourceFeed ||
                                          source == SPKActionButtonSourceReels ||
-                                         source == SPKActionButtonSourceStories)
+                                         source == SPKActionButtonSourceStories ||
+                                         source == SPKActionButtonSourceDirect)
         ? @[
             kSPKActionDownloadAudio,
             kSPKActionDownloadAudioShare,

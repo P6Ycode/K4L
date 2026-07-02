@@ -13,6 +13,14 @@ static NSString * const kSPKMessagesVideoCallConfirmKey = @"msgs_confirm_video_c
 
 static NSArray *SPKMessagesSettingsSections(void);
 
+// A switch cell that stays visible but is disabled while the "Audio Downloads"
+// master toggle is off (keeping its stored value).
+static SPKSetting *SPKAudioGatedSwitch(NSString *title, UIImage *icon, NSString *defaultsKey) {
+    SPKSetting *setting = [SPKSetting switchCellWithTitle:title icon:icon defaultsKey:defaultsKey];
+    setting.enabledProvider = ^BOOL{ return [SPKUtils getBoolPref:@"downloads_audio_enabled"]; };
+    return setting;
+}
+
 @interface SPKMessagesSettingsViewController : SPKSettingsViewController
 @end
 
@@ -124,10 +132,11 @@ static NSArray *SPKMessagesSettingsSections(void) {
         SPKTopicSection(@"Notes", @[
             [SPKSetting switchCellWithTitle:@"Hide Notes Tray" icon:SPKSettingsIcon(@"notes") defaultsKey:@"msgs_hide_notes_tray"],
             [SPKSetting switchCellWithTitle:@"Hide Friends Map" icon:SPKSettingsIcon(@"map") defaultsKey:@"msgs_hide_friends_map"],
-            [SPKSetting switchCellWithTitle:@"Download Notes Audio" icon:SPKSettingsIcon(@"audio") defaultsKey:@"msgs_download_notes_audio"]
-        ], nil),
+            SPKAudioGatedSwitch(@"Download Notes Audio", SPKSettingsIcon(@"audio"), @"msgs_download_notes_audio"),
+            [SPKSetting switchCellWithTitle:@"Copy Note Text" icon:SPKSettingsIcon(@"copy") defaultsKey:@"msgs_copy_note_text"]
+        ], @"Long-press a note in the tray to download its audio or copy its text. Each action only appears when the note has that content."),
         SPKTopicSection(@"Audio", @[
-            [SPKSetting switchCellWithTitle:@"Download Voice Messages" icon:SPKSettingsIcon(@"audio_download") defaultsKey:@"msgs_download_audio_messages"],
+            SPKAudioGatedSwitch(@"Download Voice Messages", SPKSettingsIcon(@"audio_download"), @"msgs_download_audio_messages"),
             [SPKSetting switchCellWithTitle:@"Upload Audio" icon:SPKSettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages"]
         ], @"1. Adds audio actions to supported voice/audio message views.\n"
            @"2. Adds an option to the composer plus (+) menu that sends the selected audio or video as a voice message."),

@@ -150,6 +150,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"downloads_audio_page_default_action": @"none",
         @"msgs_download_audio_messages": @(NO),
         @"msgs_download_notes_audio": @(NO),
+        @"msgs_copy_note_text": @(YES),
         @"msgs_upload_audio_messages": @(NO),
         @"msgs_upload_gallery_media": @(NO),
         @"feed_disable_home_refresh": @(NO),

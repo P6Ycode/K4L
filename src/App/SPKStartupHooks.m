@@ -85,6 +85,7 @@ FOUNDATION_EXPORT void SPKInstallCaptureHidingHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallProfileHeaderControlsHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallAudioPageDownloadHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallDMAudioDownloadHooksIfNeeded(void);
+FOUNDATION_EXPORT void SPKInstallNotesActionsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallHideDirectCallButtonsHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallFixDuplicateNotificationsHooksIfNeeded(void);
 
@@ -209,6 +210,7 @@ void SPKInstallMessagesSurfaceHooksIfNeeded(void) {
     SPKInstallDMInteractionConfirmHooksIfEnabled();
     SPKInstallDMRefreshConfirmHooksIfEnabled();
     SPKInstallDMAudioDownloadHooksIfNeeded();
+    SPKInstallNotesActionsHooksIfEnabled();
     SPKInstallHideDirectCallButtonsHooksIfEnabled();
     SPKInstallNoRecentSearchesHooksIfEnabled();
     SPKInstallDetailedColorPickerHooksIfEnabled();

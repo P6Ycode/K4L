@@ -5,6 +5,7 @@
 #import "../MediaDownload/SPKMediaQualityManager.h"
 #import "../../Settings/SPKTopicSettingsSupport.h"
 #import "../../Settings/SPKSetting.h"
+#import "../../App/SPKStartupHooks.h"
 #import "../../Utils.h"
 #import "../../AssetUtils.h"
 
@@ -73,12 +74,31 @@
             encodingSettings,
             encodingLogs
         ], qualityFooter),
-        SPKTopicSection(@"Audio", @[
-            [SPKSetting switchCellWithTitle:@"Audio Downloads" icon:SPKSettingsIcon(@"audio_download") defaultsKey:@"downloads_audio_enabled"],
-            [SPKSetting switchCellWithTitle:@"Audio Page Button" icon:SPKSettingsIcon(@"audio_page") defaultsKey:@"downloads_audio_page_button" requiresRestart:YES],
-            SPKSettingApplySelectedMenuIcon([SPKSetting menuCellWithTitle:@"Audio Page Default Action" icon:SPKSettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SPKSettingsIcon(@"action"))
-        ], @"Adds audio actions for audio pages and media action buttons.")
+        [self audioSection]
     ];
+}
+
+// The "Audio Downloads" master toggle gates every other audio action tweak-wide.
+// The dependent cells stay visible (and keep their stored value) but are disabled
+// while the master is off.
++ (NSDictionary *)audioSection {
+    BOOL (^audioEnabled)(void) = ^BOOL{ return [SPKUtils getBoolPref:@"downloads_audio_enabled"]; };
+
+    SPKSetting *master = [SPKSetting switchCellWithTitle:@"Audio Downloads" icon:SPKSettingsIcon(@"audio_download") defaultsKey:@"downloads_audio_enabled"];
+    master.switchChangeHandler = ^(BOOL isOn) {
+        [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:SPKEffectivePreferenceKey(@"downloads_audio_enabled")];
+        if (isOn) SPKInstallEnabledFeatureHooks();
+    };
+    master.reloadsTableOnSwitchChange = YES;  // grey out / re-enable the dependents live
+
+    SPKSetting *pageButton = [SPKSetting switchCellWithTitle:@"Audio Page Button" icon:SPKSettingsIcon(@"audio_page") defaultsKey:@"downloads_audio_page_button" requiresRestart:YES];
+    pageButton.enabledProvider = audioEnabled;
+
+    SPKSetting *pageDefault = SPKSettingApplySelectedMenuIcon([SPKSetting menuCellWithTitle:@"Audio Page Default Action" icon:SPKSettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SPKSettingsIcon(@"action"));
+    pageDefault.enabledProvider = audioEnabled;
+
+    return SPKTopicSection(@"Audio", @[ master, pageButton, pageDefault ],
+                           @"Adds audio actions for audio pages and media action buttons.");
 }
 
 + (NSArray *)searchSections {
