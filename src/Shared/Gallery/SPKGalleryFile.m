@@ -762,6 +762,15 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     return metadata;
 }
 
+- (void)markAddedNow {
+    self.dateAdded = [NSDate date];
+    NSManagedObjectContext *ctx = self.managedObjectContext ?: [SPKGalleryCoreDataStack shared].viewContext;
+    NSError *saveError = nil;
+    if (![ctx save:&saveError]) {
+        SPKLog(@"General", @"[Sparkle Gallery] Failed to stamp fresh date: %@", saveError);
+    }
+}
+
 #pragma mark - Paths
 
 - (NSString *)filePath {
@@ -914,6 +923,13 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 }
 
 - (NSURL *)preferredOriginalMediaURL {
+    SPKGallerySource source = (SPKGallerySource)self.source;
+    if (source != SPKGallerySourceFeed &&
+        source != SPKGallerySourceStories &&
+        source != SPKGallerySourceReels) {
+        return nil;
+    }
+
     // Stories are not posts: build https://www.instagram.com/stories/<username>/<pk>/ — never /p/, /reel/ or instagram://media (which all resolve to the feed viewer).
     if (self.source == SPKGallerySourceStories) {
         if (self.sourceMediaURLString.length > 0) {

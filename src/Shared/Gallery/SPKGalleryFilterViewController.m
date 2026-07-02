@@ -11,6 +11,7 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 @interface SPKGalleryFilterChip : UIButton
 @property (nonatomic, assign) NSInteger itemTag;
 @property (nonatomic, assign) BOOL selectedChip;
+@property (nonatomic, copy, nullable) NSString *baseIconName;
 - (void)updateChipAppearance;
 @end
 
@@ -39,10 +40,26 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
         self.backgroundColor = [[SPKUtils SPKColor_InstagramBlue] colorWithAlphaComponent:0.18];
         self.tintColor = [SPKUtils SPKColor_InstagramBlue];
         [self setTitleColor:[SPKUtils SPKColor_InstagramPrimaryText] forState:UIControlStateNormal];
+
+        if (self.baseIconName) {
+            NSString *filledName = [self.baseIconName stringByAppendingString:@"_filled"];
+            UIImage *icon = nil;
+            if ([SPKAssetUtils resolvedInstagramIconNameForName:filledName]) {
+                icon = [SPKAssetUtils instagramIconNamed:filledName pointSize:kSPKGalleryFilterChipIconPointSize];
+            } else {
+                icon = [SPKAssetUtils instagramIconNamed:self.baseIconName pointSize:kSPKGalleryFilterChipIconPointSize];
+            }
+            [self setImage:icon forState:UIControlStateNormal];
+        }
     } else {
         self.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
         self.tintColor = [SPKUtils SPKColor_InstagramSecondaryText];
         [self setTitleColor:[SPKUtils SPKColor_InstagramPrimaryText] forState:UIControlStateNormal];
+
+        if (self.baseIconName) {
+            UIImage *icon = [SPKAssetUtils instagramIconNamed:self.baseIconName pointSize:kSPKGalleryFilterChipIconPointSize];
+            [self setImage:icon forState:UIControlStateNormal];
+        }
     }
 }
 
@@ -245,9 +262,8 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     for (NSDictionary *d in defs) {
         NSInteger tag = [d[@"tag"] integerValue];
         SPKGalleryFilterChip *chip = [[SPKGalleryFilterChip alloc] initWithTag:tag];
+        chip.baseIconName = d[@"resource"];
         [chip setTitle:d[@"label"] forState:UIControlStateNormal];
-        UIImage *icon = [SPKAssetUtils instagramIconNamed:d[@"resource"] pointSize:kSPKGalleryFilterChipIconPointSize];
-        [chip setImage:icon forState:UIControlStateNormal];
         chip.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
         chip.selectedChip = [self.filterTypes containsObject:@(tag)];
         [chip addTarget:self action:@selector(typeChipTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -284,9 +300,8 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 
         SPKGallerySource src = (SPKGallerySource)[sources[i] integerValue];
         SPKGalleryFilterChip *chip = [[SPKGalleryFilterChip alloc] initWithTag:src];
+        chip.baseIconName = [SPKGalleryFile symbolNameForSource:src];
         [chip setTitle:[SPKGalleryFile labelForSource:src] forState:UIControlStateNormal];
-        UIImage *icon = [SPKAssetUtils instagramIconNamed:[SPKGalleryFile symbolNameForSource:src] pointSize:kSPKGalleryFilterChipIconPointSize];
-        [chip setImage:icon forState:UIControlStateNormal];
         chip.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
         chip.selectedChip = [self.filterSources containsObject:@(src)];
         [chip addTarget:self action:@selector(sourceChipTapped:) forControlEvents:UIControlEventTouchUpInside];

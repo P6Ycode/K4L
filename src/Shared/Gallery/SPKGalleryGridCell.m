@@ -10,10 +10,13 @@
 @property (nonatomic, strong) CAGradientLayer *bottomScrim;
 @property (nonatomic, strong) CAGradientLayer *topScrim;
 @property (nonatomic, strong) UIImageView *sourceBadge;
-@property (nonatomic, strong) UIView *sourceBadgeBackground;
 @property (nonatomic, strong) UIImageView *videoBadge;
 @property (nonatomic, strong) UILabel *durationLabel;
+@property (nonatomic, strong) UIStackView *bottomLeftStack;
 @property (nonatomic, strong) UILabel *usernameLabel;
+@property (nonatomic, strong) UIStackView *folderStack;
+@property (nonatomic, strong) UIImageView *folderIcon;
+@property (nonatomic, strong) UILabel *folderLabel;
 @property (nonatomic, strong) UIImageView *favoriteBadge;
 @property (nonatomic, strong) UIImageView *selectionBadge;
 @property (nonatomic, strong) NSLayoutConstraint *favoriteTrailingConstraint;
@@ -40,35 +43,27 @@
         // bright thumbnails. Sits above the thumbnail, below the badges.
         _bottomScrim = [CAGradientLayer layer];
         _bottomScrim.colors = @[(id)[UIColor clearColor].CGColor,
-                                (id)[[UIColor blackColor] colorWithAlphaComponent:0.55].CGColor];
-        _bottomScrim.startPoint = CGPointMake(0.5, 0.45);
+                                (id)[[UIColor blackColor] colorWithAlphaComponent:0.95].CGColor];
+        _bottomScrim.startPoint = CGPointMake(0.5, 0.0);
         _bottomScrim.endPoint = CGPointMake(0.5, 1.0);
         _bottomScrim.hidden = YES;
         [self.contentView.layer addSublayer:_bottomScrim];
 
         // Top gradient scrim keeps the source badge / favorite legible.
         _topScrim = [CAGradientLayer layer];
-        _topScrim.colors = @[(id)[[UIColor blackColor] colorWithAlphaComponent:0.45].CGColor,
+        _topScrim.colors = @[(id)[[UIColor blackColor] colorWithAlphaComponent:0.95].CGColor,
                              (id)[UIColor clearColor].CGColor];
         _topScrim.startPoint = CGPointMake(0.5, 0.0);
-        _topScrim.endPoint = CGPointMake(0.5, 0.55);
+        _topScrim.endPoint = CGPointMake(0.5, 1.0);
         _topScrim.hidden = YES;
         [self.contentView.layer addSublayer:_topScrim];
-
-        // Source-type badge (top-left): dark rounded chip + glyph.
-        _sourceBadgeBackground = [[UIView alloc] initWithFrame:CGRectZero];
-        _sourceBadgeBackground.translatesAutoresizingMaskIntoConstraints = NO;
-        _sourceBadgeBackground.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.5];
-        _sourceBadgeBackground.layer.cornerRadius = 10.0;
-        _sourceBadgeBackground.layer.cornerCurve = kCACornerCurveContinuous;
-        _sourceBadgeBackground.hidden = YES;
-        [self.contentView addSubview:_sourceBadgeBackground];
 
         _sourceBadge = [[UIImageView alloc] initWithFrame:CGRectZero];
         _sourceBadge.translatesAutoresizingMaskIntoConstraints = NO;
         _sourceBadge.tintColor = [UIColor whiteColor];
         _sourceBadge.contentMode = UIViewContentModeScaleAspectFit;
-        [_sourceBadgeBackground addSubview:_sourceBadge];
+        _sourceBadge.hidden = YES;
+        [self.contentView addSubview:_sourceBadge];
 
         _videoBadge = [[UIImageView alloc] initWithFrame:CGRectZero];
         _videoBadge.translatesAutoresizingMaskIntoConstraints = NO;
@@ -86,6 +81,14 @@
         _durationLabel.hidden = YES;
         [self.contentView addSubview:_durationLabel];
 
+        // Bottom-left vertical stack for username & folder context.
+        _bottomLeftStack = [[UIStackView alloc] init];
+        _bottomLeftStack.translatesAutoresizingMaskIntoConstraints = NO;
+        _bottomLeftStack.axis = UILayoutConstraintAxisVertical;
+        _bottomLeftStack.alignment = UIStackViewAlignmentLeading;
+        _bottomLeftStack.spacing = 2.0;
+        [self.contentView addSubview:_bottomLeftStack];
+
         _usernameLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         _usernameLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _usernameLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
@@ -94,7 +97,28 @@
         _usernameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         _usernameLabel.hidden = YES;
         [_usernameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-        [self.contentView addSubview:_usernameLabel];
+        [_bottomLeftStack addArrangedSubview:_usernameLabel];
+
+        _folderStack = [[UIStackView alloc] init];
+        _folderStack.axis = UILayoutConstraintAxisHorizontal;
+        _folderStack.alignment = UIStackViewAlignmentCenter;
+        _folderStack.spacing = 4.0;
+        _folderStack.hidden = YES;
+
+        _folderIcon = [[UIImageView alloc] init];
+        _folderIcon.translatesAutoresizingMaskIntoConstraints = NO;
+        _folderIcon.image = [SPKAssetUtils instagramIconNamed:@"folder" pointSize:11.0];
+        _folderIcon.tintColor = [UIColor whiteColor];
+        _folderIcon.contentMode = UIViewContentModeScaleAspectFit;
+        [_folderStack addArrangedSubview:_folderIcon];
+
+        _folderLabel = [[UILabel alloc] init];
+        _folderLabel.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+        _folderLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.9];
+        _folderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        [_folderStack addArrangedSubview:_folderLabel];
+
+        [_bottomLeftStack addArrangedSubview:_folderStack];
 
         _favoriteBadge = [[UIImageView alloc] initWithFrame:CGRectZero];
         _favoriteBadge.translatesAutoresizingMaskIntoConstraints = NO;
@@ -121,14 +145,10 @@
             [_thumbnailView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
 
             // Source badge (top-left).
-            [_sourceBadgeBackground.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6],
-            [_sourceBadgeBackground.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
-            [_sourceBadgeBackground.widthAnchor constraintEqualToConstant:20],
-            [_sourceBadgeBackground.heightAnchor constraintEqualToConstant:20],
-            [_sourceBadge.centerXAnchor constraintEqualToAnchor:_sourceBadgeBackground.centerXAnchor],
-            [_sourceBadge.centerYAnchor constraintEqualToAnchor:_sourceBadgeBackground.centerYAnchor],
-            [_sourceBadge.widthAnchor constraintEqualToConstant:13],
-            [_sourceBadge.heightAnchor constraintEqualToConstant:13],
+            [_sourceBadge.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6],
+            [_sourceBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
+            [_sourceBadge.widthAnchor constraintEqualToConstant:14],
+            [_sourceBadge.heightAnchor constraintEqualToConstant:14],
 
             // Video glyph + duration (bottom-right).
             [_durationLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6],
@@ -139,10 +159,14 @@
             [_videoBadge.widthAnchor constraintEqualToConstant:14],
             [_videoBadge.heightAnchor constraintEqualToConstant:14],
 
-            // Username caption (bottom-left), kept clear of the video/duration.
-            [_usernameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6],
-            [_usernameLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
-            [_usernameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_videoBadge.leadingAnchor constant:-6],
+            // Bottom-left stack constraints.
+            [_bottomLeftStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6],
+            [_bottomLeftStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
+            [_bottomLeftStack.trailingAnchor constraintLessThanOrEqualToAnchor:_videoBadge.leadingAnchor constant:-6],
+            [_bottomLeftStack.trailingAnchor constraintLessThanOrEqualToAnchor:_durationLabel.leadingAnchor constant:-6],
+
+            [_folderIcon.widthAnchor constraintEqualToConstant:11],
+            [_folderIcon.heightAnchor constraintEqualToConstant:11],
 
             [_favoriteBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
             [_favoriteBadge.widthAnchor constraintEqualToConstant:16],
@@ -168,8 +192,8 @@
     // Bottom scrim spans the lower third of the cell.
     CGFloat bottomHeight = MAX(28.0, height * 0.34);
     self.bottomScrim.frame = CGRectMake(0.0, height - bottomHeight, width, bottomHeight);
-    // Top scrim spans the upper quarter.
-    CGFloat topHeight = MAX(24.0, height * 0.26);
+    // Top scrim is identical to bottom scrim.
+    CGFloat topHeight = bottomHeight;
     self.topScrim.frame = CGRectMake(0.0, 0.0, width, topHeight);
     [CATransaction commit];
 }
@@ -183,8 +207,10 @@
     self.durationLabel.text = nil;
     self.usernameLabel.hidden = YES;
     self.usernameLabel.text = nil;
-    self.sourceBadgeBackground.hidden = YES;
+    self.folderStack.hidden = YES;
+    self.folderLabel.text = nil;
     self.sourceBadge.image = nil;
+    self.sourceBadge.hidden = YES;
     self.bottomScrim.hidden = YES;
     self.topScrim.hidden = YES;
     self.favoriteBadge.hidden = YES;
@@ -218,7 +244,8 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
                      selectionMode:selectionMode
                           selected:selected
                        showsSource:NO
-                     showsUsername:NO];
+                     showsUsername:NO
+                        folderName:nil];
 }
 
 - (void)configureWithGalleryFile:(SPKGalleryFile *)file
@@ -226,6 +253,20 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
                       selected:(BOOL)selected
                     showsSource:(BOOL)showsSource
                   showsUsername:(BOOL)showsUsername {
+    [self configureWithGalleryFile:file
+                     selectionMode:selectionMode
+                          selected:selected
+                       showsSource:showsSource
+                     showsUsername:showsUsername
+                        folderName:nil];
+}
+
+- (void)configureWithGalleryFile:(SPKGalleryFile *)file
+                 selectionMode:(BOOL)selectionMode
+                      selected:(BOOL)selected
+                    showsSource:(BOOL)showsSource
+                  showsUsername:(BOOL)showsUsername
+                     folderName:(nullable NSString *)folderName {
     self.file = file;
     UIImage *thumb = [SPKGalleryFile loadThumbnailForFile:file];
     if (thumb) {
@@ -246,7 +287,7 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
     BOOL isVideo = (file.mediaType == SPKGalleryMediaTypeVideo);
     BOOL isAudio = (file.mediaType == SPKGalleryMediaTypeAudio);
     BOOL hasTypeBadge = isVideo || isAudio;
-    self.videoBadge.image = [SPKAssetUtils instagramIconNamed:(isAudio ? @"audio" : @"video_filled") pointSize:13.0];
+    self.videoBadge.image = [SPKAssetUtils instagramIconNamed:(isAudio ? @"audio_filled" : @"video_filled") pointSize:13.0];
     self.videoBadge.hidden = !hasTypeBadge;
 
     NSString *durationText = hasTypeBadge ? SPKGalleryGridFormatDuration(file.durationSeconds) : nil;
@@ -256,12 +297,18 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
     // Source-type badge (top-left).
     if (showsSource) {
         NSString *symbol = [SPKGalleryFile symbolNameForSource:(SPKGallerySource)file.source];
-        UIImage *icon = [SPKAssetUtils instagramIconNamed:symbol pointSize:13.0];
+        NSString *filledSymbol = [symbol stringByAppendingString:@"_filled"];
+        UIImage *icon = nil;
+        if ([SPKAssetUtils resolvedInstagramIconNameForName:filledSymbol]) {
+            icon = [SPKAssetUtils instagramIconNamed:filledSymbol pointSize:13.0];
+        } else {
+            icon = [SPKAssetUtils instagramIconNamed:symbol pointSize:13.0];
+        }
         self.sourceBadge.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        self.sourceBadgeBackground.hidden = (icon == nil);
+        self.sourceBadge.hidden = (icon == nil);
     } else {
         self.sourceBadge.image = nil;
-        self.sourceBadgeBackground.hidden = YES;
+        self.sourceBadge.hidden = YES;
     }
 
     // Username caption (bottom-left), truncated to fit.
@@ -274,14 +321,23 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
         self.usernameLabel.hidden = YES;
     }
 
+    // Folder caption (bottom-left), below username.
+    if (folderName.length > 0) {
+        self.folderLabel.text = folderName;
+        self.folderStack.hidden = NO;
+    } else {
+        self.folderLabel.text = nil;
+        self.folderStack.hidden = YES;
+    }
+
     // Scrims only when there is overlay content to keep legible. Toggle their
     // hidden state with implicit layer animations disabled, otherwise the scrim
     // fades in/out when the cell is reconfigured and reads as a flash.
-    BOOL hasBottomOverlay = hasTypeBadge || (showsUsername && username != nil);
+    BOOL hasBottomOverlay = hasTypeBadge || (showsUsername && username != nil) || (folderName.length > 0);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.bottomScrim.hidden = !hasBottomOverlay;
-    self.topScrim.hidden = !(showsSource && !self.sourceBadgeBackground.hidden);
+    self.topScrim.hidden = !(showsSource && !self.sourceBadge.hidden);
     [CATransaction commit];
 
     self.favoriteBadge.hidden = !file.isFavorite;

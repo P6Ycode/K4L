@@ -36,6 +36,12 @@ typedef void (^SPKIGAlertTextHandler)(NSString * _Nullable text);
                                      message:(nullable NSString *)message
                                      actions:(NSArray<SPKIGAlertAction *> *)actions;
 
++ (BOOL)presentActionSheetFromViewController:(nullable UIViewController *)presenter
+                                       title:(nullable NSString *)title
+                                     message:(nullable NSString *)message
+                                     actions:(NSArray<SPKIGAlertAction *> *)actions
+                                  forceSheet:(BOOL)forceSheet;
+
 + (BOOL)presentTextInputAlertFromViewController:(nullable UIViewController *)presenter
                                           title:(nullable NSString *)title
                                         message:(nullable NSString *)message

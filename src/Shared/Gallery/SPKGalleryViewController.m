@@ -588,11 +588,13 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
         if (![cell isKindOfClass:[SPKGalleryGridCell class]]) continue;
         SPKGalleryFile *file = [self galleryFileForCollectionIndexPath:indexPath];
         if (!file) continue;
+        NSString *folderName = [self searchResultFolderNameForFile:file];
         [(SPKGalleryGridCell *)cell configureWithGalleryFile:file
                                                selectionMode:self.selectionMode
                                                     selected:[self.selectedFileIDs containsObject:file.identifier]
                                                  showsSource:showsMeta
-                                               showsUsername:showsUsername];
+                                               showsUsername:showsUsername
+                                                  folderName:folderName];
     }
 }
 
@@ -861,11 +863,13 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
         BOOL showsMeta = ![[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryGridShowSourceUsernameDisabledKey];
         // Username caption only fits at roomy densities (2-3 columns).
         BOOL showsUsername = showsMeta && self.gridColumns <= 3;
+        NSString *folderName = [self searchResultFolderNameForFile:file];
         [cell configureWithGalleryFile:file
                        selectionMode:self.selectionMode
                             selected:[self.selectedFileIDs containsObject:file.identifier]
                          showsSource:showsMeta
-                       showsUsername:showsUsername];
+                       showsUsername:showsUsername
+                          folderName:folderName];
         return cell;
     }
 
@@ -1658,7 +1662,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (void)mergePlaceholderSubfolders {
-    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"gallery_folders"] ?: @[];
+    NSArray<NSString *> *placeholders = [self filteredPlaceholders];
     NSString *base = self.currentFolderPath ?: @"";
     NSString *prefix = base.length == 0 ? @"/" : [base stringByAppendingString:@"/"];
 
@@ -1863,7 +1867,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSMutableArray<SPKIGAlertAction *> *actions = [NSMutableArray array];
 
     if (!currentIsRoot) {
-        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Root"
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"/"
                                                        style:SPKIGAlertActionStyleDefault
                                                      handler:^{
             [self assignFolderPath:nil toFiles:files];
@@ -1907,17 +1911,66 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     NSString *message = @"Choose where to move the selected file(s).";
     if (sharesCurrentFolder) {
-        NSString *currentName = currentFolder.length > 0 ? [currentFolder lastPathComponent] : @"Root";
+        NSString *currentName = currentFolder.length > 0 ? [currentFolder lastPathComponent] : @"/";
         message = [NSString stringWithFormat:@"Currently in %@. Choose where to move the selected file(s).", currentName];
     }
     [SPKIGAlertPresenter presentActionSheetFromViewController:self
                                                         title:@"Move to Folder"
                                                       message:message
-                                                      actions:actions];
+                                                      actions:actions
+                                                   forceSheet:YES];
 }
 
 - (void)moveFile:(SPKGalleryFile *)file {
     [self presentMoveSheetForFiles:@[file]];
+}
+
+- (NSArray<NSString *> *)filteredPlaceholders {
+    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"gallery_folders"] ?: @[];
+    NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
+    if (!visibleSources) return placeholders;
+
+    NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
+
+    // Fetch distinct folder paths for files matching current account / visible filters.
+    NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
+    req.resultType = NSDictionaryResultType;
+    req.propertiesToFetch = @[@"folderPath"];
+    req.returnsDistinctResults = YES;
+    req.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[
+        [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"],
+        visibleSources
+    ]];
+    NSArray<NSDictionary *> *results = [ctx executeFetchRequest:req error:nil];
+    NSMutableSet<NSString *> *currentAccountFolders = [NSMutableSet set];
+    for (NSDictionary *d in results) {
+        NSString *p = d[@"folderPath"];
+        if (p.length > 0) [currentAccountFolders addObject:p];
+    }
+
+    // Fetch all distinct folder paths in the database (regardless of account filter).
+    NSFetchRequest *allReq = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
+    allReq.resultType = NSDictionaryResultType;
+    allReq.propertiesToFetch = @[@"folderPath"];
+    allReq.returnsDistinctResults = YES;
+    allReq.predicate = [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"];
+    NSArray<NSDictionary *> *allResults = [ctx executeFetchRequest:allReq error:nil];
+    NSMutableSet<NSString *> *allFileFolders = [NSMutableSet set];
+    for (NSDictionary *d in allResults) {
+        NSString *p = d[@"folderPath"];
+        if (p.length > 0) [allFileFolders addObject:p];
+    }
+
+    NSMutableArray<NSString *> *filtered = [NSMutableArray array];
+    for (NSString *p in placeholders) {
+        if (p.length == 0) continue;
+        // Skip placeholders that are associated with other accounts, but not the current account.
+        if ([allFileFolders containsObject:p] && ![currentAccountFolders containsObject:p]) {
+            continue;
+        }
+        [filtered addObject:p];
+    }
+    return [filtered copy];
 }
 
 - (NSArray<NSString *> *)allFolderPaths {
@@ -1926,7 +1979,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     req.resultType = NSDictionaryResultType;
     req.propertiesToFetch = @[@"folderPath"];
     req.returnsDistinctResults = YES;
-    req.predicate = [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"];
+
+    NSPredicate *nonEmptyFolder = [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"];
+    NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
+    req.predicate = visibleSources
+        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[nonEmptyFolder, visibleSources]]
+        : nonEmptyFolder;
+
     NSArray<NSDictionary *> *results = [ctx executeFetchRequest:req error:nil];
 
     NSMutableSet<NSString *> *set = [NSMutableSet set];
@@ -1934,8 +1993,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         NSString *p = d[@"folderPath"];
         if (p.length > 0) [set addObject:p];
     }
-    NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"gallery_folders"] ?: @[];
-    [set addObjectsFromArray:placeholders];
+    [set addObjectsFromArray:[self filteredPlaceholders]];
 
     return [[set allObjects] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
 }

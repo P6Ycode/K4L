@@ -19,6 +19,13 @@ NS_ASSUME_NONNULL_BEGIN
                     showsSource:(BOOL)showsSource
                   showsUsername:(BOOL)showsUsername;
 
+- (void)configureWithGalleryFile:(SPKGalleryFile *)file
+                 selectionMode:(BOOL)selectionMode
+                      selected:(BOOL)selected
+                    showsSource:(BOOL)showsSource
+                  showsUsername:(BOOL)showsUsername
+                     folderName:(nullable NSString *)folderName;
+
 - (void)setSelectionMode:(BOOL)selectionMode selected:(BOOL)selected animated:(BOOL)animated;
 
 @end

@@ -94,6 +94,12 @@ typedef NS_ENUM(int16_t, SPKGallerySource) {
 /// omitted so the derived file is probed fresh.
 - (SPKGallerySaveMetadata *)saveMetadata;
 
+/// Stamps this file's `dateAdded` to now and persists it. Used for derived
+/// copies (e.g. a trimmed clip) that inherit the original's date via
+/// `saveMetadata` for filename/attribution but should still sort as the newest
+/// item in the gallery.
+- (void)markAddedNow;
+
 /// Number of files with no owning account (legacy / pre-feature saves).
 + (NSUInteger)unassignedFileCount;
 /// Assigns every unassigned file to the given account. Returns the count moved.

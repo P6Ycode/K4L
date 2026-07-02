@@ -650,7 +650,19 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
                                        title:(NSString *)title
                                      message:(NSString *)message
                                      actions:(NSArray<SPKIGAlertAction *> *)actions {
-    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
+    return [self presentActionSheetFromViewController:presenter
+                                                title:title
+                                              message:message
+                                              actions:actions
+                                           forceSheet:NO];
+}
+
++ (BOOL)presentActionSheetFromViewController:(UIViewController *)presenter
+                                       title:(NSString *)title
+                                     message:(NSString *)message
+                                     actions:(NSArray<SPKIGAlertAction *> *)actions
+                                  forceSheet:(BOOL)forceSheet {
+    if (!forceSheet && SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
         return [self presentAlertFromViewController:presenter
                                              title:title
                                            message:message

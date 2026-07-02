@@ -284,7 +284,7 @@
 
     BOOL isVideo = (file.mediaType == SPKGalleryMediaTypeVideo);
     BOOL isAudio = (file.mediaType == SPKGalleryMediaTypeAudio);
-    UIImage *rowIcon = [SPKAssetUtils instagramIconNamed:(isAudio ? @"audio" : (isVideo ? @"video_filled" : @"photo_filled"))
+    UIImage *rowIcon = [SPKAssetUtils instagramIconNamed:(isAudio ? @"audio_filled" : (isVideo ? @"video_filled" : @"photo_filled"))
                                                pointSize:12];
     self.rowTypeIcon.image = rowIcon;
 
