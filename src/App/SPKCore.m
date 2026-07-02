@@ -60,6 +60,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"reels_confirm_like": @(NO),
         @"msgs_confirm_voice_msg": @(NO),
         @"general_confirm_create_group": @(NO),
+        @"general_confirm_send": @(NO),
         @"msgs_keep_deleted": @(NO),
         @"msgs_deleted_log": @(NO),
         @"msgs_deleted_log_reactions": @(NO),

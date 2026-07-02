@@ -16,6 +16,7 @@ FOUNDATION_EXPORT void SPKInstallBackgroundRefreshHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallSeenButtonHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallFollowConfirmHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallCreateGroupButtonControlHooksIfEnabled(void);
+FOUNDATION_EXPORT void SPKInstallConfirmSendHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallSharedLinkCleanupHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallShareLongPressCopyHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallHideMetaAIHooksIfEnabled(void);
@@ -190,6 +191,7 @@ void SPKInstallMessagesSurfaceHooksIfNeeded(void) {
     SPKInstallMessagesActionButtonHooksIfEnabled();
     SPKInstallSeenButtonHooksIfNeeded();
     SPKInstallCreateGroupButtonControlHooksIfEnabled();
+    SPKInstallConfirmSendHooksIfEnabled();
     SPKInstallHideMetaAIHooksIfEnabled();
     SPKInstallDisableDMStorySeenHooksIfNeeded();
     SPKInstallDisableInstantsCreationHooksIfEnabled();

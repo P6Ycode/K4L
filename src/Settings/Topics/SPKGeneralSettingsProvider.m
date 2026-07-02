@@ -107,11 +107,13 @@
            @"2. Search bars will no longer save recent searches.\n"
            @"3. Remove the user and tracking identifiers from copied links.\n"
            @"4. Long press the send/share button to copy the post link."),
-        SPKTopicSection(@"Group", @[
+        SPKTopicSection(@"Sharing", @[
             [SPKSetting switchCellWithTitle:@"Hide Create Group Button" icon:SPKSettingsIcon(@"group") defaultsKey:@"general_hide_create_group"],
             [SPKSetting switchCellWithTitle:@"Confirm Create Group" icon:SPKSettingsIcon(@"group") defaultsKey:@"general_confirm_create_group"],
+            [SPKSetting switchCellWithTitle:@"Confirm Sending Post" icon:SPKSettingsIcon(@"messages") defaultsKey:@"general_confirm_send"],
         ], @"1. Hide the create group button from the Instagram send/share sheet.\n"
-           @"2. Show a confirmation alert when you try to create a group."),
+           @"2. Show a confirmation alert when you try to create a group.\n"
+           @"3. Show a confirmation alert when sending a post."),
         SPKTopicSection(@"Recommendations", @[
             [SPKSetting navigationCellWithTitle:@"Ads"
                                        subtitle:@""

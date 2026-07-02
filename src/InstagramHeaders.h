@@ -103,6 +103,9 @@
 @interface IGMedia : IGBaseMedia
 @property(readonly) IGVideo *video;
 @property(readonly) IGPhoto *photo;
+- (BOOL)isClipsMedia;
+- (BOOL)isIGTVMedia;
+- (BOOL)isFeedPost;
 @end
 
 @interface IGPostItem : NSObject
