@@ -25,6 +25,18 @@ static SEL SPKAudioDMSendSelector(void) {
     return NSSelectorFromString(@"sendAudioWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:messageID:quotedPublishedMessage:");
 }
 
+static SEL SPKAudioDMSendLegacySelector(void) {
+    return NSSelectorFromString(@"sendAudioWithURL:waveform:duration:entryPoint:messageID:quotedPublishedMessage:");
+}
+
+static SEL SPKAudioDMVoiceSelector(void) {
+    return NSSelectorFromString(@"voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:sendButtonTypeTapped:");
+}
+
+static SEL SPKAudioDMVoiceLegacySelector(void) {
+    return NSSelectorFromString(@"voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:sendButtonTypeTapped:");
+}
+
 static NSURL *SPKAudioDMTemporaryURL(NSString *extension) {
     NSString *name = [NSString stringWithFormat:@"sparkle-dm-audio-%@.%@",
                       NSUUID.UUID.UUIDString,
@@ -76,8 +88,16 @@ static id SPKAudioDMCall(id object, NSString *selectorName) {
     }
 }
 
+static id SPKAudioDMThreadContextFromTarget(id target) {
+    return SPKAudioDMCall(target, @"threadViewControllerContext") ?: SPKAudioDMIvarValue(target, "_threadViewControllerContext");
+}
+
 static id SPKAudioDMVoiceControllerFromTarget(id target) {
     id voiceController = SPKAudioDMCall(target, @"voiceController") ?: SPKAudioDMIvarValue(target, "_voiceController");
+    if (voiceController) return voiceController;
+
+    id threadContext = SPKAudioDMThreadContextFromTarget(target);
+    voiceController = SPKAudioDMCall(threadContext, @"voiceController") ?: SPKAudioDMIvarValue(threadContext, "_voiceController");
     if (voiceController) return voiceController;
 
     id featureDelegate = SPKAudioDMCall(target, @"featureDelegate") ?: SPKAudioDMIvarValue(target, "_featureDelegate");
@@ -91,6 +111,11 @@ static id SPKAudioDMVoiceControllerFromTarget(id target) {
 static id SPKAudioDMMessageSenderFromTarget(id target) {
     id sender = SPKAudioDMCall(target, @"messageSenderFeatureController") ?: SPKAudioDMIvarValue(target, "_messageSenderFeatureController");
     if (sender) return sender;
+
+    id threadContext = SPKAudioDMThreadContextFromTarget(target);
+    sender = SPKAudioDMCall(threadContext, @"messageSenderFeatureController") ?: SPKAudioDMIvarValue(threadContext, "_messageSenderFeatureController");
+    if (sender) return sender;
+
     id featureDelegate = SPKAudioDMCall(target, @"featureDelegate") ?: SPKAudioDMIvarValue(target, "_featureDelegate");
     return SPKAudioDMCall(featureDelegate, @"messageSenderFeatureController") ?: SPKAudioDMIvarValue(featureDelegate, "_messageSenderFeatureController");
 }
@@ -107,11 +132,12 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 
 + (BOOL)senderTargetSupportsAudioUpload:(id)senderTarget {
     id voiceController = SPKAudioDMVoiceControllerFromTarget(senderTarget);
-    SEL voiceSelector = NSSelectorFromString(@"voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:sendButtonTypeTapped:");
-    if (voiceController && [voiceController respondsToSelector:voiceSelector]) return YES;
+    SEL voiceSelector = SPKAudioDMVoiceSelector();
+    SEL voiceLegacySelector = SPKAudioDMVoiceLegacySelector();
+    if (voiceController && ([voiceController respondsToSelector:voiceSelector] || [voiceController respondsToSelector:voiceLegacySelector])) return YES;
 
     id sender = SPKAudioDMMessageSenderFromTarget(senderTarget) ?: senderTarget;
-    return sender && [sender respondsToSelector:SPKAudioDMSendSelector()];
+    return sender && ([sender respondsToSelector:SPKAudioDMSendSelector()] || [sender respondsToSelector:SPKAudioDMSendLegacySelector()]);
 }
 
 + (void)presentUploadPickerForSenderTarget:(id)senderTarget
@@ -344,11 +370,17 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
     }
 
     id voiceController = SPKAudioDMVoiceControllerFromTarget(self.senderTarget);
-    SEL voiceSelector = NSSelectorFromString(@"voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:aiVoiceEffectType:sendButtonTypeTapped:");
-    if (voiceController && [voiceController respondsToSelector:voiceSelector]) {
+    SEL voiceSelector = SPKAudioDMVoiceSelector();
+    SEL voiceLegacySelector = SPKAudioDMVoiceLegacySelector();
+    if (voiceController && ([voiceController respondsToSelector:voiceSelector] || [voiceController respondsToSelector:voiceLegacySelector])) {
         SPKDMConfirmVoiceMessageIfNeeded(^{
-            void (*sendVoice)(id, SEL, id, id, id, double, long long, id, id, long long) = (void (*)(id, SEL, id, id, id, double, long long, id, id, long long))objc_msgSend;
-            sendVoice(voiceController, voiceSelector, nil, url, waveform, safeDuration, 0, nil, nil, 0);
+            if ([voiceController respondsToSelector:voiceSelector]) {
+                void (*sendVoice)(id, SEL, id, id, id, double, long long, id, id, long long) = (void (*)(id, SEL, id, id, id, double, long long, id, id, long long))objc_msgSend;
+                sendVoice(voiceController, voiceSelector, nil, url, waveform, safeDuration, 0, nil, nil, 0);
+            } else {
+                void (*sendVoiceLegacy)(id, SEL, id, id, id, double, long long, long long) = (void (*)(id, SEL, id, id, id, double, long long, long long))objc_msgSend;
+                sendVoiceLegacy(voiceController, voiceLegacySelector, nil, url, waveform, safeDuration, 0, 0);
+            }
             [self updateUploadProgress:1.0f title:@"Audio sent" subtitle:nil];
             [self finishUploadProgressWithSuccess];
             if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
@@ -360,24 +392,37 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
     }
 
     id sender = SPKAudioDMMessageSenderFromTarget(self.senderTarget) ?: self.senderTarget;
-    if (![sender respondsToSelector:SPKAudioDMSendSelector()]) {
+    if (![sender respondsToSelector:SPKAudioDMSendSelector()] && ![sender respondsToSelector:SPKAudioDMSendLegacySelector()]) {
         [self finishUploadProgressWithErrorTitle:@"Audio upload unavailable" subtitle:@"The direct audio sender disappeared before sending."];
         if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
     SPKDMConfirmVoiceMessageIfNeeded(^{
-        void (*sendAudio)(id, SEL, id, id, double, long long, id, id, id, id) = (void (*)(id, SEL, id, id, double, long long, id, id, id, id))objc_msgSend;
-        sendAudio(sender,
-                  SPKAudioDMSendSelector(),
-                  url,
-                  waveform,
-                  safeDuration,
-                  0,
-                  nil,
-                  nil,
-                  nil,
-                  nil);
+        if ([sender respondsToSelector:SPKAudioDMSendSelector()]) {
+            void (*sendAudio)(id, SEL, id, id, double, long long, id, id, id, id) = (void (*)(id, SEL, id, id, double, long long, id, id, id, id))objc_msgSend;
+            sendAudio(sender,
+                      SPKAudioDMSendSelector(),
+                      url,
+                      waveform,
+                      safeDuration,
+                      0,
+                      nil,
+                      nil,
+                      nil,
+                      nil);
+        } else {
+            SEL legacySelector = SPKAudioDMSendLegacySelector();
+            void (*sendAudioLegacy)(id, SEL, id, id, double, long long, id, id) = (void (*)(id, SEL, id, id, double, long long, id, id))objc_msgSend;
+            sendAudioLegacy(sender,
+                            legacySelector,
+                            url,
+                            waveform,
+                            safeDuration,
+                            0,
+                            nil,
+                            nil);
+        }
         [self updateUploadProgress:1.0f title:@"Audio sent" subtitle:nil];
         [self finishUploadProgressWithSuccess];
         if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;

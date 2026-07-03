@@ -42,7 +42,7 @@ void SPKDMConfirmVoiceMessageIfNeeded(void (^confirmBlock)(void), void (^cancelB
     } cancelHandler:^{
         sSPKDMVoiceConfirmVisible = NO;
         if (cancelBlock) cancelBlock();
-    } title:@"Confirm Send Voice Message"
+    } title:@"Confirm Sending Voice Message"
       message:@"Are you sure you want to send this voice message?"];
 }
 

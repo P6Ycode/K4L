@@ -344,6 +344,11 @@
 
 @interface IGDirectComposer : UIView
 - (NSObject *)patchConfig:(NSObject *)config; // new
+- (void)menuDidDismiss;
+- (void)_didTapMore:(id)more;
+- (void)_didTapRedesignOverflowButton:(id)button;
+- (void)_didTapPlusButton:(id)button;
+- (void)_didTapOpenTrayButton:(id)button;
 @end
 
 @interface IGDirectComposerConfig : NSObject
@@ -470,6 +475,10 @@
 
 @interface IGDirectThreadViewController : UIViewController
 - (void)markLastMessageAsSeen;
+- (void)inputView:(id)view didTapMoreButton:(id)button;
+- (void)inputView:(id)view didTapPlusButton:(id)button isExpanded:(_Bool)expanded layoutSpec:(id)layoutSpec;
+- (void)composerOverflowButtonMenuWillPrepareExpandWithPlusButton:(id)button;
+- (void)composerOverflowButtonMenuWillExpandWithPlusButton:(id)button;
 @end
 
 @interface IGTabBarButton : UIButton

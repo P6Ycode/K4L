@@ -36,9 +36,18 @@ static id SPKMediaDMCall(id object, NSString *selectorName) {
     }
 }
 
+static id SPKMediaDMThreadContextFromTarget(id target) {
+    return SPKMediaDMCall(target, @"threadViewControllerContext") ?: SPKMediaDMIvarValue(target, "_threadViewControllerContext");
+}
+
 static id SPKMediaDMMessageSenderFromTarget(id target) {
     id sender = SPKMediaDMCall(target, @"messageSenderFeatureController") ?: SPKMediaDMIvarValue(target, "_messageSenderFeatureController");
     if (sender) return sender;
+
+    id threadContext = SPKMediaDMThreadContextFromTarget(target);
+    sender = SPKMediaDMCall(threadContext, @"messageSenderFeatureController") ?: SPKMediaDMIvarValue(threadContext, "_messageSenderFeatureController");
+    if (sender) return sender;
+
     id featureDelegate = SPKMediaDMCall(target, @"featureDelegate") ?: SPKMediaDMIvarValue(target, "_featureDelegate");
     return SPKMediaDMCall(featureDelegate, @"messageSenderFeatureController") ?: SPKMediaDMIvarValue(featureDelegate, "_messageSenderFeatureController");
 }
