@@ -47,13 +47,20 @@ static UIImage *SPKGalleryMenuActionIcon(NSString *resourceName) {
                                    pointSize:kGalleryMenuIconPointSize];
 }
 
-static NSInteger SPKGalleryItemCountForFolderPath(NSManagedObjectContext *context, NSString *folderPath) {
+// Counts items in `folderPath` (including descendants). When `extraFilter` is
+// non-nil (the active media-type/source/favorites/username filter), it's ANDed
+// in so the count reflects what the folder actually shows under the current
+// filter rather than its raw total.
+static NSInteger SPKGalleryItemCountForFolderPath(NSManagedObjectContext *context, NSString *folderPath, NSPredicate *extraFilter) {
     if (folderPath.length == 0) return 0;
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     NSPredicate *folder = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
                            folderPath, [folderPath stringByAppendingString:@"/"]];
+    NSMutableArray<NSPredicate *> *parts = [NSMutableArray arrayWithObject:folder];
     NSPredicate *visible = SPKGalleryVisibleSourcesPredicate();
-    request.predicate = visible ? [NSCompoundPredicate andPredicateWithSubpredicates:@[folder, visible]] : folder;
+    if (visible) [parts addObject:visible];
+    if (extraFilter) [parts addObject:extraFilter];
+    request.predicate = parts.count == 1 ? folder : [NSCompoundPredicate andPredicateWithSubpredicates:parts];
     return [context countForFetchRequest:request error:nil];
 }
 
@@ -762,6 +769,22 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
 #pragma mark - Subfolders
 
+// The active content filter (media types / sources / favorites / usernames) with
+// no folder scoping, so it can be ANDed into per-folder counts. Nil when no
+// filter is active, which keeps folder counts at their raw totals.
+- (NSPredicate *)activeContentFilterPredicate {
+    if (self.filterTypes.count == 0 && self.filterSources.count == 0 &&
+        !self.filterFavoritesOnly && self.filterUsernames.count == 0) {
+        return nil;
+    }
+    return [SPKGalleryFilterViewController predicateForTypes:self.filterTypes
+                                                     sources:self.filterSources
+                                               favoritesOnly:self.filterFavoritesOnly
+                                                   usernames:self.filterUsernames
+                                                  folderPath:nil
+                                               scopeToFolder:NO];
+}
+
 - (void)reloadSubfolders {
     if (self.searchQuery.length > 0) {
         self.subfolders = @[];
@@ -796,8 +819,28 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
         [immediate addObject:[prefix stringByAppendingString:folderName]];
     }
 
-    self.subfolders = [[immediate allObjects] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
-    [self mergePlaceholderSubfolders];
+    NSArray<NSString *> *sorted = [[immediate allObjects] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+
+    // When a filter is active, drop subfolders that (including their descendants)
+    // have no items matching it, so the chip strip only shows folders the user can
+    // actually reach results in.
+    NSPredicate *contentFilter = [self activeContentFilterPredicate];
+    if (contentFilter) {
+        NSMutableArray<NSString *> *nonEmpty = [NSMutableArray arrayWithCapacity:sorted.count];
+        for (NSString *path in sorted) {
+            if (SPKGalleryItemCountForFolderPath(ctx, path, contentFilter) > 0) {
+                [nonEmpty addObject:path];
+            }
+        }
+        sorted = nonEmpty;
+    }
+
+    self.subfolders = sorted;
+    // Placeholder folders are empty by definition, so they'd match no filter —
+    // only surface them while browsing unfiltered.
+    if (!contentFilter) {
+        [self mergePlaceholderSubfolders];
+    }
 }
 
 #pragma mark - NSFetchedResultsControllerDelegate
@@ -850,7 +893,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     if ([self isFolderIndexPath:indexPath]) {
         SPKGalleryFolderCell *cell = [cv dequeueReusableCellWithReuseIdentifier:kFolderCellID forIndexPath:indexPath];
         NSString *path = self.subfolders[indexPath.item];
-        NSInteger itemCount = SPKGalleryItemCountForFolderPath([SPKGalleryCoreDataStack shared].viewContext, path);
+        NSInteger itemCount = SPKGalleryItemCountForFolderPath([SPKGalleryCoreDataStack shared].viewContext, path, [self activeContentFilterPredicate]);
         [cell configureWithFolderName:[path lastPathComponent] itemCount:itemCount];
         return cell;
     }
@@ -918,9 +961,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     NSMutableArray<NSString *> *names = [NSMutableArray arrayWithCapacity:folders.count];
     NSMutableArray<NSNumber *> *counts = [NSMutableArray arrayWithCapacity:folders.count];
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
+    NSPredicate *contentFilter = [self activeContentFilterPredicate];
     for (NSString *path in folders) {
         [names addObject:[path lastPathComponent]];
-        [counts addObject:@(SPKGalleryItemCountForFolderPath(ctx, path))];
+        [counts addObject:@(SPKGalleryItemCountForFolderPath(ctx, path, contentFilter))];
     }
 
     __weak typeof(self) weakSelf = self;
