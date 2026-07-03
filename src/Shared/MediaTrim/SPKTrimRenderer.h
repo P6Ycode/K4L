@@ -43,6 +43,16 @@ typedef void (^SPKTrimRenderCompletionBlock)(NSURL *_Nullable outputURL, NSError
                    basename:(NSString *)basename
                  completion:(SPKTrimRenderCompletionBlock)completion;
 
+/// Renders `[startSeconds, startSeconds + durationSeconds)` of an audio source to
+/// a temp `.m4a` (AAC) via `AVAssetExportSession` — native, exact, and the format
+/// the DM voice-note sender expects. Delivers completion on the main thread.
++ (void)renderTrimAudioForSourceURL:(NSURL *)sourceURL
+                              asset:(nullable AVAsset *)asset
+                       startSeconds:(NSTimeInterval)startSeconds
+                    durationSeconds:(NSTimeInterval)durationSeconds
+                           basename:(NSString *)basename
+                         completion:(SPKTrimRenderCompletionBlock)completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

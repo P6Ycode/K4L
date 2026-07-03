@@ -11,11 +11,11 @@ typedef NS_ENUM(NSInteger, SPKTrimMediaKind) {
     SPKTrimMediaKindAudio = 1,
 };
 
-/// What the editor produced. A single-frame result is an *image* file, not a
+/// What the editor produced. A frame only result is an *image* file, not a
 /// one-frame video — that is the storage win for "video that's really a photo".
 typedef NS_ENUM(NSInteger, SPKTrimResultMode) {
     SPKTrimResultModeTrimmedVideo = 0,
-    SPKTrimResultModeSingleFrame  = 1,
+    SPKTrimResultModeFrameOnly  = 1,
     SPKTrimResultModeTrimmedAudio = 2,
 };
 

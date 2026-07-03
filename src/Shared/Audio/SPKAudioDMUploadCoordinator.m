@@ -9,6 +9,10 @@
 #import "../Gallery/SPKGalleryPickerViewController.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKNotificationCenter.h"
+#import "../MediaTrim/SPKTrimConfiguration.h"
+#import "../MediaTrim/SPKTrimEditorViewController.h"
+#import "../MediaTrim/SPKTrimResult.h"
+#import "../MediaTrim/SPKTrimRenderer.h"
 
 @interface SPKAudioDMUploadCoordinator () <UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @property (nonatomic, strong) id senderTarget;
@@ -348,9 +352,93 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
                 return;
             }
 
-            [self updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
-            [self sendConvertedURL:outputURL duration:CMTimeGetSeconds(asset.duration)];
+            [self offerTrimThenSendURL:outputURL duration:CMTimeGetSeconds(asset.duration)];
         });
+    }];
+}
+
+#pragma mark - Trim before send
+
+// After the file is converted to a voice-note-compatible m4a, optionally let the
+// user trim it first (pref-gated so it can be turned off). "Send" uses the file
+// as-is; "Trim & Send…" opens the audio trim editor and sends the rendered cut.
+- (void)offerTrimThenSendURL:(NSURL *)url duration:(NSTimeInterval)duration {
+    if (![SPKUtils getBoolPref:@"msgs_audio_upload_trim"]) {
+        [self updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
+        [self sendConvertedURL:url duration:duration];
+        return;
+    }
+
+    UIViewController *presenter = self.presenter;
+    if (!presenter) {
+        [self updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
+        [self sendConvertedURL:url duration:duration];
+        return;
+    }
+
+    // Drop the progress pill while the choice / editor is up.
+    [self finishUploadProgressWithCancel];
+
+    __weak typeof(self) weakSelf = self;
+    [SPKIGAlertPresenter presentActionSheetFromViewController:presenter
+                                                        title:@"Send Voice Note"
+                                                      message:@"Send now, or trim the audio first."
+                                                      actions:@[
+        [SPKIGAlertAction actionWithTitle:@"Send" style:SPKIGAlertActionStyleDefault handler:^{
+            [weakSelf beginUploadProgressWithTitle:@"Sending audio" subtitle:nil];
+            [weakSelf sendConvertedURL:url duration:duration];
+        }],
+        [SPKIGAlertAction actionWithTitle:@"Trim & Send…" style:SPKIGAlertActionStyleDefault handler:^{
+            [weakSelf presentAudioTrimForURL:url];
+        }],
+        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
+            if (sSPKAudioActiveDMUploadCoordinator == weakSelf) sSPKAudioActiveDMUploadCoordinator = nil;
+        }]
+    ]];
+}
+
+- (void)presentAudioTrimForURL:(NSURL *)url {
+    UIViewController *presenter = self.presenter;
+    if (!presenter) {
+        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        return;
+    }
+    SPKTrimConfiguration *config = [SPKTrimConfiguration configurationWithAudioURL:url];
+    __weak typeof(self) weakSelf = self;
+    [SPKTrimEditorViewController presentWithConfiguration:config
+                                                    from:presenter
+                                              completion:^(SPKTrimResult *result) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (!result) {
+            // Cancelled the editor → abort the whole send.
+            if (sSPKAudioActiveDMUploadCoordinator == strongSelf) sSPKAudioActiveDMUploadCoordinator = nil;
+            return;
+        }
+        [strongSelf renderTrimResultThenSend:result];
+    }];
+}
+
+- (void)renderTrimResultThenSend:(SPKTrimResult *)result {
+    [self beginUploadProgressWithTitle:@"Trimming audio" subtitle:nil];
+    NSString *basename = [NSString stringWithFormat:@"sparkle-dm-audio-trim-%@", NSUUID.UUID.UUIDString];
+    __weak typeof(self) weakSelf = self;
+    [SPKTrimRenderer renderTrimAudioForSourceURL:result.sourceURL
+                                           asset:nil
+                                    startSeconds:result.startSeconds
+                                 durationSeconds:result.durationSeconds
+                                        basename:basename
+                                      completion:^(NSURL *outputURL, NSError *error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (!outputURL) {
+            [strongSelf finishUploadProgressWithErrorTitle:@"Audio trim failed"
+                                                  subtitle:error.localizedDescription ?: @"Could not trim the audio."];
+            if (sSPKAudioActiveDMUploadCoordinator == strongSelf) sSPKAudioActiveDMUploadCoordinator = nil;
+            return;
+        }
+        [strongSelf updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
+        [strongSelf sendConvertedURL:outputURL duration:result.durationSeconds];
     }];
 }
 

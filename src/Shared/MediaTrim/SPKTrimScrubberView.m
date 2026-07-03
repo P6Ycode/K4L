@@ -14,8 +14,150 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
     SPKTrimDragTargetPlayhead,
 };
 
+static NSInteger const kSPKTrimWaveformBars = 96;
+
+#pragma mark - Waveform view
+
+// Draws a vertically-centered bar waveform from normalized (0..1) peak samples.
+// Lives inside the track container in place of the filmstrip for audio trims.
+@interface SPKTrimWaveformView : UIView
+@property (nonatomic, copy, nullable) NSArray<NSNumber *> *samples;
+@end
+
+@implementation SPKTrimWaveformView
+
+- (void)setSamples:(NSArray<NSNumber *> *)samples {
+    _samples = [samples copy];
+    [self setNeedsDisplay];
+}
+
+- (void)drawRect:(CGRect)rect {
+    NSArray<NSNumber *> *samples = self.samples;
+    if (samples.count == 0) return;
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    if (!ctx) return;
+    CGContextSetFillColorWithColor(ctx, [UIColor colorWithWhite:0.92 alpha:1.0].CGColor);
+
+    CGFloat w = self.bounds.size.width;
+    CGFloat h = self.bounds.size.height;
+    NSInteger n = (NSInteger)samples.count;
+    CGFloat step = w / (CGFloat)n;
+    CGFloat barW = MAX(1.0, step - 1.5);
+    CGFloat maxBarH = MAX(2.0, h - 6.0);
+
+    for (NSInteger i = 0; i < n; i++) {
+        CGFloat amp = MAX(0.0, MIN(1.0, samples[i].doubleValue));
+        CGFloat barH = MAX(2.0, amp * maxBarH);
+        CGFloat x = i * step + (step - barW) / 2.0;
+        CGFloat y = (h - barH) / 2.0;
+        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, barW, barH)
+                                                       cornerRadius:barW / 2.0];
+        [path fill];
+    }
+}
+
+@end
+
+// Samples an asset's first audio track into `targetCount` normalized peak values
+// on a background queue, delivering the result on the main queue (nil on
+// failure). Peak-per-bucket keeps transients visible; the whole set is then
+// normalized to the loudest bucket so quiet clips still fill the strip.
+static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
+                                  void (^completion)(NSArray<NSNumber *> *_Nullable)) {
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        void (^finish)(NSArray<NSNumber *> *) = ^(NSArray<NSNumber *> *result) {
+            dispatch_async(dispatch_get_main_queue(), ^{ completion(result); });
+        };
+
+        AVAssetTrack *track = [[asset tracksWithMediaType:AVMediaTypeAudio] firstObject];
+        if (!track) { finish(nil); return; }
+
+        NSError *error = nil;
+        AVAssetReader *reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
+        if (!reader) { finish(nil); return; }
+
+        NSDictionary *settings = @{
+            AVFormatIDKey: @(kAudioFormatLinearPCM),
+            AVLinearPCMBitDepthKey: @16,
+            AVLinearPCMIsBigEndianKey: @NO,
+            AVLinearPCMIsFloatKey: @NO,
+            AVLinearPCMIsNonInterleaved: @NO,
+        };
+        AVAssetReaderTrackOutput *output = [[AVAssetReaderTrackOutput alloc] initWithTrack:track outputSettings:settings];
+        output.alwaysCopiesSampleData = NO;
+        if (![reader canAddOutput:output]) { finish(nil); return; }
+        [reader addOutput:output];
+        if (![reader startReading]) { finish(nil); return; }
+
+        // Estimate total interleaved int16 samples so we can bucket by position.
+        double sampleRate = 44100.0;
+        UInt32 channels = 1;
+        CMFormatDescriptionRef fmt = (__bridge CMFormatDescriptionRef)track.formatDescriptions.firstObject;
+        if (fmt) {
+            const AudioStreamBasicDescription *asbd = CMAudioFormatDescriptionGetStreamBasicDescription(fmt);
+            if (asbd) {
+                if (asbd->mSampleRate > 0) sampleRate = asbd->mSampleRate;
+                if (asbd->mChannelsPerFrame > 0) channels = asbd->mChannelsPerFrame;
+            }
+        }
+        double durationSeconds = CMTimeGetSeconds(asset.duration);
+        if (!isfinite(durationSeconds) || durationSeconds <= 0) durationSeconds = CMTimeGetSeconds(track.timeRange.duration);
+        int64_t estTotal = (int64_t)(MAX(0.0, durationSeconds) * sampleRate * channels);
+        if (estTotal <= 0) estTotal = targetCount; // Avoid divide-by-zero; buckets clamp below.
+
+        NSInteger count = MAX((NSInteger)1, targetCount);
+        double *peaks = calloc((size_t)count, sizeof(double));
+        if (!peaks) { finish(nil); return; }
+
+        int64_t globalIndex = 0;
+        double globalMax = 0.0;
+        while (reader.status == AVAssetReaderStatusReading) {
+            CMSampleBufferRef sampleBuffer = [output copyNextSampleBuffer];
+            if (!sampleBuffer) break;
+            CMBlockBufferRef block = CMSampleBufferGetDataBuffer(sampleBuffer);
+            if (block) {
+                size_t length = CMBlockBufferGetDataLength(block);
+                size_t int16Count = length / sizeof(int16_t);
+                if (int16Count > 0) {
+                    int16_t *data = malloc(length);
+                    if (data && CMBlockBufferCopyDataBytes(block, 0, length, data) == kCMBlockBufferNoErr) {
+                        for (size_t s = 0; s < int16Count; s++) {
+                            double amp = fabs((double)data[s]) / 32768.0;
+                            NSInteger bucket = (NSInteger)((globalIndex * count) / estTotal);
+                            if (bucket < 0) bucket = 0;
+                            if (bucket >= count) bucket = count - 1;
+                            if (amp > peaks[bucket]) peaks[bucket] = amp;
+                            if (amp > globalMax) globalMax = amp;
+                            globalIndex++;
+                        }
+                    }
+                    if (data) free(data);
+                }
+            }
+            CMSampleBufferInvalidate(sampleBuffer);
+            CFRelease(sampleBuffer);
+        }
+
+        if (reader.status == AVAssetReaderStatusFailed || globalMax <= 0.0) {
+            free(peaks);
+            finish(nil);
+            return;
+        }
+
+        NSMutableArray<NSNumber *> *result = [NSMutableArray arrayWithCapacity:(NSUInteger)count];
+        for (NSInteger i = 0; i < count; i++) {
+            // Slight gamma so mid-level detail is visible, then normalize.
+            double norm = peaks[i] / globalMax;
+            [result addObject:@(pow(norm, 0.8))];
+        }
+        free(peaks);
+        finish(result);
+    });
+}
+
 @interface SPKTrimScrubberView ()
 @property (nonatomic, strong) UIView *filmstripContainer;
+@property (nonatomic, strong) SPKTrimWaveformView *waveformView;
 @property (nonatomic, strong) NSMutableArray<UIImageView *> *thumbnailViews;
 @property (nonatomic, strong) NSMutableArray<UIImage *> *thumbnailImages;
 
@@ -58,6 +200,13 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
     _filmstripContainer.layer.cornerRadius = kSPKTrimCornerRadius;
     _filmstripContainer.layer.cornerCurve = kCACornerCurveContinuous;
     [self addSubview:_filmstripContainer];
+
+    // Waveform for audio trims; hidden until loadWaveformForAsset: switches modes.
+    _waveformView = [[SPKTrimWaveformView alloc] init];
+    _waveformView.backgroundColor = [UIColor clearColor];
+    _waveformView.userInteractionEnabled = NO;
+    _waveformView.hidden = YES;
+    [_filmstripContainer addSubview:_waveformView];
 
     UIColor *dimColor = [UIColor colorWithWhite:0.0 alpha:0.55];
     _dimLeftView = [[UIView alloc] init];
@@ -161,10 +310,10 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
     [self layoutPlayhead];
 }
 
-- (void)setSingleFrameMode:(BOOL)singleFrameMode {
-    if (_singleFrameMode == singleFrameMode) return;
-    _singleFrameMode = singleFrameMode;
-    if (singleFrameMode) {
+- (void)setFrameOnlyMode:(BOOL)frameOnlyMode {
+    if (_frameOnlyMode == frameOnlyMode) return;
+    _frameOnlyMode = frameOnlyMode;
+    if (frameOnlyMode) {
         // Snap the frame marker into the current selection if outside it.
         if (_playheadTime < _startTime || _playheadTime > _endTime) {
             _playheadTime = _startTime;
@@ -175,15 +324,36 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
 }
 
 - (void)updateControlVisibility {
-    BOOL single = _singleFrameMode;
-    _dimLeftView.hidden = single;
-    _dimRightView.hidden = single;
-    _selectionTopBorder.hidden = single;
-    _selectionBottomBorder.hidden = single;
-    _leftHandle.hidden = single;
-    _rightHandle.hidden = single;
-    _playheadView.hidden = single;
-    _frameMarkerView.hidden = !single;
+    BOOL frameOnly = _frameOnlyMode;
+    _dimLeftView.hidden = frameOnly;
+    _dimRightView.hidden = frameOnly;
+    _selectionTopBorder.hidden = frameOnly;
+    _selectionBottomBorder.hidden = frameOnly;
+    _leftHandle.hidden = frameOnly;
+    _rightHandle.hidden = frameOnly;
+    _playheadView.hidden = frameOnly;
+    _frameMarkerView.hidden = !frameOnly;
+}
+
+#pragma mark - Waveform
+
+- (void)setWaveformMode:(BOOL)waveformMode {
+    if (_waveformMode == waveformMode) return;
+    _waveformMode = waveformMode;
+    _waveformView.hidden = !waveformMode;
+    for (UIImageView *iv in self.thumbnailViews) {
+        iv.hidden = waveformMode;
+    }
+    [self setNeedsLayout];
+}
+
+- (void)loadWaveformForAsset:(AVAsset *)asset {
+    if (!asset) return;
+    self.waveformMode = YES;
+    __weak typeof(self) weakSelf = self;
+    SPKTrimSampleWaveform(asset, kSPKTrimWaveformBars, ^(NSArray<NSNumber *> *samples) {
+        weakSelf.waveformView.samples = samples;
+    });
 }
 
 #pragma mark - Thumbnails
@@ -257,18 +427,37 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
 
 #pragma mark - Layout
 
+// The filmstrip is inset by one handle-width on each side so the drag handles
+// live in the side gutters (outside the video frames), not overlapping them.
+// All time<->x math runs through this content rect, so the playhead stays within
+// the selection and never merges with a handle's edge.
+- (CGFloat)contentOriginX {
+    return kSPKTrimHandleWidth;
+}
+
+- (CGFloat)contentWidth {
+    return MAX(0.0, self.bounds.size.width - 2.0 * kSPKTrimHandleWidth);
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _filmstripContainer.frame = self.bounds;
+    CGFloat h = self.bounds.size.height;
+    _filmstripContainer.frame = CGRectMake([self contentOriginX], 0, [self contentWidth], h);
 
-    [self ensureThumbnailViews];
-    NSInteger count = self.thumbnailViews.count;
-    if (count > 0) {
-        CGFloat slotWidth = self.bounds.size.width / count;
-        for (NSInteger i = 0; i < count; i++) {
-            self.thumbnailViews[i].frame = CGRectMake(floor(i * slotWidth), 0,
-                                                      ceil(slotWidth) + 1.0,
-                                                      self.bounds.size.height);
+    if (_waveformMode) {
+        // Fills the track container's local space (0..contentWidth).
+        _waveformView.frame = _filmstripContainer.bounds;
+    } else {
+        [self ensureThumbnailViews];
+        NSInteger count = self.thumbnailViews.count;
+        if (count > 0) {
+            // Thumbnails are children of the filmstrip container, so they lay out
+            // in its local space (0..contentWidth).
+            CGFloat slotWidth = [self contentWidth] / count;
+            for (NSInteger i = 0; i < count; i++) {
+                self.thumbnailViews[i].frame = CGRectMake(floor(i * slotWidth), 0,
+                                                          ceil(slotWidth) + 1.0, h);
+            }
         }
     }
 
@@ -277,14 +466,14 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
 }
 
 - (CGFloat)xForTime:(NSTimeInterval)t {
-    if (_duration <= 0.0) return 0.0;
-    return (t / _duration) * self.bounds.size.width;
+    if (_duration <= 0.0) return [self contentOriginX];
+    return [self contentOriginX] + (t / _duration) * [self contentWidth];
 }
 
 - (NSTimeInterval)timeForX:(CGFloat)x {
-    CGFloat w = self.bounds.size.width;
+    CGFloat w = [self contentWidth];
     if (w <= 0.0) return 0.0;
-    CGFloat clamped = MAX(0.0, MIN(x, w));
+    CGFloat clamped = MAX(0.0, MIN(x - [self contentOriginX], w));
     return (clamped / w) * _duration;
 }
 
@@ -292,17 +481,20 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
     CGFloat h = self.bounds.size.height;
     CGFloat startX = [self xForTime:_startTime];
     CGFloat endX = [self xForTime:_endTime];
+    CGFloat contentLeft = [self contentOriginX];
+    CGFloat contentRight = contentLeft + [self contentWidth];
 
-    _dimLeftView.frame = CGRectMake(0, 0, startX, h);
-    _dimRightView.frame = CGRectMake(endX, 0, MAX(0, self.bounds.size.width - endX), h);
+    // Dim only the trimmed-away parts of the filmstrip (between the content edge
+    // and the selection), never the gutters.
+    _dimLeftView.frame = CGRectMake(contentLeft, 0, MAX(0, startX - contentLeft), h);
+    _dimRightView.frame = CGRectMake(endX, 0, MAX(0, contentRight - endX), h);
 
     _selectionTopBorder.frame = CGRectMake(startX, 0, MAX(0, endX - startX), kSPKTrimBorderThickness);
     _selectionBottomBorder.frame = CGRectMake(startX, h - kSPKTrimBorderThickness, MAX(0, endX - startX), kSPKTrimBorderThickness);
 
-    CGFloat leftX = MAX(0, startX - kSPKTrimHandleWidth);
-    _leftHandle.frame = CGRectMake(leftX, 0, kSPKTrimHandleWidth, h);
-    CGFloat rightX = MIN(self.bounds.size.width - kSPKTrimHandleWidth, endX);
-    _rightHandle.frame = CGRectMake(rightX, 0, kSPKTrimHandleWidth, h);
+    // Handles sit just outside the selection, in the gutters at full extent.
+    _leftHandle.frame = CGRectMake(startX - kSPKTrimHandleWidth, 0, kSPKTrimHandleWidth, h);
+    _rightHandle.frame = CGRectMake(endX, 0, kSPKTrimHandleWidth, h);
 
     [self layoutGripInHandle:_leftHandle];
     [self layoutGripInHandle:_rightHandle];
@@ -317,7 +509,7 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
 
 - (void)layoutPlayhead {
     CGFloat h = self.bounds.size.height;
-    if (_singleFrameMode) {
+    if (_frameOnlyMode) {
         CGFloat x = [self xForTime:_playheadTime];
         CGFloat markerW = 12.0;
         _frameMarkerView.frame = CGRectMake(x - markerW / 2.0, -3.0, markerW, h + 6.0);
@@ -334,7 +526,7 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
 - (void)handleTap:(UITapGestureRecognizer *)tap {
     CGPoint p = [tap locationInView:self];
     NSTimeInterval t = [self timeForX:p.x];
-    if (!_singleFrameMode) {
+    if (!_frameOnlyMode) {
         t = MAX(_startTime, MIN(t, _endTime));
     }
     self.playheadTime = t;
@@ -368,7 +560,7 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
 }
 
 - (SPKTrimDragTarget)dragTargetForPoint:(CGPoint)p {
-    if (_singleFrameMode) {
+    if (_frameOnlyMode) {
         return SPKTrimDragTargetPlayhead;
     }
     CGFloat startX = [self xForTime:_startTime];
@@ -412,7 +604,7 @@ typedef NS_ENUM(NSInteger, SPKTrimDragTarget) {
             break;
         }
         case SPKTrimDragTargetPlayhead: {
-            if (!_singleFrameMode) {
+            if (!_frameOnlyMode) {
                 t = MAX(_startTime, MIN(t, _endTime));
             }
             self.playheadTime = t;

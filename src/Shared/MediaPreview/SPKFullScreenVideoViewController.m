@@ -2,7 +2,11 @@
 #import "SPKMediaItem.h"
 #import "SPKMediaCacheManager.h"
 #import <AVFoundation/AVFoundation.h>
+#import "../Gallery/SPKGalleryFile.h"
 #import "../../Utils.h"
+
+// Tag on the audio artwork overlay so we never install it twice.
+static NSInteger const kSPKAudioArtworkOverlayTag = 0x5A0D;
 
 static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 
@@ -67,9 +71,44 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     // player still received taps (center play/pause worked) but the chrome never
     // showed. The player content is assigned later in startPlayback.
     [self ensurePlayerViewControllerIfNeeded];
+    [self installAudioArtworkOverlayIfNeeded];
     if (self.mediaItem.thumbnail) {
         self.thumbnailView.image = self.mediaItem.thumbnail;
     }
+}
+
+// For audio items, AVPlayerViewController shows its generic (QuickTime-looking)
+// audio placeholder. Cover the content region with the same crisp white EQ-bar
+// artwork the trim editor / gallery use, so expanded audio matches the tweak's
+// look. Added to the player's contentOverlayView (above the content, below the
+// transport controls, which stay tappable).
+- (void)installAudioArtworkOverlayIfNeeded {
+    if (self.mediaItem.mediaType != SPKMediaItemTypeAudio) return;
+    UIView *overlay = self.playerViewController.contentOverlayView;
+    if (!overlay || [overlay viewWithTag:kSPKAudioArtworkOverlayTag]) return;
+
+    UIView *backing = [[UIView alloc] init];
+    backing.tag = kSPKAudioArtworkOverlayTag;
+    backing.translatesAutoresizingMaskIntoConstraints = NO;
+    backing.backgroundColor = [UIColor blackColor];
+    backing.userInteractionEnabled = NO;
+    [overlay addSubview:backing];
+
+    UIImageView *art = [[UIImageView alloc] initWithImage:[SPKGalleryFile audioGlyphImageWithBarColor:[UIColor whiteColor]]];
+    art.translatesAutoresizingMaskIntoConstraints = NO;
+    art.contentMode = UIViewContentModeScaleAspectFit;
+    [backing addSubview:art];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [backing.leadingAnchor constraintEqualToAnchor:overlay.leadingAnchor],
+        [backing.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor],
+        [backing.topAnchor constraintEqualToAnchor:overlay.topAnchor],
+        [backing.bottomAnchor constraintEqualToAnchor:overlay.bottomAnchor],
+        [art.centerXAnchor constraintEqualToAnchor:backing.centerXAnchor],
+        [art.centerYAnchor constraintEqualToAnchor:backing.centerYAnchor],
+        [art.widthAnchor constraintEqualToConstant:150.0],
+        [art.heightAnchor constraintEqualToConstant:150.0],
+    ]];
 }
 
 - (void)viewDidAppear:(BOOL)animated {

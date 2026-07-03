@@ -146,6 +146,11 @@ typedef NS_ENUM(int16_t, SPKGallerySource) {
 
 + (nullable UIImage *)loadThumbnailForFile:(SPKGalleryFile *)file;
 
+/// Crisp three-bar EQ glyph (the same shape the gallery grid draws for audio)
+/// rendered in `barColor` on a transparent background. Lets dark surfaces such
+/// as the trim editor's audio pane show the bars in white without the gray card.
++ (UIImage *)audioGlyphImageWithBarColor:(UIColor *)barColor;
+
 /// Returns a human-readable label for the given source.
 + (NSString *)labelForSource:(SPKGallerySource)source;
 

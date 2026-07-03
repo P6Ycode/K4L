@@ -152,6 +152,45 @@ static NSURL *SPKTrimWriteCGImage(CGImageRef image, NSString *basename) {
                            cancelOut:cancelOut];
 }
 
+#pragma mark - Audio
+
++ (void)renderTrimAudioForSourceURL:(NSURL *)sourceURL
+                              asset:(AVAsset *)asset
+                       startSeconds:(NSTimeInterval)startSeconds
+                    durationSeconds:(NSTimeInterval)durationSeconds
+                           basename:(NSString *)basename
+                         completion:(SPKTrimRenderCompletionBlock)completion {
+    AVAsset *workingAsset = asset ?: [AVURLAsset URLAssetWithURL:sourceURL options:nil];
+    AVAssetExportSession *export = [[AVAssetExportSession alloc] initWithAsset:workingAsset
+                                                                   presetName:AVAssetExportPresetAppleM4A];
+    if (!export) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(nil, SPKTrimRendererError(@"Trimming is not available for this audio."));
+        });
+        return;
+    }
+
+    NSURL *output = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[basename stringByAppendingPathExtension:@"m4a"]]];
+    [[NSFileManager defaultManager] removeItemAtURL:output error:nil];
+
+    CMTime start = CMTimeMakeWithSeconds(startSeconds, 600);
+    CMTime duration = CMTimeMakeWithSeconds(durationSeconds, 600);
+    export.outputURL = output;
+    export.outputFileType = AVFileTypeAppleM4A;
+    export.timeRange = CMTimeRangeMake(start, duration);
+
+    [export exportAsynchronouslyWithCompletionHandler:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (export.status == AVAssetExportSessionStatusCompleted) {
+                if (completion) completion(output, nil);
+            } else {
+                NSString *desc = export.error.localizedDescription ?: @"The audio trim could not be completed.";
+                if (completion) completion(nil, SPKTrimRendererError(desc));
+            }
+        });
+    }];
+}
+
 #pragma mark - Frame
 
 + (void)renderFrameForAsset:(AVAsset *)asset
@@ -181,7 +220,7 @@ static NSURL *SPKTrimWriteCGImage(CGImageRef image, NSString *basename) {
     }];
 }
 
-// Single frame attempt. We first try an exact (zero-tolerance) extraction; on
+// Photo only attempt. We first try an exact (zero-tolerance) extraction; on
 // failure we retry once with a generous tolerance so AVFoundation can settle on
 // the nearest decodable frame instead of giving up — exactness is irrelevant for
 // a still, and zero tolerance is the usual reason DASH-derived clips fail here.

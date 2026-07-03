@@ -20,7 +20,8 @@
     self = [super init];
     if (self) {
         _mediaKind = SPKTrimMediaKindVideo;
-        _allowsSingleFrame = YES;
+        _allowsFrameOnly = YES;
+        _allowsAudioOnly = YES;
         _minimumDuration = 0.3;
         _title = @"Trim";
     }
@@ -31,6 +32,15 @@
     SPKTrimConfiguration *config = [[self alloc] init];
     config.sourceURL = videoURL;
     config.mediaKind = SPKTrimMediaKindVideo;
+    return config;
+}
+
++ (instancetype)configurationWithAudioURL:(NSURL *)audioURL {
+    SPKTrimConfiguration *config = [[self alloc] init];
+    config.sourceURL = audioURL;
+    config.mediaKind = SPKTrimMediaKindAudio;
+    config.allowsFrameOnly = NO;
+    config.title = @"Trim Audio";
     return config;
 }
 

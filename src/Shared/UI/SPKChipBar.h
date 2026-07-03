@@ -24,6 +24,12 @@ NS_ASSUME_NONNULL_BEGIN
 // If YES, allows multiple selections. If NO, acts as a segmented control. Default: NO.
 @property (nonatomic, assign) BOOL multiSelect;
 
+// If YES, scrolling is disabled and the chips are distributed to fill the bar's
+// width equally (a segmented-control-style row) using a slightly smaller font so
+// they never get clipped on narrow screens. If NO (default), the bar scrolls
+// horizontally with intrinsically-sized chips. Set before `setItems:`.
+@property (nonatomic, assign) BOOL distributesToFit;
+
 // The currently selected index (for single-select mode). Default: 0.
 @property (nonatomic, assign) NSInteger selectedIndex;
 

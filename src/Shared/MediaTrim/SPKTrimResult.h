@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Source media to render from.
 @property (nonatomic, copy) NSURL *sourceURL;
 
-/// Selection on the source timeline. For a single frame, `startSeconds` is the
+/// Selection on the source timeline. For photo only, `startSeconds` is the
 /// frame time and `durationSeconds` is 0.
 @property (nonatomic, assign) NSTimeInterval startSeconds;
 @property (nonatomic, assign) NSTimeInterval durationSeconds;
@@ -30,6 +30,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Filled by the renderer once the temp output exists.
 @property (nonatomic, copy, nullable) NSURL *outputURL;
+
+/// Optional basename (no extension) for the rendered temp file. When set, the
+/// save coordinator names the render with it instead of a random `SPKTrim-<UUID>`,
+/// so destinations that hand the file off directly (Save to Files, Share) carry
+/// the usual `epoch_username_source_date` name rather than the temp UUID. The
+/// Gallery path renames on import regardless, so it's only needed for the
+/// direct-handoff destinations.
+@property (nonatomic, copy, nullable) NSString *preferredBasename;
 
 /// The destination chosen from the editor's Done menu (save flow), or nil when
 /// Done was a plain confirm (gallery flow).

@@ -1,6 +1,8 @@
 #import "SPKTrimEditorViewController.h"
 #import "SPKTrimScrubberView.h"
 #import "../UI/SPKMediaChrome.h"
+#import "../UI/SPKChipBar.h"
+#import "../Gallery/SPKGalleryFile.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -21,7 +23,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     return [NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)];
 }
 
-@interface SPKTrimEditorViewController () <SPKTrimScrubberViewDelegate>
+@interface SPKTrimEditorViewController () <SPKTrimScrubberViewDelegate, SPKChipBarDelegate>
 @property (nonatomic, strong) SPKTrimConfiguration *configuration;
 @property (nonatomic, strong) AVURLAsset *asset;
 @property (nonatomic, strong) AVPlayer *player;
@@ -29,11 +31,15 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 @property (nonatomic, strong) id timeObserver;
 
 @property (nonatomic, strong) UIView *playerContainer;
+@property (nonatomic, strong) UIImageView *audioArtworkView;
+@property (nonatomic, assign) BOOL waveformLoaded;
 @property (nonatomic, strong) UIButton *playPauseButton;
 @property (nonatomic, strong) UIView *bottomContent;
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) SPKTrimScrubberView *scrubber;
-@property (nonatomic, strong) UISegmentedControl *modeControl;
+@property (nonatomic, strong) SPKChipBar *modeChips;
+@property (nonatomic, copy) NSArray<NSNumber *> *availableModes;
+@property (nonatomic, strong) UIBarButtonItem *doneMenuItem;
 
 @property (nonatomic, assign) BOOL isPlaying;
 @property (nonatomic, assign) BOOL playerReady;
@@ -89,6 +95,25 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     [super viewDidLoad];
     self.view.backgroundColor = [SPKUtils SPKColor_InstagramBackground] ?: [UIColor blackColor];
 
+    NSMutableArray<NSNumber *> *modes = [NSMutableArray array];
+    if (_configuration.mediaKind == SPKTrimMediaKindVideo) {
+        [modes addObject:@(SPKTrimResultModeTrimmedVideo)];
+        if (_configuration.allowsFrameOnly) {
+            [modes addObject:@(SPKTrimResultModeFrameOnly)];
+        }
+        // A video can also be cut down to just its audio track — the selected
+        // range is exported as an .m4a, discarding the picture (renderer +
+        // save/route coordinators already handle SPKTrimResultModeTrimmedAudio).
+        // A silent video simply surfaces a render error, mirroring frame only,
+        // which likewise doesn't pre-validate the source.
+        if (_configuration.allowsAudioOnly) {
+            [modes addObject:@(SPKTrimResultModeTrimmedAudio)];
+        }
+    } else if (_configuration.mediaKind == SPKTrimMediaKindAudio) {
+        [modes addObject:@(SPKTrimResultModeTrimmedAudio)];
+    }
+    _availableModes = [modes copy];
+
     [self setupChrome];
     [self setupPlayerContainer];
     [self setupBottomContent];
@@ -97,11 +122,9 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    BOOL showToolbar = _configuration.allowsSingleFrame;
-    [self.navigationController setToolbarHidden:!showToolbar animated:NO];
-    if (showToolbar) {
-        SPKMediaChromeConfigureBottomToolbar(self.navigationController.toolbar);
-    }
+    // The mode picker is an in-content chip bar (see setupBottomContent), so the
+    // native bottom toolbar stays hidden.
+    [self.navigationController setToolbarHidden:YES animated:NO];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -125,22 +148,12 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     UIBarButtonItem *doneItem;
     if (_configuration.doneOptions.count > 0) {
         doneItem = SPKMediaChromeTopBarMenuButtonItem(@"check", [self buildDoneMenu], @"Save");
+        self.doneMenuItem = doneItem;
     } else {
         doneItem = SPKMediaChromeTopBarButtonItemWithStyle(@"check", self, @selector(doneTapped), UIBarButtonItemStyleDone, [SPKUtils SPKColor_InstagramBlue], @"Save");
     }
     SPKMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ cancelItem ]);
     SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ doneItem ]);
-
-    // The Trim / Single-Frame picker is the editor's primary mode switch, so it
-    // lives in the bottom toolbar (a Liquid Glass capsule on iOS 26). Play/pause
-    // is a dedicated button beside the scrubber (Photos-style).
-    if (_configuration.allowsSingleFrame) {
-        _modeControl = [[UISegmentedControl alloc] initWithItems:@[ @"Trim", @"Single Frame" ]];
-        _modeControl.selectedSegmentIndex = 0;
-        [_modeControl addTarget:self action:@selector(modeChanged) forControlEvents:UIControlEventValueChanged];
-        UIBarButtonItem *modeItem = [[UIBarButtonItem alloc] initWithCustomView:_modeControl];
-        self.toolbarItems = SPKMediaChromeBottomToolbarItems(@[ modeItem ]);
-    }
 }
 
 - (void)setupPlayerContainer {
@@ -190,8 +203,6 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         [_bottomContent.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:14.0],
         [_bottomContent.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-14.0],
         [_bottomContent.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8.0],
-        // Video pane fills the gap above the controls.
-        [_playerContainer.bottomAnchor constraintEqualToAnchor:_bottomContent.topAnchor constant:-8.0],
 
         [_timeLabel.topAnchor constraintEqualToAnchor:_bottomContent.topAnchor],
         [_timeLabel.centerXAnchor constraintEqualToAnchor:_bottomContent.centerXAnchor],
@@ -207,6 +218,78 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         [_scrubber.heightAnchor constraintEqualToConstant:52.0],
         [_scrubber.bottomAnchor constraintEqualToAnchor:_bottomContent.bottomAnchor],
     ]];
+
+    // The mode picker is a chip bar sitting above the controls (replacing the
+    // old segmented control). It is only shown when there is more than one mode.
+    // The chips fill the width equally and never scroll (distributesToFit), so all
+    // modes stay visible even on narrow screens.
+    if (self.availableModes.count > 1) {
+        _modeChips = [[SPKChipBar alloc] init];
+        _modeChips.translatesAutoresizingMaskIntoConstraints = NO;
+        _modeChips.delegate = self;
+        _modeChips.distributesToFit = YES;
+        [self rebuildModeChipItems];
+        _modeChips.selectedIndex = 0;
+        [self.view addSubview:_modeChips];
+        [NSLayoutConstraint activateConstraints:@[
+            [_modeChips.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
+            [_modeChips.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
+            [_modeChips.bottomAnchor constraintEqualToAnchor:_bottomContent.topAnchor constant:-4.0],
+            // Video pane fills the gap above the mode picker.
+            [_playerContainer.bottomAnchor constraintEqualToAnchor:_modeChips.topAnchor constant:-4.0],
+        ]];
+    } else {
+        // No mode row: the video pane pins directly above the controls.
+        [_playerContainer.bottomAnchor constraintEqualToAnchor:_bottomContent.topAnchor constant:-8.0].active = YES;
+    }
+}
+
+// (Re)builds the chip titles/icons from `availableModes` — called on setup and
+// again if a mode is pruned after the asset loads (e.g. a silent video drops the
+// Audio Only chip).
+- (void)rebuildModeChipItems {
+    if (!_modeChips) return;
+    NSMutableArray<NSString *> *titles = [NSMutableArray array];
+    NSMutableArray<NSString *> *symbols = [NSMutableArray array];
+    NSMutableArray<NSString *> *selectedSymbols = [NSMutableArray array];
+    for (NSNumber *modeNum in self.availableModes) {
+        SPKTrimResultMode mode = modeNum.integerValue;
+        if (mode == SPKTrimResultModeTrimmedVideo) {
+            [titles addObject:@"Trim Video"];
+            [symbols addObject:@"video"];
+            [selectedSymbols addObject:@"video_filled"];
+        } else if (mode == SPKTrimResultModeFrameOnly) {
+            [titles addObject:@"Frame Only"];
+            [symbols addObject:@"photo"];
+            [selectedSymbols addObject:@"photo_filled"];
+        } else if (mode == SPKTrimResultModeTrimmedAudio) {
+            [titles addObject:@"Audio Only"];
+            [symbols addObject:@"audio"];
+            [selectedSymbols addObject:@"audio_filled"];
+        }
+    }
+    [_modeChips setItems:titles symbols:symbols selectedSymbols:selectedSymbols];
+}
+
+// Removes the Audio Only mode once the asset is known to have no audio track.
+// (Modes are decided synchronously in viewDidLoad, before the async track load,
+// so the chip is added optimistically and pruned here if the video is silent.)
+- (void)pruneAudioModeIfSilent {
+    if (![self.availableModes containsObject:@(SPKTrimResultModeTrimmedAudio)]) return;
+    if ([self.asset tracksWithMediaType:AVMediaTypeAudio].count > 0) return;
+
+    NSMutableArray<NSNumber *> *modes = [self.availableModes mutableCopy];
+    [modes removeObject:@(SPKTrimResultModeTrimmedAudio)];
+    self.availableModes = modes;
+
+    // If the currently-selected chip was after the removed one, clamp it.
+    if (_modeChips.selectedIndex >= (NSInteger)modes.count) {
+        _modeChips.selectedIndex = 0;
+    }
+    [self rebuildModeChipItems];
+    // Nothing but Trim Video left (only possible when single-frame is disabled):
+    // hide the lone chip.
+    _modeChips.hidden = (modes.count <= 1);
 }
 
 #pragma mark - Asset loading
@@ -224,7 +307,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
             NSError *err = nil;
             AVKeyValueStatus status = [asset statusOfValueForKey:@"duration" error:&err];
             if (status != AVKeyValueStatusLoaded) {
-                [strongSelf failWithMessage:@"This video could not be opened for trimming."];
+                [strongSelf failWithMessage:@"This file could not be opened for trimming."];
                 return;
             }
             [strongSelf configurePlayerAndScrubber];
@@ -235,7 +318,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 - (void)configurePlayerAndScrubber {
     NSTimeInterval duration = CMTimeGetSeconds(self.asset.duration);
     if (duration <= 0.0 || !isfinite(duration)) {
-        [self failWithMessage:@"This video has no playable duration."];
+        [self failWithMessage:@"This file has no playable duration."];
         return;
     }
 
@@ -243,15 +326,25 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     self.player = [AVPlayer playerWithPlayerItem:item];
     self.player.actionAtItemEnd = AVPlayerActionAtItemEndPause;
 
-    self.playerLayer = [AVPlayerLayer playerLayerWithPlayer:self.player];
-    self.playerLayer.videoGravity = AVLayerVideoGravityResizeAspect;
-    self.playerLayer.frame = self.playerContainer.bounds;
-    [self.playerContainer.layer insertSublayer:self.playerLayer atIndex:0];
+    BOOL isAudio = (self.configuration.mediaKind == SPKTrimMediaKindAudio);
+    if (!isAudio) {
+        // Video (or a video that can switch to Audio Only): keep the picture in a
+        // player layer; the audio artwork/waveform are swapped in on demand.
+        self.playerLayer = [AVPlayerLayer playerLayerWithPlayer:self.player];
+        self.playerLayer.videoGravity = AVLayerVideoGravityResizeAspect;
+        self.playerLayer.frame = self.playerContainer.bounds;
+        [self.playerContainer.layer insertSublayer:self.playerLayer atIndex:0];
+    }
 
     self.scrubber.duration = duration;
     [self.scrubber setStartTime:0.0 endTime:duration];
     self.scrubber.playheadTime = 0.0;
-    [self.scrubber loadThumbnailsForAsset:self.asset];
+    if (isAudio) {
+        // No video track — audio album-art in the pane + waveform in the scrubber.
+        [self setAudioPresentation:YES];
+    } else {
+        [self.scrubber loadThumbnailsForAsset:self.asset];
+    }
 
     __weak typeof(self) weakSelf = self;
     self.timeObserver = [self.player addPeriodicTimeObserverForInterval:CMTimeMake(1, 30)
@@ -263,12 +356,58 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     self.playerReady = YES;
     [self updateTimeLabel];
     [self updatePlaybackControls];
+    [self pruneAudioModeIfSilent];
+}
+
+// Lazily builds the centered audio "album art" — the gallery's crisp EQ bars,
+// drawn in IG's white text color (no gray card) so they read on the editor's
+// black pane. Created hidden; shown by -setAudioPresentation:.
+- (UIImageView *)ensureAudioArtworkView {
+    if (_audioArtworkView) return _audioArtworkView;
+    // Resolve the dynamic text color against dark (the editor is always dark) so
+    // the baked-in bar image is white regardless of the drawing trait collection.
+    UIColor *barColor = [[SPKUtils SPKColor_InstagramPrimaryText]
+        resolvedColorWithTraitCollection:[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark]]
+        ?: [UIColor whiteColor];
+    UIImageView *art = [[UIImageView alloc] initWithImage:[SPKGalleryFile audioGlyphImageWithBarColor:barColor]];
+    art.translatesAutoresizingMaskIntoConstraints = NO;
+    art.contentMode = UIViewContentModeScaleAspectFit;
+    art.hidden = YES;
+    [self.playerContainer addSubview:art];
+    [NSLayoutConstraint activateConstraints:@[
+        [art.centerXAnchor constraintEqualToAnchor:self.playerContainer.centerXAnchor],
+        [art.centerYAnchor constraintEqualToAnchor:self.playerContainer.centerYAnchor],
+        [art.widthAnchor constraintEqualToConstant:150.0],
+        [art.heightAnchor constraintEqualToConstant:150.0],
+    ]];
+    _audioArtworkView = art;
+    return art;
+}
+
+// Toggles the pane between the video picture and the audio trimmer look (album
+// art + waveform). Used both by pure-audio trims and by a video trim switching
+// to the "Audio Only" mode. Playback keeps running from the same AVPlayer — only
+// the picture is swapped for the artwork.
+- (void)setAudioPresentation:(BOOL)audio {
+    self.playerLayer.hidden = audio;
+    [self ensureAudioArtworkView].hidden = !audio;
+    if (audio) {
+        // loadWaveformForAsset: also flips the scrubber into waveform mode.
+        if (!self.waveformLoaded) {
+            self.waveformLoaded = YES;
+            [self.scrubber loadWaveformForAsset:self.asset];
+        } else {
+            self.scrubber.waveformMode = YES;
+        }
+    } else {
+        self.scrubber.waveformMode = NO;
+    }
 }
 
 #pragma mark - Playback
 
 - (void)playbackTimeChanged:(NSTimeInterval)t {
-    if (self.scrubberInteracting || self.scrubber.isSingleFrameMode) return;
+    if (self.scrubberInteracting || self.scrubber.isFrameOnlyMode) return;
     self.scrubber.playheadTime = t;
     [self updateTimeLabel];
     // Loop within the selected range.
@@ -278,7 +417,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 }
 
 - (void)togglePlayback {
-    if (self.scrubber.isSingleFrameMode || !self.player) return;
+    if (self.scrubber.isFrameOnlyMode || !self.player) return;
     if (self.isPlaying) {
         [self.player pause];
         self.isPlaying = NO;
@@ -296,7 +435,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // Swaps the play/pause glyph and disables the control in single-frame mode
 // (which has no playback).
 - (void)updatePlaybackControls {
-    BOOL canPlay = self.playerReady && !self.scrubber.isSingleFrameMode;
+    BOOL canPlay = self.playerReady && !self.scrubber.isFrameOnlyMode;
     [self.playPauseButton setImage:SPKTrimPlayerIcon(self.isPlaying ? @"video_pause" : @"video_play", 36.0)
                           forState:UIControlStateNormal];
     self.playPauseButton.accessibilityLabel = self.isPlaying ? @"Pause" : @"Play";
@@ -311,23 +450,40 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 
 #pragma mark - Mode
 
-- (void)modeChanged {
-    BOOL single = (self.modeControl.selectedSegmentIndex == 1);
-    if (single) {
+- (void)chipBar:(SPKChipBar *)bar didSelectIndex:(NSInteger)index {
+    [self applyMode:index];
+}
+
+- (void)applyMode:(NSInteger)index {
+    SPKTrimResultMode mode = SPKTrimResultModeTrimmedVideo;
+    if (index >= 0 && index < (NSInteger)self.availableModes.count) {
+        mode = self.availableModes[index].integerValue;
+    }
+    BOOL frameOnly = (mode == SPKTrimResultModeFrameOnly);
+    BOOL audio = (mode == SPKTrimResultModeTrimmedAudio);
+    // Audio Only reconfigures a video trim into the audio trimmer (waveform +
+    // album art, picture hidden); the other modes restore the video picture. The
+    // current selection carries over, so if the user never touches the scrubber
+    // the full clip's audio is exported.
+    if (self.configuration.mediaKind == SPKTrimMediaKindVideo) {
+        [self setAudioPresentation:audio];
+    }
+    if (frameOnly) {
         [self.player pause];
         self.isPlaying = NO;
-        self.scrubber.singleFrameMode = YES;
+        self.scrubber.frameOnlyMode = YES;
         [self seekToTime:self.scrubber.frameTime];
     } else {
-        self.scrubber.singleFrameMode = NO;
+        self.scrubber.frameOnlyMode = NO;
         [self seekToTime:self.scrubber.startTime];
     }
     [self updatePlaybackControls];
     [self updateTimeLabel];
+    [self refreshDoneMenu];
 }
 
 - (void)updateTimeLabel {
-    if (self.scrubber.isSingleFrameMode) {
+    if (self.scrubber.isFrameOnlyMode) {
         self.timeLabel.text = [NSString stringWithFormat:@"Frame • %@", SPKTrimFormatTime(self.scrubber.frameTime)];
         return;
     }
@@ -380,21 +536,57 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // coordinator, so the app stays usable and the editor never blocks behind a
 // full-screen overlay.
 - (UIMenu *)buildDoneMenu {
+    // In Audio Only mode the output is an .m4a, which Photos can't hold — swap any
+    // "Save to Photos" destination for "Save to Files" so the menu matches what
+    // will actually be produced. The menu is rebuilt on mode change (applyMode:).
+    BOOL audioMode = ([self currentSelectedMode] == SPKTrimResultModeTrimmedAudio);
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
     __weak typeof(self) weakSelf = self;
     for (SPKTrimDoneOption *option in self.configuration.doneOptions) {
-        UIImage *image = option.iconName.length > 0
-            ? [SPKAssetUtils instagramIconNamed:option.iconName pointSize:22.0]
+        NSString *title = option.title;
+        NSString *identifier = option.identifier;
+        NSString *iconName = option.iconName;
+        if (audioMode && [identifier isEqualToString:@"photos"]) {
+            title = @"Save to Files";
+            identifier = @"files";
+            iconName = @"audio_download";
+        }
+        UIImage *image = iconName.length > 0
+            ? [SPKAssetUtils instagramIconNamed:iconName pointSize:22.0]
             : nil;
-        UIAction *action = [UIAction actionWithTitle:option.title
+        UIAction *action = [UIAction actionWithTitle:title
                                                image:image
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
-            [weakSelf finishWithDestinationTag:option.identifier];
+            [weakSelf finishWithDestinationTag:identifier];
         }];
         [children addObject:action];
     }
     return [UIMenu menuWithTitle:@"" children:children];
+}
+
+// The mode currently chosen in the chip bar (or the sole/implicit mode).
+- (SPKTrimResultMode)currentSelectedMode {
+    if (self.availableModes.count > 1) {
+        NSInteger i = self.modeChips.selectedIndex;
+        if (i >= 0 && i < (NSInteger)self.availableModes.count) {
+            return self.availableModes[i].integerValue;
+        }
+    } else if (self.availableModes.count == 1) {
+        return self.availableModes.firstObject.integerValue;
+    }
+    return (self.configuration.mediaKind == SPKTrimMediaKindAudio)
+        ? SPKTrimResultModeTrimmedAudio
+        : SPKTrimResultModeTrimmedVideo;
+}
+
+// Reassigns the Done menu's button so it reflects the current mode (see
+// buildDoneMenu's Photos→Files swap). No-op when Done is a plain confirm button.
+- (void)refreshDoneMenu {
+    UIView *custom = self.doneMenuItem.customView;
+    if ([custom isKindOfClass:[UIButton class]]) {
+        ((UIButton *)custom).menu = [self buildDoneMenu];
+    }
 }
 
 - (void)doneTapped {
@@ -405,17 +597,24 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     [self.player pause];
     self.isPlaying = NO;
 
+    SPKTrimResultMode currentMode = [self currentSelectedMode];
+
     SPKTrimResult *result;
-    if (self.scrubber.isSingleFrameMode) {
-        result = [SPKTrimResult requestWithMode:SPKTrimResultModeSingleFrame
-                                      sourceURL:self.configuration.sourceURL
-                                   startSeconds:self.scrubber.frameTime
-                                durationSeconds:0.0];
+    if (currentMode == SPKTrimResultModeFrameOnly) {
+        result = [SPKTrimResult requestWithMode:SPKTrimResultModeFrameOnly
+                                       sourceURL:self.configuration.sourceURL
+                                    startSeconds:self.scrubber.frameTime
+                                 durationSeconds:0.0];
+    } else if (currentMode == SPKTrimResultModeTrimmedAudio) {
+        result = [SPKTrimResult requestWithMode:SPKTrimResultModeTrimmedAudio
+                                       sourceURL:self.configuration.sourceURL
+                                    startSeconds:self.scrubber.startTime
+                                 durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
     } else {
         result = [SPKTrimResult requestWithMode:SPKTrimResultModeTrimmedVideo
-                                      sourceURL:self.configuration.sourceURL
-                                   startSeconds:self.scrubber.startTime
-                                durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
+                                       sourceURL:self.configuration.sourceURL
+                                    startSeconds:self.scrubber.startTime
+                                 durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
     }
     result.destinationTag = destinationTag;
     [self finishWithResult:result];

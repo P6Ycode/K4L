@@ -656,9 +656,11 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   [primary addObject:_shareItem];
   [primary addObject:_clipboardItem];
 
-  // Trim is video-only and breaks out into its own trailing capsule so it reads
+  // Trim (video or audio) breaks out into its own trailing capsule so it reads
   // as a distinct action rather than crowding the save/share group.
-  if (_trimItem && [self currentItem].mediaType == SPKMediaItemTypeVideo) {
+  SPKMediaItemType currentType = [self currentItem].mediaType;
+  if (_trimItem && (currentType == SPKMediaItemTypeVideo ||
+                    currentType == SPKMediaItemTypeAudio)) {
     [trailing addObject:_trimItem];
   }
 
@@ -1151,21 +1153,23 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 
 - (void)trimCurrentItem {
   SPKMediaItem *item = [self currentItem];
-  if (!item || item.mediaType != SPKMediaItemTypeVideo) {
+  BOOL isAudio = (item.mediaType == SPKMediaItemTypeAudio);
+  if (!item || (item.mediaType != SPKMediaItemTypeVideo && !isAudio)) {
     return;
   }
   NSURL *url = item.resolvedFileURL ?: item.fileURL;
   if (!url || ![[NSFileManager defaultManager] fileExistsAtPath:url.path]) {
     SPKNotify(@"spk.trim.preview", @"Cannot trim",
-              @"The video file is unavailable.", @"error_filled",
+              @"The media file is unavailable.", @"error_filled",
               SPKNotificationToneError);
     return;
   }
   // Pause the preview's playback so its audio stops while the editor is open.
   [[self currentVideoViewController] pause];
 
-  SPKTrimConfiguration *config =
-      [SPKTrimConfiguration configurationWithVideoURL:url];
+  SPKTrimConfiguration *config = isAudio
+      ? [SPKTrimConfiguration configurationWithAudioURL:url]
+      : [SPKTrimConfiguration configurationWithVideoURL:url];
 
   // Gallery-origin files keep the Replace / Save-as-Copy flow (handled after
   // dismiss). Expanded Instagram media (stories, feed, reels, DMs) instead pick
@@ -1174,12 +1178,18 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   // Gallery (and carries source attribution so the filename isn't media_other_...).
   BOOL fromGallery = (item.galleryFile != nil);
   if (!fromGallery) {
-    config.doneOptions = @[
-      [SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
-      [SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
-      [SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
-      [SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
-    ];
+    NSMutableArray<SPKTrimDoneOption *> *options = [NSMutableArray array];
+    // Photos can't hold an audio file, so for audio offer "Save to Files"
+    // (broadly available for audio) in its place.
+    if (isAudio) {
+      [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Files" identifier:@"files" iconName:@"audio_download"]];
+    } else {
+      [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"]];
+    }
+    [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"]];
+    [options addObject:[SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"]];
+    [options addObject:[SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"]];
+    config.doneOptions = options;
   }
 
   __weak typeof(self) weakSelf = self;

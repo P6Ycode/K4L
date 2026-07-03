@@ -1187,57 +1187,67 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     });
 }
 
+// Draws the three rounded EQ bars (short / tall / short) centered in `size`,
+// filled with `barColor`. Shared by the gallery grid's gray-card placeholder and
+// the trim editor's audio pane (white bars on black).
+static void SPKGalleryDrawAudioBars(CGSize size, UIColor *barColor) {
+    [barColor setFill];
+
+    CGFloat const w = 12.0;
+    CGFloat const s = 28.0;
+    CGFloat const h_middle = 130.0;
+    CGFloat const h_side = 85.0;
+    CGFloat const cx = size.width / 2.0;
+    CGFloat const cy = size.height / 2.0;
+
+    // Left bar
+    CGRect leftRect = CGRectMake(cx - w/2.0 - s - w, cy - h_side/2.0, w, h_side);
+    [[UIBezierPath bezierPathWithRoundedRect:leftRect cornerRadius:w/2.0] fill];
+
+    // Middle bar
+    CGRect middleRect = CGRectMake(cx - w/2.0, cy - h_middle/2.0, w, h_middle);
+    [[UIBezierPath bezierPathWithRoundedRect:middleRect cornerRadius:w/2.0] fill];
+
+    // Right bar
+    CGRect rightRect = CGRectMake(cx + w/2.0 + s, cy - h_side/2.0, w, h_side);
+    [[UIBezierPath bezierPathWithRoundedRect:rightRect cornerRadius:w/2.0] fill];
+}
+
 static UIImage *SPKGalleryAudioPlaceholderImage(void) {
-    UIUserInterfaceStyle style = UIUserInterfaceStyleLight;
-    style = [UITraitCollection currentTraitCollection].userInterfaceStyle;
-    
+    UIUserInterfaceStyle style = [UITraitCollection currentTraitCollection].userInterfaceStyle;
+
     static NSMutableDictionary<NSNumber *, UIImage *> *cachedImages = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         cachedImages = [NSMutableDictionary dictionary];
     });
-    
+
     UIImage *cached = cachedImages[@(style)];
     if (cached) {
         return cached;
     }
-    
+
     CGSize size = CGSizeMake(kThumbnailSize, kThumbnailSize);
     UIGraphicsBeginImageContextWithOptions(size, YES, 0.0);
-    
     [[SPKUtils SPKColor_InstagramTertiaryBackground] setFill];
     UIRectFill(CGRectMake(0, 0, size.width, size.height));
-    
-    UIColor *tintColor = [SPKUtils SPKColor_InstagramSecondaryText];
-    [tintColor setFill];
-    
-    CGFloat const w = 12.0;
-    CGFloat const s = 28.0;
-    CGFloat const h_middle = 130.0;
-    CGFloat const h_side = 85.0;
-    
-    // Left bar
-    CGRect leftRect = CGRectMake(150.0 - w/2.0 - s - w, 150.0 - h_side/2.0, w, h_side);
-    UIBezierPath *leftPath = [UIBezierPath bezierPathWithRoundedRect:leftRect cornerRadius:w/2.0];
-    [leftPath fill];
-    
-    // Middle bar
-    CGRect middleRect = CGRectMake(150.0 - w/2.0, 150.0 - h_middle/2.0, w, h_middle);
-    UIBezierPath *middlePath = [UIBezierPath bezierPathWithRoundedRect:middleRect cornerRadius:w/2.0];
-    [middlePath fill];
-    
-    // Right bar
-    CGRect rightRect = CGRectMake(150.0 + w/2.0 + s, 150.0 - h_side/2.0, w, h_side);
-    UIBezierPath *rightPath = [UIBezierPath bezierPathWithRoundedRect:rightRect cornerRadius:w/2.0];
-    [rightPath fill];
-    
+    SPKGalleryDrawAudioBars(size, [SPKUtils SPKColor_InstagramSecondaryText]);
     UIImage *thumb = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
+
     if (thumb) {
         cachedImages[@(style)] = thumb;
     }
     return thumb;
+}
+
++ (UIImage *)audioGlyphImageWithBarColor:(UIColor *)barColor {
+    CGSize size = CGSizeMake(kThumbnailSize, kThumbnailSize);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);  // transparent background
+    SPKGalleryDrawAudioBars(size, barColor ?: [UIColor whiteColor]);
+    UIImage *glyph = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return glyph;
 }
 
 + (UIImage *)loadThumbnailForFile:(SPKGalleryFile *)file {

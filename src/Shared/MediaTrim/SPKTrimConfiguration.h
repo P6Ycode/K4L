@@ -28,9 +28,14 @@ NS_ASSUME_NONNULL_BEGIN
 /// What we're editing. Defaults to `SPKTrimMediaKindVideo`.
 @property (nonatomic, assign) SPKTrimMediaKind mediaKind;
 
-/// When YES, the editor exposes the "Single frame" mode that exports a still
+/// When YES, the editor exposes the "Frame only" mode that exports a still
 /// image instead of a clip. Only meaningful for video. Defaults to YES.
-@property (nonatomic, assign) BOOL allowsSingleFrame;
+@property (nonatomic, assign) BOOL allowsFrameOnly;
+
+/// When YES, a video trim also offers an "Audio Only" mode that exports the
+/// selected range as an .m4a, discarding the picture. Only meaningful for video
+/// (an audio trim is already audio-only). Defaults to YES.
+@property (nonatomic, assign) BOOL allowsAudioOnly;
 
 /// Shortest selectable clip, in seconds. Prevents a degenerate zero-length
 /// range. Defaults to 0.3.
@@ -45,6 +50,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) NSArray<SPKTrimDoneOption *> *doneOptions;
 
 + (instancetype)configurationWithVideoURL:(NSURL *)videoURL;
+
+/// Audio trim: sets `mediaKind` to Audio, disables single-frame, and titles the
+/// editor "Trim Audio". The editor renders a waveform instead of a filmstrip.
++ (instancetype)configurationWithAudioURL:(NSURL *)audioURL;
 
 @end
 

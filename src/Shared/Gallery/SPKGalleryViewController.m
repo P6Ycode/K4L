@@ -1485,7 +1485,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                              handler:^(UIAction *a) { [weakSelf moveFile:file]; }];
 
     UIAction *trimAction = nil;
-    if (file.mediaType == SPKGalleryMediaTypeVideo) {
+    if (file.mediaType == SPKGalleryMediaTypeVideo || file.mediaType == SPKGalleryMediaTypeAudio) {
         trimAction = [UIAction actionWithTitle:@"Trim"
                                          image:SPKGalleryMenuActionIcon(@"trim")
                                     identifier:nil
@@ -1813,7 +1813,9 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         SPKNotify(@"spk.trim.gallery", @"Cannot trim", @"The original file is missing.", @"error_filled", SPKNotificationToneError);
         return;
     }
-    SPKTrimConfiguration *config = [SPKTrimConfiguration configurationWithVideoURL:url];
+    SPKTrimConfiguration *config = (file.mediaType == SPKGalleryMediaTypeAudio)
+        ? [SPKTrimConfiguration configurationWithAudioURL:url]
+        : [SPKTrimConfiguration configurationWithVideoURL:url];
     __weak typeof(self) weakSelf = self;
     [SPKTrimEditorViewController presentWithConfiguration:config
                                                     from:self

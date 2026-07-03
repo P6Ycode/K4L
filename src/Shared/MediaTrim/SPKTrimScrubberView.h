@@ -21,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Photos-style trim bar: a filmstrip of thumbnails with two draggable in/out
 /// handles, a dimmed region outside the selection, and a draggable playhead.
-/// Toggling `singleFrameMode` collapses the UI to a single frame-picker marker.
+/// Toggling `frameOnlyMode` collapses the UI to a frame-picker marker.
 @interface SPKTrimScrubberView : UIView
 
 @property (nonatomic, weak) id<SPKTrimScrubberViewDelegate> delegate;
@@ -35,17 +35,26 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readonly) NSTimeInterval endTime;
 
 /// Moves the playhead indicator without notifying the delegate. Use to reflect
-/// playback position. In single-frame mode this is the picked frame time.
+/// playback position. In frame only mode this is the picked frame time.
 @property (nonatomic, assign) NSTimeInterval playheadTime;
 
-/// When YES, hides the in/out handles and shows a single frame-picker marker.
-@property (nonatomic, assign, getter=isSingleFrameMode) BOOL singleFrameMode;
+/// When YES, hides the in/out handles and shows a frame-picker marker.
+@property (nonatomic, assign, getter=isFrameOnlyMode) BOOL frameOnlyMode;
 
-/// Convenience: the frame time when in single-frame mode (== playheadTime).
+/// When YES, the track renders an audio waveform instead of a video filmstrip.
+/// Set implicitly by `loadWaveformForAsset:`. Frame only mode is not used with
+/// audio.
+@property (nonatomic, assign, getter=isWaveformMode) BOOL waveformMode;
+
+/// Convenience: the frame time when in frame only mode (== playheadTime).
 @property (nonatomic, assign, readonly) NSTimeInterval frameTime;
 
 /// Kicks off async thumbnail generation for the filmstrip.
 - (void)loadThumbnailsForAsset:(AVAsset *)asset;
+
+/// Kicks off async waveform sampling for the audio track and switches the track
+/// into waveform mode. Use instead of `loadThumbnailsForAsset:` for audio.
+- (void)loadWaveformForAsset:(AVAsset *)asset;
 
 /// Sets both handles at once (e.g. to initialize the full range).
 - (void)setStartTime:(NSTimeInterval)start endTime:(NSTimeInterval)end;

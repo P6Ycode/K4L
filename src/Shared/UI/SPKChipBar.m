@@ -9,6 +9,7 @@
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *selection;
 @property (nonatomic, copy) NSArray<NSString *> *symbols;
 @property (nonatomic, copy) NSArray<NSString *> *selectedSymbols;
+@property (nonatomic, strong) NSLayoutConstraint *fitWidthConstraint;
 @end
 
 @implementation SPKChipBar
@@ -51,6 +52,28 @@
 
 - (CGSize)intrinsicContentSize { return CGSizeMake(UIViewNoIntrinsicMetric, 50); }
 
+- (void)setDistributesToFit:(BOOL)distributesToFit {
+    if (_distributesToFit == distributesToFit && self.fitWidthConstraint) return;
+    _distributesToFit = distributesToFit;
+    self.scroll.scrollEnabled = !distributesToFit;
+    self.stack.distribution = distributesToFit ? UIStackViewDistributionFillEqually
+                                               : UIStackViewDistributionFill;
+    if (!self.fitWidthConstraint) {
+        // Fill the visible width minus the scroll's symmetric content inset, so
+        // the equally-distributed chips span the bar without scrolling.
+        self.fitWidthConstraint = [self.stack.widthAnchor
+            constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor
+                           constant:-(self.scroll.contentInset.left + self.scroll.contentInset.right)];
+    }
+    self.fitWidthConstraint.active = distributesToFit;
+}
+
+// Full-size font/icons at all times; on narrow screens the fill-mode chips let
+// their titles auto-shrink (adjustsFontSizeToFitWidth) rather than the whole row
+// shrinking regardless of screen size.
+- (CGFloat)chipFontSize { return 13.0; }
+- (CGFloat)chipIconPointSize { return 14.0; }
+
 - (void)setItems:(NSArray<NSString *> *)titles symbols:(NSArray<NSString *> *)symbols {
     [self setItems:titles symbols:symbols selectedSymbols:nil];
 }
@@ -68,12 +91,19 @@
     for (NSInteger i = 0; i < (NSInteger)titles.count; i++) {
         NSString *sym = (i < (NSInteger)symbols.count) ? symbols[i] : nil;
         UIButton *c = [UIButton buttonWithType:UIButtonTypeSystem];
-        c.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        c.titleLabel.font = [UIFont systemFontOfSize:[self chipFontSize] weight:UIFontWeightSemibold];
+        // In fill mode the chips share the width, so let a long label shrink a
+        // touch rather than truncate.
+        c.titleLabel.adjustsFontSizeToFitWidth = self.distributesToFit;
+        c.titleLabel.minimumScaleFactor = self.distributesToFit ? 0.7 : 1.0;
+        c.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         [c setTitle:titles[i] forState:UIControlStateNormal];
         if (sym.length) {
-            UIImage *image = [SPKAssetUtils instagramIconNamed:sym pointSize:14.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+            UIImage *image = [SPKAssetUtils instagramIconNamed:sym pointSize:[self chipIconPointSize] renderingMode:UIImageRenderingModeAlwaysTemplate];
             [c setImage:image forState:UIControlStateNormal];
             c.imageView.contentMode = UIViewContentModeScaleAspectFit;
+            // Right inset (18) balances the -6 titleEdgeInset so the icon-side and
+            // text-side padding read symmetrically.
             c.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, -6);
             c.contentEdgeInsets = UIEdgeInsetsMake(7, 12, 7, 18);
         } else {
@@ -151,7 +181,7 @@
         NSString *selSym = (selected && i < (NSInteger)self.selectedSymbols.count) ? self.selectedSymbols[i] : nil;
         NSString *sym = selSym.length ? selSym : baseSym;
         if (sym.length) {
-            UIImage *image = [SPKAssetUtils instagramIconNamed:sym pointSize:14.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+            UIImage *image = [SPKAssetUtils instagramIconNamed:sym pointSize:[self chipIconPointSize] renderingMode:UIImageRenderingModeAlwaysTemplate];
             [chip setImage:image forState:UIControlStateNormal];
         }
     }

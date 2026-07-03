@@ -137,9 +137,11 @@ static NSArray *SPKMessagesSettingsSections(void) {
         ], @"Long-press a note in the tray to download its audio or copy its text. Each action only appears when the note has that content."),
         SPKTopicSection(@"Audio", @[
             SPKAudioGatedSwitch(@"Download Voice Messages", SPKSettingsIcon(@"audio_download"), @"msgs_download_audio_messages"),
-            [SPKSetting switchCellWithTitle:@"Upload Audio" icon:SPKSettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages"]
+            [SPKSetting switchCellWithTitle:@"Upload Audio" icon:SPKSettingsIcon(@"audio_upload") defaultsKey:@"msgs_upload_audio_messages"],
+            [SPKSetting switchCellWithTitle:@"Trim Before Sending" icon:SPKSettingsIcon(@"trim") defaultsKey:@"msgs_audio_upload_trim"]
         ], @"1. Adds audio actions to supported voice/audio message views.\n"
-           @"2. Adds an option to the composer plus (+) menu that sends the selected audio or video as a voice message."),
+           @"2. Adds an option to the composer plus (+) menu that sends the selected audio or video as a voice message.\n"
+           @"3. When uploading, offers to trim the audio before sending it."),
         SPKTopicSection(@"Media", @[
             [SPKSetting switchCellWithTitle:@"Upload Photo from Gallery" icon:SPKSettingsIcon(@"photo") defaultsKey:@"msgs_upload_gallery_media"]
         ], @"Adds an option to the composer plus (+) menu that sends a photo from the Sparkle Gallery into the chat."),

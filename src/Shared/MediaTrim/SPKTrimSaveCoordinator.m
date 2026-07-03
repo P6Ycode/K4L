@@ -4,12 +4,32 @@
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKNotificationCenter.h"
 #import "../Gallery/SPKGalleryViewController.h"
+#import "../Gallery/SPKGalleryFile.h"
 #import "../Gallery/SPKGallerySaveMetadata.h"
 #import "../Downloads/SPKDownloadDestinationWriter.h"
 #import "../../Utils.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+
+// Presents the system "Save to Files" (document export) sheet and reports the
+// outcome back through the store completion. Retains itself until the picker
+// finishes, since UIDocumentPickerViewController holds its delegate weakly.
+@interface SPKTrimFilesExporter : NSObject <UIDocumentPickerDelegate>
+@property (nonatomic, copy) void (^done)(BOOL, NSString *);
+@property (nonatomic, strong) SPKTrimFilesExporter *selfRef;
+@end
+
+@implementation SPKTrimFilesExporter
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    if (self.done) self.done(YES, @"Saved to Files");
+    self.selfRef = nil;
+}
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+    if (self.done) self.done(YES, nil);  // no error, just nothing saved
+    self.selfRef = nil;
+}
+@end
 
 @interface SPKTrimSaveCoordinator ()
 + (void)extractFrameFromURLs:(NSArray<NSURL *> *)urls
@@ -26,9 +46,12 @@
         folderPath:(NSString *)folderPath
          presenter:(UIViewController *)presenter
         completion:(void (^)(BOOL))completion {
-    SPKGalleryMediaType mediaType = (result.mode == SPKTrimResultModeSingleFrame)
-                                        ? SPKGalleryMediaTypeImage
-                                        : SPKGalleryMediaTypeVideo;
+    SPKGalleryMediaType mediaType = SPKGalleryMediaTypeVideo;
+    if (result.mode == SPKTrimResultModeFrameOnly) {
+        mediaType = SPKGalleryMediaTypeImage;
+    } else if (result.mode == SPKTrimResultModeTrimmedAudio) {
+        mediaType = SPKGalleryMediaTypeAudio;
+    }
 
     SPKTrimStoreBlock copyStore = ^(NSURL *rendered, void (^done)(BOOL, NSString *)) {
         SPKGallerySource source = originFile ? (SPKGallerySource)originFile.source : fallbackSource;
@@ -44,7 +67,12 @@
                                                          metadata:metadata
                                                             error:&error];
         if (saved) {
-            done(YES, (mediaType == SPKGalleryMediaTypeImage) ? @"Frame saved to Gallery" : @"Trimmed clip saved to Gallery");
+            // The copy inherits the original's date via saveMetadata (for
+            // filename/attribution), but should sort as the newest item — the
+            // edit happened just now.
+            [saved markAddedNow];
+            done(YES, (mediaType == SPKGalleryMediaTypeImage) ? @"Frame saved to Gallery" :
+                      (mediaType == SPKGalleryMediaTypeAudio) ? @"Audio saved to Gallery" : @"Trimmed clip saved to Gallery");
         } else {
             done(NO, error.localizedDescription ?: @"Could not save the trimmed file.");
         }
@@ -62,16 +90,17 @@
         done(ok, ok ? @"Original replaced" : (error.localizedDescription ?: @"Could not replace the original."));
     };
 
-    NSString *title = (result.mode == SPKTrimResultModeSingleFrame) ? @"Save Frame" : @"Save Trimmed Clip";
-    SPKIGAlertAction *replace = [SPKIGAlertAction actionWithTitle:@"Replace Original"
-                                                            style:SPKIGAlertActionStyleDestructive
-                                                          handler:^{
-        [self renderResult:result progressTitle:nil existingPill:nil store:replaceStore onSuccessTap:^{ [SPKGalleryViewController presentGallery]; } completion:completion];
-    }];
+    NSString *title = (result.mode == SPKTrimResultModeFrameOnly) ? @"Save Photo" :
+                      (result.mode == SPKTrimResultModeTrimmedAudio) ? @"Save Audio" : @"Save Trimmed Clip";
     SPKIGAlertAction *copy = [SPKIGAlertAction actionWithTitle:@"Save as Copy"
                                                          style:SPKIGAlertActionStyleDefault
                                                        handler:^{
         [self renderResult:result progressTitle:nil existingPill:nil store:copyStore onSuccessTap:^{ [SPKGalleryViewController presentGallery]; } completion:completion];
+    }];
+    SPKIGAlertAction *replace = [SPKIGAlertAction actionWithTitle:@"Replace Original"
+                                                            style:SPKIGAlertActionStyleDestructive
+                                                          handler:^{
+        [self renderResult:result progressTitle:nil existingPill:nil store:replaceStore onSuccessTap:^{ [SPKGalleryViewController presentGallery]; } completion:completion];
     }];
     SPKIGAlertAction *cancel = [SPKIGAlertAction actionWithTitle:@"Cancel"
                                                            style:SPKIGAlertActionStyleCancel
@@ -81,7 +110,7 @@
 
     BOOL presented = [SPKIGAlertPresenter presentActionSheetFromViewController:presenter
                                                                         title:title
-                                                                      message:@"Replace the original file, or keep both?"
+                                                                      message:@"Do you want to replace the original file or save a copy?"
                                                                       actions:@[ replace, copy, cancel ]];
     if (!presented) {
         [self renderResult:result progressTitle:nil existingPill:nil store:copyStore onSuccessTap:^{ [SPKGalleryViewController presentGallery]; } completion:completion];
@@ -96,9 +125,12 @@
           presenter:(UIViewController *)presenter
        existingPill:(SPKNotificationPillView *)existingPill
          completion:(void (^)(BOOL))completion {
-    SPKGalleryMediaType mediaType = (result.mode == SPKTrimResultModeSingleFrame)
-                                        ? SPKGalleryMediaTypeImage
-                                        : SPKGalleryMediaTypeVideo;
+    SPKGalleryMediaType mediaType = SPKGalleryMediaTypeVideo;
+    if (result.mode == SPKTrimResultModeFrameOnly) {
+        mediaType = SPKGalleryMediaTypeImage;
+    } else if (result.mode == SPKTrimResultModeTrimmedAudio) {
+        mediaType = SPKGalleryMediaTypeAudio;
+    }
 
     SPKTrimStoreBlock store;
     if ([destination isEqualToString:@"photos"]) {
@@ -115,6 +147,7 @@
         store = ^(NSURL *rendered, SPKTrimStoreCompletion done) {
             NSString *ext = rendered.pathExtension.lowercaseString;
             BOOL isVideo = [ext isEqualToString:@"mp4"] || [ext isEqualToString:@"mov"];
+            BOOL isAudio = [ext isEqualToString:@"m4a"] || [ext isEqualToString:@"mp3"] || [ext isEqualToString:@"wav"] || [ext isEqualToString:@"aac"];
             if (isVideo) {
                 NSData *data = [NSData dataWithContentsOfURL:rendered options:NSDataReadingMappedIfSafe error:nil];
                 if (data) {
@@ -122,6 +155,14 @@
                     done(YES, @"Copied clip to clipboard");
                 } else {
                     done(NO, @"Could not copy the clip.");
+                }
+            } else if (isAudio) {
+                NSData *data = [NSData dataWithContentsOfURL:rendered options:NSDataReadingMappedIfSafe error:nil];
+                if (data) {
+                    [UIPasteboard generalPasteboard].items = @[ @{ UTTypeAudio.identifier: data } ];
+                    done(YES, @"Copied audio to clipboard");
+                } else {
+                    done(NO, @"Could not copy the audio.");
                 }
             } else {
                 UIImage *image = [UIImage imageWithContentsOfFile:rendered.path];
@@ -132,6 +173,27 @@
                     done(NO, @"Could not copy the frame.");
                 }
             }
+        };
+    } else if ([destination isEqualToString:@"files"]) {
+        store = ^(NSURL *rendered, SPKTrimStoreCompletion done) {
+            UIViewController *host = presenter ?: topMostController();
+            if (!host) { done(NO, @"Could not present the Files picker."); return; }
+            SPKTrimFilesExporter *exporter = [SPKTrimFilesExporter new];
+            exporter.done = done;
+            exporter.selfRef = exporter;
+            // asCopy:YES so the picker copies our temp file; the temp is cleaned up
+            // by renderResult once `done` fires (after the export completes).
+            UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc]
+                initForExportingURLs:@[ rendered ] asCopy:YES];
+            picker.delegate = exporter;
+            picker.shouldShowFileExtensions = YES;
+            if (picker.popoverPresentationController) {
+                picker.popoverPresentationController.sourceView = host.view;
+                picker.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(host.view.bounds),
+                                                                             CGRectGetMidY(host.view.bounds), 1, 1);
+                picker.popoverPresentationController.permittedArrowDirections = 0;
+            }
+            [host presentViewController:picker animated:YES completion:nil];
         };
     } else if ([destination isEqualToString:@"share"]) {
         store = ^(NSURL *rendered, SPKTrimStoreCompletion done) {
@@ -161,7 +223,8 @@
                                                            folderPath:nil
                                                              metadata:metadata
                                                                 error:&error];
-            if (saved) done(YES, (mediaType == SPKGalleryMediaTypeImage) ? @"Frame saved to Gallery" : @"Trimmed clip saved to Gallery");
+            if (saved) done(YES, (mediaType == SPKGalleryMediaTypeImage) ? @"Frame saved to Gallery" :
+                                 (mediaType == SPKGalleryMediaTypeAudio) ? @"Audio saved to Gallery" : @"Trimmed clip saved to Gallery");
             else done(NO, error.localizedDescription ?: @"Could not save to Gallery.");
         };
     }
@@ -171,6 +234,12 @@
         onSuccessTap = ^{ [SPKGalleryViewController presentGallery]; };
     } else if ([destination isEqualToString:@"photos"]) {
         onSuccessTap = ^{ [SPKUtils openPhotosApp]; };
+    }
+
+    // Name the render with the standard scheme so Save to Files / Share carry a
+    // proper filename instead of the temp UUID (Gallery renames on import anyway).
+    if (!result.preferredBasename.length) {
+        result.preferredBasename = [SPKFileNameForMedia(result.sourceURL, mediaType, metadata) stringByDeletingPathExtension];
     }
 
     [self renderResult:result
@@ -191,9 +260,15 @@
                store:(SPKTrimStoreBlock)store
          onSuccessTap:(void (^)(void))onSuccessTap
           completion:(void (^)(BOOL))completion {
-    BOOL isFrame = (result.mode == SPKTrimResultModeSingleFrame);
-    NSString *basename = [NSString stringWithFormat:@"SPKTrim-%@", NSUUID.UUID.UUIDString];
-    NSString *title = progressTitle.length > 0 ? progressTitle : (isFrame ? @"Extracting frame..." : @"Trimming...");
+    BOOL isFrameOnly = (result.mode == SPKTrimResultModeFrameOnly);
+    BOOL isAudio = (result.mode == SPKTrimResultModeTrimmedAudio);
+    // Prefer the caller-supplied name (epoch_user_source_date) so Files/Share
+    // exports don't leak the temp UUID; fall back to a unique temp name.
+    NSString *basename = result.preferredBasename.length
+        ? result.preferredBasename
+        : [NSString stringWithFormat:@"SPKTrim-%@", NSUUID.UUID.UUIDString];
+    NSString *title = progressTitle.length > 0 ? progressTitle
+                        : (isFrameOnly ? @"Extracting frame..." : (isAudio ? @"Trimming audio..." : @"Trimming..."));
 
     // Continue an in-flight pill (e.g. from a preceding download) instead of
     // stacking a second notification.
@@ -247,7 +322,7 @@
         });
     };
 
-    if (isFrame) {
+    if (isFrameOnly) {
         // Extract from the chosen-quality video when overridden, else the edit
         // file. For DASH the chosen-quality source is a standalone fragmented
         // MP4 that AVFoundation can occasionally fail to decode a still from, so
@@ -262,6 +337,14 @@
                          atSeconds:result.startSeconds
                           basename:basename
                         completion:onRendered];
+    } else if (isAudio) {
+        // Audio-only trim → native AAC .m4a via AVAssetExportSession.
+        [SPKTrimRenderer renderTrimAudioForSourceURL:(result.renderAudioURL ?: result.sourceURL)
+                                               asset:nil
+                                        startSeconds:result.startSeconds
+                                     durationSeconds:result.durationSeconds
+                                            basename:basename
+                                          completion:onRendered];
     } else if (result.renderAudioURL) {
         // DASH: merge the chosen-quality video + audio over the selected range.
         [SPKTrimRenderer renderTrimMergeForVideoURL:result.renderVideoURL
@@ -336,10 +419,10 @@
         if (onConfirm) onConfirm();
         return;
     }
-    SPKIGAlertAction *keep = [SPKIGAlertAction actionWithTitle:@"Keep Trimming"
+    SPKIGAlertAction *keep = [SPKIGAlertAction actionWithTitle:@"Continue"
                                                          style:SPKIGAlertActionStyleCancel
                                                        handler:nil];
-    SPKIGAlertAction *stop = [SPKIGAlertAction actionWithTitle:@"Cancel Trim"
+    SPKIGAlertAction *stop = [SPKIGAlertAction actionWithTitle:@"Stop"
                                                          style:SPKIGAlertActionStyleDestructive
                                                        handler:^{ if (onConfirm) onConfirm(); }];
     [SPKIGAlertPresenter presentAlertFromViewController:host
