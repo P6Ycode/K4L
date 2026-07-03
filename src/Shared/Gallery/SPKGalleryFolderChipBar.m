@@ -1,4 +1,5 @@
 #import "SPKGalleryFolderChipBar.h"
+#import "../UI/SPKChipGlass.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -106,9 +107,13 @@ static CGFloat const kChipHorizontalInset = 14.0;
 
     chip.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
     [chip setTitleColor:[SPKUtils SPKColor_InstagramPrimaryText] forState:UIControlStateNormal];
-    chip.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
     chip.layer.cornerRadius = kChipHeight / 2.0;
     chip.layer.cornerCurve = kCACornerCurveContinuous;
+    // Folder chips aren't a selection — clear glass capsules on iOS 26, solid
+    // fill otherwise.
+    if (!SPKChipApplyGlass(chip, NO, kChipHeight / 2.0, nil)) {
+        chip.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
+    }
 
     [chip.heightAnchor constraintEqualToConstant:kChipHeight].active = YES;
     [chip addTarget:self action:@selector(chipTapped:) forControlEvents:UIControlEventTouchUpInside];

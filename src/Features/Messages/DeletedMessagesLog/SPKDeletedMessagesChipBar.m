@@ -1,4 +1,5 @@
 #import "SPKDeletedMessagesChipBar.h"
+#import "../../../Shared/UI/SPKChipGlass.h"
 #import "../../../AssetUtils.h"
 #import "../../../Utils.h"
 
@@ -102,7 +103,9 @@
     for (NSInteger i = 0; i < (NSInteger)self.chips.count; i++) {
         UIButton *chip = self.chips[i];
         BOOL selected = [self.selection containsObject:@(i)];
-        chip.backgroundColor = selected ? [SPKUtils SPKColor_InstagramPrimaryText] : [SPKUtils SPKColor_InstagramSecondaryBackground];
+        if (!SPKChipApplyGlass(chip, selected, chip.layer.cornerRadius, [SPKUtils SPKColor_InstagramPrimaryText])) {
+            chip.backgroundColor = selected ? [SPKUtils SPKColor_InstagramPrimaryText] : [SPKUtils SPKColor_InstagramSecondaryBackground];
+        }
         chip.tintColor = selected ? [SPKUtils SPKColor_InstagramBackground] : [SPKUtils SPKColor_InstagramPrimaryText];
         [chip setTitleColor:(selected ? [SPKUtils SPKColor_InstagramBackground] : [SPKUtils SPKColor_InstagramPrimaryText]) forState:UIControlStateNormal];
 

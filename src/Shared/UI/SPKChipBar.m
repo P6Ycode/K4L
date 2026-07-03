@@ -1,4 +1,5 @@
 #import "SPKChipBar.h"
+#import "SPKChipGlass.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -172,7 +173,9 @@
         } else {
             selected = (i == self.selectedIndex);
         }
-        chip.backgroundColor = selected ? [SPKUtils SPKColor_InstagramPrimaryText] : [SPKUtils SPKColor_InstagramSecondaryBackground];
+        if (!SPKChipApplyGlass(chip, selected, chip.layer.cornerRadius, [SPKUtils SPKColor_InstagramPrimaryText])) {
+            chip.backgroundColor = selected ? [SPKUtils SPKColor_InstagramPrimaryText] : [SPKUtils SPKColor_InstagramSecondaryBackground];
+        }
         chip.tintColor = selected ? [SPKUtils SPKColor_InstagramBackground] : [SPKUtils SPKColor_InstagramPrimaryText];
         [chip setTitleColor:(selected ? [SPKUtils SPKColor_InstagramBackground] : [SPKUtils SPKColor_InstagramPrimaryText]) forState:UIControlStateNormal];
 
