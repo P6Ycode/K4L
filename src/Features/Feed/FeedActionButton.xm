@@ -460,18 +460,37 @@ static void SPKInstallFeedActionButton(UIView *barView) {
 		return;
 	}
 
-	CGRect anyFrame = SPKFeedAnyButtonFrameFromBarView(barView);
+	UIView *anyButton = SPKFeedAnyButtonFromBarView(barView);
 	UIView *firstRightButton = SPKFeedFirstRightButtonFromBarView(barView);
-	if (!firstRightButton) {
+	if (!anyButton || !firstRightButton) {
 		[button removeFromSuperview];
 		return;
 	}
 
-	CGFloat width = CGRectGetWidth(anyFrame) > 0.0 ? CGRectGetWidth(anyFrame) : 40.0;
-	CGRect expectedFrame = CGRectMake(CGRectGetMinX(firstRightButton.frame) - width,
-	                                  CGRectGetMinY(anyFrame) + 2.0,
-	                                  width,
-	                                  CGRectGetHeight(anyFrame));
+	BOOL isCountsView = [barView isKindOfClass:NSClassFromString(@"IGUFIInteractionCountsView")];
+	CGFloat width = 40.0;
+	CGRect expectedFrame;
+
+	if (isCountsView) {
+		CGRect anyFrame = anyButton.frame;
+		width = CGRectGetWidth(anyFrame) > 0.0 ? CGRectGetWidth(anyFrame) : 40.0;
+		expectedFrame = CGRectMake(CGRectGetMinX(firstRightButton.frame) - width,
+		                           CGRectGetMinY(anyFrame) + 2.0,
+		                           width,
+		                           CGRectGetHeight(anyFrame));
+	} else {
+		UIView *anyColumnView = (anyButton.superview == barView) ? anyButton : anyButton.superview;
+		UIView *rightColumnView = (firstRightButton.superview == barView) ? firstRightButton : firstRightButton.superview;
+
+		CGRect anyColumnFrame = [anyColumnView.superview convertRect:anyColumnView.frame toView:barView];
+		CGRect rightColumnFrame = [rightColumnView.superview convertRect:rightColumnView.frame toView:barView];
+
+		width = CGRectGetWidth(anyColumnFrame) > 0.0 ? CGRectGetWidth(anyColumnFrame) : 40.0;
+		expectedFrame = CGRectMake(CGRectGetMinX(rightColumnFrame) - width,
+		                           CGRectGetMinY(anyColumnFrame),
+		                           width,
+		                           CGRectGetHeight(anyColumnFrame));
+	}
 	if (SPKFeedActionFrameMatches(button, expectedFrame)) return;
 
 	button = SPKActionButtonWithTag(barView, kSPKFeedActionButtonTag);

@@ -18,9 +18,31 @@ static void SPKHideFeedRepostButtons(id view) {
             ((UIView *)candidate).hidden = YES;
         }
     }
+
+    for (NSString *ivarName in @[@"_lazyRepostButtonContainer", @"_lazyUndoRepostButtonContainer"]) {
+        id container = [SPKUtils getIvarForObj:view name:ivarName.UTF8String];
+        if (container) {
+            if ([container respondsToSelector:@selector(setIsHidden:)]) {
+                [container setIsHidden:YES];
+            }
+            if ([container respondsToSelector:@selector(viewIfLoaded)]) {
+                UIView *innerView = [container viewIfLoaded];
+                if (innerView) {
+                    innerView.hidden = YES;
+                }
+            }
+        }
+    }
 }
 
 %group SPKHideRepostButtonHooks
+
+%hook IGUFIButtonBarView
+- (void)updateUFIWithButtonsConfig:(id)config interactionCountProvider:(id)provider {
+    %orig(config, provider);
+    SPKHideFeedRepostButtons(self);
+}
+%end
 
 %hook IGUFIInteractionCountsView
 - (void)updateUFIWithButtonsConfig:(id)config interactionCountProvider:(id)provider {

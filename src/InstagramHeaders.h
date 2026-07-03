@@ -407,6 +407,16 @@
 @interface IGUFIButtonWithCountsView : UIView
 @end
 
+@interface IGLazyView : NSObject
+@property (nonatomic) _Bool isHidden;
+- (void)hide;
+- (UIView *)viewIfLoaded;
+@end
+
+@interface IGUFIButtonBarView : UIView
+- (void)updateUFIWithButtonsConfig:(id)config interactionCountProvider:(id)provider;
+@end
+
 @interface IGSundialViewerVerticalUFI : UIView
 - (void)_didTapLikeButton:(id)arg1;
 - (void)_didTapRepostButton:(id)arg1;
