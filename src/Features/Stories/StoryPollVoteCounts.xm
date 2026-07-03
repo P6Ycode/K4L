@@ -195,8 +195,12 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
             badge = [[UILabel alloc] init];
             badge.tag = badgeTag;
             badge.font = [UIFont boldSystemFontOfSize:12];
-            badge.textColor = [SPKUtils SPKColor_InstagramPrimaryText];
-            badge.backgroundColor = [SPKUtils SPKColor_InstagramTertiaryBackground];
+            // Poll stickers always render on a light card, so pin the badge to the
+            // dark-mode variant (dark pill + light text) regardless of the user's
+            // system appearance — otherwise it's low-contrast in dark mode.
+            UITraitCollection *darkTraits = [UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark];
+            badge.textColor = [[SPKUtils SPKColor_InstagramPrimaryText] resolvedColorWithTraitCollection:darkTraits];
+            badge.backgroundColor = [[SPKUtils SPKColor_InstagramTertiaryBackground] resolvedColorWithTraitCollection:darkTraits];
             badge.textAlignment = NSTextAlignmentCenter;
             badge.layer.masksToBounds = YES;
             [pollView addSubview:badge];
