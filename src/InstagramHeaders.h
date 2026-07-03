@@ -193,6 +193,12 @@
 @property (nonatomic, strong, readwrite) IGMedia *currentStoryItem;
 @end
 
+@interface IGStoriesMidcardsController : NSObject
+- (void)fetchMidcards;
+- (BOOL)_isEligibleForAYPromo;
+- (BOOL)_isEligibleForSUMidcard;
+@end
+
 @interface IGStoryVideoView : UIView
 @property (nonatomic, weak, readwrite) IGStoryFullscreenSectionController *captionDelegate;
 @end

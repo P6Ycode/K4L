@@ -90,6 +90,7 @@ static NSArray *SPKStoriesSettingsSections(void) {
            @"2. Show a confirmation alert when you tap a quick reaction emoji.\n"
            @"3. Show a confirmation alert when a story has a sticker and you tap on it."),
         SPKTopicSection(@"Other", @[
+            [SPKSetting switchCellWithTitle:@"Hide Join Trending" icon:SPKSettingsIcon(@"arrow_up_right") defaultsKey:@"stories_hide_join_trending"],
             [SPKSetting switchCellWithTitle:@"Show Story Mentions" icon:SPKSettingsIcon(@"mention") defaultsKey:@"stories_mentions_btn"],
             [SPKSetting switchCellWithTitle:@"Show Poll Vote Counts" icon:SPKSettingsIcon(@"poll") defaultsKey:@"stories_poll_vote_counts"],
             [SPKSetting switchCellWithTitle:@"Use Detailed Color Picker" icon:SPKSettingsIcon(@"eyedropper") defaultsKey:@"stories_detailed_color_picker"]

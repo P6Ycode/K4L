@@ -97,6 +97,7 @@ static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
             @"ads": @{@"candidates": @[@"ig_icon_ads_prism_outline_24", @"ig_icon_ads_outline_24", @"ig_icon_ad_outline_24"]},
             @"app": @{@"candidates": @[@"ig_icon_app_instagram_pano_outline_24", @"ig_icon_app_instagram_outline_24"]},
             @"arrow_up": @{@"candidates": @[@"ig_icon_arrow_up_outline_24"]},
+            @"arrow_up_right": @{@"candidates": @[@"ig_icon_arrow_up_right_outline_24"]},
             @"arrow_down": @{@"candidates": @[@"ig_icon_arrow_down_outline_24"]},
             @"arrow_left": @{@"candidates": @[@"ig_icon_arrow_left_outline_24"]},
             @"arrow_right": @{@"candidates": @[@"ig_icon_arrow_right_outline_24"]},
