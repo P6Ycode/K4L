@@ -26,6 +26,17 @@ typedef void (^SPKTrimStoreBlock)(NSURL *renderedURL, SPKTrimStoreCompletion don
          presenter:(nullable UIViewController *)presenter
         completion:(nullable void (^)(BOOL didChange))completion;
 
+/// Routes an edited still image (from the photo editor) into the Gallery, using
+/// the same `trim_gallery_prompt_replace` Replace / Save-as-Copy flow as trims.
+/// The image is encoded to a temporary file and stored; when `originFile` is
+/// non-nil it can replace the original in place, otherwise a new copy is saved.
++ (void)saveEditedImage:(UIImage *)image
+             originFile:(nullable SPKGalleryFile *)originFile
+         fallbackSource:(SPKGallerySource)fallbackSource
+             folderPath:(nullable NSString *)folderPath
+              presenter:(nullable UIViewController *)presenter
+             completion:(nullable void (^)(BOOL didChange))completion;
+
 /// Renders `result` in the background behind a cancellable progress pill, then
 /// hands the rendered temp file to `store`. Used by callers that route the
 /// output somewhere other than a Gallery copy/replace (e.g. the save-flow

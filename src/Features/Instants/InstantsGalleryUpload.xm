@@ -14,6 +14,7 @@
 #import "../../Shared/UI/SPKChrome.h"
 #import "../../Settings/Topics/SPKInstantsSettingsProvider.h"
 #import "../../Shared/Instants/SPKInstantsFrameInjector.h"
+#import "../../Shared/PhotoEdit/SPKPhotoEditorViewController.h"
 
 static NSString * const kSPKInstantsUploadFromGalleryPref = @"instants_upload_from_gallery";
 
@@ -230,202 +231,14 @@ static void SPKInstantsClearPendingImageForCreationView(UIView *creationView) {
     SPKInstantsClearFrameCache();
 }
 
-@interface SPKInstantsCropViewController : UIViewController <UIScrollViewDelegate>
-@property (nonatomic, strong) UIImage *sourceImage;
-@property (nonatomic, copy) void (^completion)(UIImage *image);
-@end
-
-@implementation SPKInstantsCropViewController {
-    UIScrollView *_scrollView;
-    UIImageView *_imageView;
-    UIView *_overlayView;
-    CAShapeLayer *_dimLayer;
-    CAShapeLayer *_borderLayer;
-    UIButton *_cancelButton;
-    UIButton *_useButton;
-    CGRect _cropRect;
-    BOOL _configured;
-}
-
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    self.view.backgroundColor = UIColor.blackColor;
-    self.modalPresentationStyle = UIModalPresentationFullScreen;
-
-    _scrollView = [[UIScrollView alloc] init];
-    _scrollView.delegate = self;
-    _scrollView.showsHorizontalScrollIndicator = NO;
-    _scrollView.showsVerticalScrollIndicator = NO;
-    _scrollView.bouncesZoom = YES;
-    _scrollView.backgroundColor = UIColor.blackColor;
-    [self.view addSubview:_scrollView];
-
-    _imageView = [[UIImageView alloc] initWithImage:self.sourceImage];
-    _imageView.contentMode = UIViewContentModeScaleAspectFit;
-    [_scrollView addSubview:_imageView];
-
-    _overlayView = [[UIView alloc] init];
-    _overlayView.userInteractionEnabled = NO;
-    [self.view addSubview:_overlayView];
-
-    _dimLayer = [CAShapeLayer layer];
-    _dimLayer.fillColor = [UIColor colorWithWhite:0.0 alpha:0.55].CGColor;
-    _dimLayer.fillRule = kCAFillRuleEvenOdd;
-    [_overlayView.layer addSublayer:_dimLayer];
-
-    _borderLayer = [CAShapeLayer layer];
-    _borderLayer.fillColor = UIColor.clearColor.CGColor;
-    _borderLayer.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.75].CGColor;
-    _borderLayer.lineWidth = 1.0;
-    [_overlayView.layer addSublayer:_borderLayer];
-
-    _cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
-    _cancelButton.tintColor = UIColor.whiteColor;
-    _cancelButton.titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightMedium];
-    [_cancelButton addTarget:self action:@selector(cancelTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:_cancelButton];
-
-    _useButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_useButton setTitle:@"Use" forState:UIControlStateNormal];
-    _useButton.tintColor = UIColor.whiteColor;
-    _useButton.titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    [_useButton addTarget:self action:@selector(useTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:_useButton];
-}
-
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    if (!self.sourceImage || self.sourceImage.size.width <= 0.0 || self.sourceImage.size.height <= 0.0) return;
-
-    CGRect bounds = self.view.bounds;
-    UIEdgeInsets safe = self.view.safeAreaInsets;
-    CGFloat controlsHeight = 64.0 + safe.bottom;
-    CGRect workArea = CGRectMake(0.0, safe.top, bounds.size.width, bounds.size.height - safe.top - controlsHeight);
-    _scrollView.frame = workArea;
-    _overlayView.frame = workArea;
-
-    CGFloat cropSide = MIN(workArea.size.width - 48.0, workArea.size.height - 96.0);
-    CGFloat cropWidth = cropSide;
-    CGFloat cropHeight = cropSide;
-    _cropRect = CGRectMake((workArea.size.width - cropWidth) / 2.0,
-                           (workArea.size.height - cropHeight) / 2.0,
-                           cropWidth,
-                           cropHeight);
-
-    UIBezierPath *dimPath = [UIBezierPath bezierPathWithRect:_overlayView.bounds];
-    UIBezierPath *cropPath = [UIBezierPath bezierPathWithRect:_cropRect];
-    [dimPath appendPath:cropPath];
-    dimPath.usesEvenOddFillRule = YES;
-    _dimLayer.frame = _overlayView.bounds;
-    _dimLayer.path = dimPath.CGPath;
-    _borderLayer.frame = _overlayView.bounds;
-    _borderLayer.path = cropPath.CGPath;
-
-    CGSize cancelSize = [_cancelButton intrinsicContentSize];
-    CGSize useSize = [_useButton intrinsicContentSize];
-    CGFloat buttonY = bounds.size.height - safe.bottom - 18.0;
-    _cancelButton.frame = CGRectMake(safe.left + 24.0, buttonY - cancelSize.height, cancelSize.width, cancelSize.height);
-    _useButton.frame = CGRectMake(bounds.size.width - safe.right - 24.0 - useSize.width, buttonY - useSize.height, useSize.width, useSize.height);
-
-    if (_configured) return;
-    _configured = YES;
-    _imageView.frame = (CGRect){ CGPointZero, self.sourceImage.size };
-    _scrollView.contentSize = self.sourceImage.size;
-    CGFloat minZoom = MAX(_cropRect.size.width / self.sourceImage.size.width,
-                          _cropRect.size.height / self.sourceImage.size.height);
-    _scrollView.minimumZoomScale = minZoom;
-    _scrollView.maximumZoomScale = MAX(minZoom * 4.0, 1.0);
-    _scrollView.zoomScale = minZoom;
-    _scrollView.contentInset = UIEdgeInsetsMake(CGRectGetMinY(_cropRect),
-                                                CGRectGetMinX(_cropRect),
-                                                workArea.size.height - CGRectGetMaxY(_cropRect),
-                                                workArea.size.width - CGRectGetMaxX(_cropRect));
-    CGFloat offsetX = (self.sourceImage.size.width * minZoom - CGRectGetWidth(_cropRect)) / 2.0 - CGRectGetMinX(_cropRect);
-    CGFloat offsetY = (self.sourceImage.size.height * minZoom - CGRectGetHeight(_cropRect)) / 2.0 - CGRectGetMinY(_cropRect);
-    _scrollView.contentOffset = CGPointMake(MAX(-_scrollView.contentInset.left, offsetX),
-                                            MAX(-_scrollView.contentInset.top, offsetY));
-}
-
-- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView {
-    return _imageView;
-}
-
-- (UIImage *)croppedImage {
-    UIImage *source = self.sourceImage;
-    if (!source.CGImage) return source;
-    CGFloat zoom = _scrollView.zoomScale;
-    CGPoint offset = _scrollView.contentOffset;
-    CGRect visiblePoints = CGRectMake((CGRectGetMinX(_cropRect) + offset.x) / zoom,
-                                      (CGRectGetMinY(_cropRect) + offset.y) / zoom,
-                                      CGRectGetWidth(_cropRect) / zoom,
-                                      CGRectGetHeight(_cropRect) / zoom);
-    UIGraphicsBeginImageContextWithOptions(source.size, YES, source.scale);
-    [source drawInRect:(CGRect){ CGPointZero, source.size }];
-    UIImage *normalized = UIGraphicsGetImageFromCurrentImageContext() ?: source;
-    UIGraphicsEndImageContext();
-
-    CGFloat pixelWidth = (CGFloat)CGImageGetWidth(normalized.CGImage);
-    CGFloat pixelHeight = (CGFloat)CGImageGetHeight(normalized.CGImage);
-    CGFloat scaleX = pixelWidth / MAX(normalized.size.width, 1.0);
-    CGFloat scaleY = pixelHeight / MAX(normalized.size.height, 1.0);
-    CGRect pixelRect = CGRectMake(visiblePoints.origin.x * scaleX,
-                                  visiblePoints.origin.y * scaleY,
-                                  visiblePoints.size.width * scaleX,
-                                  visiblePoints.size.height * scaleY);
-    CGRect pixelBounds = CGRectMake(0.0, 0.0, pixelWidth, pixelHeight);
-    pixelRect = CGRectIntersection(CGRectIntegral(pixelRect), pixelBounds);
-    CGFloat side = floor(MIN(CGRectGetWidth(pixelRect), CGRectGetHeight(pixelRect)));
-    if (side <= 1.0) return normalized;
-
-    CGFloat centerX = CGRectGetMidX(pixelRect);
-    CGFloat centerY = CGRectGetMidY(pixelRect);
-    CGFloat originX = round(centerX - side / 2.0);
-    CGFloat originY = round(centerY - side / 2.0);
-    originX = MIN(MAX(0.0, originX), pixelWidth - side);
-    originY = MIN(MAX(0.0, originY), pixelHeight - side);
-    pixelRect = CGRectMake(originX, originY, side, side);
-
-    CGImageRef cropped = CGImageCreateWithImageInRect(normalized.CGImage, pixelRect);
-    if (!cropped) return normalized;
-    UIImage *output = [UIImage imageWithCGImage:cropped scale:normalized.scale orientation:UIImageOrientationUp];
-    CGImageRelease(cropped);
-    if (!output.CGImage) return normalized;
-
-    size_t outputWidth = CGImageGetWidth(output.CGImage);
-    size_t outputHeight = CGImageGetHeight(output.CGImage);
-    if (outputWidth == outputHeight) return output;
-
-    CGFloat outputSide = MIN(output.size.width, output.size.height);
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(outputSide, outputSide), YES, output.scale);
-    [output drawInRect:CGRectMake(0.0, 0.0, outputSide, outputSide)];
-    UIImage *squareOutput = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return squareOutput ?: output;
-}
-
-- (void)cancelTapped {
-    [self dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (void)useTapped {
-    UIImage *image = [self croppedImage];
-    void (^completion)(UIImage *) = [self.completion copy];
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (completion && image) completion(image);
-    }];
-}
-
-@end
-
 static void SPKInstantsPresentImageForPositioning(UIImage *image) {
     if (!image) return;
-    SPKInstantsCropViewController *crop = [[SPKInstantsCropViewController alloc] init];
-    crop.sourceImage = SPKInstantsNormalizedImage(image);
-    crop.completion = ^(UIImage *croppedImage) {
+    [SPKPhotoEditorViewController presentWithSourceImage:SPKInstantsNormalizedImage(image)
+                                          configuration:[SPKPhotoEditorConfiguration lockedSquareConfiguration]
+                                                   from:SPKInstantsTopPresenter()
+                                             completion:^(UIImage *croppedImage) {
         SPKInstantsSetPendingImage(croppedImage);
-    };
-    [SPKInstantsTopPresenter() presentViewController:crop animated:YES completion:nil];
+    }];
 }
 
 static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,

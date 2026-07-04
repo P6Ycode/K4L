@@ -3,6 +3,7 @@
 #import "../UI/SPKMediaChrome.h"
 #import "../UI/SPKChipBar.h"
 #import "../Gallery/SPKGalleryFile.h"
+#import "../PhotoEdit/SPKPhotoEditorViewController.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
 
@@ -34,6 +35,10 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 @property (nonatomic, strong) UIImageView *audioArtworkView;
 @property (nonatomic, assign) BOOL waveformLoaded;
 @property (nonatomic, strong) UIButton *playPauseButton;
+@property (nonatomic, strong) UIButton *editFrameButton;   // shown in Frame Only mode, in the play/pause slot
+@property (nonatomic, strong) UIButton *revertFrameButton; // shown while an edit is locked in, to discard it
+@property (nonatomic, strong) UIImageView *editedFramePreview;  // covers the pane with the edited still
+@property (nonatomic, copy, nullable) NSURL *pendingEditedFrameURL;  // set once the user edits the current frame
 @property (nonatomic, strong) UIView *bottomContent;
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) SPKTrimScrubberView *scrubber;
@@ -82,6 +87,11 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 - (void)dealloc {
     if (_timeObserver && _player) {
         [_player removeTimeObserver:_timeObserver];
+    }
+    // Remove a stashed edit that was never confirmed (ownership is transferred to
+    // the result on finish, which nils this out first).
+    if (_pendingEditedFrameURL) {
+        [[NSFileManager defaultManager] removeItemAtURL:_pendingEditedFrameURL error:NULL];
     }
 }
 
@@ -170,6 +180,21 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         [_playerContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_playerContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
     ]];
+
+    // While a frame edit is locked in, this covers the live picture with the
+    // edited still so the pane matches what will be saved.
+    _editedFramePreview = [[UIImageView alloc] init];
+    _editedFramePreview.translatesAutoresizingMaskIntoConstraints = NO;
+    _editedFramePreview.contentMode = UIViewContentModeScaleAspectFit;
+    _editedFramePreview.backgroundColor = [UIColor blackColor];
+    _editedFramePreview.hidden = YES;
+    [_playerContainer addSubview:_editedFramePreview];
+    [NSLayoutConstraint activateConstraints:@[
+        [_editedFramePreview.topAnchor constraintEqualToAnchor:_playerContainer.topAnchor],
+        [_editedFramePreview.bottomAnchor constraintEqualToAnchor:_playerContainer.bottomAnchor],
+        [_editedFramePreview.leadingAnchor constraintEqualToAnchor:_playerContainer.leadingAnchor],
+        [_editedFramePreview.trailingAnchor constraintEqualToAnchor:_playerContainer.trailingAnchor],
+    ]];
 }
 
 - (void)setupBottomContent {
@@ -193,6 +218,28 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     _playPauseButton.accessibilityLabel = @"Play";
     [_bottomContent addSubview:_playPauseButton];
 
+    // In Frame Only mode playback is meaningless, so the play/pause slot becomes
+    // an Edit button that opens the photo editor on the chosen frame.
+    _editFrameButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _editFrameButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _editFrameButton.tintColor = [SPKUtils SPKColor_InstagramPrimaryText] ?: [UIColor whiteColor];
+    [_editFrameButton setImage:SPKTrimPlayerIcon(@"crop", 24.0) forState:UIControlStateNormal];
+    [_editFrameButton addTarget:self action:@selector(editFrameTapped) forControlEvents:UIControlEventTouchUpInside];
+    _editFrameButton.accessibilityLabel = @"Edit Frame";
+    _editFrameButton.hidden = YES;
+    [_bottomContent addSubview:_editFrameButton];
+
+    // Shown in place of the scrubber once a frame edit is locked in: discards the
+    // edit and unlocks frame selection again.
+    _revertFrameButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _revertFrameButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _revertFrameButton.tintColor = [SPKUtils SPKColor_InstagramPrimaryText] ?: [UIColor whiteColor];
+    [_revertFrameButton setImage:SPKTrimPlayerIcon(@"arrow_ccw", 24.0) forState:UIControlStateNormal];
+    [_revertFrameButton addTarget:self action:@selector(revertFrameTapped) forControlEvents:UIControlEventTouchUpInside];
+    _revertFrameButton.accessibilityLabel = @"Revert Edit";
+    _revertFrameButton.hidden = YES;
+    [_bottomContent addSubview:_revertFrameButton];
+
     _scrubber = [[SPKTrimScrubberView alloc] init];
     _scrubber.translatesAutoresizingMaskIntoConstraints = NO;
     _scrubber.minimumDuration = _configuration.minimumDuration;
@@ -211,6 +258,14 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         [_playPauseButton.centerYAnchor constraintEqualToAnchor:_scrubber.centerYAnchor],
         [_playPauseButton.widthAnchor constraintEqualToConstant:40.0],
         [_playPauseButton.heightAnchor constraintEqualToConstant:40.0],
+
+        [_editFrameButton.leadingAnchor constraintEqualToAnchor:_playPauseButton.leadingAnchor],
+        [_editFrameButton.centerYAnchor constraintEqualToAnchor:_playPauseButton.centerYAnchor],
+        [_editFrameButton.widthAnchor constraintEqualToAnchor:_playPauseButton.widthAnchor],
+        [_editFrameButton.heightAnchor constraintEqualToAnchor:_playPauseButton.heightAnchor],
+
+        [_revertFrameButton.trailingAnchor constraintEqualToAnchor:_bottomContent.trailingAnchor],
+        [_revertFrameButton.centerYAnchor constraintEqualToAnchor:_playPauseButton.centerYAnchor],
 
         [_scrubber.topAnchor constraintEqualToAnchor:_timeLabel.bottomAnchor constant:10.0],
         [_scrubber.leadingAnchor constraintEqualToAnchor:_playPauseButton.trailingAnchor constant:10.0],
@@ -435,17 +490,102 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // Swaps the play/pause glyph and disables the control in single-frame mode
 // (which has no playback).
 - (void)updatePlaybackControls {
-    BOOL canPlay = self.playerReady && !self.scrubber.isFrameOnlyMode;
+    BOOL frameOnly = self.scrubber.isFrameOnlyMode;
+    // Frame Only swaps the (useless) play/pause for an Edit button.
+    self.playPauseButton.hidden = frameOnly;
+    self.editFrameButton.hidden = !frameOnly;
+
+    BOOL canPlay = self.playerReady && !frameOnly;
     [self.playPauseButton setImage:SPKTrimPlayerIcon(self.isPlaying ? @"video_pause" : @"video_play", 36.0)
                           forState:UIControlStateNormal];
     self.playPauseButton.accessibilityLabel = self.isPlaying ? @"Pause" : @"Play";
     self.playPauseButton.enabled = canPlay;
     self.playPauseButton.alpha = canPlay ? 1.0 : 0.35;
+    [self updateFrameEditingUI];
+}
+
+// Reflects whether a frame edit is currently locked in: the edited still covers
+// the pane and the scrubber is hidden (so the frame can't be nudged away),
+// replaced by a Revert button. The Edit button stays available to refine further.
+- (void)updateFrameEditingUI {
+    BOOL hasEdit = (self.pendingEditedFrameURL != nil);
+    self.editedFramePreview.hidden = !hasEdit;
+    self.scrubber.hidden = hasEdit;
+    self.revertFrameButton.hidden = !hasEdit;
 }
 
 - (void)seekToTime:(NSTimeInterval)t {
     CMTime cm = CMTimeMakeWithSeconds(t, 600);
     [self.player seekToTime:cm toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+}
+
+#pragma mark - Frame editing
+
+// Opens the photo editor on the currently-selected still. The edited image is
+// stashed as a pending pre-rendered frame; Done then saves it (via the normal
+// destination flow) instead of re-extracting the raw frame.
+- (void)editFrameTapped {
+    // Refine an existing edit when one is locked in; otherwise start from the raw
+    // frame at the current playhead.
+    UIImage *frame = self.pendingEditedFrameURL
+        ? [UIImage imageWithContentsOfFile:self.pendingEditedFrameURL.path]
+        : [self extractFrameAtSeconds:self.scrubber.frameTime];
+    if (!frame) {
+        [self failWithMessage:@"Couldn't read this frame."];
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    [SPKPhotoEditorViewController presentWithSourceImage:frame
+                                          configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
+                                                   from:self
+                                             completion:^(UIImage *edited) {
+        [weakSelf applyEditedFrame:edited];
+    }];
+}
+
+// Discards the locked-in edit and returns to free frame selection.
+- (void)revertFrameTapped {
+    [self clearPendingEditedFrame];
+    [self seekToTime:self.scrubber.frameTime];
+    [self updateTimeLabel];
+    [self updateFrameEditingUI];
+}
+
+- (UIImage *)extractFrameAtSeconds:(NSTimeInterval)seconds {
+    if (!self.asset) return nil;
+    AVAssetImageGenerator *generator = [AVAssetImageGenerator assetImageGeneratorWithAsset:self.asset];
+    generator.appliesPreferredTrackTransform = YES;
+    generator.requestedTimeToleranceBefore = kCMTimeZero;
+    generator.requestedTimeToleranceAfter = kCMTimeZero;
+    CMTime time = CMTimeMakeWithSeconds(seconds, 600);
+    CGImageRef cg = [generator copyCGImageAtTime:time actualTime:NULL error:NULL];
+    if (!cg) return nil;
+    UIImage *image = [UIImage imageWithCGImage:cg];
+    CGImageRelease(cg);
+    return image;
+}
+
+- (void)applyEditedFrame:(UIImage *)edited {
+    NSData *data = edited ? UIImageJPEGRepresentation(edited, 0.95) : nil;
+    if (!data) return;
+    [self clearPendingEditedFrame];
+    NSString *name = [[[NSProcessInfo processInfo] globallyUniqueString] stringByAppendingPathExtension:@"jpg"];
+    NSURL *url = [[NSURL fileURLWithPath:NSTemporaryDirectory()] URLByAppendingPathComponent:name];
+    if (![data writeToURL:url options:NSDataWritingAtomic error:NULL]) return;
+    self.pendingEditedFrameURL = url;
+    self.editedFramePreview.image = edited;
+    [self updateTimeLabel];
+    [self updateFrameEditingUI];
+}
+
+// Discards a stashed edit (revert, or a mode change) and removes its temp file.
+// Not called once the URL is handed to the result.
+- (void)clearPendingEditedFrame {
+    if (self.pendingEditedFrameURL) {
+        [[NSFileManager defaultManager] removeItemAtURL:self.pendingEditedFrameURL error:NULL];
+        self.pendingEditedFrameURL = nil;
+    }
+    self.editedFramePreview.image = nil;
 }
 
 #pragma mark - Mode
@@ -459,6 +599,9 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     if (index >= 0 && index < (NSInteger)self.availableModes.count) {
         mode = self.availableModes[index].integerValue;
     }
+    // A stashed frame edit only applies to the frame the user picked; leaving
+    // Frame Only (or switching modes) discards it.
+    [self clearPendingEditedFrame];
     BOOL frameOnly = (mode == SPKTrimResultModeFrameOnly);
     BOOL audio = (mode == SPKTrimResultModeTrimmedAudio);
     // Audio Only reconfigures a video trim into the audio trimmer (waveform +
@@ -484,7 +627,9 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 
 - (void)updateTimeLabel {
     if (self.scrubber.isFrameOnlyMode) {
-        self.timeLabel.text = [NSString stringWithFormat:@"Frame • %@", SPKTrimFormatTime(self.scrubber.frameTime)];
+        NSString *suffix = self.pendingEditedFrameURL ? @"  •  edited" : @"";
+        self.timeLabel.text = [NSString stringWithFormat:@"Frame • %@%@",
+                               SPKTrimFormatTime(self.scrubber.frameTime), suffix];
         return;
     }
     NSTimeInterval dur = self.scrubber.endTime - self.scrubber.startTime;
@@ -605,6 +750,13 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
                                        sourceURL:self.configuration.sourceURL
                                     startSeconds:self.scrubber.frameTime
                                  durationSeconds:0.0];
+        // If the user edited this frame, hand the pre-rendered edit to the save
+        // pipeline (it short-circuits extraction). Transfer ownership so dealloc
+        // doesn't delete the file before the coordinator consumes it.
+        if (self.pendingEditedFrameURL) {
+            result.outputURL = self.pendingEditedFrameURL;
+            self.pendingEditedFrameURL = nil;
+        }
     } else if (currentMode == SPKTrimResultModeTrimmedAudio) {
         result = [SPKTrimResult requestWithMode:SPKTrimResultModeTrimmedAudio
                                        sourceURL:self.configuration.sourceURL

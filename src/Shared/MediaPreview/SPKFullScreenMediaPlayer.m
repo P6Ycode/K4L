@@ -19,6 +19,7 @@
 #import "../MediaTrim/SPKTrimResult.h"
 #import "../MediaTrim/SPKTrimEditorViewController.h"
 #import "../MediaTrim/SPKTrimSaveCoordinator.h"
+#import "../PhotoEdit/SPKPhotoEditorViewController.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKMediaChrome.h"
 #import "SPKFullScreenImageViewController.h"
@@ -167,6 +168,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 @property(nonatomic, strong) UIBarButtonItem *bulkActionsItem;
 @property(nonatomic, strong) UIBarButtonItem *galleryOriginItem;
 @property(nonatomic, strong) UIBarButtonItem *trimItem;
+@property(nonatomic, strong) UIBarButtonItem *editItem;
 @property(nonatomic, assign) BOOL bulkActionsItemVisible;
 @property(nonatomic, assign) BOOL galleryOriginItemVisible;
 
@@ -620,6 +622,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                                                      @selector(copyMedia));
   _trimItem = SPKMediaChromeBottomBarButtonItem(@"trim", @"Trim", self,
                                                 @selector(trimCurrentItem));
+  _editItem = SPKMediaChromeBottomBarButtonItem(@"crop", @"Edit", self,
+                                                @selector(editCurrentItem));
 
   if (!_isFromGallery && _items.count > 1) {
     _bulkActionsItem =
@@ -662,6 +666,11 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   if (_trimItem && (currentType == SPKMediaItemTypeVideo ||
                     currentType == SPKMediaItemTypeAudio)) {
     [trailing addObject:_trimItem];
+  }
+  // Photos in the Gallery get an Edit (crop / rotate) action in the same
+  // trailing capsule the video/audio Trim uses.
+  if (_editItem && _isFromGallery && currentType == SPKMediaItemTypeImage) {
+    [trailing addObject:_editItem];
   }
 
   if (_isFromGallery) {
@@ -1210,6 +1219,58 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                                completion:nil];
     }
   }];
+}
+
+#pragma mark - Edit (photo)
+
+- (void)editCurrentItem {
+  SPKMediaItem *item = [self currentItem];
+  if (!item || item.mediaType != SPKMediaItemTypeImage) {
+    return;
+  }
+  NSURL *url = item.resolvedFileURL ?: item.fileURL;
+  UIImage *source = url ? [UIImage imageWithContentsOfFile:url.path] : nil;
+  if (!source) {
+    SPKNotify(@"spk.photoedit.load", @"Cannot Edit",
+              @"The image file is unavailable.", @"error_filled",
+              SPKNotificationToneError);
+    return;
+  }
+
+  __weak typeof(self) weakSelf = self;
+  [SPKPhotoEditorViewController presentWithSourceImage:source
+                                        configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
+                                                 from:self
+                                           completion:^(UIImage *edited) {
+    if (!edited) return;
+    [SPKTrimSaveCoordinator saveEditedImage:edited
+                                 originFile:item.galleryFile
+                             fallbackSource:(SPKGallerySource)item.gallerySaveSource
+                                 folderPath:nil
+                                  presenter:weakSelf
+                                 completion:^(BOOL didChange) {
+      // On a Replace, the current item's media changed on disk; re-display it so
+      // the preview shows the edit without needing to reopen the viewer. (On a
+      // Copy the media is unchanged, so this harmlessly re-shows the original.)
+      if (didChange) [weakSelf refreshDisplayedImageForItem:item];
+    }];
+  }];
+}
+
+// Re-decodes the item's media straight from disk (bypassing the in-memory /
+// cached image, which the edit made stale) and re-displays it in the current
+// image page.
+- (void)refreshDisplayedImageForItem:(SPKMediaItem *)item {
+  if (!item) return;
+  NSURL *url = item.galleryFile ? [item.galleryFile fileURL] : (item.resolvedFileURL ?: item.fileURL);
+  UIImage *fresh = url ? [UIImage imageWithContentsOfFile:url.path] : nil;
+  if (!fresh) return;
+  item.image = fresh;
+  UIViewController *currentVC = self.pageViewController.viewControllers.firstObject;
+  if ([currentVC isKindOfClass:[SPKFullScreenImageViewController class]] &&
+      ((SPKFullScreenImageViewController *)currentVC).mediaItem == item) {
+    [(SPKFullScreenImageViewController *)currentVC preloadContent];
+  }
 }
 
 - (void)saveTrimResultToGallery:(SPKTrimResult *)result

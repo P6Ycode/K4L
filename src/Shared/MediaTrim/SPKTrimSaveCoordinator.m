@@ -117,6 +117,49 @@
     }
 }
 
+#pragma mark - Edited image
+
++ (void)saveEditedImage:(UIImage *)image
+             originFile:(SPKGalleryFile *)originFile
+         fallbackSource:(SPKGallerySource)fallbackSource
+             folderPath:(NSString *)folderPath
+              presenter:(UIViewController *)presenter
+             completion:(void (^)(BOOL))completion {
+    NSURL *tempURL = [self writeEditedImageToTemp:image];
+    if (!tempURL) {
+        SPKNotify(@"spk.photoedit.save", @"Couldn't Save",
+                  @"The edited image could not be encoded.", @"error_filled",
+                  SPKNotificationToneError);
+        if (completion) completion(NO);
+        return;
+    }
+    // Route through the shared trim save path: a frame-only result with its output
+    // already rendered (renderResult: short-circuits on a pre-filled outputURL), so
+    // the Replace/Save-as-Copy prompt, the progress→success pill, and cleanup are
+    // all identical to a trimmed frame's save.
+    SPKTrimResult *result = [SPKTrimResult requestWithMode:SPKTrimResultModeFrameOnly
+                                                 sourceURL:tempURL
+                                              startSeconds:0.0
+                                           durationSeconds:0.0];
+    result.outputURL = tempURL;
+    [self saveResult:result
+          originFile:originFile
+      fallbackSource:fallbackSource
+          folderPath:folderPath
+           presenter:presenter
+          completion:completion];
+}
+
+// Encodes an edited image to a unique temp JPEG. Returns nil on failure.
++ (NSURL *)writeEditedImageToTemp:(UIImage *)image {
+    NSData *data = image ? UIImageJPEGRepresentation(image, 0.95) : nil;
+    if (!data) return nil;
+    NSString *name = [[[NSProcessInfo processInfo] globallyUniqueString] stringByAppendingPathExtension:@"jpg"];
+    NSURL *tempURL = [[NSURL fileURLWithPath:NSTemporaryDirectory()] URLByAppendingPathComponent:name];
+    if (![data writeToURL:tempURL options:NSDataWritingAtomic error:NULL]) return nil;
+    return tempURL;
+}
+
 #pragma mark - Destination routing
 
 + (void)routeResult:(SPKTrimResult *)result
@@ -321,6 +364,15 @@
             [pill setProgress:(float)MAX(0.0, MIN(1.0, p)) animated:YES];
         });
     };
+
+    // Pre-rendered output (e.g. a frame the user edited in the photo editor):
+    // skip extraction/encoding and hand the existing file straight to `store`, so
+    // the whole save/route pipeline (Gallery copy/replace, destination menu, the
+    // progress pill) runs unchanged.
+    if (result.outputURL && [[NSFileManager defaultManager] fileExistsAtPath:result.outputURL.path]) {
+        onRendered(result.outputURL, nil);
+        return;
+    }
 
     if (isFrameOnly) {
         // Extract from the chosen-quality video when overridden, else the edit

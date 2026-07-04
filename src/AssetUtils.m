@@ -134,6 +134,7 @@ static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
             @"compass": @{@"candidates": @[@"ig_icon_compass_outline_24"]},
             @"copy": @{@"candidates": @[@"ig_icon_copy_prism_outline_24", @"ig_icon_copy_outline_24"]},
             @"copy_filled": @{@"candidates": @[@"ig_icon_copy_prism_filled_24", @"ig_icon_copy_filled_24"]},
+            @"crop": @{@"candidates": @[@"ig_icon_crop_outline_24"]},
             @"download": @{@"candidates": @[@"ig_icon_download_outline_24"]},
             @"download_reels": @{@"candidates": @[@"ig_icon_download_outline_44"]},
             @"duplicate": @{@"candidates": @[@"ig_icon_photo_dump_outline_24"]},
@@ -189,6 +190,7 @@ static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
             @"messages": @{@"candidates": @[@"ig_icon_direct_prism_outline_24", @"ig_icon_direct_outline_24"]},
             @"messages_filled": @{@"candidates": @[@"ig_icon_direct_prism_filled_24", @"ig_icon_direct_filled_24"]},
             @"messages_empty": @{@"candidates": @[@"ig_icon_channels_outline_96"]},
+            @"mirror": @{@"candidates": @[@"ig_icon_mirror_outline_24"]},
             @"music_reels": @{@"candidates": @[@"ig_icon_music_outline_44"]},
             @"meta_ai": @{@"candidates": @[@"ig_icon_meta_ai_orbit_7_segment_outline_24", @"ig_icon_meta_gen_ai_outline_24"]},
             @"more": @{@"candidates": @[@"ig_icon_more_horizontal_outline_24"]},
@@ -222,6 +224,12 @@ static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
             @"reply": @{@"candidates": @[@"ig_icon_reply_outline_24"]},
             @"repost": @{@"candidates": @[@"ig_icon_reshare_pano_outline_24", @"ig_icon_reshare_outline_24"]},
             @"repost_reels": @{@"candidates": @[@"reshare-unshadowed_outline_44"]},
+            // Modern IG uses the bend arrow (flipped into the two directions in
+            // SPKPhotoEditor); IG 410 lacks it, so fall back to the older filled
+            // bend arrow — which points the right way already and only needs the
+            // horizontal flip for "left" (no vertical flip). See SPKPhotoEditor.
+            @"rotate_left": @{@"candidates": @[@"ig_icon_arrow_bottom_right_bend_outline_24", @"ig_icon_arrow_right_bend_filled_24"]},
+            @"rotate_right": @{@"candidates": @[@"ig_icon_arrow_bottom_right_bend_outline_24", @"ig_icon_arrow_right_bend_filled_24"]},
             @"save": @{@"candidates": @[@"ig_icon_save_pano_outline_24", @"ig_icon_save_outline_24"]},
             @"search": @{@"candidates": @[@"ig_icon_search_pano_outline_24", @"ig_icon_search_outline_24"]},
             @"settings": @{@"candidates": @[@"ig_icon_settings_pano_outline_24", @"ig_icon_settings_outline_24"]},

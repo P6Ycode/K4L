@@ -32,11 +32,11 @@
                                        icon:SPKSettingsIcon(@"heart")
                                 defaultsKey:@"gallery_show_favorites_top"]
         ], @"Pin favorites above other files in the current sort and folder context."),
-        SPKTopicSection(@"Trimming", @[
+        SPKTopicSection(@"Editing", @[
             [SPKSetting switchCellWithTitle:@"Ask to Replace Original"
                                        icon:SPKSettingsIcon(@"trim")
                                 defaultsKey:@"trim_gallery_prompt_replace"]
-        ], @"When you trim a Gallery item, ask whether to replace the original or save a copy. Off always saves a copy and keeps the original."),
+        ], @"When you trim or edit a Gallery item, ask whether to replace the original or save a copy. Off always saves a copy and keeps the original."),
         SPKTopicSection(@"Lock & Maintenance", @[
             gallerySettings
         ], @"Manage passcode, import files, view storage, and delete with options.")
