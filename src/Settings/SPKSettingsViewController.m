@@ -448,12 +448,14 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
         case SPKTableCellLink: {
             cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramBlue];
-            cellContentConfig.textProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
-                                                                      weight:UIFontWeightMedium];
+            UIFont *linkFont = [row.userInfo[@"titleFont"] isKindOfClass:[UIFont class]]
+                ? row.userInfo[@"titleFont"]
+                : [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
+            cellContentConfig.textProperties.font = linkFont;
 
             cell.selectionStyle = UITableViewCellSelectionStyleDefault;
 
-            UIImageView *imageView = [[UIImageView alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"compass"]];
+            UIImageView *imageView = [[UIImageView alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"compass" pointSize:20.0]];
             imageView.tintColor = [SPKUtils SPKColor_InstagramTertiaryText];
             cell.accessoryView = imageView;
 

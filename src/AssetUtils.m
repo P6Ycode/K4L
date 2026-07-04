@@ -135,6 +135,7 @@ static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
             @"copy": @{@"candidates": @[@"ig_icon_copy_prism_outline_24", @"ig_icon_copy_outline_24"]},
             @"copy_filled": @{@"candidates": @[@"ig_icon_copy_prism_filled_24", @"ig_icon_copy_filled_24"]},
             @"crop": @{@"candidates": @[@"ig_icon_crop_outline_24"]},
+            @"donate": @{@"candidates": @[@"ig_icon_donations_outline_44"]},
             @"download": @{@"candidates": @[@"ig_icon_download_outline_24"]},
             @"download_reels": @{@"candidates": @[@"ig_icon_download_outline_44"]},
             @"duplicate": @{@"candidates": @[@"ig_icon_photo_dump_outline_24"]},
