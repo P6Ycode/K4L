@@ -118,12 +118,14 @@ static NSArray *SPKMessagesSettingsSections(void) {
         SPKTopicSection(@"Visual Messages", @[
             [SPKSetting switchCellWithTitle:@"Manually Mark Seen" icon:SPKSettingsIcon(@"eye") defaultsKey:@"msgs_manual_visual_seen"],
             advanceVisual,
+            [SPKSetting switchCellWithTitle:@"Stop Auto Advance" icon:SPKSettingsIcon(@"autoscroll") defaultsKey:@"msgs_stop_visual_auto_advance"],
             [SPKSetting switchCellWithTitle:@"Disable View-Once Limitations" icon:SPKSettingsIcon(@"view_once") defaultsKey:@"msgs_disable_view_once"],
             [SPKSetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SPKSettingsIcon(@"warning") defaultsKey:@"msgs_disable_screenshot_detection"]
         ], @"1. Prevents automatic seen receipts and adds a button to mark the chat as seen.\n"
            @"2. Moves to the next visual item when available or dismisses.\n"
-           @"3. View-once messages behave like normal visual messages.\n"
-           @"4. Allows screen capture of visual messages."),
+           @"3. Keeps the current visual message on screen instead of auto-advancing when it ends.\n"
+           @"4. View-once messages behave like normal visual messages.\n"
+           @"5. Allows screen capture of visual messages."),
         SPKTopicSection(@"Vanish Mode", @[
             [SPKSetting switchCellWithTitle:@"Disable Swipe-Up Gesture" icon:SPKSettingsIcon(@"arrow_up") defaultsKey:@"msgs_disable_vanish_swipe_up"],
             [SPKSetting switchCellWithTitle:@"Disable Screenshot Detection" icon:SPKSettingsIcon(@"warning") defaultsKey:@"msgs_hide_vanish_screenshot"],
