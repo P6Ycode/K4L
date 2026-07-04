@@ -41,7 +41,7 @@ static UIMenu *SPKProfileActionDefaultMenu(void) {
         SPKProfileActionDefaultCommand(@"Copy Info", @"copy", kSPKProfileActionCopyInfo),
         SPKProfileActionDefaultCommand(@"View Picture", @"photo", kSPKProfileActionViewPicture),
         SPKProfileActionDefaultCommand(@"Share Picture", @"share", kSPKProfileActionSharePicture),
-        SPKProfileActionDefaultCommand(@"Save to Gallery", @"media", kSPKProfileActionSavePictureToGallery),
+        SPKProfileActionDefaultCommand(@"Save to Gallery", @"sparkle_gallery", kSPKProfileActionSavePictureToGallery),
         SPKProfileActionDefaultCommand(@"Profile Settings", @"settings", kSPKProfileActionOpenSettings)
     ]];
 }

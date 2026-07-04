@@ -17,11 +17,11 @@
         return [SPKGallerySettingsViewController searchSections];
     };
 
-    return SPKTopicNavigationSetting(@"Gallery", @"media", 24.0, @[
+    return SPKTopicNavigationSetting(@"Gallery", @"sparkle_gallery", 24.0, @[
         SPKTopicSection(@"Access", @[
             [SPKSetting buttonCellWithTitle:@"Open Gallery"
                                    subtitle:@""
-                                       icon:SPKSettingsIcon(@"media")
+                                       icon:SPKSettingsIcon(@"sparkle_gallery")
                                      action:^(void) {
                 [SPKGalleryViewController presentGallery];
             }],

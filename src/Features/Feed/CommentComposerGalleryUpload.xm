@@ -73,7 +73,7 @@ static void SPKCommentComposerPresentGalleryPicker(UIView *composerView) {
 
     NSSet<NSNumber *> *imageTypes = [NSSet setWithObject:@(SPKGalleryMediaTypeImage)];
     if (![SPKGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:imageTypes]) {
-        SPKNotify(kSPKNotificationDownloadGallery, @"No photos in Gallery", nil, @"media", SPKNotificationToneError);
+        SPKNotify(kSPKNotificationDownloadGallery, @"No photos in Gallery", nil, @"sparkle_gallery", SPKNotificationToneError);
         return;
     }
 

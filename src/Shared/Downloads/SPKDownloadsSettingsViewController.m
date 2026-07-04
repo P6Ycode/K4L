@@ -15,7 +15,7 @@
     NSArray<NSDictionary *> *items = @[
         @{@"title": @"Save to Files", @"value": @"files", @"icon": @"audio_download"},
         @{@"title": @"Share", @"value": @"share", @"icon": @"share"},
-        @{@"title": @"Save to Gallery", @"value": @"gallery", @"icon": @"media"},
+        @{@"title": @"Save to Gallery", @"value": @"gallery", @"icon": @"sparkle_gallery"},
         @{@"title": @"Play", @"value": @"play", @"icon": @"play"},
         @{@"title": @"Copy Download URL", @"value": @"copy_url", @"icon": @"link"},
         @{@"title": @"Open Menu", @"value": @"none", @"icon": @"action"}

@@ -135,8 +135,8 @@ static void SPKAudioPageRunAction(NSString *action, NSURL *url, UIView *sourceVi
 
 static NSString *SPKAudioPageIconForAction(NSString *action) {
     if ([action isEqualToString:kSPKAudioPageActionFiles]) return @"audio_download";
-    if ([action isEqualToString:kSPKAudioPageActionGallery]) return @"media";
-    if ([action isEqualToString:kSPKAudioPageActionConvertGallery]) return @"media";
+    if ([action isEqualToString:kSPKAudioPageActionGallery]) return @"sparkle_gallery";
+    if ([action isEqualToString:kSPKAudioPageActionConvertGallery]) return @"sparkle_gallery";
     if ([action isEqualToString:kSPKAudioPageActionConvertShare]) return @"share";
     if ([action isEqualToString:kSPKAudioPageActionPlay]) return @"play";
     if ([action isEqualToString:kSPKAudioPageActionCopyURL]) return @"link";
@@ -190,7 +190,7 @@ static UIMenu *SPKAudioPageMenuForButton(UIButton *button) {
                         children:@[
         SPKAudioPageMenuAction(@"Save to Files", kSPKAudioPageActionFiles, kSPKActionDownloadAudio, @"audio_download", button),
         SPKAudioPageMenuAction(@"Share", kSPKAudioPageActionShare, kSPKActionDownloadAudioShare, @"share", button),
-        SPKAudioPageMenuAction(@"Save to Gallery", kSPKAudioPageActionGallery, kSPKActionDownloadAudioGallery, @"media", button),
+        SPKAudioPageMenuAction(@"Save to Gallery", kSPKAudioPageActionGallery, kSPKActionDownloadAudioGallery, @"sparkle_gallery", button),
         SPKAudioPageMenuAction(@"Play", kSPKAudioPageActionPlay, kSPKActionPlayAudio, @"play", button),
         SPKAudioPageMenuAction(@"Copy Download URL", kSPKAudioPageActionCopyURL, kSPKActionCopyAudioURL, @"link", button)
     ]];

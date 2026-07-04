@@ -642,7 +642,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     _deleteGalleryItem.tintColor = [SPKUtils SPKColor_InstagramDestructive];
   } else {
     _saveGalleryItem = SPKMediaChromeBottomBarButtonItem(
-        @"media", @"Save to Gallery", self, @selector(saveToGallery));
+        @"sparkle_gallery", @"Save to Gallery", self, @selector(saveToGallery));
     _downloadURLItem = SPKMediaChromeBottomBarButtonItem(
         @"link", @"Copy Download URL", self,
         @selector(copyDownloadURLForCurrentItem));
@@ -1199,7 +1199,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     } else {
       [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"]];
     }
-    [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"]];
+    [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"]];
     [options addObject:[SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"]];
     [options addObject:[SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"]];
     config.doneOptions = options;
@@ -1299,7 +1299,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
     [SPKPhotoEditorDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
     [SPKPhotoEditorDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
-    [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
+    [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"],
   ];
   [SPKPhotoEditorViewController presentWithSourceImage:source
                                         configuration:config

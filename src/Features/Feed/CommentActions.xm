@@ -161,7 +161,7 @@ static NSArray<UIMenuElement *> *SPKCommentMediaActionItems(id comment, NSURL *u
     [actions addObject:SPKCommentAction(@"Share", @"share", ^{
         performDownload(SPKDownloadDestinationShare);
     })];
-    [actions addObject:SPKCommentAction(@"Save to Gallery", @"media", ^{
+    [actions addObject:SPKCommentAction(@"Save to Gallery", @"sparkle_gallery", ^{
         performDownload(SPKDownloadDestinationGallery);
     })];
     [actions addObject:SPKCommentAction(@"Copy", @"copy", ^{

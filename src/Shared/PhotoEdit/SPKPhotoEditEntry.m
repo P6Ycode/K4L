@@ -127,7 +127,7 @@ didCompleteWithError:(NSError *)error {
         [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
         [SPKPhotoEditorDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
         [SPKPhotoEditorDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
-        [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
+        [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"],
     ];
     __weak typeof(self) weakSelf = self;
     [SPKPhotoEditorViewController presentWithSourceImage:image

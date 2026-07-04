@@ -616,7 +616,7 @@ typedef NS_ENUM(NSUInteger, SPKDownloadsHistoryRowKind) {
     // Navigation actions (top)
     NSMutableArray<UIAction *> *nav = [NSMutableArray array];
     [nav addObject:[UIAction actionWithTitle:@"Open Gallery"
-                                       image:[SPKAssetUtils instagramIconNamed:@"media" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                       image:[SPKAssetUtils instagramIconNamed:@"sparkle_gallery" pointSize:22 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                   identifier:nil
                                      handler:^(__unused UIAction *a) { [SPKGalleryViewController presentGallery]; }]];
     [nav addObject:[UIAction actionWithTitle:@"Open Photos App"
@@ -671,7 +671,7 @@ static NSString *SPKActionIconForJob(SPKDownloadJob *job) {
     if (job.request.finalizeAsBatchClipboard) return @"copy";
     switch (job.request.destination) {
         case SPKDownloadDestinationPhotos:    return @"photo";
-        case SPKDownloadDestinationGallery:   return @"media";
+        case SPKDownloadDestinationGallery:   return @"sparkle_gallery";
         case SPKDownloadDestinationShare:     return @"share";
         case SPKDownloadDestinationClipboard: return @"copy";
         default:                             return @"download";

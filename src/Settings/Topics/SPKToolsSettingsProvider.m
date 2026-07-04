@@ -63,7 +63,7 @@
     }];
     settingsRow.userInfo = @{@"checkmarked": @(self.includeSettings)};
 
-    SPKSetting *galleryRow = [SPKSetting buttonCellWithTitle:@"Gallery" subtitle:@"" icon:SPKSettingsIcon(@"media") action:^{
+    SPKSetting *galleryRow = [SPKSetting buttonCellWithTitle:@"Gallery" subtitle:@"" icon:SPKSettingsIcon(@"sparkle_gallery") action:^{
         self.includeGallery = !self.includeGallery;
         [self rebuildSections];
         [self updateActionEnabled];
