@@ -20,6 +20,7 @@
 #import "../MediaTrim/SPKTrimEditorViewController.h"
 #import "../MediaTrim/SPKTrimSaveCoordinator.h"
 #import "../PhotoEdit/SPKPhotoEditorViewController.h"
+#import "../PhotoEdit/SPKPhotoEditEntry.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKMediaChrome.h"
 #import "SPKFullScreenImageViewController.h"
@@ -169,6 +170,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 @property(nonatomic, strong) UIBarButtonItem *galleryOriginItem;
 @property(nonatomic, strong) UIBarButtonItem *trimItem;
 @property(nonatomic, strong) UIBarButtonItem *editItem;
+
+- (void)syncItemFileURLToGalleryFile:(SPKMediaItem *)item;
 @property(nonatomic, assign) BOOL bulkActionsItemVisible;
 @property(nonatomic, assign) BOOL galleryOriginItemVisible;
 
@@ -667,9 +670,10 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                     currentType == SPKMediaItemTypeAudio)) {
     [trailing addObject:_trimItem];
   }
-  // Photos in the Gallery get an Edit (crop / rotate) action in the same
-  // trailing capsule the video/audio Trim uses.
-  if (_editItem && _isFromGallery && currentType == SPKMediaItemTypeImage) {
+  // Photos get an Edit (crop / rotate / flip) action in the same trailing
+  // capsule the video/audio Trim uses — both Gallery items (Replace / Copy) and
+  // expanded Instagram photos (destination menu), mirroring Trim's availability.
+  if (_editItem && currentType == SPKMediaItemTypeImage) {
     [trailing addObject:_editItem];
   }
 
@@ -1228,9 +1232,36 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   if (!item || item.mediaType != SPKMediaItemTypeImage) {
     return;
   }
-  NSURL *url = item.resolvedFileURL ?: item.fileURL;
-  UIImage *source = url ? [UIImage imageWithContentsOfFile:url.path] : nil;
+
+  BOOL fromGallery = (item.galleryFile != nil);
+
+  // Resolve a source image. Gallery items decode from disk (freshest after an
+  // in-place Replace). Expanded Instagram photos (feed/stories/DMs) reuse the
+  // bitmap already on screen; if that's somehow missing, hand off to the
+  // download+edit entry (which fetches the remote original).
+  UIImage *source = nil;
+  if (fromGallery) {
+    NSURL *url = [item.galleryFile fileURL];
+    source = url ? [UIImage imageWithContentsOfFile:url.path] : nil;
+  } else {
+    // Reuse the bitmap that's already been fetched for display (the cache
+    // manager keeps a local copy) so we don't re-download what's on screen.
+    source = item.image;
+    if (!source) {
+      NSURL *cached = [[SPKMediaCacheManager sharedManager] bestAvailableFileURLForItem:item];
+      NSURL *url = cached ?: item.resolvedFileURL ?: item.fileURL;
+      if (url.isFileURL) source = [UIImage imageWithContentsOfFile:url.path];
+    }
+  }
+
   if (!source) {
+    if (!fromGallery) {
+      [SPKPhotoEditEntry beginEditAndSaveForMediaObject:item.sourceMediaObject
+                                               photoURL:(item.resolvedFileURL ?: item.fileURL)
+                                               metadata:item.galleryMetadata
+                                              presenter:self];
+      return;
+    }
     SPKNotify(@"spk.photoedit.load", @"Cannot Edit",
               @"The image file is unavailable.", @"error_filled",
               SPKNotificationToneError);
@@ -1238,22 +1269,48 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   }
 
   __weak typeof(self) weakSelf = self;
-  [SPKPhotoEditorViewController presentWithSourceImage:source
-                                        configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
-                                                 from:self
-                                           completion:^(UIImage *edited) {
-    if (!edited) return;
-    [SPKTrimSaveCoordinator saveEditedImage:edited
-                                 originFile:item.galleryFile
-                             fallbackSource:(SPKGallerySource)item.gallerySaveSource
-                                 folderPath:nil
-                                  presenter:weakSelf
-                                 completion:^(BOOL didChange) {
-      // On a Replace, the current item's media changed on disk; re-display it so
-      // the preview shows the edit without needing to reopen the viewer. (On a
-      // Copy the media is unchanged, so this harmlessly re-shows the original.)
-      if (didChange) [weakSelf refreshDisplayedImageForItem:item];
+  if (fromGallery) {
+    // Gallery origin: edit, then offer Replace / Save-as-Copy and re-display.
+    [SPKPhotoEditorViewController presentWithSourceImage:source
+                                          configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
+                                                   from:self
+                                             completion:^(UIImage *edited) {
+      if (!edited) return;
+      [SPKTrimSaveCoordinator saveEditedImage:edited
+                                   originFile:item.galleryFile
+                               fallbackSource:(SPKGallerySource)item.gallerySaveSource
+                                   folderPath:nil
+                                    presenter:weakSelf
+                                   completion:^(BOOL didChange) {
+        // On a Replace, the current item's media changed on disk; re-display it so
+        // the preview shows the edit without needing to reopen the viewer. (On a
+        // Copy the media is unchanged, so this harmlessly re-shows the original.)
+        if (didChange) [weakSelf refreshDisplayedImageForItem:item];
+      }];
     }];
+    return;
+  }
+
+  // Non-gallery expanded media: pick a destination in-editor (Photos / Gallery /
+  // Share / Copy), mirroring the "Edit & Save" action button and the non-gallery
+  // trim flow — no silent Gallery dump.
+  SPKPhotoEditorConfiguration *config = [SPKPhotoEditorConfiguration freeformConfiguration];
+  config.doneOptions = @[
+    [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
+    [SPKPhotoEditorDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
+    [SPKPhotoEditorDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
+    [SPKPhotoEditorDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
+  ];
+  [SPKPhotoEditorViewController presentWithSourceImage:source
+                                        configuration:config
+                                                 from:self
+                                destinationCompletion:^(UIImage *edited, NSString *destinationTag) {
+    if (!edited) return;
+    [SPKTrimSaveCoordinator routeEditedImage:edited
+                               toDestination:(destinationTag ?: @"gallery")
+                                    metadata:item.galleryMetadata
+                                   presenter:weakSelf
+                                  completion:nil];
   }];
 }
 
@@ -1265,6 +1322,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
   NSURL *url = item.galleryFile ? [item.galleryFile fileURL] : (item.resolvedFileURL ?: item.fileURL);
   UIImage *fresh = url ? [UIImage imageWithContentsOfFile:url.path] : nil;
   if (!fresh) return;
+  [self syncItemFileURLToGalleryFile:item];
   item.image = fresh;
   UIViewController *currentVC = self.pageViewController.viewControllers.firstObject;
   if ([currentVC isKindOfClass:[SPKFullScreenImageViewController class]] &&
@@ -1277,12 +1335,45 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                        fromItem:(SPKMediaItem *)item {
   // When the trimmed video came from the Gallery, the coordinator may offer to
   // replace the original in place; otherwise it saves a new copy.
+  __weak typeof(self) weakSelf = self;
   [SPKTrimSaveCoordinator saveResult:result
                           originFile:item.galleryFile
                       fallbackSource:(SPKGallerySource)item.gallerySaveSource
                           folderPath:nil
                            presenter:self
-                          completion:nil];
+                          completion:^(BOOL didChange) {
+    // A Replace renames the file on disk; resync the item's canonical URL so a
+    // follow-up Trim/Edit doesn't resolve the stale (deleted) original path, and
+    // reload the live player so it stops playing the now-replaced original.
+    if (didChange) {
+      [weakSelf syncItemFileURLToGalleryFile:item];
+      [weakSelf refreshDisplayedVideoForItem:item];
+    }
+  }];
+}
+
+// Rebuilds the on-screen video/audio player from the item's live Gallery path
+// after an in-place Replace (the AVPlayer otherwise keeps the old asset until
+// the page is re-prepared). Mirrors refreshDisplayedImageForItem: for stills.
+- (void)refreshDisplayedVideoForItem:(SPKMediaItem *)item {
+  if (!item.galleryFile) return;
+  NSURL *url = [item.galleryFile fileURL];
+  if (!url) return;
+  SPKFullScreenVideoViewController *videoVC = [self currentVideoViewController];
+  if (videoVC && videoVC.mediaItem == item) {
+    [videoVC reloadWithFileURL:url];
+  }
+}
+
+// After an in-place Gallery Replace the media is renamed on disk, leaving
+// item.fileURL pointing at the deleted original. Repoint it at the live gallery
+// path so subsequent Edit/Trim/save actions resolve the new file.
+- (void)syncItemFileURLToGalleryFile:(SPKMediaItem *)item {
+  if (!item.galleryFile) return;
+  NSURL *url = [item.galleryFile fileURL];
+  if (!url) return;
+  item.fileURL = url;
+  item.resolvedFileURL = nil;
 }
 
 - (void)updateGalleryOriginButton {

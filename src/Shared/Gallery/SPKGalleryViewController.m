@@ -21,6 +21,7 @@
 #import "../MediaTrim/SPKTrimResult.h"
 #import "../MediaTrim/SPKTrimEditorViewController.h"
 #import "../MediaTrim/SPKTrimSaveCoordinator.h"
+#import "../PhotoEdit/SPKPhotoEditorViewController.h"
 #import "../UI/SPKMediaChrome.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../../InstagramHeaders.h"
@@ -1536,6 +1537,14 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                        handler:^(__unused UIAction *a) { [weakSelf trimFile:file]; }];
     }
 
+    UIAction *editAction = nil;
+    if (file.mediaType == SPKGalleryMediaTypeImage) {
+        editAction = [UIAction actionWithTitle:@"Edit"
+                                         image:SPKGalleryMenuActionIcon(@"crop")
+                                    identifier:nil
+                                       handler:^(__unused UIAction *a) { [weakSelf editFile:file]; }];
+    }
+
      UIImage *shareImg = SPKGalleryMenuActionIcon(@"share");
     UIAction *shareAction = [UIAction actionWithTitle:@"Share"
                                                 image:shareImg
@@ -1614,6 +1623,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     [editSection addObject:renameAction];
     [editSection addObject:moveAction];
     if (trimAction) [editSection addObject:trimAction];
+    if (editAction) [editSection addObject:editAction];
 
     NSMutableArray<UIMenu *> *sections = [NSMutableArray array];
     if (openSection.count > 0) {
@@ -1866,6 +1876,39 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                               completion:^(SPKTrimResult *result) {
         if (!result) return; // Cancelled.
         [weakSelf saveTrimResult:result fromFile:file];
+    }];
+}
+
+- (void)editFile:(SPKGalleryFile *)file {
+    NSURL *url = [file fileURL];
+    UIImage *source = (url && [[NSFileManager defaultManager] fileExistsAtPath:url.path])
+        ? [UIImage imageWithContentsOfFile:url.path]
+        : nil;
+    if (!source) {
+        SPKNotify(@"spk.photoedit.gallery", @"Cannot Edit", @"The original file is missing.", @"error_filled", SPKNotificationToneError);
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    [SPKPhotoEditorViewController presentWithSourceImage:source
+                                          configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
+                                                   from:self
+                                             completion:^(UIImage *edited) {
+        if (!edited) return; // Cancelled.
+        [weakSelf saveEditedImage:edited fromFile:file];
+    }];
+}
+
+- (void)saveEditedImage:(UIImage *)image fromFile:(SPKGalleryFile *)sourceFile {
+    __weak typeof(self) weakSelf = self;
+    [SPKTrimSaveCoordinator saveEditedImage:image
+                                 originFile:sourceFile
+                             fallbackSource:(SPKGallerySource)sourceFile.source
+                                 folderPath:sourceFile.folderPath
+                                  presenter:self
+                                 completion:^(BOOL didChange) {
+        if (didChange) {
+            [weakSelf refetch];
+        }
     }];
 }
 

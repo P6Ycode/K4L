@@ -53,7 +53,7 @@ static NSArray<NSDictionary *> *SPKActionButtonDefaultActionSections(SPKActionBu
     NSArray<NSString *> *supportedActions = SPKActionButtonSupportedActionsForSource(source);
     NSArray<NSDictionary *> *groups = @[
         @{@"title": @"Downloads", @"actions": @[kSPKActionDownloadLibrary, kSPKActionDownloadShare, kSPKActionDownloadGallery]},
-        @{@"title": @"Media", @"actions": @[kSPKActionExpand, kSPKActionViewThumbnail, kSPKActionTrimSave]},
+        @{@"title": @"Media", @"actions": @[kSPKActionExpand, kSPKActionViewThumbnail, kSPKActionTrimSave, kSPKActionEditSave]},
         @{@"title": @"Copy", @"actions": @[kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionCopyCaption, kSPKActionProfileCopyInfo]},
         @{@"title": @"Audio", @"actions": @[kSPKActionDownloadAudio, kSPKActionDownloadAudioShare, kSPKActionDownloadAudioGallery, kSPKActionPlayAudio, kSPKActionCopyAudioURL]},
         @{@"title": @"Other", @"actions": @[kSPKActionOpenTopicSettings, kSPKActionRepost, kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionDeletedMessagesLog, kSPKActionNone]}

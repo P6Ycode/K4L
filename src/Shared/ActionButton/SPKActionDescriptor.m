@@ -25,6 +25,7 @@
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionCopyMedia title:@"Copy Media" iconName:@"copy"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadGallery title:@"Save to Gallery" iconName:@"media"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionTrimSave title:@"Trim & Save" iconName:@"trim"],
+            [SPKActionDescriptor descriptorWithIdentifier:kSPKActionEditSave title:@"Edit & Save" iconName:@"crop"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAudio title:@"Save to Files" iconName:@"audio_download"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAudioShare title:@"Share" iconName:@"share"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAudioGallery title:@"Save to Gallery" iconName:@"media"],

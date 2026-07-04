@@ -6,6 +6,18 @@
 
 #pragma mark - Configuration
 
+@implementation SPKPhotoEditorDoneOption
++ (instancetype)optionWithTitle:(NSString *)title
+                     identifier:(NSString *)identifier
+                       iconName:(NSString *)iconName {
+    SPKPhotoEditorDoneOption *o = [self new];
+    o.title = title;
+    o.identifier = identifier;
+    o.iconName = iconName;
+    return o;
+}
+@end
+
 @implementation SPKPhotoEditorConfiguration
 
 + (instancetype)lockedSquareConfiguration {
@@ -196,6 +208,21 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     [presenter presentViewController:nav animated:YES completion:nil];
 }
 
++ (void)presentWithSourceImage:(UIImage *)image
+                 configuration:(SPKPhotoEditorConfiguration *)configuration
+                          from:(UIViewController *)presenter
+         destinationCompletion:(void (^)(UIImage *, NSString *))destinationCompletion {
+    if (!image || !presenter) return;
+    SPKPhotoEditorViewController *editor = [[self alloc] init];
+    editor.configuration = configuration ?: [SPKPhotoEditorConfiguration freeformConfiguration];
+    editor.sourceImage = image;
+    editor.destinationCompletion = destinationCompletion;
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:editor];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    nav.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    [presenter presentViewController:nav animated:YES completion:nil];
+}
+
 - (UIStatusBarStyle)preferredStatusBarStyle {
     return UIStatusBarStyleLightContent;
 }
@@ -225,9 +252,18 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 - (void)setupChrome {
     UIBarButtonItem *cancelItem = SPKMediaChromeTopBarButtonItem(@"close", self, @selector(cancelTapped));
     cancelItem.accessibilityLabel = @"Cancel";
-    UIBarButtonItem *doneItem = SPKMediaChromeTopBarButtonItemWithStyle(
-        @"check", self, @selector(confirmTapped), UIBarButtonItemStyleDone,
-        [SPKUtils SPKColor_InstagramBlue], self.configuration.confirmButtonTitle ?: @"Done");
+    // When the caller supplies destinations, Done is a menu (pick where to save
+    // without dismissing first); otherwise it's a plain confirm that just returns
+    // the edited image to the caller.
+    UIBarButtonItem *doneItem;
+    if (self.configuration.doneOptions.count > 0) {
+        doneItem = SPKMediaChromeTopBarMenuButtonItem(
+            @"check", [self buildDoneMenu], self.configuration.confirmButtonTitle ?: @"Done");
+    } else {
+        doneItem = SPKMediaChromeTopBarButtonItemWithStyle(
+            @"check", self, @selector(confirmTapped), UIBarButtonItemStyleDone,
+            [SPKUtils SPKColor_InstagramBlue], self.configuration.confirmButtonTitle ?: @"Done");
+    }
     SPKMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ cancelItem ]);
     SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ doneItem ]);
 }
@@ -639,7 +675,13 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 #pragma mark - Confirm / cancel
 
 - (void)cancelTapped {
-    [self dismissViewControllerAnimated:YES completion:nil];
+    // In destination-menu mode, signal the cancel as a nil image so the caller
+    // (which retains itself across the async flow) can release. Plain-confirm
+    // callers documented that `completion` is not called on cancel, so leave it.
+    void (^destinationCompletion)(UIImage *, NSString *) = [self.destinationCompletion copy];
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (destinationCompletion) destinationCompletion(nil, nil);
+    }];
 }
 
 - (void)confirmTapped {
@@ -647,6 +689,33 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     void (^completion)(UIImage *) = [self.completion copy];
     [self dismissViewControllerAnimated:YES completion:^{
         if (completion && image) completion(image);
+    }];
+}
+
+- (UIMenu *)buildDoneMenu {
+    NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
+    __weak typeof(self) weakSelf = self;
+    for (SPKPhotoEditorDoneOption *option in self.configuration.doneOptions) {
+        NSString *identifier = option.identifier;
+        UIImage *image = option.iconName.length > 0
+            ? [SPKAssetUtils instagramIconNamed:option.iconName pointSize:22.0]
+            : nil;
+        UIAction *action = [UIAction actionWithTitle:option.title
+                                               image:image
+                                          identifier:nil
+                                             handler:^(__unused UIAction *a) {
+            [weakSelf finishWithDestinationTag:identifier];
+        }];
+        [children addObject:action];
+    }
+    return [UIMenu menuWithTitle:@"" children:children];
+}
+
+- (void)finishWithDestinationTag:(NSString *)destinationTag {
+    UIImage *image = [self editedImage];
+    void (^completion)(UIImage *, NSString *) = [self.destinationCompletion copy];
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (completion && image) completion(image, destinationTag);
     }];
 }
 

@@ -20,6 +20,7 @@ FOUNDATION_EXPORT NSString * const kSPKActionCopyDownloadLink;
 FOUNDATION_EXPORT NSString * const kSPKActionCopyMedia;
 FOUNDATION_EXPORT NSString * const kSPKActionDownloadGallery;
 FOUNDATION_EXPORT NSString * const kSPKActionTrimSave;
+FOUNDATION_EXPORT NSString * const kSPKActionEditSave;
 FOUNDATION_EXPORT NSString * const kSPKActionDownloadAudio;
 FOUNDATION_EXPORT NSString * const kSPKActionDownloadAudioShare;
 FOUNDATION_EXPORT NSString * const kSPKActionDownloadAudioGallery;

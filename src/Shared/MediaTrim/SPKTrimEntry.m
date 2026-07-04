@@ -223,9 +223,9 @@ didCompleteWithError:(NSError *)error {
     // Done becomes a menu of destinations (chosen without dismissing first).
     config.doneOptions = @[
         [SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
-        [SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
         [SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
         [SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
+        [SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"media"],
     ];
     __weak typeof(self) weakSelf = self;
     [SPKTrimEditorViewController presentWithConfiguration:config

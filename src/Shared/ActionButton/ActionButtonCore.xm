@@ -14,6 +14,7 @@
 #import "../MediaPreview/SPKFullScreenMediaPlayer.h"
 #import "../MediaPreview/SPKMediaItem.h"
 #import "../MediaTrim/SPKTrimEntry.h"
+#import "../PhotoEdit/SPKPhotoEditEntry.h"
 #import "../Gallery/SPKGalleryFile.h"
 #import "../Gallery/SPKGalleryOriginController.h"
 #import "../Gallery/SPKGallerySaveMetadata.h"
@@ -35,6 +36,7 @@ NSString * const kSPKActionCopyDownloadLink = @"copy_download_link";
 NSString * const kSPKActionCopyMedia = @"copy_media";
 NSString * const kSPKActionDownloadGallery = @"download_gallery";
 NSString * const kSPKActionTrimSave = @"trim_save";
+NSString * const kSPKActionEditSave = @"edit_save";
 NSString * const kSPKActionDownloadAudio = @"download_audio";
 NSString * const kSPKActionDownloadAudioShare = @"download_audio_share";
 NSString * const kSPKActionDownloadAudioGallery = @"download_audio_gallery";
@@ -1989,6 +1991,17 @@ static BOOL SPKIsActionVisible(SPKActionButtonContext *context,
 		id mediaObj = currentEntry.mediaObject ?: media;
 		return [SPKMediaQualityManager mediaObjectIsVideo:mediaObj];
 	}
+	if ([identifier isEqualToString:kSPKActionEditSave]) {
+		// Photo-only (crop/rotate/flip editor) — the inverse of Trim & Save.
+		// Needs a still image: a photoURL present and not a video.
+		if (!currentEntry.photoURL) return NO;
+		// A video item may also carry a photoURL (poster frame); treat any
+		// distinct videoURL as video and hide edit.
+		if (currentEntry.videoURL && ![currentEntry.videoURL isEqual:currentEntry.photoURL]) return NO;
+		id mediaObj = currentEntry.mediaObject ?: media;
+		if ([SPKMediaQualityManager mediaObjectIsVideo:mediaObj]) return NO;
+		return YES;
+	}
 	if ([identifier isEqualToString:kSPKActionDownloadLibrary] ||
 		[identifier isEqualToString:kSPKActionDownloadShare] ||
 		[identifier isEqualToString:kSPKActionCopyDownloadLink] ||
@@ -2304,6 +2317,15 @@ static BOOL SPKExecuteCommonAction(NSString *identifier,
 		                                    videoURL:currentEntry.videoURL
 		                                    metadata:meta
 		                                   presenter:SPKActionContextPresenter(context)];
+		return YES;
+	}
+
+	if ([identifier isEqualToString:kSPKActionEditSave]) {
+		id mediaForEdit = currentEntry.metadataObject ?: currentEntry.mediaObject ?: media;
+		[SPKPhotoEditEntry beginEditAndSaveForMediaObject:mediaForEdit
+		                                         photoURL:currentEntry.photoURL
+		                                         metadata:meta
+		                                        presenter:SPKActionContextPresenter(context)];
 		return YES;
 	}
 

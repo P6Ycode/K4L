@@ -150,6 +150,35 @@
           completion:completion];
 }
 
++ (void)routeEditedImage:(UIImage *)image
+           toDestination:(NSString *)destination
+                metadata:(SPKGallerySaveMetadata *)metadata
+               presenter:(UIViewController *)presenter
+              completion:(void (^)(BOOL))completion {
+    NSURL *tempURL = [self writeEditedImageToTemp:image];
+    if (!tempURL) {
+        SPKNotify(@"spk.photoedit.save", @"Couldn't Save",
+                  @"The edited image could not be encoded.", @"error_filled",
+                  SPKNotificationToneError);
+        if (completion) completion(NO);
+        return;
+    }
+    // Frame-only result with its output already rendered (renderResult:
+    // short-circuits on a pre-filled outputURL), so the destination routing +
+    // progress/success pill are identical to a trimmed frame's save.
+    SPKTrimResult *result = [SPKTrimResult requestWithMode:SPKTrimResultModeFrameOnly
+                                                 sourceURL:tempURL
+                                              startSeconds:0.0
+                                           durationSeconds:0.0];
+    result.outputURL = tempURL;
+    [self routeResult:result
+        toDestination:destination
+             metadata:metadata
+            presenter:presenter
+         existingPill:nil
+           completion:completion];
+}
+
 // Encodes an edited image to a unique temp JPEG. Returns nil on failure.
 + (NSURL *)writeEditedImageToTemp:(UIImage *)image {
     NSData *data = image ? UIImageJPEGRepresentation(image, 0.95) : nil;

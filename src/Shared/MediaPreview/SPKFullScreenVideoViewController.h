@@ -15,6 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithMediaItem:(SPKMediaItem *)item;
 - (void)preloadContent;
 - (void)prepareForDisplay;
+/// Rebuilds the AVPlayer from `url`, discarding the currently-loaded asset. Used
+/// after an in-place Gallery Replace, where the media on disk changed but the
+/// live player still holds the old asset.
+- (void)reloadWithFileURL:(NSURL *)url;
 - (void)cleanup;
 - (void)setPlayerControlOverlayInsets:(UIEdgeInsets)insets animated:(BOOL)animated;
 - (void)applyMediaContentInsets:(UIEdgeInsets)insets;

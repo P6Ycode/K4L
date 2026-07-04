@@ -50,6 +50,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
                 kSPKActionCopyMedia,
                 kSPKActionDownloadGallery,
                 kSPKActionTrimSave,
+                kSPKActionEditSave,
                 kSPKActionDownloadAudio,
                 kSPKActionDownloadAudioShare,
                 kSPKActionDownloadAudioGallery,
@@ -69,6 +70,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
                 kSPKActionCopyMedia,
                 kSPKActionDownloadGallery,
                 kSPKActionTrimSave,
+                kSPKActionEditSave,
                 kSPKActionDownloadAudio,
                 kSPKActionDownloadAudioShare,
                 kSPKActionDownloadAudioGallery,
@@ -88,6 +90,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
                 kSPKActionCopyMedia,
                 kSPKActionDownloadGallery,
                 kSPKActionTrimSave,
+                kSPKActionEditSave,
                 kSPKActionDownloadAudio,
                 kSPKActionDownloadAudioShare,
                 kSPKActionDownloadAudioGallery,
@@ -106,6 +109,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
                 kSPKActionCopyMedia,
                 kSPKActionDownloadGallery,
                 kSPKActionTrimSave,
+                kSPKActionEditSave,
                 kSPKActionExpand,
                 kSPKActionViewThumbnail,
                 kSPKActionOpenTopicSettings
@@ -117,6 +121,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
                 kSPKActionCopyDownloadLink,
                 kSPKActionCopyMedia,
                 kSPKActionDownloadGallery,
+                kSPKActionEditSave,
                 kSPKActionExpand,
                 kSPKActionProfileCopyInfo,
                 kSPKActionToggleProfileStorySeenUserRule,
@@ -207,7 +212,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
         kSPKActionDownloadLibrary,
         kSPKActionDownloadShare,
         kSPKActionDownloadGallery,
-        kSPKActionTrimSave
+        kSPKActionTrimSave,
+        kSPKActionEditSave
     ];
     NSArray<NSString *> *audioActions = (source == SPKActionButtonSourceFeed ||
                                          source == SPKActionButtonSourceReels ||

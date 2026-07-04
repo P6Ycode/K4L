@@ -37,6 +37,16 @@ typedef void (^SPKTrimStoreBlock)(NSURL *renderedURL, SPKTrimStoreCompletion don
               presenter:(nullable UIViewController *)presenter
              completion:(nullable void (^)(BOOL didChange))completion;
 
+/// Routes an edited still image (from the photo editor) to one of the save-flow
+/// destinations ("photos", "gallery", "share", "clipboard") — the non-gallery
+/// counterpart to `saveEditedImage:` (which offers Replace/Copy for a gallery
+/// origin). Encodes the image to a temp file and hands it to `routeResult:`.
++ (void)routeEditedImage:(UIImage *)image
+           toDestination:(NSString *)destination
+                metadata:(nullable SPKGallerySaveMetadata *)metadata
+               presenter:(nullable UIViewController *)presenter
+              completion:(nullable void (^)(BOOL ok))completion;
+
 /// Renders `result` in the background behind a cancellable progress pill, then
 /// hands the rendered temp file to `store`. Used by callers that route the
 /// output somewhere other than a Gallery copy/replace (e.g. the save-flow

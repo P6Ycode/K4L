@@ -591,7 +591,8 @@ static void SPKFFmpegAppendTrimAudioOptions(NSMutableArray<NSString *> *args, SP
 static void SPKFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
                                               NSInteger width,
                                               NSInteger height,
-                                              NSInteger sourceBitrate) {
+                                              NSInteger sourceBitrate,
+                                              NSString *extraVideoFilter) {
     BOOL useAdvanced = [SPKUtils getBoolPref:@"downloads_adv_encoding"];
 
     if (!useAdvanced) {
@@ -603,16 +604,28 @@ static void SPKFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
             @"-profile:v", @"main",
             @"-level",     @"4.0",
         ]];
+        if (extraVideoFilter.length > 0) {
+            [args addObjectsFromArray:@[@"-vf", extraVideoFilter]];
+        }
         return;
     }
 
+    // Collect video filters (max-resolution scale + any caller-supplied filter,
+    // e.g. a setpts re-stamp) into a single -vf chain.
+    NSMutableArray<NSString *> *videoFilters = [NSMutableArray array];
     NSString *maxResolution = SPKFFmpegStringPref(@"downloads_encoding_max_resolution", @"original");
     NSInteger targetMaxResolution = [maxResolution isEqualToString:@"original"] ? 0 : MAX(maxResolution.integerValue, 0);
     if (targetMaxResolution > 0 && width > 0 && height > 0) {
         NSString *scaleFilter = width >= height
             ? [NSString stringWithFormat:@"scale=%ld:-2", (long)targetMaxResolution]
             : [NSString stringWithFormat:@"scale=-2:%ld", (long)targetMaxResolution];
-        [args addObjectsFromArray:@[@"-vf", scaleFilter]];
+        [videoFilters addObject:scaleFilter];
+    }
+    if (extraVideoFilter.length > 0) {
+        [videoFilters addObject:extraVideoFilter];
+    }
+    if (videoFilters.count > 0) {
+        [args addObjectsFromArray:@[@"-vf", [videoFilters componentsJoinedByString:@","]]];
     }
 
     NSString *selectedCodec = SPKFFmpegStringPref(@"downloads_encoding_vid_codec", @"videotoolbox");
@@ -653,10 +666,14 @@ static void SPKFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
     }
 }
 
-// Frame-accurate trim encode of a single (already-muxed) input. `-ss` before
-// `-i` is fast (input seek) yet exact when re-encoding, because FFmpeg's
-// accurate_seek (default) decodes from the preceding keyframe and discards
-// frames before `startSeconds`. `-t` bounds the output length.
+// Frame-accurate trim encode of a single (already-muxed) input. `-ss`/`-t` are
+// placed AFTER `-i` (output seek): FFmpeg decodes from the start and re-times the
+// output cleanly from PTS 0, so the first output frame is a real frame at t=0.
+// (Input seek — `-ss` before `-i` — plus `-avoid_negative_ts make_zero` shifted
+// the whole timeline by the AAC encoder-priming delay, which AVFoundation renders
+// as a blank first frame. Output seek avoids the shift entirely; the priming
+// stays a harmless audio-only edit list. Decoding from 0 is negligibly slower for
+// the short clips this handles.)
 static NSArray<NSString *> *SPKFFmpegTrimArguments(NSURL *videoFileURL,
                                                    NSURL *outputURL,
                                                    NSTimeInterval startSeconds,
@@ -668,8 +685,8 @@ static NSArray<NSString *> *SPKFFmpegTrimArguments(NSURL *videoFileURL,
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
         @"-y",
         @"-hide_banner",
-        @"-ss", [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
         @"-i", videoFileURL.path,
+        @"-ss", [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
         @"-t", [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
     ]];
 
@@ -679,16 +696,18 @@ static NSArray<NSString *> *SPKFFmpegTrimArguments(NSURL *videoFileURL,
         [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-map", @"0:a:0"]];
     }
 
-    SPKFFmpegAppendVideoEncodeOptions(args, width, height, sourceBitrate);
+    SPKFFmpegAppendVideoEncodeOptions(args, width, height, sourceBitrate, nil);
     SPKFFmpegAppendTrimAudioOptions(args, audioMode);
-    [args addObjectsFromArray:@[@"-avoid_negative_ts", @"make_zero"]];
     [args addObject:outputURL.path];
     return args;
 }
 
-// Single-pass trim + merge of a separate DASH video and audio stream. Both
-// inputs are range-seeked (`-ss` before each `-i`) so over HTTP only the
-// selected window is fetched; audio is always re-encoded to AAC.
+// Single-pass trim + merge of a separate video and audio stream (both already
+// downloaded to local files — the bundled FFmpeg has no TLS). `-ss`/`-t` go
+// AFTER the inputs (output seek) so the merged output re-times cleanly from PTS
+// 0 with a real first frame, instead of the input-seek + `-avoid_negative_ts
+// make_zero` path that shifted the timeline by the AAC priming delay (blank first
+// frame). Audio is always re-encoded to AAC.
 static NSArray<NSString *> *SPKFFmpegTrimMergeArguments(NSString *videoSource,
                                                         NSString *audioSource,
                                                         NSURL *outputURL,
@@ -696,18 +715,17 @@ static NSArray<NSString *> *SPKFFmpegTrimMergeArguments(NSString *videoSource,
                                                         NSTimeInterval durationSeconds,
                                                         NSInteger width,
                                                         NSInteger height) {
-    NSString *startStr = [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)];
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
         @"-y",
         @"-hide_banner",
-        @"-ss", startStr, @"-i", videoSource,
-        @"-ss", startStr, @"-i", audioSource,
+        @"-i", videoSource,
+        @"-i", audioSource,
+        @"-ss", [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
         @"-t", [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
         @"-map", @"0:v:0", @"-map", @"1:a:0",
     ]];
-    SPKFFmpegAppendVideoEncodeOptions(args, width, height, 0);
+    SPKFFmpegAppendVideoEncodeOptions(args, width, height, 0, nil);
     SPKFFmpegAppendTrimAudioOptions(args, SPKFFmpegTrimAudioAAC);
-    [args addObjectsFromArray:@[@"-avoid_negative_ts", @"make_zero"]];
     [args addObject:outputURL.path];
     return args;
 }

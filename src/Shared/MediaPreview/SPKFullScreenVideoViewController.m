@@ -503,6 +503,17 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     _isPlaying = NO;
 }
 
+- (void)reloadWithFileURL:(NSURL *)url {
+    if (!url) return;
+    // Bump the load generation first so any in-flight fetch from a prior
+    // prepareForDisplay is discarded, then rebuild the player from the new file.
+    self.loadGeneration++;
+    [self tearDownPlayer];
+    self.mediaItem.resolvedFileURL = nil;
+    [self preparePlayerWithURL:url];
+    [self startPlayback];
+}
+
 - (void)cleanup {
     self.loadGeneration++;
     [self tearDownPlayer];
