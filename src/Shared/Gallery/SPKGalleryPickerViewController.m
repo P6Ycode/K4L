@@ -181,10 +181,9 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     // back button (and its swipe-to-go-back gesture).
     BOOL isRoot = (self.navigationController.viewControllers.firstObject == self || self.folderPath.length == 0);
     if (isRoot) {
-        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Cancel"
-                                                                                 style:UIBarButtonItemStylePlain
-                                                                                target:self
-                                                                                action:@selector(cancelTapped)];
+        UIBarButtonItem *cancelItem = SPKMediaChromeTopBarButtonItem(@"xmark", self, @selector(cancelTapped));
+        cancelItem.accessibilityLabel = @"Cancel";
+        self.navigationItem.leftBarButtonItem = cancelItem;
     }
     [self refreshNavigationRightItems];
 
