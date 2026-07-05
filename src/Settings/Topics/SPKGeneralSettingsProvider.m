@@ -70,6 +70,7 @@
             @"•  Appearance & Liquid Glass\n"
             @"•  Tab bar order & visibility\n"
             @"•  Main feed mode (For You / Following)\n"
+            @"•  Disable video autoplay\n"
             @"•  Hide UI on capture\n"
             @"•  Download encoding settings\n"
             @"•  Gallery view, sort & lock\n"

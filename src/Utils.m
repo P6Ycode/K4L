@@ -609,6 +609,11 @@ static BOOL SPKPrefIsGlobalKey(NSString *key) {
             // Main feed mode (For You / Following) is read during early feed
             // setup before the account resolves, so it stays global.
             @"feed_mode",
+            // The feed playback strategy is created during early launch, before
+            // the account session resolves (currentUserPK == nil), so a
+            // per-account effective key would resolve against the wrong PK and
+            // miss the value. Read the plain global key — no session dependency.
+            @"feed_disable_autoplay",
         ]];
     });
     if ([globalExact containsObject:key]) return YES;
