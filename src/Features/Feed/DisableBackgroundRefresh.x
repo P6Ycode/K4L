@@ -79,6 +79,10 @@ static void SPKInstallRefreshUtilityHooks(void) {
 }
 
 // MARK: - Background refresh network source hooks
+// NOTE: On IG 437+ this initializer and the interval getters are gone (init is
+// now initWithPosts:…). Kept for older IG (≤410) compatibility; harmless when
+// the selector is absent. The real gate on modern IG is the refresh-utility
+// class methods above.
 
 %group SPKBackgroundRefreshHooks
 
@@ -224,12 +228,20 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 
 %end
 
-void SPKInstallBackgroundRefreshHooksIfEnabled(void) {
-    if (!spkDisableBgRefresh() && !spkDisableHomeRefresh() && !spkDisableReelsRefresh()) return;
-
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-    %init(SPKBackgroundRefreshHooks);
+// Install everything at dylib load, unconditionally. The old approach gated
+// installation behind the current pref state and ran on a post-launch timer, so
+// hooks were never installed if all prefs were off at launch (breaking live
+// toggling) and could miss early refresh scheduling. The refresh-utility class
+// methods are the only surviving gate on modern IG (437+) — the network-source
+// init/getter hooks are dead there — and every override re-checks the pref at
+// call time, so installing early and unconditionally is both correct and cheap.
+%ctor {
     SPKInstallRefreshUtilityHooks();
-    });
+    %init(SPKBackgroundRefreshHooks);
+}
+
+// Kept for SPKStartupHooks.m registry compat — now a no-op since the refresh
+// hooks install at %ctor / dylib load.
+void SPKInstallBackgroundRefreshHooksIfEnabled(void) {
+    // Intentionally empty — hooks installed in %ctor above.
 }
