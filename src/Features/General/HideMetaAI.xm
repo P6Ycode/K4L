@@ -586,56 +586,97 @@ sponsoredSupportConfiguration:(id)supportConfig
 @interface IGDirectMessageCellShortcutView : UIView
 @end
 
-%hook IGDirectMessageCellShortcutView
-- (void)setViewModel:(id)viewModel {
-    %orig;
+@interface IGDirectMessageCellShortcutManager : NSObject
+@end
 
-    if (SPKHideMetaAIDirect() || SPKHideMetaAIGlobal()) {
-        @try {
-            UIButton *iconButton = MSHookIvar<UIButton *>(self, "_iconButton");
-            if (iconButton != nil) {
-                NSString *label = [iconButton accessibilityLabel];
-                NSString *identifier = [iconButton accessibilityIdentifier];
-                if ([label caseInsensitiveCompare:@"Restyle"] == NSOrderedSame ||
-                    [label caseInsensitiveCompare:@"Create with Meta AI"] == NSOrderedSame ||
-                    [identifier containsString:@"restyle"] ||
-                    [identifier containsString:@"meta_ai"]) {
-                    
-                    SPKLog(@"General", @"[Sparkle] Hiding IGDirectMessageCellShortcutView in setViewModel: (label: %@, id: %@)", label, identifier);
-                    self.hidden = YES;
-                    [self removeFromSuperview];
-                }
-            }
-        }
-        @catch (NSException *exception) {
-            SPKLog(@"General", @"[Sparkle] WARNING: Exception in setViewModel: %@", exception.reason);
-        }
+// The "Restyle / Create with Meta AI" shortcut on a DM message-cell action row.
+// Identify it by the icon button's accessibility metadata — the same signal the
+// old per-view hook used, but read off the model object so it works even if the
+// button was already pulled from the view hierarchy elsewhere.
+// Signals for the Restyle button are language-independent and shared via SPKUtils:
+// its tap target-action (_didTapRestyleShortcut) and its gen-AI glyph asset name.
+// The target-action is primary — a code symbol wired at button creation, so it's
+// present when our hooks run (unlike currentImage, which loads later).
+
+static BOOL SPKShortcutViewIsMetaAI(UIView *shortcutView) {
+    if (![shortcutView isKindOfClass:UIView.class]) return NO;
+    @try {
+        UIButton *iconButton = MSHookIvar<UIButton *>(shortcutView, "_iconButton");
+        if (iconButton == nil) return NO;
+
+        // Primary: the Restyle tap action (language-independent, always wired).
+        if ([SPKUtils control:iconButton hasTapActionContaining:@"Restyle"]) return YES;
+
+        // 437 backstop: the shortcut view's type enum (6 == Restyle / Create-with-AI).
+        long long shortcutType = MSHookIvar<long long>(shortcutView, "_shortcutType");
+        if (shortcutType == 6) return YES;
+
+        // The gen-AI paintbrush glyph asset name.
+        NSString *iconName = [SPKUtils igImageNameForImage:iconButton.currentImage];
+        if ([iconName containsString:@"gen_ai"]) return YES;
+
+        // Automation identifier — also not localized.
+        NSString *identifier = [iconButton accessibilityIdentifier] ?: @"";
+        if ([identifier containsString:@"restyle"] || [identifier containsString:@"meta_ai"]) return YES;
+
+        // Last-resort English label match (localized: only helps on English).
+        NSString *label = [iconButton accessibilityLabel] ?: @"";
+        return ([label caseInsensitiveCompare:@"Restyle"] == NSOrderedSame ||
+                [label caseInsensitiveCompare:@"Create with Meta AI"] == NSOrderedSame);
+    }
+    @catch (NSException *exception) {
+        return NO;
     }
 }
 
-- (void)layoutSubviews {
+// Prune the AI shortcut at the manager level, right after it builds the view
+// row, so the layout pass sees one fewer item and reserves no slot for it — the
+// remaining shortcuts fill the space as if the AI button never existed. (The old
+// approach removed the view from its superview after layout, leaving its gap.)
+%hook IGDirectMessageCellShortcutManager
+- (void)configureWithEligibleViewModels:(id)models
+          needsUserInterfaceStyleUpdate:(BOOL)update
+                      reactionPillColor:(id)pillColor
+                        normalTintColor:(id)tintColor {
     %orig;
 
-    if (SPKHideMetaAIDirect() || SPKHideMetaAIGlobal()) {
-        @try {
-            UIButton *iconButton = MSHookIvar<UIButton *>(self, "_iconButton");
-            if (iconButton != nil) {
-                NSString *label = [iconButton accessibilityLabel];
-                NSString *identifier = [iconButton accessibilityIdentifier];
-                if ([label caseInsensitiveCompare:@"Restyle"] == NSOrderedSame ||
-                    [label caseInsensitiveCompare:@"Create with Meta AI"] == NSOrderedSame ||
-                    [identifier containsString:@"restyle"] ||
-                    [identifier containsString:@"meta_ai"]) {
-                    
-                    self.hidden = YES;
-                    [self removeFromSuperview];
+    if (!(SPKHideMetaAIDirect() || SPKHideMetaAIGlobal())) return;
+
+    @try {
+        NSMutableArray *order = MSHookIvar<NSMutableArray *>(self, "_shortcutViewsInDisplayOrder");
+        NSMutableDictionary *byType = MSHookIvar<NSMutableDictionary *>(self, "_viewsByType");
+        if (![order isKindOfClass:NSArray.class]) return;
+
+        for (UIView *shortcutView in [order copy]) {
+            if (!SPKShortcutViewIsMetaAI(shortcutView)) continue;
+
+            SPKLog(@"General", @"[Sparkle] Removing Meta AI shortcut from DM cell action row");
+            [order removeObjectIdenticalTo:shortcutView];
+            if ([byType isKindOfClass:NSDictionary.class]) {
+                for (id key in [byType allKeys]) {
+                    if (byType[key] == shortcutView) [byType removeObjectForKey:key];
                 }
             }
+            [shortcutView removeFromSuperview];
         }
-        @catch (NSException *exception) {}
+    }
+    @catch (NSException *exception) {
+        SPKLog(@"General", @"[Sparkle] WARNING: Meta AI shortcut prune failed: %@", exception.reason);
     }
 }
 %end
+
+// Older IG (e.g. 410.1.0) has no IGDirectMessageCellShortcutManager. Cache its
+// presence once so the button-level fallback below only engages on builds that
+// lack the manager path.
+static BOOL SPKHasShortcutManager(void) {
+    static BOOL has;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        has = (NSClassFromString(@"IGDirectMessageCellShortcutManager") != nil);
+    });
+    return has;
+}
 
 // Themed in-app buttons
 %hook UIButton
@@ -644,15 +685,51 @@ sponsoredSupportConfiguration:(id)supportConfig
 
     if (SPKHideMetaAIDirect() || SPKHideMetaAICreation() || SPKHideMetaAIGlobal()) {
         NSString *accessibilityID = self.accessibilityIdentifier;
-        if ([accessibilityID containsString:@"meta_ai"] ||
+        BOOL matchByID = ([accessibilityID containsString:@"meta_ai"] ||
             [accessibilityID containsString:@"restyle"] ||
             [accessibilityID containsString:@"magic_mod"] ||
             [accessibilityID containsString:@"ai_restyle"] ||
-            [accessibilityID containsString:@"imagine"]) {
-            
-            SPKLog(@"General", @"[Sparkle] Hiding UIButton: %@", accessibilityID);
+            [accessibilityID containsString:@"imagine"]);
+
+        // On builds without the shortcut manager, the DM "Restyle / Create with
+        // Meta AI" affordance is a bare IGTapButton. Identify it primarily by its
+        // tap target-action (_didTapRestyleShortcut) — a code symbol, so it's
+        // language-independent and already wired here (the icon loads later, which
+        // is why the currentImage check missed). Fall back to the gen-AI glyph name.
+        // Where the manager DOES exist it prunes the shortcut row instead.
+        //
+        // Scope strictly to IGTapButton: matching every UIButton reaches UIKit's
+        // private nav/toolbar buttons (_UIButtonBarButton, _UIModernBarButton), and
+        // removeFromSuperview on those corrupts the button bar's constraint graph
+        // ("no common ancestor" Auto Layout crash).
+        BOOL matchesRestyle = NO;
+        if (!matchByID && !SPKHasShortcutManager() && [self isKindOfClass:%c(IGTapButton)]) {
+            matchesRestyle = [SPKUtils control:self hasTapActionContaining:@"Restyle"] ||
+                             [[SPKUtils igImageNameForImage:self.currentImage] containsString:@"gen_ai"];
+        }
+
+        if (matchByID) {
+            SPKLog(@"General", @"[Sparkle] Hiding UIButton (id: %@)", accessibilityID);
             self.hidden = YES;
             [self removeFromSuperview];
+        } else if (matchesRestyle) {
+            // On 410 the IGTapButton sits inside a circular background wrapper view
+            // ([button] -> [circle] -> [container]). Removing only the button leaves
+            // the empty circle, so lift up to the wrapper — but never remove a view
+            // that also hosts another control (the shared container with the forward
+            // button), which would take the forward button down with it.
+            UIView *viewToRemove = self;
+            UIView *wrapper = self.superview;
+            if ([wrapper isKindOfClass:UIView.class]) {
+                NSUInteger controlSiblings = 0;
+                for (UIView *sub in wrapper.subviews) {
+                    if ([sub isKindOfClass:UIControl.class]) controlSiblings++;
+                }
+                if (controlSiblings <= 1) viewToRemove = wrapper;   // wrapper hosts only this button
+            }
+            SPKLog(@"General", @"[Sparkle] Hiding DM Restyle button (410), removing %@", [viewToRemove class]);
+            self.hidden = YES;
+            [viewToRemove removeFromSuperview];
         }
     }
 }

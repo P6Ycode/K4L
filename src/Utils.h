@@ -170,4 +170,10 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 + (id)getIvarForObj:(id)obj name:(const char *)name;
 + (void)setIvarForObj:(id)obj name:(const char *)name value:(id)value;
 
+// Language-independent view/control matching. Prefer these over accessibilityLabel
+// (which is localized) when identifying IG controls: an icon asset name and a
+// control's tap target-action selector are both code symbols, stable across locales.
++ (nullable NSString *)igImageNameForImage:(nullable UIImage *)image;
++ (BOOL)control:(nullable UIControl *)control hasTapActionContaining:(NSString *)needle;
+
 @end

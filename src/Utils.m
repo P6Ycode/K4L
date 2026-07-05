@@ -1433,8 +1433,40 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 + (void)setIvarForObj:(id)obj name:(const char *)name value:(id)value {
     Ivar ivar = class_getInstanceVariable(object_getClass(obj), name);
     if (!ivar) return;
-    
+
     object_setIvarWithStrongDefault(obj, ivar, value);
+}
+
++ (NSString *)igImageNameForImage:(UIImage *)image {
+    if (![image isKindOfClass:UIImage.class]) return nil;
+    // IG tags loaded images with their asset name on the ig_imageName property.
+    SEL sel = NSSelectorFromString(@"ig_imageName");
+    if (![image respondsToSelector:sel]) return nil;
+    @try {
+        id name = [image valueForKey:@"ig_imageName"];
+        return [name isKindOfClass:NSString.class] ? name : nil;
+    }
+    @catch (NSException *exception) {
+        return nil;
+    }
+}
+
++ (BOOL)control:(UIControl *)control hasTapActionContaining:(NSString *)needle {
+    if (![control isKindOfClass:UIControl.class] || needle.length == 0) return NO;
+    @try {
+        for (id target in [control allTargets]) {
+            id realTarget = (target == [NSNull null]) ? nil : target;
+            NSArray<NSString *> *actions = [control actionsForTarget:realTarget
+                                                     forControlEvent:UIControlEventTouchUpInside];
+            for (NSString *action in actions) {
+                if ([action rangeOfString:needle options:NSCaseInsensitiveSearch].location != NSNotFound) {
+                    return YES;
+                }
+            }
+        }
+    }
+    @catch (NSException *exception) {}
+    return NO;
 }
 
 
