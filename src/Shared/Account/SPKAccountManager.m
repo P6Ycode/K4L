@@ -134,6 +134,25 @@ static BOOL SPKStringsEqual(NSString *a, NSString *b) {
     return manager.cachedPK;
 }
 
++ (NSString *)preferenceNamespacePK {
+    NSString *pk = [self currentAccountPK];
+    if (pk.length > 0) return pk;
+
+    // Session not resolved (early launch) or logged out — fall back to the
+    // most-recently-seen account. Single pass over the roster, no sort/alloc,
+    // since this runs on the preference-read hot path during the nil window.
+    NSDictionary *stored = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kSPKAccountRosterDefaultsKey];
+    if (![stored isKindOfClass:[NSDictionary class]]) return nil;
+    __block NSString *newestPK = nil;
+    __block double newestSeen = -1.0;
+    [stored enumerateKeysAndObjectsUsingBlock:^(NSString *rosterPK, id value, BOOL *stop) {
+        if (rosterPK.length == 0 || ![value isKindOfClass:[NSDictionary class]]) return;
+        double seen = [value[@"lastSeen"] doubleValue];
+        if (seen > newestSeen) { newestSeen = seen; newestPK = rosterPK; }
+    }];
+    return newestPK.length > 0 ? newestPK : nil;
+}
+
 + (NSString *)currentAccountUsername {
     SPKAccountManager *manager = [self shared];
     if (!manager.hasResolvedOnce) [manager refreshCurrentAccount];

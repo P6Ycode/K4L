@@ -631,8 +631,13 @@ NSString *SPKEffectivePreferenceKey(NSString *key) {
     if (key.length == 0) return key;
     if (!SPKPrefPerAccountEnabled()) return key;
     if (SPKPrefIsGlobalKey(key)) return key;
-    NSString *pk = [SPKAccountManager currentAccountPK];
-    if (pk.length == 0) return key;  // logged out / unresolved → use global
+    // Use the best-effort namespace PK: during the early-launch window the live
+    // session isn't resolved yet (currentAccountPK == nil), so this falls back
+    // to the last-active account from the roster. Without it, hooks that fire
+    // early (e.g. feed autoplay strategy creation) read the global default
+    // instead of the per-account value the user actually set.
+    NSString *pk = [SPKAccountManager preferenceNamespacePK];
+    if (pk.length == 0) return key;  // no known account → use global
     return [NSString stringWithFormat:@"u_%@_%@", pk, key];
 }
 

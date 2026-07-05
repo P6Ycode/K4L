@@ -24,6 +24,16 @@ FOUNDATION_EXPORT NSNotificationName const SPKAccountDidChangeNotification;
 /// Cached PK of the active account (nil when logged out / not yet resolved).
 @property (class, nonatomic, readonly, nullable) NSString *currentAccountPK;
 
+/// Best-effort PK for per-account preference namespacing. Returns the live
+/// account PK once resolved; otherwise the most-recently-seen account from the
+/// persisted roster. This closes the early-launch window where the IG session
+/// hasn't resolved yet (currentAccountPK == nil): without it, preferences read
+/// during that window fall back to the global key and miss the value the user
+/// set on their per-account key. IG relaunches into the last-active account, so
+/// the newest roster entry is the correct target; the live PK supersedes it the
+/// moment the session settles.
+@property (class, nonatomic, readonly, nullable) NSString *preferenceNamespacePK;
+
 /// Cached username of the active account, when known.
 @property (class, nonatomic, readonly, nullable) NSString *currentAccountUsername;
 
