@@ -126,25 +126,10 @@ static NSString *SPKGetShareTypeFromController(UIViewController *vc) {
         return;
     }
 
-    NSString *accessibilityLabel = [button accessibilityLabel];
-    NSString *text = nil;
-    if ([button respondsToSelector:@selector(text)]) {
-        text = [button performSelector:@selector(text)];
-    }
-
-    BOOL isSendButton = NO;
-    NSString *lowerLabel = [accessibilityLabel lowercaseString];
-    NSString *lowerText = [text lowercaseString];
-
-    if ([lowerLabel containsString:@"send"] || [lowerText containsString:@"send"] ||
-        [lowerLabel containsString:@"share"] || [lowerText containsString:@"share"]) {
-        isSendButton = YES;
-    }
-
-    if (!isSendButton) {
-        %orig;
-        return;
-    }
+    // This hook is bound only to the share sheet's bottom-buttons view
+    // (IGShareSheet.IGSharesheetBottomButtonsView), whose primary button IS the
+    // Send button — so confirm on any primary tap. (The old send/share title sniff
+    // was both redundant and localized, silently disabling confirm on non-English.)
 
     UIViewController *vc = [SPKUtils nearestViewControllerForView:(UIView *)self];
     NSString *contentType = SPKGetShareTypeFromController(vc);

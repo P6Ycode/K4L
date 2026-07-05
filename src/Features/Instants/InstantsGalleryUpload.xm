@@ -216,6 +216,24 @@ static BOOL SPKInstantsCreationViewIsPostCapture(UIView *creationView) {
     __block BOOL foundUndo = NO;
     SPKInstantsWalkViews(creationView, ^(UIView *view, BOOL *stop) {
         if (!SPKInstantsViewIsVisible(view)) return;
+
+        // Language-independent first: an "undo" tap action or undo glyph marks the
+        // post-capture edit state. The "Undo" title match is a localized fallback.
+        if ([view isKindOfClass:UIControl.class] &&
+            [SPKUtils control:(UIControl *)view hasTapActionContaining:@"undo"]) {
+            foundUndo = YES;
+            *stop = YES;
+            return;
+        }
+        if ([view isKindOfClass:UIButton.class]) {
+            NSString *iconName = [SPKUtils igImageNameForImage:((UIButton *)view).currentImage];
+            if ([iconName rangeOfString:@"undo" options:NSCaseInsensitiveSearch].location != NSNotFound) {
+                foundUndo = YES;
+                *stop = YES;
+                return;
+            }
+        }
+
         NSString *text = [SPKInstantsControlText(view) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if ([text caseInsensitiveCompare:@"Undo"] == NSOrderedSame) {
             foundUndo = YES;

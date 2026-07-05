@@ -399,11 +399,36 @@ static void SPKUpdateShareLongPressRecognizerStates(void) {
 }
 
 static BOOL SPKShareViewLooksLikeSendControl(UIView *view) {
-    NSString *label = (view.accessibilityLabel ?: view.accessibilityIdentifier ?: @"").lowercaseString;
-    if ([label containsString:@"send"] || [label containsString:@"share"] || [label containsString:@"paper"] || [label containsString:@"airplane"] || [label containsString:@"direct"]) {
+    // accessibilityIdentifier, the tap target-action, and the icon asset name are
+    // all code symbols (not localized) — check them first. accessibilityLabel is
+    // localized, so it's only a last resort. (The old code did `label ?: identifier`,
+    // which preferred the localized label and broke detection on non-English.)
+    NSString *identifier = view.accessibilityIdentifier.lowercaseString ?: @"";
+    if ([identifier containsString:@"send"] || [identifier containsString:@"share"] ||
+        [identifier containsString:@"paper"] || [identifier containsString:@"airplane"] ||
+        [identifier containsString:@"direct"]) {
         return YES;
     }
-    return NO;
+
+    if ([view isKindOfClass:UIControl.class]) {
+        UIControl *control = (UIControl *)view;
+        if ([SPKUtils control:control hasTapActionContaining:@"send"] ||
+            [SPKUtils control:control hasTapActionContaining:@"share"]) {
+            return YES;
+        }
+    }
+
+    if ([view isKindOfClass:UIButton.class]) {
+        NSString *iconName = [SPKUtils igImageNameForImage:((UIButton *)view).currentImage].lowercaseString;
+        if ([iconName containsString:@"send"] || [iconName containsString:@"paper_plane"] ||
+            [iconName containsString:@"paperplane"] || [iconName containsString:@"direct_share"]) {
+            return YES;
+        }
+    }
+
+    // Localized last resort (English only).
+    NSString *label = view.accessibilityLabel.lowercaseString ?: @"";
+    return ([label containsString:@"send"] || [label containsString:@"share"]);
 }
 
 static NSArray<UIView *> *SPKShareCandidateSubviews(UIView *root, NSInteger maxDepth) {

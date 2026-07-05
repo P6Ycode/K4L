@@ -12,13 +12,17 @@ static inline BOOL SPKHideCommentGiftsButtonEnabled(void) {
 static BOOL SPKViewMatchesCommentGiftButton(UIView *view) {
     if (![view isKindOfClass:[UIControl class]]) return NO;
 
-    NSString *label = view.accessibilityLabel;
-    if (![label isEqualToString:@"Gifts button"]) return NO;
+    // Language-independent signals first: a gift tap action or the gift glyph asset
+    // name. accessibilityLabel ("Gifts button") is localized, so it's the fallback.
+    // The primary code path finds this button via the composer's _giftButton /
+    // _lazyGiftButton ivar; this matcher only gates the subtree-search fallback.
+    if ([SPKUtils control:(UIControl *)view hasTapActionContaining:@"gift"]) return YES;
+    if ([view isKindOfClass:UIButton.class]) {
+        NSString *iconName = [SPKUtils igImageNameForImage:((UIButton *)view).currentImage];
+        if ([iconName containsString:@"gift"]) return YES;
+    }
 
-    NSString *className = NSStringFromClass([view class]);
-    return [className containsString:@"IGBouncyIconButton"] ||
-           [className containsString:@"IGBouncyButton"] ||
-           [view isKindOfClass:[UIControl class]];
+    return [view.accessibilityLabel isEqualToString:@"Gifts button"];
 }
 
 static UIView *SPKCommentGiftButtonInView(UIView *view, NSUInteger depth) {
