@@ -211,7 +211,10 @@ static void SPKEnsureStoryOverlayAlphaObserver(UIView *overlayView) {
 }
 
 static CGRect SPKStorySeenBaseFrame(UIView *overlayView) {
-    return SPKStoryFloatingButtonFrame(overlayView, 38.0);
+    // Match the SPKChromeButton diameter (44) and the stories action button size so
+    // the seen/mentions buttons keep the same size and trailing anchor whether or not
+    // the action button is present.
+    return SPKStoryFloatingButtonFrame(overlayView, 44.0);
 }
 
 static id SPKStorySectionControllerFromOverlayView(UIView *overlayView) {
@@ -484,7 +487,7 @@ UIView *SPKActiveStoryOverlayForInteractions(void) {
         size = CGRectGetWidth(storyActionButton.frame);
     }
     if (size <= 0.0)
-        size = 38.0;
+        size = 44.0;
 
     CGFloat spacingReduction = 2.0;
     CGFloat y = actionVisible ? CGRectGetMinY(storyActionButton.frame) : CGRectGetMinY(baseFrame);
