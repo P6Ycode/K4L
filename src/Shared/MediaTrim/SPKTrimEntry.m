@@ -89,7 +89,7 @@
     // Scrub on a small muxed preview (has audio — important for cutting to
     // music). For progressive quality the chosen file is the final, so edit and
     // final are the same download.
-    NSURL *editURL = self.plan.needsMerge ? self.plan.editURL : self.plan.finalVideoURL;
+    NSURL *editURL = self.plan.needsHighQualityFetch ? self.plan.editURL : self.plan.finalVideoURL;
     if (editURL.isFileURL) {
         [self presentEditorForLocalURL:editURL];
         return;
@@ -220,6 +220,11 @@ didCompleteWithError:(NSError *)error {
         return;
     }
     SPKTrimConfiguration *config = [SPKTrimConfiguration configurationWithVideoURL:localURL];
+    // A video-only DASH pick has no audio track — don't offer "Audio Only" in the
+    // editor even though the progressive preview (editURL) may contain one.
+    if (self.plan.sourceIsSilent) {
+        config.allowsAudioOnly = NO;
+    }
     // Done becomes a menu of destinations (chosen without dismissing first).
     config.doneOptions = @[
         [SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
@@ -246,20 +251,29 @@ didCompleteWithError:(NSError *)error {
 // DASH needs its high-res video + audio fetched to local files first — the
 // bundled FFmpeg has no TLS, so it can't read the https stream URLs directly.
 - (void)renderResult:(SPKTrimResult *)result toDestination:(NSString *)destination {
-    if (self.plan.needsMerge && !result.renderVideoURL) {
+    if (self.plan.needsHighQualityFetch && !result.renderVideoURL) {
+        // The editor scrubbed a progressive preview; render the final cut from
+        // the chosen DASH rep(s) instead. Merged picks fetch video + audio;
+        // video-only fetches just the silent video. (Bundled FFmpeg has no TLS,
+        // so it can't read the https stream URLs directly.)
+        NSMutableArray<NSURL *> *sources =
+            [NSMutableArray arrayWithObject:self.plan.finalVideoURL];
+        if (self.plan.finalAudioURL) {
+            [sources addObject:self.plan.finalAudioURL];
+        }
         // One continuous pill spans the high-quality download and the render —
         // hand it off rather than stacking a second notification.
         SPKNotificationPillView *pill =
             [[SPKNotificationCenter shared] beginUnmanagedProgressWithTitle:@"Downloading..." onCancel:nil];
         __weak typeof(self) weakSelf = self;
-        [self downloadURLs:@[ self.plan.finalVideoURL, self.plan.finalAudioURL ]
+        [self downloadURLs:sources
                      title:@"Downloading high quality..."
                       pill:pill
                 completion:^(NSArray<NSURL *> *locals) {
             __strong typeof(weakSelf) self = weakSelf;
-            if (locals.count < 2) { [self cleanupAndFinish]; return; }
+            if (locals.count < sources.count) { [self cleanupAndFinish]; return; }
             result.renderVideoURL = locals[0];
-            result.renderAudioURL = locals[1];
+            result.renderAudioURL = (locals.count > 1) ? locals[1] : nil;
             result.width = self.plan.width;
             result.height = self.plan.height;
             [self performRenderResult:result toDestination:destination pill:pill];

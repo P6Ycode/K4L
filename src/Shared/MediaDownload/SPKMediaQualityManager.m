@@ -7,18 +7,18 @@
 #import "../../Settings/SPKSettingsViewController.h"
 #import "../../Settings/SPKTopicSettingsSupport.h"
 #import "../../Utils.h"
-#import "../Downloads/SPKDownloadHelpers.h"
 #import "../Downloads/SPKDownloadDestinationWriter.h"
-#import "../UI/SPKMediaChrome.h"
+#import "../Downloads/SPKDownloadHelpers.h"
 #import "../Downloads/SPKDownloadTypes.h"
 #import "../Gallery/SPKGalleryFile.h"
 #import "../Gallery/SPKGallerySaveMetadata.h"
 #import "../MediaPreview/SPKFullScreenMediaPlayer.h"
 #import "../MediaPreview/SPKMediaItem.h"
+#import "../MediaTrim/SPKTrimSourcePlan.h"
+#import "../UI/SPKMediaChrome.h"
 #import "../UI/SPKSwitch.h"
 #import "SPKDashParser.h"
 #import "SPKMediaFFmpeg.h"
-#import "../MediaTrim/SPKTrimSourcePlan.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <AVKit/AVKit.h>
@@ -752,10 +752,10 @@ SPKMediaBuildMergedDashOptions(NSArray<SPKDashRepresentation *> *videoReps,
     option.audioCodec = bestAudio.codecs;
     option.title = SPKMediaResolutionLabel(videoRep.width, videoRep.height)
                        ?: @"Merged video";
-    option.subtitle = SPKMediaSubtitle(
-        videoRep.width, videoRep.height,
-        videoRep.bandwidth + bestAudio.bandwidth, duration, videoRep.codecs,
-        bestAudio.url ? @"video + audio" : @"video");
+    option.subtitle =
+        SPKMediaSubtitle(videoRep.width, videoRep.height,
+                         videoRep.bandwidth + bestAudio.bandwidth, duration,
+                         nil, bestAudio.url ? @"video + audio" : @"video");
     option.selectable = ffmpegAvailable;
     option.qualityInfo = SPKMediaQualityInfoForOption(option);
     [options addObject:option];
@@ -782,7 +782,7 @@ SPKMediaBuildVideoOnlyDashOptions(NSArray<SPKDashRepresentation *> *videoReps,
                        ?: @"Video only";
     option.subtitle =
         SPKMediaSubtitle(videoRep.width, videoRep.height, videoRep.bandwidth,
-                         duration, videoRep.codecs, @"silent");
+                         duration, nil, @"silent");
     option.selectable = YES;
     option.qualityInfo = SPKMediaQualityInfoForOption(option);
     [options addObject:option];
@@ -804,8 +804,8 @@ SPKMediaBuildAudioDashOptions(NSArray<SPKDashRepresentation *> *audioReps,
     option.duration = duration;
     option.codec = audioRep.codecs;
     option.title = @"Audio only";
-    option.subtitle = SPKMediaSubtitle(0, 0, audioRep.bandwidth, duration,
-                                       audioRep.codecs, nil);
+    option.subtitle =
+        SPKMediaSubtitle(0, 0, audioRep.bandwidth, duration, nil, nil);
     option.selectable = includeAudio;
     option.qualityInfo = SPKMediaQualityInfoForOption(option);
     [options addObject:option];
@@ -909,23 +909,19 @@ static SPKMediaAnalysis *SPKMediaAnalyze(id mediaObject, NSURL *photoURL,
 
   NSMutableArray<SPKMediaOptionSection *> *sections = [NSMutableArray array];
   if (progressiveVideoOptions.count > 0)
-    [sections
-        addObject:SPKMediaSection(@"Ready-to-play", progressiveVideoOptions)];
+    [sections addObject:SPKMediaSection(@"Ready to Play", progressiveVideoOptions)];
   if (mergedOptions.count > 0)
-    [sections addObject:SPKMediaSection(@"Merge Video + Audio (DASH)",
-                                        mergedOptions)];
-  if (audioOptions.count > 0 && includeAudioOptions)
-    [sections addObject:SPKMediaSection(@"Audio Only (DASH)", audioOptions)];
+    [sections addObject:SPKMediaSection(@"Video + Audio", mergedOptions)];
   if (videoOnlyOptions.count > 0)
-    [sections
-        addObject:SPKMediaSection(@"Video Only (DASH)", videoOnlyOptions)];
+    [sections addObject:SPKMediaSection(@"Video Only", videoOnlyOptions)];
+  if (audioOptions.count > 0 && includeAudioOptions)
+    [sections addObject:SPKMediaSection(@"Audio Only", audioOptions)];
   analysis.videoSections = sections;
 
   return analysis;
 }
 
-static SPKMediaOption *SPKMediaTieredOption(NSArray<SPKMediaOption *> *options,
-                                            NSString *quality) {
+static SPKMediaOption *SPKMediaTieredOption(NSArray<SPKMediaOption *> *options, NSString *quality) {
   if (options.count == 0)
     return nil;
   if ([quality isEqualToString:@"high"])
@@ -1015,6 +1011,14 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
   plan.finalVideoURL = finalVideoURL;
   plan.finalAudioURL = chosen.secondaryURL;
   plan.needsMerge = (chosen.secondaryURL != nil);
+  // Merged and video-only DASH reps are both separate (often AV1) streams that
+  // must be fetched and rendered from the chosen quality — the editor scrubs
+  // the progressive `editURL` preview instead. Progressive picks render the
+  // edited file directly.
+  plan.needsHighQualityFetch =
+      (chosen.kind == SPKMediaOptionKindVideoDashMerged ||
+       chosen.kind == SPKMediaOptionKindVideoDashOnly);
+  plan.sourceIsSilent = (chosen.kind == SPKMediaOptionKindVideoDashOnly);
   plan.width = chosen.width;
   plan.height = chosen.height;
   plan.duration = analysis.duration;
@@ -1128,20 +1132,44 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
 
 @end
 
+// Condenses a raw codecs string (e.g. "av01.0.08M.10", "mp4a.40.2") into a
+// short, scannable badge. Returns nil when the codec is unknown/absent.
+static NSString *SPKMediaCodecBadge(NSString *codec) {
+  NSString *lower = codec.lowercaseString ?: @"";
+  if (lower.length == 0)
+    return nil;
+  if ([lower hasPrefix:@"avc"] || [lower containsString:@"h264"])
+    return @"H.264";
+  if ([lower hasPrefix:@"hvc"] || [lower hasPrefix:@"hev"] ||
+      [lower containsString:@"hevc"] || [lower containsString:@"h265"])
+    return @"HEVC";
+  if ([lower hasPrefix:@"av01"] || [lower isEqualToString:@"av1"])
+    return @"AV1";
+  if ([lower hasPrefix:@"vp09"] || [lower hasPrefix:@"vp9"])
+    return @"VP9";
+  if ([lower hasPrefix:@"vp08"] || [lower hasPrefix:@"vp8"])
+    return @"VP8";
+  if ([lower containsString:@"mp4a"] || [lower containsString:@"aac"])
+    return @"AAC";
+  if ([lower containsString:@"opus"])
+    return @"Opus";
+  if ([lower containsString:@"mp3"])
+    return @"MP3";
+  return [[lower componentsSeparatedByString:@"."].firstObject uppercaseString];
+}
+
 @interface _SPKMediaOptionCell : UITableViewCell
 @property(nonatomic, strong) UILabel *titleLabel;
 @property(nonatomic, strong) UILabel *subtitleLabel;
+@property(nonatomic, strong) UIView *pillBackground;
+@property(nonatomic, strong) UILabel *pillLabel;
 @property(nonatomic, strong) UIButton *previewButton;
 @property(nonatomic, strong) UIButton *menuButton;
+@property(nonatomic, strong) UIView *highlightOverlay;
+@property(nonatomic, strong) UIView *separatorLine;
 @end
 
 @implementation _SPKMediaOptionCell
-
-- (UIView *)selectionBackgroundView {
-  UIView *view = [[UIView alloc] initWithFrame:CGRectZero];
-  view.backgroundColor = [SPKUtils SPKColor_InstagramPressedBackground];
-  return view;
-}
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
               reuseIdentifier:(NSString *)reuseIdentifier {
@@ -1149,13 +1177,32 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
   if (!self)
     return nil;
 
-  self.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
-  self.selectionStyle = UITableViewCellSelectionStyleDefault;
-  self.selectedBackgroundView = [self selectionBackgroundView];
+  self.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
+  self.contentView.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
+  self.selectionStyle = UITableViewCellSelectionStyleNone;
+
+  // Highlight overlay
+  _highlightOverlay = [[UIView alloc] init];
+  _highlightOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+  _highlightOverlay.backgroundColor = [SPKUtils SPKColor_ListRowPressedOverlay];
+  _highlightOverlay.hidden = YES;
+  [self.contentView addSubview:_highlightOverlay];
+
+  // Separator line
+  _separatorLine = [[UIView alloc] init];
+  _separatorLine.translatesAutoresizingMaskIntoConstraints = NO;
+  _separatorLine.backgroundColor = [SPKUtils SPKColor_InstagramSeparator];
+  [self.contentView addSubview:_separatorLine];
 
   _previewButton = [UIButton buttonWithType:UIButtonTypeSystem];
   _previewButton.translatesAutoresizingMaskIntoConstraints = NO;
   _previewButton.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
+  _previewButton.backgroundColor =
+      [SPKUtils SPKColor_InstagramSecondaryBackground];
+  _previewButton.layer.cornerRadius = 8.0;
+  _previewButton.layer.cornerCurve = kCACornerCurveContinuous;
+  _previewButton.layer.masksToBounds = YES;
+  _previewButton.adjustsImageWhenHighlighted = NO;
   [self.contentView addSubview:_previewButton];
 
   _menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -1168,28 +1215,65 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
 
   _titleLabel = [[UILabel alloc] init];
   _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-  _titleLabel.font =
-      [UIFont monospacedDigitSystemFontOfSize:15.0 weight:UIFontWeightSemibold];
+  _titleLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
   _titleLabel.textColor = [SPKUtils SPKColor_InstagramPrimaryText];
-  [self.contentView addSubview:_titleLabel];
 
   _subtitleLabel = [[UILabel alloc] init];
   _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-  _subtitleLabel.font = [UIFont systemFontOfSize:11.0];
+  _subtitleLabel.font = [UIFont systemFontOfSize:12.0];
   _subtitleLabel.textColor = [SPKUtils SPKColor_InstagramSecondaryText];
   _subtitleLabel.numberOfLines = 2;
-  [self.contentView addSubview:_subtitleLabel];
+
+  _pillBackground = [[UIView alloc] init];
+  _pillBackground.translatesAutoresizingMaskIntoConstraints = NO;
+  _pillBackground.backgroundColor =
+      [SPKUtils SPKColor_InstagramTertiaryBackground];
+  _pillBackground.layer.cornerRadius = 5.0;
+  _pillBackground.clipsToBounds = YES;
+
+  _pillLabel = [[UILabel alloc] init];
+  _pillLabel.translatesAutoresizingMaskIntoConstraints = NO;
+  _pillLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+  _pillLabel.textColor = [SPKUtils SPKColor_InstagramSecondaryText];
+  _pillLabel.numberOfLines = 1;
+  [_pillBackground addSubview:_pillLabel];
+
+  // Stack view for text info column
+  UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+    _titleLabel, _subtitleLabel, _pillBackground
+  ]];
+  textStack.translatesAutoresizingMaskIntoConstraints = NO;
+  textStack.axis = UILayoutConstraintAxisVertical;
+  textStack.alignment = UIStackViewAlignmentLeading;
+  textStack.spacing = 3.0;
+  [self.contentView addSubview:textStack];
 
   [NSLayoutConstraint activateConstraints:@[
+    [_highlightOverlay.topAnchor
+        constraintEqualToAnchor:self.contentView.topAnchor],
+    [_highlightOverlay.bottomAnchor
+        constraintEqualToAnchor:self.contentView.bottomAnchor],
+    [_highlightOverlay.leadingAnchor
+        constraintEqualToAnchor:self.contentView.leadingAnchor],
+    [_highlightOverlay.trailingAnchor
+        constraintEqualToAnchor:self.contentView.trailingAnchor],
+
+    [_separatorLine.bottomAnchor
+        constraintEqualToAnchor:self.contentView.bottomAnchor],
+    [_separatorLine.leadingAnchor
+        constraintEqualToAnchor:textStack.leadingAnchor],
+    [_separatorLine.trailingAnchor
+        constraintEqualToAnchor:self.contentView.trailingAnchor],
+    [_separatorLine.heightAnchor
+        constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
+
     [_previewButton.leadingAnchor
         constraintEqualToAnchor:self.contentView.leadingAnchor
-                       constant:12.0],
+                       constant:16.0],
     [_previewButton.centerYAnchor
         constraintEqualToAnchor:self.contentView.centerYAnchor],
-    [_previewButton.widthAnchor
-        constraintEqualToConstant:kSPKMediaOptionControlSize],
-    [_previewButton.heightAnchor
-        constraintEqualToConstant:kSPKMediaOptionControlSize],
+    [_previewButton.widthAnchor constraintEqualToConstant:40.0],
+    [_previewButton.heightAnchor constraintEqualToConstant:40.0],
 
     [_menuButton.trailingAnchor
         constraintEqualToAnchor:self.contentView.trailingAnchor
@@ -1201,28 +1285,44 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
     [_menuButton.heightAnchor
         constraintEqualToConstant:kSPKMediaOptionControlSize],
 
-    [_titleLabel.leadingAnchor
+    [textStack.leadingAnchor
         constraintEqualToAnchor:_previewButton.trailingAnchor
                        constant:12.0],
-    [_titleLabel.trailingAnchor
+    [textStack.trailingAnchor
         constraintLessThanOrEqualToAnchor:_menuButton.leadingAnchor
                                  constant:-10.0],
-    [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
-                                          constant:10.0],
-
-    [_subtitleLabel.leadingAnchor
-        constraintEqualToAnchor:_titleLabel.leadingAnchor],
-    [_subtitleLabel.trailingAnchor
-        constraintLessThanOrEqualToAnchor:_menuButton.leadingAnchor
-                                 constant:-10.0],
-    [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor
-                                             constant:2.0],
-    [_subtitleLabel.bottomAnchor
+    [textStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                        constant:11.0],
+    [textStack.bottomAnchor
         constraintEqualToAnchor:self.contentView.bottomAnchor
-                       constant:-10.0]
+                       constant:-11.0],
+
+    [_pillLabel.leadingAnchor
+        constraintEqualToAnchor:_pillBackground.leadingAnchor
+                       constant:8.0],
+    [_pillLabel.trailingAnchor
+        constraintEqualToAnchor:_pillBackground.trailingAnchor
+                       constant:-8.0],
+    [_pillLabel.topAnchor constraintEqualToAnchor:_pillBackground.topAnchor
+                                         constant:3.0],
+    [_pillLabel.bottomAnchor
+        constraintEqualToAnchor:_pillBackground.bottomAnchor
+                       constant:-3.0],
   ]];
 
   return self;
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
+  [super setHighlighted:highlighted animated:animated];
+  if (animated) {
+    [UIView animateWithDuration:highlighted ? 0.05 : 0.3
+                     animations:^{
+                       self.highlightOverlay.hidden = !highlighted;
+                     }];
+  } else {
+    self.highlightOverlay.hidden = !highlighted;
+  }
 }
 
 @end
@@ -1375,10 +1475,9 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
 
   [sections
       addObject:SPKTopicSection(
-                    @"",
-                    @[ [SPKSetting
-                        switchCellWithTitle:@"Advanced Encoding"
-                                defaultsKey:@"downloads_adv_encoding"] ],
+                    @"", @[ [SPKSetting
+                             switchCellWithTitle:@"Advanced Encoding"
+                                     defaultsKey:@"downloads_adv_encoding"] ],
                     @"Advanced Encoding exposes codec, preset, bitrate, CRF, "
                     @"resolution, and audio overrides. In advanced mode, the "
                     @"selected video codec is used for DASH merges while audio "
@@ -1404,25 +1503,25 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
                             nil)];
 
     [sections
-        addObject:
-            SPKTopicSection(
-                @"Quality",
-                @[
-                  [SPKSetting
-                      textFieldCellWithTitle:@"CRF"
-                                 placeholder:@"Auto"
-                                keyboardType:UIKeyboardTypeNumberPad
-                                 defaultsKey:@"downloads_encoding_crf"],
-                  [SPKSetting textFieldCellWithTitle:@"Video Bitrate"
-                                         placeholder:@"Auto"
-                                        keyboardType:UIKeyboardTypeNumberPad
-                                         defaultsKey:@"downloads_encoding_"
-                                                     @"vid_bitrate_kbps"],
-                  [SPKSetting menuCellWithTitle:@"Max Resolution"
-                                       subtitle:nil
-                                           menu:[self maxResMenu]]
-                ],
-                nil)];
+        addObject:SPKTopicSection(
+                      @"Quality",
+                      @[
+                        [SPKSetting
+                            textFieldCellWithTitle:@"CRF"
+                                       placeholder:@"Auto"
+                                      keyboardType:UIKeyboardTypeNumberPad
+                                       defaultsKey:@"downloads_encoding_crf"],
+                        [SPKSetting
+                            textFieldCellWithTitle:@"Video Bitrate"
+                                       placeholder:@"Auto"
+                                      keyboardType:UIKeyboardTypeNumberPad
+                                       defaultsKey:@"downloads_encoding_"
+                                                   @"vid_bitrate_kbps"],
+                        [SPKSetting menuCellWithTitle:@"Max Resolution"
+                                             subtitle:nil
+                                                 menu:[self maxResMenu]]
+                      ],
+                      nil)];
 
     [sections
         addObject:SPKTopicSection(
@@ -1441,20 +1540,20 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
                       nil)];
 
     [sections
-        addObject:SPKTopicSection(
-                      @"Advanced",
-                      @[
-                        [SPKSetting menuCellWithTitle:@"Pixel Format"
-                                             subtitle:nil
-                                                 menu:[self pixelFormatMenu]],
-                        [SPKSetting
-                            switchCellWithTitle:@"Fast Start"
-                                    defaultsKey:
-                                        @"downloads_encoding_faststart"]
-                      ],
-                      @"Fast Start moves MP4 metadata to the beginning of the "
-                      @"file, allowing the video to start playing immediately "
-                      @"when shared online or streamed.")];
+        addObject:
+            SPKTopicSection(
+                @"Advanced",
+                @[
+                  [SPKSetting menuCellWithTitle:@"Pixel Format"
+                                       subtitle:nil
+                                           menu:[self pixelFormatMenu]],
+                  [SPKSetting
+                      switchCellWithTitle:@"Fast Start"
+                              defaultsKey:@"downloads_encoding_faststart"]
+                ],
+                @"Fast Start moves MP4 metadata to the beginning of the "
+                @"file, allowing the video to start playing immediately "
+                @"when shared online or streamed.")];
 
     SPKSetting *ffmpegInfo = [SPKSetting
         linkCellWithTitle:@"About FFmpeg Encoding"
@@ -1488,9 +1587,8 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
 
   return @[
     SPKTopicSection(
-        @"",
-        @[ [SPKSetting switchCellWithTitle:@"Advanced Encoding"
-                               defaultsKey:@"downloads_adv_encoding"] ],
+        @"", @[ [SPKSetting switchCellWithTitle:@"Advanced Encoding"
+                                    defaultsKey:@"downloads_adv_encoding"] ],
         @"Advanced Encoding exposes codec, preset, bitrate, CRF, resolution, "
         @"and audio overrides. In advanced mode, the selected video codec is "
         @"used for DASH merges while audio remains copied."),
@@ -1527,8 +1625,7 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
               textFieldCellWithTitle:@"Video Bitrate"
                          placeholder:@"Auto"
                         keyboardType:UIKeyboardTypeNumberPad
-                         defaultsKey:
-                             @"downloads_encoding_vid_bitrate_kbps"],
+                         defaultsKey:@"downloads_encoding_vid_bitrate_kbps"],
           [SPKSetting menuCellWithTitle:@"Max Resolution"
                                subtitle:nil
                                    menu:[self maxResMenu]]
@@ -1541,8 +1638,7 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
               textFieldCellWithTitle:@"Audio Bitrate"
                          placeholder:@"128"
                         keyboardType:UIKeyboardTypeNumberPad
-                         defaultsKey:
-                             @"downloads_encoding_audio_bitrate_kbps"],
+                         defaultsKey:@"downloads_encoding_audio_bitrate_kbps"],
           [SPKSetting menuCellWithTitle:@"Audio Channels"
                                subtitle:nil
                                    menu:[self audioChannelsMenu]]
@@ -1554,9 +1650,8 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
           [SPKSetting menuCellWithTitle:@"Pixel Format"
                                subtitle:nil
                                    menu:[self pixelFormatMenu]],
-          [SPKSetting
-              switchCellWithTitle:@"Fast Start"
-                      defaultsKey:@"downloads_encoding_faststart"]
+          [SPKSetting switchCellWithTitle:@"Fast Start"
+                              defaultsKey:@"downloads_encoding_faststart"]
         ],
         @"Fast Start moves MP4 metadata to the beginning of the file, allowing "
         @"the video to start playing immediately when shared online or "
@@ -1700,18 +1795,16 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
 
 - (void)viewDidLoad {
   [super viewDidLoad];
-  self.view.backgroundColor = [SPKUtils SPKColor_InstagramGroupedBackground];
-  self.tableView =
-      [[UITableView alloc] initWithFrame:self.view.bounds
-                                   style:UITableViewStyleInsetGrouped];
+  self.view.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
+  self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds
+                                                style:UITableViewStylePlain];
   self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
   self.tableView.dataSource = self;
   self.tableView.delegate = self;
   self.tableView.rowHeight = UITableViewAutomaticDimension;
   self.tableView.estimatedRowHeight = 76.0;
-  self.tableView.backgroundColor =
-      [SPKUtils SPKColor_InstagramGroupedBackground];
-  self.tableView.separatorColor = [SPKUtils SPKColor_InstagramSeparator];
+  self.tableView.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
+  self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
   [self.tableView registerClass:_SPKMediaOptionCell.class
          forCellReuseIdentifier:@"option"];
   [self.view addSubview:self.tableView];
@@ -1762,7 +1855,7 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
     titleForFooterInSection:(NSInteger)section {
   (void)tableView;
   SPKMediaOptionSection *infoSection = self.sections[section];
-  if ([infoSection.title isEqualToString:@"Merge Video + Audio (DASH)"] &&
+  if ([infoSection.title isEqualToString:@"Video + Audio"] &&
       !self.analysis.ffmpegAvailable) {
     return @"FFmpegKit is not available in the active build, so merged DASH "
            @"rows are disabled.";
@@ -1779,13 +1872,24 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
       self.sections[indexPath.section].options[indexPath.row];
   cell.titleLabel.text = option.title;
   cell.subtitleLabel.text = option.subtitle;
+  NSString *codecBadge = SPKMediaCodecBadge(option.codec);
+  cell.pillLabel.text = codecBadge;
+  cell.pillBackground.hidden = (codecBadge.length == 0);
   cell.previewButton.tag = (indexPath.section << 16) | indexPath.row;
   [cell.previewButton removeTarget:nil
                             action:NULL
                   forControlEvents:UIControlEventTouchUpInside];
-  [cell.previewButton addTarget:self
-                         action:@selector(previewTapped:)
-               forControlEvents:UIControlEventTouchUpInside];
+  // Only photo/audio rows offer a preview; video reps render black (raw DASH
+  // streams are often AV1/VP9 that AVPlayer can't decode on older iOS) and the
+  // media is already visible behind the sheet. Keep the glyph as a static icon.
+  BOOL previewable = (option.kind == SPKMediaOptionKindPhotoProgressive ||
+                      option.kind == SPKMediaOptionKindAudioDash);
+  cell.previewButton.userInteractionEnabled = previewable;
+  if (previewable) {
+    [cell.previewButton addTarget:self
+                           action:@selector(previewTapped:)
+                 forControlEvents:UIControlEventTouchUpInside];
+  }
   NSString *previewIconName =
       option.kind == SPKMediaOptionKindPhotoProgressive ? @"photo"
       : option.kind == SPKMediaOptionKindAudioDash      ? @"audio"
@@ -1797,6 +1901,7 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
   cell.userInteractionEnabled = YES;
   cell.titleLabel.alpha = option.selectable ? 1.0 : 0.65;
   cell.subtitleLabel.alpha = option.selectable ? 1.0 : 0.65;
+  cell.pillBackground.alpha = option.selectable ? 1.0 : 0.65;
   cell.accessoryType = option.selectable ? UITableViewCellAccessoryNone
                                          : UITableViewCellAccessoryNone;
   return cell;
@@ -1833,13 +1938,8 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
     return;
   }
 
-  AVPlayerViewController *controller = [[AVPlayerViewController alloc] init];
-  controller.player = [AVPlayer playerWithURL:option.primaryURL];
-  [self presentViewController:controller
-                     animated:YES
-                   completion:^{
-                     [controller.player play];
-                   }];
+  // Video reps aren't previewed — raw DASH streams (often AV1/VP9) render black
+  // on older iOS, and the media is already visible behind the sheet.
 }
 
 - (UIMenu *)menuForOption:(SPKMediaOption *)option {
@@ -1897,60 +1997,19 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
                                 [SPKFullScreenMediaPlayer
                                     showRemoteImageURL:option.primaryURL];
                               }]];
-  } else {
-    NSString *playTitle = option.kind == SPKMediaOptionKindAudioDash
-                              ? @"Play Audio"
-                              : @"Play Video";
+  } else if (option.kind == SPKMediaOptionKindAudioDash) {
     [children
         addObject:[UIAction
-                      actionWithTitle:playTitle
-                                image:SPKMediaIcon(
-                                          @"play",
-                                          kSPKMediaOptionIconPointSize)
+                      actionWithTitle:@"Play Audio"
+                                image:SPKMediaIcon(@"play",
+                                                   kSPKMediaOptionIconPointSize)
                            identifier:nil
                               handler:^(__unused UIAction *action) {
                                 [self previewOption:option];
                               }]];
-
-    if (option.kind != SPKMediaOptionKindAudioDash) {
-      [children
-          addObject:[UIAction
-                        actionWithTitle:@"View Thumbnail"
-                                  image:SPKMediaIcon(
-                                            @"photo_gallery",
-                                            kSPKMediaOptionIconPointSize)
-                             identifier:nil
-                                handler:^(__unused UIAction *action) {
-                                  AVAsset *asset = [AVURLAsset
-                                      URLAssetWithURL:option.primaryURL
-                                              options:nil];
-                                  AVAssetImageGenerator *generator =
-                                      [[AVAssetImageGenerator alloc]
-                                          initWithAsset:asset];
-                                  generator.appliesPreferredTrackTransform =
-                                      YES;
-                                  CGImageRef imageRef = [generator
-                                      copyCGImageAtTime:
-                                          CMTimeMakeWithSeconds(
-                                              MAX(option.duration > 0.5
-                                                      ? MIN(1.0,
-                                                            option.duration /
-                                                                3.0)
-                                                      : 0.0,
-                                                  0.0),
-                                              600)
-                                             actualTime:nil
-                                                  error:nil];
-                                  if (!imageRef) {
-                                    return;
-                                  }
-                                  UIImage *image =
-                                      [UIImage imageWithCGImage:imageRef];
-                                  CGImageRelease(imageRef);
-                                  [SPKFullScreenMediaPlayer showImage:image];
-                                }]];
-    }
   }
+  // Video rows expose copy actions only — no play/thumbnail preview (raw DASH
+  // reps render black on older iOS; see previewOption).
 
   return [UIMenu menuWithChildren:children];
 }
@@ -1981,7 +2040,8 @@ static SPKTrimSourcePlan *SPKMediaTrimPlanFromOption(SPKMediaOption *chosen,
                            }];
 }
 
-- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController {
+- (void)presentationControllerDidDismiss:
+    (UIPresentationController *)presentationController {
   // Interactive swipe-to-dismiss.
   if (!self.spkDidSelect && self.dismissHandler) {
     self.dismissHandler();
@@ -2002,7 +2062,8 @@ SPKMediaPresentOptionsSheet(UIViewController *presenter, UIView *sourceView,
                destination:destination
           selectionHandler:selectionHandler];
   controller.dismissHandler = dismissHandler;
-  UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:controller];
+  UINavigationController *nav = [[SPKChromeNavigationController alloc]
+      initWithRootViewController:controller];
   nav.modalPresentationStyle = UIModalPresentationPageSheet;
   UISheetPresentationController *sheet = nav.sheetPresentationController;
   if (sheet) {
@@ -2171,14 +2232,14 @@ static void SPKMediaPerformOptionDownload(
   if (option.kind == SPKMediaOptionKindPhotoProgressive ||
       option.kind == SPKMediaOptionKindVideoProgressive) {
     [SPKDownloadHelpers submitRemoteURL:option.primaryURL
-                                    extension:SPKMediaExtensionForOption(option)
-                                  destination:destination
-                                     metadata:galleryMetadata
-                               notificationID:notificationIdentifier
-                                    presenter:presenter
-                                   anchorView:nil
-                                sourceSurface:sourceSurface
-                                 showProgress:showProgress];
+                              extension:SPKMediaExtensionForOption(option)
+                            destination:destination
+                               metadata:galleryMetadata
+                         notificationID:notificationIdentifier
+                              presenter:presenter
+                             anchorView:nil
+                          sourceSurface:sourceSurface
+                           showProgress:showProgress];
     return;
   }
 
@@ -2205,65 +2266,72 @@ static void SPKMediaPerformOptionDownload(
 + (SPKTrimSourcePlan *)trimSourcePlanForMediaObject:(id)mediaObject
                                            photoURL:(NSURL *)photoURL
                                            videoURL:(NSURL *)videoURL
-                                    qualityOverride:(NSString *)qualityOverride {
-    // Trim never wants a standalone-audio option, so exclude those rows.
-    SPKMediaAnalysis *analysis = SPKMediaAnalyze(mediaObject, photoURL, videoURL,
-                                                 SPKDownloadDestinationGallery, NO);
-    if (!analysis.isVideo) {
-        return nil;
-    }
+                                    qualityOverride:
+                                        (NSString *)qualityOverride {
+  // Trim never wants a standalone-audio option, so exclude those rows.
+  SPKMediaAnalysis *analysis = SPKMediaAnalyze(
+      mediaObject, photoURL, videoURL, SPKDownloadDestinationGallery, NO);
+  if (!analysis.isVideo) {
+    return nil;
+  }
 
-    NSString *quality = qualityOverride.length > 0
-        ? qualityOverride
-        : [SPKUtils getStringPref:@"downloads_video_quality"];
-    // Trim can't surface the full picker mid-flow, so treat an unset/"always_ask"
-    // preference as best quality here (the caller prompts separately when set to
-    // always_ask).
-    if (quality.length == 0 || [quality isEqualToString:@"always_ask"]) {
-        quality = @"high";
-    }
-    if (!analysis.ffmpegAvailable) {
-        quality = @"high_ignore_dash";
-    }
+  NSString *quality = qualityOverride.length > 0
+                          ? qualityOverride
+                          : [SPKUtils getStringPref:@"downloads_video_quality"];
+  // Trim can't surface the full picker mid-flow, so treat an unset/"always_ask"
+  // preference as best quality here (the caller prompts separately when set to
+  // always_ask).
+  if (quality.length == 0 || [quality isEqualToString:@"always_ask"]) {
+    quality = @"high";
+  }
+  if (!analysis.ffmpegAvailable) {
+    quality = @"high_ignore_dash";
+  }
 
-    SPKMediaOption *chosen;
-    if ([quality isEqualToString:@"high_ignore_dash"]) {
-        chosen = analysis.progressiveVideoOptions.firstObject ?: analysis.mergedDashOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
-    } else if ([quality isEqualToString:@"high"]) {
-        chosen = analysis.mergedDashOptions.firstObject ?: analysis.progressiveVideoOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
-    } else {
-        NSArray<SPKMediaOption *> *preferred = analysis.mergedDashOptions.count > 0
-            ? analysis.mergedDashOptions
-            : analysis.progressiveVideoOptions;
-        chosen = SPKMediaTieredOption(preferred, quality)
+  SPKMediaOption *chosen;
+  if ([quality isEqualToString:@"high_ignore_dash"]) {
+    chosen = analysis.progressiveVideoOptions.firstObject ?: analysis.mergedDashOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
+  } else if ([quality isEqualToString:@"high"]) {
+    chosen = analysis.mergedDashOptions.firstObject ?: analysis.progressiveVideoOptions.firstObject ?: analysis.videoDashOnlyOptions.firstObject;
+  } else {
+    NSArray<SPKMediaOption *> *preferred =
+        analysis.mergedDashOptions.count > 0 ? analysis.mergedDashOptions
+                                             : analysis.progressiveVideoOptions;
+    chosen = SPKMediaTieredOption(preferred, quality)
             ?: analysis.progressiveVideoOptions.firstObject
             ?: analysis.mergedDashOptions.firstObject
             ?: analysis.videoDashOnlyOptions.firstObject;
-    }
-    if (!chosen) {
-        chosen = SPKMediaFFmpegFreeHighOption(analysis);
-    }
-    return SPKMediaTrimPlanFromOption(chosen, analysis, videoURL);
+  }
+  if (!chosen) {
+    chosen = SPKMediaFFmpegFreeHighOption(analysis);
+  }
+  return SPKMediaTrimPlanFromOption(chosen, analysis, videoURL);
 }
 
 + (void)presentTrimQualityPickerForMediaObject:(id)mediaObject
                                       photoURL:(NSURL *)photoURL
                                       videoURL:(NSURL *)videoURL
                                           from:(UIViewController *)presenter
-                                    completion:(void (^)(SPKTrimSourcePlan *_Nullable))completion {
-    SPKMediaAnalysis *analysis = SPKMediaAnalyze(mediaObject, photoURL, videoURL,
-                                                 SPKDownloadDestinationGallery, NO);
-    if (!analysis.isVideo || !presenter) {
-        if (completion) completion(nil);
-        return;
-    }
-    SPKMediaPresentOptionsSheet(presenter, nil, analysis, SPKDownloadDestinationGallery,
-                                ^(SPKMediaOption *option) {
-        if (completion) completion(SPKMediaTrimPlanFromOption(option, analysis, videoURL));
-    },
-                                ^{
-        if (completion) completion(nil);  // dismissed without choosing
-    });
+                                    completion:
+                                        (void (^)(SPKTrimSourcePlan *_Nullable))
+                                            completion {
+  SPKMediaAnalysis *analysis = SPKMediaAnalyze(
+      mediaObject, photoURL, videoURL, SPKDownloadDestinationGallery, NO);
+  if (!analysis.isVideo || !presenter) {
+    if (completion)
+      completion(nil);
+    return;
+  }
+  SPKMediaPresentOptionsSheet(
+      presenter, nil, analysis, SPKDownloadDestinationGallery,
+      ^(SPKMediaOption *option) {
+        if (completion)
+          completion(SPKMediaTrimPlanFromOption(option, analysis, videoURL));
+      },
+      ^{
+        if (completion)
+          completion(nil); // dismissed without choosing
+      });
 }
 
 + (void)runDashDownloadWithPrimaryURL:(NSURL *)primaryURL
@@ -2400,13 +2468,22 @@ static void SPKMediaPerformOptionDownload(
     return;
   }
 
+  // Video-only DASH reps are frequently AV1/VP9, which older iOS (and Photos)
+  // can't decode — saving the raw stream yields a black, unplayable file. When
+  // FFmpeg is available, transcode the silent stream to H.264 (the same path
+  // the merge flow uses, minus audio) so the result plays everywhere. Without
+  // FFmpeg we save the raw stream as a best-effort fallback.
+  BOOL transcodeVideoOnly = (optionKind == SPKMediaOptionKindVideoDashOnly &&
+                             [SPKMediaFFmpeg isAvailable]);
+  double videoDownloadSpan =
+      secondary ? 0.28 : (transcodeVideoOnly ? 0.33 : 0.7);
   videoJob = [[SPKMediaSingleDownloadJob alloc] init];
   report(0.12f, @"Downloading video", 0, 0);
   [videoJob startWithURL:primaryURL
       defaultExtension:@"mp4"
       progress:^(double jobProgress, int64_t bytesWritten,
                  int64_t totalBytesExpected) {
-        report((float)(0.12 + (jobProgress * (secondary ? 0.28 : 0.7))),
+        report((float)(0.12 + (jobProgress * videoDownloadSpan)),
                @"Downloading video", bytesWritten, totalBytesExpected);
       }
       completion:^(NSURL *videoFileURL, NSError *error) {
@@ -2416,7 +2493,35 @@ static void SPKMediaPerformOptionDownload(
           return;
         }
         if (optionKind == SPKMediaOptionKindVideoDashOnly) {
-          finishFile(videoFileURL);
+          if (!transcodeVideoOnly) {
+            finishFile(videoFileURL);
+            return;
+          }
+          report(0.46f, @"Re-encoding video", 0, 0);
+          [SPKMediaFFmpeg mergeVideoFileURL:videoFileURL
+              audioFileURL:nil
+              preferredBasename:basename
+              estimatedDuration:duration
+              width:width
+              height:height
+              sourceBitrate:bandwidth
+              progress:^(double mergeProgress, NSString *stage) {
+                // Surface the true FFmpeg stage (Re-encoding / Normalizing /
+                // Finalizing) rather than a generic label.
+                report((float)(0.46 + (mergeProgress * 0.49)),
+                       stage.length > 0 ? stage : @"Re-encoding video", 0, 0);
+              }
+              completion:^(NSURL *outputURL, NSError *mergeError) {
+                if (mergeError || !outputURL) {
+                  fail(@"Processing failed", mergeError.localizedDescription
+                                                 ?: @"Unable to process video");
+                  return;
+                }
+                finishFile(outputURL);
+              }
+              cancelOut:^(dispatch_block_t cancelBlock) {
+                ffmpegCancel = [cancelBlock copy];
+              }];
           return;
         }
         downloadAudioThenFinish(videoFileURL);
@@ -2461,15 +2566,15 @@ static void SPKMediaPerformOptionDownload(
     return YES;
   }
 
-  SPKMediaPresentOptionsSheet(resolvedPresenter, sourceView, analysis,
-                              destination, ^(SPKMediaOption *option) {
-                                SPKMediaPerformOptionDownload(
-                                    option, mediaObject, galleryMetadata,
-                                    destination, NO, identifier, showProgress,
-                                    resolvedPresenter,
-                                    (SPKDownloadSourceSurface)sourceSurface);
-                              },
-                              nil);
+  SPKMediaPresentOptionsSheet(
+      resolvedPresenter, sourceView, analysis, destination,
+      ^(SPKMediaOption *option) {
+        SPKMediaPerformOptionDownload(option, mediaObject, galleryMetadata,
+                                      destination, NO, identifier, showProgress,
+                                      resolvedPresenter,
+                                      (SPKDownloadSourceSurface)sourceSurface);
+      },
+      nil);
   return YES;
 }
 

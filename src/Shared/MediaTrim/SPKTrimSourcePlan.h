@@ -20,6 +20,18 @@ NS_ASSUME_NONNULL_BEGIN
 /// `finalAudioURL`; NO for a progressive (already-muxed) source.
 @property (nonatomic, assign) BOOL needsMerge;
 
+/// YES when the final render source is a separate DASH rep — merged
+/// (video+audio) or silent video-only — that must be fetched to local file(s)
+/// and rendered, so the editor scrubs the lightweight progressive `editURL`
+/// preview instead of the (often AV1, undecodable on older iOS) rep itself. NO
+/// for a progressive pick, where the edited preview *is* the final source.
+@property (nonatomic, assign) BOOL needsHighQualityFetch;
+
+/// YES when the chosen quality is a silent (video-only) stream — the trim editor
+/// should not offer an "Audio Only" output mode even if the progressive preview
+/// file happens to contain an audio track.
+@property (nonatomic, assign) BOOL sourceIsSilent;
+
 @property (nonatomic, assign) NSInteger width;
 @property (nonatomic, assign) NSInteger height;
 @property (nonatomic, assign) double duration;

@@ -277,6 +277,26 @@ static NSString *SPKFFmpegPresetForSpeed(NSString *speed) {
     return preset.length > 0 ? preset : @"medium";
 }
 
+// Rate-control tokens for the default (non-advanced) encoder. When the source
+// bitrate is known, target it with single-pass ABR (bitrate-capped) so the
+// re-encode lands close to the source's — and therefore the sheet's estimated —
+// size. Without this, libx264's implicit CRF 23 chases the source's detail and
+// balloons an already-compressed rep (e.g. a ~100 kbps AV1 tier) into a
+// multi-megabyte H.264 file. `sourceBitrate` is the manifest bandwidth
+// (bits/sec); 0 falls back to plain CRF. Encoding effort still comes from the
+// "Encoding speed" preset, applied separately by the caller.
+static NSArray<NSString *> *SPKFFmpegRateControlTokens(NSInteger sourceBitrate) {
+    if (sourceBitrate <= 0) {
+        return @[@"-crf", @"23"];
+    }
+    NSInteger maxrate = (NSInteger)llround(sourceBitrate * 1.2);
+    return @[
+        @"-b:v",     [NSString stringWithFormat:@"%ld", (long)sourceBitrate],
+        @"-maxrate", [NSString stringWithFormat:@"%ld", (long)maxrate],
+        @"-bufsize", [NSString stringWithFormat:@"%ld", (long)(sourceBitrate * 2)]
+    ];
+}
+
 // Default DASH merge command — software libx264 with preset-driven effort and CRF rate control
 //
 // `-movflags +faststart` is deliberately omitted. Long libx264 encodes (preset
@@ -297,7 +317,6 @@ static NSString *SPKFFmpegDefaultMergeCommand(NSURL *videoFileURL,
                                                NSInteger sourceBitrate) {
     (void)width;
     (void)height;
-    (void)sourceBitrate;
 
     NSString *speed  = SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     NSString *preset = SPKFFmpegPresetForSpeed(speed);
@@ -325,6 +344,8 @@ static NSString *SPKFFmpegDefaultMergeCommand(NSURL *videoFileURL,
         @"-profile:v main",
         @"-level 4.0",
     ]];
+    [parts addObject:[SPKFFmpegRateControlTokens(sourceBitrate)
+                         componentsJoinedByString:@" "]];
     if (audioFileURL) {
         // Audio is stream-copied. The merge entry point pre-converts xHE-AAC
         // sources to AAC-LC via AVFoundation before getting here, so a copy is
@@ -351,7 +372,8 @@ static NSString *SPKFFmpegDefaultMergeCommand(NSURL *videoFileURL,
 static NSArray<NSString *> *SPKFFmpegDefaultMergeArguments(NSURL *videoFileURL,
                                                            NSURL *audioFileURL,
                                                            NSURL *outputURL,
-                                                           NSString *extraVideoFilter) {
+                                                           NSString *extraVideoFilter,
+                                                           NSInteger sourceBitrate) {
     NSString *speed  = SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     NSString *preset = SPKFFmpegPresetForSpeed(speed);
 
@@ -382,6 +404,7 @@ static NSArray<NSString *> *SPKFFmpegDefaultMergeArguments(NSURL *videoFileURL,
         @"-profile:v", @"main",
         @"-level",     @"4.0",
     ]];
+    [args addObjectsFromArray:SPKFFmpegRateControlTokens(sourceBitrate)];
 
     if (audioFileURL) {
         // See SPKFFmpegDefaultMergeCommand for the audio/no-`-shortest` rationale.
@@ -1483,6 +1506,10 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     NSMutableArray<NSDictionary<NSString *, id> *> *attempts = [NSMutableArray array];
 
     BOOL useAdvanced = [SPKUtils getBoolPref:@"downloads_adv_encoding"];
+    // Progress label: "merging" only makes sense when there's an audio track to
+    // fold in; a lone video stream is just re-encoded.
+    NSString *mergeStage =
+        audioFileURL ? @"Merging video and audio" : @"Re-encoding video";
     if (!useAdvanced) {
         // Default mode starts with the direct libx264+preset path, then retries
         // with normalized video inputs (and finally a setpts re-stamping pass)
@@ -1503,7 +1530,7 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                         sourceBitrate);
         [attempts addObject:@{
             @"identifier": @"merge",
-            @"stage": @"Merging video and audio",
+            @"stage": mergeStage,
             @"command": defaultCommandToEncode,
             @"mainOutputURL": defaultEncodeURL,
             @"postProcessArguments": SPKFFmpegFaststartArguments(defaultEncodeURL, outputURL),
@@ -1517,10 +1544,11 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         NSArray<NSString *> *normalizedArgs = SPKFFmpegDefaultMergeArguments(normalizedVideoURL,
                                                                              audioFileURL,
                                                                              normalizedEncodeURL,
-                                                                             nil);
+                                                                             nil,
+                                                                             sourceBitrate);
         [attempts addObject:@{
             @"identifier": @"merge-normalized",
-            @"stage": @"Merging video and audio",
+            @"stage": mergeStage,
             @"arguments": normalizedArgs,
             @"prepareArguments": SPKFFmpegNormalizationArguments(videoFileURL, normalizedVideoURL),
             @"prepareOutputURL": normalizedVideoURL,
@@ -1536,10 +1564,11 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         NSArray<NSString *> *normalizedSetPTSArgs = SPKFFmpegDefaultMergeArguments(normalizedSetPTSVideoURL,
                                                                                    audioFileURL,
                                                                                    normalizedSetPTSEncodeURL,
-                                                                                   @"setpts=PTS-STARTPTS");
+                                                                                   @"setpts=PTS-STARTPTS",
+                                                                                   sourceBitrate);
         [attempts addObject:@{
             @"identifier": @"merge-normalized-setpts",
-            @"stage": @"Merging video and audio",
+            @"stage": mergeStage,
             @"arguments": normalizedSetPTSArgs,
             @"prepareArguments": SPKFFmpegNormalizationArguments(videoFileURL, normalizedSetPTSVideoURL),
             @"prepareOutputURL": normalizedSetPTSVideoURL,
