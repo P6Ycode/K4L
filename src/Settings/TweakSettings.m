@@ -1,15 +1,16 @@
 #import "TweakSettings.h"
 
 #import "Topics/SPKAboutSettingsProvider.h"
+#import "Topics/SPKDataSettingsProvider.h"
+#import "Topics/SPKDownloadsSettingsProvider.h"
 #import "Topics/SPKFeedSettingsProvider.h"
+#import "Topics/SPKGallerySettingsProvider.h"
 #import "Topics/SPKGeneralSettingsProvider.h"
 #import "Topics/SPKInstantsSettingsProvider.h"
 #import "Topics/SPKInterfaceSettingsProvider.h"
-#import "Topics/SPKGallerySettingsProvider.h"
-#import "Topics/SPKDownloadsSettingsProvider.h"
 #import "Topics/SPKMessagesSettingsProvider.h"
-#import "Topics/SPKProfileSettingsProvider.h"
 #import "Topics/SPKProfileAnalyzerSettingsProvider.h"
+#import "Topics/SPKProfileSettingsProvider.h"
 #import "Topics/SPKReelsSettingsProvider.h"
 #import "Topics/SPKStoriesSettingsProvider.h"
 #import "Topics/SPKToolsSettingsProvider.h"
@@ -19,8 +20,8 @@
 + (NSArray *)sections {
     return @[
         @{
-            @"header": @"",
-            @"rows": @[
+            @"header" : @"",
+            @"rows" : @[
                 [SPKGeneralSettingsProvider rootSetting],
                 [SPKInterfaceSettingsProvider rootSetting],
                 [SPKFeedSettingsProvider rootSetting],
@@ -32,22 +33,23 @@
             ]
         },
         @{
-            @"header": @"",
-            @"rows": @[
+            @"header" : @"",
+            @"rows" : @[
                 [SPKGallerySettingsProvider rootSetting],
                 [SPKDownloadsSettingsProvider rootSetting],
                 [SPKProfileAnalyzerSettingsProvider rootSetting]
             ]
         },
         @{
-            @"header": @"",
-            @"rows": @[
-                [SPKToolsSettingsProvider rootSetting]
+            @"header" : @"",
+            @"rows" : @[
+                [SPKToolsSettingsProvider rootSetting],
+                [SPKDataSettingsProvider rootSetting]
             ]
         },
         @{
-            @"header": @"",
-            @"rows": @[
+            @"header" : @"",
+            @"rows" : @[
                 [SPKAboutSettingsProvider rootSetting]
             ]
         }

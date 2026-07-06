@@ -1,8 +1,8 @@
-#import <objc/runtime.h>
-#import <UIKit/UIKit.h>
-#import "TweakSettings.h"
-#import "SPKSetting.h"
 #import "../Utils.h"
+#import "SPKSetting.h"
+#import "TweakSettings.h"
+#import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,6 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) NSArray *sections;
 
 @property (nonatomic, assign) BOOL searchesAllSettings;
+
+/// Table style for this page. Defaults to UITableViewStyleInsetGrouped; override
+/// to return UITableViewStylePlain for a flat, edge-to-edge list.
+- (UITableViewStyle)preferredTableViewStyle;
 
 - (void)switchChanged:(UISwitch *)sender;
 - (SPKSetting *)settingForSender:(id)sender;

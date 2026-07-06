@@ -4,15 +4,15 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, SPKTableCell) {
-        SPKTableCellStatic,
-        SPKTableCellLink,
-        SPKTableCellSwitch,
-        SPKTableCellStepper,
-        SPKTableCellButton,
-        SPKTableCellMenu,
-        SPKTableCellNavigation,
-        SPKTableCellTextField,
-        SPKTableCellValue,
+    SPKTableCellStatic,
+    SPKTableCellLink,
+    SPKTableCellSwitch,
+    SPKTableCellStepper,
+    SPKTableCellButton,
+    SPKTableCellMenu,
+    SPKTableCellNavigation,
+    SPKTableCellTextField,
+    SPKTableCellValue,
 };
 
 ///
@@ -34,6 +34,14 @@ typedef NS_ENUM(NSInteger, SPKTableCell) {
 
 @property (nonatomic, strong) NSURL *url;
 @property (nonatomic, strong) NSURL *imageUrl;
+
+/// When set, the row's leading image is a self-healing circular avatar loaded
+/// via SPKAvatarCache (keyed by PK). `avatarURLString` is the last-known URL;
+/// user PKs (numeric) re-resolve a fresh URL when the stored one expires. Group
+/// avatars pass a "grp_<threadId>" key + URL and can't be re-resolved.
+@property (nonatomic, copy, nullable) NSString *avatarPK;
+@property (nonatomic, copy, nullable) NSString *avatarURLString;
+@property (nonatomic) BOOL avatarIsGroup;
 
 @property (nonatomic) BOOL requiresRestart;
 
@@ -114,7 +122,7 @@ typedef NS_ENUM(NSInteger, SPKTableCell) {
                            subtitle:(NSString *)subtitle
                         defaultsKey:(NSString *)defaultsKey
                     requiresRestart:(BOOL)requiresRestart
-         mutuallyExclusiveDefaultsKey:(nullable NSString *)exclusiveDefaultsKey;
+       mutuallyExclusiveDefaultsKey:(nullable NSString *)exclusiveDefaultsKey;
 
 + (instancetype)stepperCellWithTitle:(NSString *)title
                             subtitle:(NSString *)subtitle
@@ -172,8 +180,7 @@ typedef NS_ENUM(NSInteger, SPKTableCell) {
                           subtitle:(nullable NSString *)subtitle
                               icon:(nullable UIImage *)icon;
 
-
-# pragma mark - Instance methods
+#pragma mark - Instance methods
 
 - (UIMenu *)menuForButton:(UIButton *)button;
 

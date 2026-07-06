@@ -3,20 +3,18 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 
-#import "../../Tweak.h"
 #import "../../Networking/SPKInstagramAPI.h"
+#import "../../Shared/UI/SPKMediaChrome.h"
+#import "../../Shared/UI/SPKUserListViewController.h"
+#import "../../Tweak.h"
 #import "../../Utils.h"
 #import "../ActionButton/ActionButtonLookupUtils.h"
+#import "../Messages/SPKDirectUserResolver.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKNotificationCenter.h"
-#import "../../Settings/SPKSettingsViewController.h"
-#import "../../Settings/SPKSetting.h"
-#import "../../Settings/SPKTopicSettingsSupport.h"
-#import "../../Shared/UI/SPKMediaChrome.h"
-#import "../Messages/SPKDirectUserResolver.h"
 
 static __weak UIView *SPKStoryActiveOverlayView;
-static NSString * const kSPKStoryManualSeenUserNamesKey = @"stories_manual_seen_user_names";
+static NSString *const kSPKStoryManualSeenUserNamesKey = @"stories_manual_seen_user_names";
 
 @implementation SPKStoryContext
 - (instancetype)init {
@@ -38,8 +36,10 @@ UIView *SPKStoryActiveOverlay(void) {
 static id SPKStoryFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
     for (NSString *selectorName in selectors) {
         id value = SPKObjectForSelector(target, selectorName);
-        if (!value) value = SPKKVCObject(target, selectorName);
-        if (value) return value;
+        if (!value)
+            value = SPKKVCObject(target, selectorName);
+        if (value)
+            return value;
     }
     return nil;
 }
@@ -48,41 +48,50 @@ static NSString *SPKStoryMediaID(id media);
 static NSString *SPKStoryFullNameFromMediaObject(id media);
 
 static id SPKStorySectionControllerFromOverlay(UIView *overlayView) {
-    if (!overlayView) return nil;
-    NSArray<NSString *> *delegateSelectors = @[@"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate"];
+    if (!overlayView)
+        return nil;
+    NSArray<NSString *> *delegateSelectors = @[ @"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate" ];
     Class sectionControllerClass = NSClassFromString(@"IGStoryFullscreenSectionController");
     for (NSString *selectorName in delegateSelectors) {
         id delegate = SPKObjectForSelector(overlayView, selectorName);
-        if (!delegate) delegate = SPKKVCObject(overlayView, selectorName);
-        if (!delegate) continue;
-        if (!sectionControllerClass || [delegate isKindOfClass:sectionControllerClass]) return delegate;
+        if (!delegate)
+            delegate = SPKKVCObject(overlayView, selectorName);
+        if (!delegate)
+            continue;
+        if (!sectionControllerClass || [delegate isKindOfClass:sectionControllerClass])
+            return delegate;
     }
     return nil;
 }
 
 static UIViewController *SPKStoryViewerControllerFromOverlay(UIView *overlayView) {
     id ancestor = SPKObjectForSelector(overlayView, @"_viewControllerForAncestor");
-    if ([ancestor isKindOfClass:[UIViewController class]]) return ancestor;
+    if ([ancestor isKindOfClass:[UIViewController class]])
+        return ancestor;
     return [SPKUtils nearestViewControllerForView:overlayView];
 }
 
 static id SPKStoryMediaFromAnyObject(id object) {
-    if (!object) return nil;
-    id candidate = SPKStoryFirstObjectForSelectors(object, @[@"media", @"mediaItem", @"storyItem", @"item", @"model"]);
+    if (!object)
+        return nil;
+    id candidate = SPKStoryFirstObjectForSelectors(object, @[ @"media", @"mediaItem", @"storyItem", @"item", @"model" ]);
     return candidate ?: object;
 }
 
 static NSArray *SPKStoryItemsFromCandidate(id candidate) {
-    if (!candidate) return nil;
-    for (NSString *selectorName in @[@"items", @"storyItems", @"reelItems", @"mediaItems", @"allItems"]) {
-        NSArray *items = SPKArrayFromCollection(SPKStoryFirstObjectForSelectors(candidate, @[selectorName]));
-        if (items.count > 0) return items;
+    if (!candidate)
+        return nil;
+    for (NSString *selectorName in @[ @"items", @"storyItems", @"reelItems", @"mediaItems", @"allItems" ]) {
+        NSArray *items = SPKArrayFromCollection(SPKStoryFirstObjectForSelectors(candidate, @[ selectorName ]));
+        if (items.count > 0)
+            return items;
     }
     SEL cachedSelector = NSSelectorFromString(@"allItemsForTrayUsingCachedValue:");
     if ([candidate respondsToSelector:cachedSelector]) {
         @try {
             NSArray *items = SPKArrayFromCollection(((id (*)(id, SEL, BOOL))objc_msgSend)(candidate, cachedSelector, YES));
-            if (items.count > 0) return items;
+            if (items.count > 0)
+                return items;
         } @catch (__unused NSException *exception) {
         }
     }
@@ -110,23 +119,28 @@ static NSArray *SPKStoryItemsFromCandidate(id candidate) {
 }
 
 static NSInteger SPKStoryCurrentIndexFromControllerOrSection(id sectionController, UIViewController *controller, id currentMedia, NSArray *allMedia) {
-    for (id target in @[sectionController ?: (id)NSNull.null, controller ?: (id)NSNull.null]) {
-        if (target == (id)NSNull.null) continue;
-        for (NSString *selectorName in @[@"currentIndex", @"currentItemIndex", @"itemIndex", @"currentPage"]) {
+    for (id target in @[ sectionController ?: (id)NSNull.null, controller ?: (id)NSNull.null ]) {
+        if (target == (id)NSNull.null)
+            continue;
+        for (NSString *selectorName in @[ @"currentIndex", @"currentItemIndex", @"itemIndex", @"currentPage" ]) {
             NSNumber *number = [SPKUtils numericValueForObj:target selectorName:selectorName];
-            if (number && number.integerValue >= 0) return number.integerValue;
+            if (number && number.integerValue >= 0)
+                return number.integerValue;
             id value = SPKKVCObject(target, selectorName);
-            if ([value respondsToSelector:@selector(integerValue)] && [value integerValue] >= 0) return [value integerValue];
+            if ([value respondsToSelector:@selector(integerValue)] && [value integerValue] >= 0)
+                return [value integerValue];
         }
     }
     if (currentMedia && allMedia.count > 0) {
         NSUInteger idx = [allMedia indexOfObjectIdenticalTo:currentMedia];
-        if (idx != NSNotFound) return (NSInteger)idx;
+        if (idx != NSNotFound)
+            return (NSInteger)idx;
         NSString *currentID = SPKStoryMediaID(currentMedia);
         if (currentID.length > 0) {
             for (NSUInteger i = 0; i < allMedia.count; i++) {
                 NSString *candidateID = SPKStoryMediaID(allMedia[i]);
-                if ([candidateID isEqualToString:currentID]) return (NSInteger)i;
+                if ([candidateID isEqualToString:currentID])
+                    return (NSInteger)i;
             }
         }
     }
@@ -134,10 +148,12 @@ static NSInteger SPKStoryCurrentIndexFromControllerOrSection(id sectionControlle
 }
 
 static NSString *SPKStoryMediaID(id media) {
-    for (NSString *selectorName in @[@"pk", @"id", @"mediaID", @"mediaId", @"mediaIdentifier"]) {
+    for (NSString *selectorName in @[ @"pk", @"id", @"mediaID", @"mediaId", @"mediaIdentifier" ]) {
         NSString *identifier = SPKStringFromValue(SPKObjectForSelector(media, selectorName));
-        if (identifier.length == 0) identifier = SPKStringFromValue(SPKKVCObject(media, selectorName));
-        if (identifier.length > 0) return [identifier componentsSeparatedByString:@"_"].firstObject ?: identifier;
+        if (identifier.length == 0)
+            identifier = SPKStringFromValue(SPKKVCObject(media, selectorName));
+        if (identifier.length > 0)
+            return [identifier componentsSeparatedByString:@"_"].firstObject ?: identifier;
     }
     return nil;
 }
@@ -145,10 +161,12 @@ static NSString *SPKStoryMediaID(id media) {
 static NSURL *SPKStoryURLForMedia(id media) {
     NSString *username = SPKUsernameFromMediaObject(media);
     NSString *identifier = SPKStoryMediaID(media);
-    if (username.length == 0 || identifier.length == 0) return nil;
+    if (username.length == 0 || identifier.length == 0)
+        return nil;
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
     NSString *encodedIdentifier = [identifier stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
-    if (encodedUsername.length == 0 || encodedIdentifier.length == 0) return nil;
+    if (encodedUsername.length == 0 || encodedIdentifier.length == 0)
+        return nil;
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/stories/%@/%@/", encodedUsername, encodedIdentifier]];
 }
 
@@ -164,7 +182,8 @@ static NSURL *SPKStoryURLForMedia(id media) {
 static const void *kSPKStoryContextCacheKey = &kSPKStoryContextCacheKey;
 
 SPKStoryContext *SPKStoryContextFromOverlay(UIView *overlayView) {
-    if (!overlayView) return nil;
+    if (!overlayView)
+        return nil;
     SPKStoryContext *context = [[SPKStoryContext alloc] init];
     context.overlayView = overlayView;
     context.viewerController = SPKStoryViewerControllerFromOverlay(overlayView);
@@ -178,16 +197,19 @@ SPKStoryContext *SPKStoryContextFromOverlay(UIView *overlayView) {
         context.markSeenTarget = context.viewerController;
     } else {
         id ancestor = SPKObjectForSelector(overlayView, @"_viewControllerForAncestor");
-        if ([ancestor respondsToSelector:markSelector]) context.markSeenTarget = ancestor;
+        if ([ancestor respondsToSelector:markSelector])
+            context.markSeenTarget = ancestor;
     }
 
     if (!context.sectionController && context.markSeenTarget) {
-        context.sectionController = SPKStoryFirstObjectForSelectors(context.markSeenTarget, @[@"currentSectionController"]) ?: [SPKUtils getIvarForObj:context.markSeenTarget name:"_currentSectionController"];
+        context.sectionController = SPKStoryFirstObjectForSelectors(context.markSeenTarget, @[ @"currentSectionController" ]) ?: [SPKUtils getIvarForObj:context.markSeenTarget name:"_currentSectionController"];
     }
 
-    id media = SPKStoryFirstObjectForSelectors(context.sectionController, @[@"currentStoryItem", @"currentItem", @"item"]);
-    if (!media) media = SPKStoryFirstObjectForSelectors(context.markSeenTarget, @[@"currentStoryItem", @"currentItem", @"item"]);
-    if (!media) media = SPKStoryFirstObjectForSelectors(context.viewerController, @[@"currentStoryItem", @"currentItem", @"item"]);
+    id media = SPKStoryFirstObjectForSelectors(context.sectionController, @[ @"currentStoryItem", @"currentItem", @"item" ]);
+    if (!media)
+        media = SPKStoryFirstObjectForSelectors(context.markSeenTarget, @[ @"currentStoryItem", @"currentItem", @"item" ]);
+    if (!media)
+        media = SPKStoryFirstObjectForSelectors(context.viewerController, @[ @"currentStoryItem", @"currentItem", @"item" ]);
     context.media = SPKStoryMediaFromAnyObject(media);
 
     if (!context.media) {
@@ -207,13 +229,15 @@ SPKStoryContext *SPKStoryContextFromOverlay(UIView *overlayView) {
         return context;
     }
 
-    id currentViewModel = SPKStoryFirstObjectForSelectors(context.viewerController, @[@"currentViewModel"]);
+    id currentViewModel = SPKStoryFirstObjectForSelectors(context.viewerController, @[ @"currentViewModel" ]);
     NSMutableArray *resolved = [NSMutableArray array];
     NSString *currentUserPK = SPKStoryUserPKFromMediaObject(context.media);
-    for (id candidate in @[context.sectionController ?: (id)NSNull.null, currentViewModel ?: (id)NSNull.null, context.viewerController ?: (id)NSNull.null]) {
-        if (candidate == (id)NSNull.null) continue;
+    for (id candidate in @[ context.sectionController ?: (id)NSNull.null, currentViewModel ?: (id)NSNull.null, context.viewerController ?: (id)NSNull.null ]) {
+        if (candidate == (id)NSNull.null)
+            continue;
         NSArray *items = SPKStoryItemsFromCandidate(candidate);
-        if (items.count == 0) continue;
+        if (items.count == 0)
+            continue;
         for (id item in items) {
             id itemMedia = SPKStoryMediaFromAnyObject(item);
             if (itemMedia) {
@@ -227,9 +251,10 @@ SPKStoryContext *SPKStoryContextFromOverlay(UIView *overlayView) {
                 }
             }
         }
-        if (resolved.count > 0) break;
+        if (resolved.count > 0)
+            break;
     }
-    context.allMedia = resolved.count > 0 ? resolved.copy : (context.media ? @[context.media] : @[]);
+    context.allMedia = resolved.count > 0 ? resolved.copy : (context.media ? @[ context.media ] : @[]);
     context.currentIndex = SPKStoryCurrentIndexFromControllerOrSection(context.sectionController, context.viewerController, context.media, context.allMedia);
     context.username = SPKUsernameFromMediaObject(context.media);
     context.fullName = SPKStoryFullNameFromMediaObject(context.media);
@@ -248,7 +273,8 @@ SPKStoryContext *SPKStoryContextFromView(UIView *view) {
 }
 
 SPKStoryContext *SPKStoryContextFromMedia(id media) {
-    if (!media) return nil;
+    if (!media)
+        return nil;
     SPKStoryContext *context = [[SPKStoryContext alloc] init];
     context.media = media;
     context.username = SPKUsernameFromMediaObject(media);
@@ -258,7 +284,8 @@ SPKStoryContext *SPKStoryContextFromMedia(id media) {
 }
 
 BOOL SPKStoryMarkContextAsSeen(SPKStoryContext *context) {
-    if (!context.markSeenTarget || !context.sectionController || !context.media) return NO;
+    if (!context.markSeenTarget || !context.sectionController || !context.media)
+        return NO;
     SEL markSelector = NSSelectorFromString(@"fullscreenSectionController:didMarkItemAsSeen:");
     SPKForcedStorySeenMediaPK = [SPKStoryMediaIdentifier(context.media) copy];
     SPKForceMarkStoryAsSeen = YES;
@@ -272,9 +299,11 @@ BOOL SPKStoryMarkContextAsSeen(SPKStoryContext *context) {
 }
 
 void SPKStoryAdvanceContextIfNeeded(SPKStoryContext *context, NSString *advancePrefKey) {
-    if (!context || advancePrefKey.length == 0 || ![SPKUtils getBoolPref:advancePrefKey]) return;
+    if (!context || advancePrefKey.length == 0 || ![SPKUtils getBoolPref:advancePrefKey])
+        return;
     id sectionController = context.sectionController;
-    if (!sectionController) return;
+    if (!sectionController)
+        return;
     SPKForceStoryAutoAdvance = YES;
     SEL advanceSelector = NSSelectorFromString(@"advanceToNextItemWithNavigationAction:");
     if ([sectionController respondsToSelector:advanceSelector]) {
@@ -318,9 +347,12 @@ static NSString *SPKStoryNormalizeUsername(NSString *username);
 static NSString *SPKStoryCleanDisplayName(NSString *name, NSString *username) {
     NSString *cleanName = [SPKStringFromValue(name) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSString *cleanUsername = SPKStoryNormalizeUsername(username);
-    if (cleanName.length == 0) return nil;
-    if ([SPKStoryNormalizeUsername(cleanName) isEqualToString:cleanUsername]) return nil;
-    if ([[cleanName stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"@"]] caseInsensitiveCompare:cleanUsername] == NSOrderedSame) return nil;
+    if (cleanName.length == 0)
+        return nil;
+    if ([SPKStoryNormalizeUsername(cleanName) isEqualToString:cleanUsername])
+        return nil;
+    if ([[cleanName stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"@"]] caseInsensitiveCompare:cleanUsername] == NSOrderedSame)
+        return nil;
     return cleanName;
 }
 
@@ -332,14 +364,16 @@ static NSDictionary<NSString *, NSString *> *SPKStoryManualSeenUserNameCache(voi
 
 static NSString *SPKStoryCachedManualSeenUserName(NSString *username) {
     NSString *normalized = SPKStoryNormalizeUsername(username);
-    if (normalized.length == 0) return nil;
+    if (normalized.length == 0)
+        return nil;
     return SPKStoryCleanDisplayName(SPKStoryManualSeenUserNameCache()[normalized], normalized);
 }
 
 static void SPKStoryRememberManualSeenUserName(NSString *username, NSString *fullName) {
     NSString *normalized = SPKStoryNormalizeUsername(username);
     NSString *cleanName = SPKStoryCleanDisplayName(fullName, normalized);
-    if (normalized.length == 0 || cleanName.length == 0) return;
+    if (normalized.length == 0 || cleanName.length == 0)
+        return;
 
     NSMutableDictionary *names = [SPKStoryManualSeenUserNameCache() mutableCopy];
     names[normalized] = cleanName;
@@ -349,17 +383,20 @@ static void SPKStoryRememberManualSeenUserName(NSString *username, NSString *ful
 static void SPKStoryResolveAndRememberManualSeenUserName(NSString *username, void (^completion)(void)) {
     NSString *normalized = SPKStoryNormalizeUsername(username);
     if (normalized.length == 0) {
-        if (completion) completion();
+        if (completion)
+            completion();
         return;
     }
     if (SPKStoryCachedManualSeenUserName(normalized).length > 0) {
-        if (completion) completion();
+        if (completion)
+            completion();
         return;
     }
 
     NSString *encodedUsername = [normalized stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
     if (encodedUsername.length == 0) {
-        if (completion) completion();
+        if (completion)
+            completion();
         return;
     }
 
@@ -367,65 +404,78 @@ static void SPKStoryResolveAndRememberManualSeenUserName(NSString *username, voi
                                       path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
                                       body:nil
                                 completion:^(NSDictionary *response, NSError *error) {
-        NSDictionary *user = response[@"data"][@"user"];
-        if (![user isKindOfClass:[NSDictionary class]]) user = response[@"user"];
-        if ([user isKindOfClass:[NSDictionary class]] && !error) {
-            NSString *resolvedUsername = SPKStringFromValue(user[@"username"]) ?: normalized;
-            NSString *fullName = SPKStringFromValue(user[@"full_name"] ?: user[@"fullName"]);
-            SPKStoryRememberManualSeenUserName(resolvedUsername, fullName);
-        } else {
-            SPKLog(@"Stories", @"[Sparkle StorySeen] User display-name lookup failed username=%@ error=%@", normalized, error);
-        }
-        if (completion) completion();
-    }];
+                                    NSDictionary *user = response[@"data"][@"user"];
+                                    if (![user isKindOfClass:[NSDictionary class]])
+                                        user = response[@"user"];
+                                    if ([user isKindOfClass:[NSDictionary class]] && !error) {
+                                        NSString *resolvedUsername = SPKStringFromValue(user[@"username"]) ?: normalized;
+                                        NSString *fullName = SPKStringFromValue(user[@"full_name"] ?: user[@"fullName"]);
+                                        SPKStoryRememberManualSeenUserName(resolvedUsername, fullName);
+                                    } else {
+                                        SPKLog(@"Stories", @"[Sparkle StorySeen] User display-name lookup failed username=%@ error=%@", normalized, error);
+                                    }
+                                    if (completion)
+                                        completion();
+                                }];
 }
 
 static NSString *SPKStoryFullNameFromUserObject(id user) {
-    if (!user) return nil;
-    for (NSString *selectorName in @[@"fullName", @"full_name", @"displayName", @"name"]) {
-        NSString *name = SPKStringFromValue(SPKStoryFirstObjectForSelectors(user, @[selectorName]));
-        if (name.length > 0) return name;
+    if (!user)
+        return nil;
+    for (NSString *selectorName in @[ @"fullName", @"full_name", @"displayName", @"name" ]) {
+        NSString *name = SPKStringFromValue(SPKStoryFirstObjectForSelectors(user, @[ selectorName ]));
+        if (name.length > 0)
+            return name;
     }
     return nil;
 }
 
 static NSString *SPKStoryFullNameFromMediaObject(id media) {
-    if (!media) return nil;
+    if (!media)
+        return nil;
 
     NSString *name = SPKStoryFullNameFromUserObject(media);
-    if (name.length > 0) return name;
+    if (name.length > 0)
+        return name;
 
-    for (NSString *userSelector in @[@"user", @"owner", @"author", @"sender", @"fromUser", @"userObject"]) {
-        id user = SPKStoryFirstObjectForSelectors(media, @[userSelector]);
+    for (NSString *userSelector in @[ @"user", @"owner", @"author", @"sender", @"fromUser", @"userObject" ]) {
+        id user = SPKStoryFirstObjectForSelectors(media, @[ userSelector ]);
         name = SPKStoryFullNameFromUserObject(user);
-        if (name.length > 0) return name;
+        if (name.length > 0)
+            return name;
     }
 
-    for (NSString *nestedSelector in @[@"media", @"item", @"storyItem", @"reelShare", @"currentStoryItem", @"currentItem"]) {
-        id nested = SPKStoryFirstObjectForSelectors(media, @[nestedSelector]);
-        if (!nested || nested == media) continue;
+    for (NSString *nestedSelector in @[ @"media", @"item", @"storyItem", @"reelShare", @"currentStoryItem", @"currentItem" ]) {
+        id nested = SPKStoryFirstObjectForSelectors(media, @[ nestedSelector ]);
+        if (!nested || nested == media)
+            continue;
         name = SPKStoryFullNameFromMediaObject(nested);
-        if (name.length > 0) return name;
+        if (name.length > 0)
+            return name;
     }
 
     return nil;
 }
 
 static id SPKStoryUserFromMediaObject(id media) {
-    if (!media) return nil;
+    if (!media)
+        return nil;
     Class userClass = NSClassFromString(@"IGUser");
     if (userClass && [media isKindOfClass:userClass]) {
         return media;
     }
-    for (NSString *userSelector in @[@"user", @"owner", @"author", @"sender", @"fromUser", @"userObject"]) {
-        id user = SPKStoryFirstObjectForSelectors(media, @[userSelector]);
-        if (user) return user;
+    for (NSString *userSelector in @[ @"user", @"owner", @"author", @"sender", @"fromUser", @"userObject" ]) {
+        id user = SPKStoryFirstObjectForSelectors(media, @[ userSelector ]);
+        if (user)
+            return user;
     }
-    for (NSString *nestedSelector in @[@"media", @"item", @"storyItem", @"reelShare", @"currentStoryItem", @"currentItem"]) {
-        id nested = SPKStoryFirstObjectForSelectors(media, @[nestedSelector]);
-        if (!nested || nested == media) continue;
+    for (NSString *nestedSelector in @[ @"media", @"item", @"storyItem", @"reelShare", @"currentStoryItem", @"currentItem" ]) {
+        id nested = SPKStoryFirstObjectForSelectors(media, @[ nestedSelector ]);
+        if (!nested || nested == media)
+            continue;
         id user = SPKStoryUserFromMediaObject(nested);
-        if (user) return user;
+        if (user)
+            return user;
     }
     return nil;
 }
@@ -437,32 +487,37 @@ NSString *SPKStoryUserPKFromMediaObject(id media) {
 
 static NSString *SPKStoryNormalizeUsername(NSString *username) {
     NSString *trimmed = [[username ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
-    if ([trimmed hasPrefix:@"@"]) trimmed = [trimmed substringFromIndex:1];
+    if ([trimmed hasPrefix:@"@"])
+        trimmed = [trimmed substringFromIndex:1];
     return trimmed;
 }
 
 static NSArray<NSDictionary *> *SPKStoryManualSeenUserListFromRawValue(id rawStored) {
-    if (![rawStored isKindOfClass:[NSArray class]]) return @[];
-    
+    if (![rawStored isKindOfClass:[NSArray class]])
+        return @[];
+
     NSMutableArray<NSDictionary *> *users = [NSMutableArray array];
     NSMutableSet<NSString *> *seenPks = [NSMutableSet set];
-    
+
     for (id value in (NSArray *)rawStored) {
         if ([value isKindOfClass:[NSDictionary class]]) {
             NSDictionary *dict = (NSDictionary *)value;
             NSString *pk = SPKStringFromValue(dict[@"pk"]);
             NSString *username = SPKStoryNormalizeUsername(dict[@"username"]);
-            
+
             if (pk.length > 0) {
-                if ([seenPks containsObject:pk]) continue;
+                if ([seenPks containsObject:pk])
+                    continue;
                 [seenPks addObject:pk];
             } else {
                 continue;
             }
-            
+
             NSMutableDictionary *entry = [dict mutableCopy];
-            if (username.length > 0) entry[@"username"] = username;
-            if (!entry[@"fullName"]) entry[@"fullName"] = @"";
+            if (username.length > 0)
+                entry[@"username"] = username;
+            if (!entry[@"fullName"])
+                entry[@"fullName"] = @"";
             [users addObject:entry.copy];
         }
     }
@@ -482,7 +537,8 @@ void SPKStorySetManualSeenUserList(NSArray *users, BOOL manualSeenEnabled) {
 }
 
 BOOL SPKStoryManualSeenListContainsUser(NSString *pk, BOOL manualSeenEnabled) {
-    if (pk.length == 0) return NO;
+    if (pk.length == 0)
+        return NO;
     NSArray<NSDictionary *> *users = SPKStoryManualSeenUserList(manualSeenEnabled);
     for (NSDictionary *user in users) {
         NSString *userPk = user[@"pk"];
@@ -504,54 +560,61 @@ static void SPKStoryEnrichManualSeenUserEntryIfNeeded(NSDictionary *entry, BOOL 
     NSString *pk = SPKStringFromValue(entry[@"pk"]);
     NSString *username = SPKStringFromValue(entry[@"username"]);
     NSString *profilePicUrl = SPKStringFromValue(entry[@"profilePicUrl"]);
-    if (pk.length == 0 || username.length == 0) return;
-    if (profilePicUrl.length > 0) return; // already fully enriched!
+    if (pk.length == 0 || username.length == 0)
+        return;
+    if (profilePicUrl.length > 0)
+        return; // already fully enriched!
 
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
-    if (encodedUsername.length == 0) return;
+    if (encodedUsername.length == 0)
+        return;
 
     [SPKInstagramAPI sendRequestWithMethod:@"GET"
                                       path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
                                       body:nil
                                 completion:^(NSDictionary *response, NSError *error) {
-        NSDictionary *resolvedUser = response[@"data"][@"user"];
-        if (![resolvedUser isKindOfClass:[NSDictionary class]]) resolvedUser = response[@"user"];
-        if (![resolvedUser isKindOfClass:[NSDictionary class]] || error) {
-            return;
-        }
+                                    NSDictionary *resolvedUser = response[@"data"][@"user"];
+                                    if (![resolvedUser isKindOfClass:[NSDictionary class]])
+                                        resolvedUser = response[@"user"];
+                                    if (![resolvedUser isKindOfClass:[NSDictionary class]] || error) {
+                                        return;
+                                    }
 
-        NSString *resolvedUsername = SPKStringFromValue(resolvedUser[@"username"]) ?: username;
-        NSString *fullName = SPKStoryCleanDisplayName(SPKStringFromValue(resolvedUser[@"full_name"] ?: resolvedUser[@"fullName"]), resolvedUsername) ?: SPKStringFromValue(entry[@"fullName"]) ?: @"";
-        NSString *profilePic = SPKStringFromValue(resolvedUser[@"profile_pic_url"] ?: resolvedUser[@"profile_pic_url_hd"]);
-        if (profilePic.length == 0) return;
+                                    NSString *resolvedUsername = SPKStringFromValue(resolvedUser[@"username"]) ?: username;
+                                    NSString *fullName = SPKStoryCleanDisplayName(SPKStringFromValue(resolvedUser[@"full_name"] ?: resolvedUser[@"fullName"]), resolvedUsername) ?: SPKStringFromValue(entry[@"fullName"]) ?
+                                                                                                                                                                                                                           : @"";
+                                    NSString *profilePic = SPKStringFromValue(resolvedUser[@"profile_pic_url"] ?: resolvedUser[@"profile_pic_url_hd"]);
+                                    if (profilePic.length == 0)
+                                        return;
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSArray *users = SPKStoryManualSeenUserList(manualSeenEnabled);
-            NSMutableArray *newUsers = [users mutableCopy];
-            for (NSUInteger i = 0; i < newUsers.count; i++) {
-                NSDictionary *u = newUsers[i];
-                if ([u[@"pk"] isEqualToString:pk]) {
-                    NSMutableDictionary *mutU = [u mutableCopy];
-                    mutU[@"username"] = resolvedUsername;
-                    mutU[@"fullName"] = fullName;
-                    mutU[@"profilePicUrl"] = profilePic;
-                    newUsers[i] = mutU.copy;
-                    break;
-                }
-            }
-            SPKStorySetManualSeenUserList(newUsers.copy, manualSeenEnabled);
-        });
-    }];
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                        NSArray *users = SPKStoryManualSeenUserList(manualSeenEnabled);
+                                        NSMutableArray *newUsers = [users mutableCopy];
+                                        for (NSUInteger i = 0; i < newUsers.count; i++) {
+                                            NSDictionary *u = newUsers[i];
+                                            if ([u[@"pk"] isEqualToString:pk]) {
+                                                NSMutableDictionary *mutU = [u mutableCopy];
+                                                mutU[@"username"] = resolvedUsername;
+                                                mutU[@"fullName"] = fullName;
+                                                mutU[@"profilePicUrl"] = profilePic;
+                                                newUsers[i] = mutU.copy;
+                                                break;
+                                            }
+                                        }
+                                        SPKStorySetManualSeenUserList(newUsers.copy, manualSeenEnabled);
+                                    });
+                                }];
 }
 
 void SPKStoryToggleUserForCurrentManualSeenMode(NSString *pk, NSString *username, NSString *fullName, NSString *profilePicUrl) {
-    if (pk.length == 0) return;
+    if (pk.length == 0)
+        return;
     BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
     NSString *normalized = SPKStoryNormalizeUsername(username);
-    
+
     NSArray<NSDictionary *> *users = SPKStoryManualSeenUserList(manualSeenEnabled);
     NSMutableArray<NSDictionary *> *newUsers = [users mutableCopy];
-    
+
     NSInteger existingIndex = -1;
     for (NSInteger idx = 0; idx < (NSInteger)newUsers.count; idx++) {
         NSDictionary *user = newUsers[idx];
@@ -561,15 +624,17 @@ void SPKStoryToggleUserForCurrentManualSeenMode(NSString *pk, NSString *username
             break;
         }
     }
-    
+
     if (existingIndex >= 0) {
         [newUsers removeObjectAtIndex:existingIndex];
     } else {
         NSMutableDictionary *entry = [NSMutableDictionary dictionary];
         entry[@"pk"] = pk;
-        if (username.length > 0) entry[@"username"] = normalized;
+        if (username.length > 0)
+            entry[@"username"] = normalized;
         entry[@"fullName"] = fullName ?: @"";
-        if (profilePicUrl.length > 0) entry[@"profilePicUrl"] = profilePicUrl;
+        if (profilePicUrl.length > 0)
+            entry[@"profilePicUrl"] = profilePicUrl;
         entry[@"addedAt"] = @([[NSDate date] timeIntervalSince1970]);
         [newUsers addObject:entry.copy];
         [newUsers sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
@@ -592,164 +657,92 @@ static NSString *SPKStoryManualSeenListModeTitle(BOOL manualSeenEnabled) {
 
 static NSString *SPKStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
     return manualSeenEnabled
-        ? @"When Manually Mark Seen is enabled, users in this list use Instagram's default seen behavior and do not need the eye button."
-        : @"When Manually Mark Seen is disabled, only users in this list require the eye button or story like/reply to mark seen.";
+               ? @"When Manually Mark Seen is enabled, users in this list use Instagram's default seen behavior and do not need the eye button."
+               : @"When Manually Mark Seen is disabled, only users in this list require the eye button or story like/reply to mark seen.";
 }
 
-@interface SPKStoryManualSeenUsersViewController : SPKSettingsViewController
-@property (nonatomic, strong) NSMutableArray<NSDictionary *> *users;
+#pragma mark - Manual-seen users list
+
+@interface SPKStoryManualSeenUsersViewController : SPKUserListViewController
 @property (nonatomic, assign) BOOL manualSeenEnabled;
 @end
 
 @implementation SPKStoryManualSeenUsersViewController
 
 - (instancetype)init {
-    BOOL manualSeen = [SPKUtils getBoolPref:@"stories_manual_seen"];
-    if ((self = [super initWithTitle:SPKStoryManualSeenListTitle(manualSeen) sections:@[] reduceMargin:NO])) {
-        _manualSeenEnabled = manualSeen;
-        _users = [SPKStoryManualSeenUserList(_manualSeenEnabled) mutableCopy];
+    if ((self = [super init])) {
+        _manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
+        self.title = SPKStoryManualSeenListTitle(_manualSeenEnabled);
+        self.showsAddButton = YES;
+        self.infoText = SPKStoryManualSeenListHelpText(_manualSeenEnabled);
+        self.emptyTitle = @"No users yet";
+        self.emptySubtitle = _manualSeenEnabled
+                                 ? @"Add users whose stories should keep Instagram's normal seen behavior."
+                                 : @"Add users whose stories require the eye button to mark seen.";
     }
     return self;
 }
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    [self rebuildSections];
-}
-
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    UIBarButtonItem *addItem = SPKMediaChromeTopBarButtonItemWithTint(@"plus", self, @selector(addUser), [SPKUtils SPKColor_InstagramPrimaryText], @"Add user");
-    UIBarButtonItem *infoItem = SPKMediaChromeTopBarButtonItemWithTint(@"info", self, @selector(showHowItWorks), [SPKUtils SPKColor_InstagramPrimaryText], @"How it works");
-    SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ infoItem, addItem ]);
-}
-
-- (void)rebuildSections {
-    NSMutableArray<SPKSetting *> *rows = [NSMutableArray array];
-    __weak typeof(self) weakSelf = self;
-    for (NSUInteger idx = 0; idx < self.users.count; idx++) {
-        NSDictionary *entry = self.users[idx];
+- (NSArray<SPKUserListItem *> *)buildItems {
+    NSArray<NSDictionary *> *users = SPKStoryManualSeenUserList(self.manualSeenEnabled);
+    NSMutableArray<SPKUserListItem *> *items = [NSMutableArray array];
+    for (NSDictionary *entry in users) {
         NSString *username = entry[@"username"];
         NSString *fullName = entry[@"fullName"];
-        if (fullName.length == 0) fullName = SPKStoryCachedManualSeenUserName(username);
-        NSString *handle = [@"@" stringByAppendingString:username];
-        SPKSetting *row = [SPKSetting buttonCellWithTitle:(fullName.length > 0 ? fullName : handle)
-                                                 subtitle:(fullName.length > 0 ? handle : nil)
-                                                     icon:SPKSettingsIcon(@"user")
-                                                   action:^{
-            [weakSelf showUserActionsForIndex:idx];
-        }];
-        
+        if (fullName.length == 0)
+            fullName = SPKStoryCachedManualSeenUserName(username);
+
+        NSString *pk = [entry[@"pk"] isKindOfClass:[NSString class]] ? entry[@"pk"] : nil;
         NSString *profilePicUrl = entry[@"profilePicUrl"];
-        if (profilePicUrl.length == 0 && entry[@"pk"]) {
-            profilePicUrl = spkDirectUserResolverProfilePicURLStringForPK(entry[@"pk"]);
-        }
-        if (profilePicUrl.length > 0) {
-            row.imageUrl = [NSURL URLWithString:profilePicUrl];
-        }
-        
-        [rows addObject:row];
+        if (profilePicUrl.length == 0 && pk.length)
+            profilePicUrl = spkDirectUserResolverProfilePicURLStringForPK(pk);
+
+        SPKUserListItem *item = [SPKUserListItem new];
+        item.pk = pk;
+        item.title = username.length ? [@"@" stringByAppendingString:username] : @"Unknown user";
+        item.subtitle = fullName.length ? fullName : nil;
+        item.avatarURLString = profilePicUrl;
+        item.representedObject = entry;
+        [items addObject:item];
     }
-    
-    NSArray *sections = @[
-        SPKTopicSection(@"", rows, nil)
-    ];
-    [self replaceSections:sections];
-    self.title = [NSString stringWithFormat:@"%lu %@", (unsigned long)self.users.count, SPKStoryManualSeenListModeTitle(self.manualSeenEnabled)];
+    return items;
 }
 
-- (void)showHowItWorks {
-    [SPKIGAlertPresenter presentAlertFromViewController:self
-                                                   title:@"How It Works"
-                                                 message:SPKStoryManualSeenListHelpText(self.manualSeenEnabled)
-                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleCancel handler:nil]
-    ]];
+- (void)listDidUpdateItemCount:(NSUInteger)count {
+    self.title = [NSString stringWithFormat:@"%lu %@", (unsigned long)count, SPKStoryManualSeenListModeTitle(self.manualSeenEnabled)];
 }
 
-- (void)showUserActionsForIndex:(NSUInteger)index {
-    if (index >= self.users.count) return;
-    NSDictionary *entry = self.users[index];
+- (void)didDeleteItem:(SPKUserListItem *)item {
+    NSDictionary *entry = item.representedObject;
+    NSString *pk = [entry[@"pk"] isKindOfClass:[NSString class]] ? entry[@"pk"] : nil;
+    if (pk.length == 0)
+        return;
     NSString *username = entry[@"username"];
-    __weak typeof(self) weakSelf = self;
-    [SPKIGAlertPresenter presentAlertFromViewController:self
-                                                   title:[NSString stringWithFormat:@"@%@", username]
-                                                 message:nil
-                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Open Profile" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKUtils openInstagramProfileForUsername:username];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Remove" style:SPKIGAlertActionStyleDestructive handler:^{
-            [weakSelf.users removeObjectAtIndex:index];
-            SPKStorySetManualSeenUserList(weakSelf.users, weakSelf.manualSeenEnabled);
-            SPKNotify(kSPKNotificationStorySeenUserRule,
-                      [NSString stringWithFormat:@"Removed @%@", username],
-                      SPKStoryManualSeenListTitle(weakSelf.manualSeenEnabled),
-                      @"circle_check_filled",
-                      SPKNotificationToneSuccess);
-            [weakSelf rebuildSections];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]
-    ]];
-}
 
-- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return UITableViewCellEditingStyleDelete;
-}
-
-- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    __weak typeof(self) weakSelf = self;
-    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
-                                                                               title:nil
-                                                                             handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf || indexPath.row >= strongSelf.users.count) {
-            completionHandler(NO);
-            return;
+    NSMutableArray<NSDictionary *> *users = [SPKStoryManualSeenUserList(self.manualSeenEnabled) mutableCopy];
+    for (NSUInteger idx = 0; idx < users.count; idx++) {
+        if ([users[idx][@"pk"] isEqualToString:pk]) {
+            [users removeObjectAtIndex:idx];
+            break;
         }
-        NSDictionary *entry = strongSelf.users[indexPath.row];
-        NSString *username = entry[@"username"];
-        [strongSelf.users removeObjectAtIndex:indexPath.row];
-        SPKStorySetManualSeenUserList(strongSelf.users, strongSelf.manualSeenEnabled);
-        SPKNotify(kSPKNotificationStorySeenUserRule,
-                  [NSString stringWithFormat:@"Removed @%@", username],
-                  SPKStoryManualSeenListTitle(strongSelf.manualSeenEnabled),
-                  @"circle_check_filled",
-                  SPKNotificationToneSuccess);
-        [strongSelf rebuildSections];
-        completionHandler(YES);
-    }];
-    deleteAction.image = SPKSettingsIcon(@"trash");
-    deleteAction.backgroundColor = [SPKUtils SPKColor_InstagramDestructive];
-    deleteAction.accessibilityLabel = @"Remove";
-    UISwipeActionsConfiguration *configuration = [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
-    configuration.performsFirstActionWithFullSwipe = YES;
-    return configuration;
-}
-
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle != UITableViewCellEditingStyleDelete) return;
-    if (indexPath.row >= self.users.count) return;
-    NSDictionary *entry = self.users[indexPath.row];
-    NSString *username = entry[@"username"];
-    [self.users removeObjectAtIndex:indexPath.row];
-    SPKStorySetManualSeenUserList(self.users, self.manualSeenEnabled);
+    }
+    SPKStorySetManualSeenUserList(users, self.manualSeenEnabled);
     SPKNotify(kSPKNotificationStorySeenUserRule,
               [NSString stringWithFormat:@"Removed @%@", username],
               SPKStoryManualSeenListTitle(self.manualSeenEnabled),
               @"circle_check_filled",
               SPKNotificationToneSuccess);
-    [self rebuildSections];
+    [self reloadItems];
 }
 
 - (void)presentError:(NSString *)message {
     [SPKIGAlertPresenter presentAlertFromViewController:self
-                                                   title:@"Unable to Add User"
-                                                 message:message
-                                                 actions:@[[SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleCancel handler:nil]]];
+                                                  title:@"Unable to Add User"
+                                                message:message
+                                                actions:@[ [SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleCancel handler:nil] ]];
 }
 
-- (void)addUser {
+- (void)didTapAdd {
     __weak typeof(self) weakSelf = self;
     [SPKIGAlertPresenter presentTextInputAlertFromViewController:self
                                                            title:@"Add User"
@@ -757,84 +750,91 @@ static NSString *SPKStoryManualSeenListHelpText(BOOL manualSeenEnabled) {
                                                      placeholder:@"username"
                                                      initialText:nil
                                                  autocapitalized:NO
-                                                     confirmTitle:@"Search"
-                                                      cancelTitle:@"Cancel"
-                                                     confirmStyle:SPKIGAlertActionStyleDefault
-                                                     confirmBlock:^(NSString *text) {
-        [weakSelf lookupUsername:text];
-    } cancelBlock:nil];
+                                                    confirmTitle:@"Search"
+                                                     cancelTitle:@"Cancel"
+                                                    confirmStyle:SPKIGAlertActionStyleDefault
+                                                    confirmBlock:^(NSString *text) {
+                                                        [weakSelf lookupUsername:text];
+                                                    }
+                                                     cancelBlock:nil];
 }
 
 - (void)lookupUsername:(NSString *)rawUsername {
     NSString *username = [[[rawUsername ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"@"]];
-    if (username.length == 0) return;
+    if (username.length == 0)
+        return;
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
-    if (encodedUsername.length == 0) return;
+    if (encodedUsername.length == 0)
+        return;
 
     __weak typeof(self) weakSelf = self;
     [SPKInstagramAPI sendRequestWithMethod:@"GET"
                                       path:[NSString stringWithFormat:@"users/web_profile_info/?username=%@", encodedUsername]
                                       body:nil
                                 completion:^(NSDictionary *response, NSError *error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        NSDictionary *user = response[@"data"][@"user"];
-        if (![user isKindOfClass:[NSDictionary class]]) user = response[@"user"];
-        if (![user isKindOfClass:[NSDictionary class]] || error) {
-            [strongSelf presentError:[NSString stringWithFormat:@"User '%@' was not found.", username]];
-            return;
-        }
-        NSString *pk = SPKStringFromValue(user[@"id"] ?: user[@"pk"]);
-        NSString *resolvedUsername = SPKStringFromValue(user[@"username"]) ?: username;
-        NSString *fullName = SPKStringFromValue(user[@"full_name"] ?: user[@"fullName"]) ?: @"";
-        NSString *profilePicUrl = SPKStringFromValue(user[@"profile_pic_url"] ?: user[@"profile_pic_url_hd"]);
-        if (pk.length == 0) {
-            [strongSelf presentError:@"Could not resolve this user's Instagram ID."];
-            return;
-        }
+                                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                                    if (!strongSelf)
+                                        return;
+                                    NSDictionary *user = response[@"data"][@"user"];
+                                    if (![user isKindOfClass:[NSDictionary class]])
+                                        user = response[@"user"];
+                                    if (![user isKindOfClass:[NSDictionary class]] || error) {
+                                        [strongSelf presentError:[NSString stringWithFormat:@"User '%@' was not found.", username]];
+                                        return;
+                                    }
+                                    NSString *pk = SPKStringFromValue(user[@"id"] ?: user[@"pk"]);
+                                    NSString *resolvedUsername = SPKStringFromValue(user[@"username"]) ?: username;
+                                    NSString *fullName = SPKStringFromValue(user[@"full_name"] ?: user[@"fullName"]) ?: @"";
+                                    NSString *profilePicUrl = SPKStringFromValue(user[@"profile_pic_url"] ?: user[@"profile_pic_url_hd"]);
+                                    if (pk.length == 0) {
+                                        [strongSelf presentError:@"Could not resolve this user's Instagram ID."];
+                                        return;
+                                    }
 
-        NSString *message = fullName.length > 0
-            ? [NSString stringWithFormat:@"@%@ (%@)", resolvedUsername, fullName]
-            : [@"@" stringByAppendingString:resolvedUsername];
-            
-        [SPKIGAlertPresenter presentAlertFromViewController:strongSelf
-                                                      title:@"Add to List?"
-                                                    message:message
-                                                    actions:@[
-            [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-            [SPKIGAlertAction actionWithTitle:@"Add" style:SPKIGAlertActionStyleDefault handler:^{
-                BOOL alreadyExists = NO;
-                for (NSDictionary *u in strongSelf.users) {
-                    if ([u[@"pk"] isEqualToString:pk] || [u[@"username"] isEqualToString:resolvedUsername]) {
-                        alreadyExists = YES;
-                        break;
-                    }
-                }
-                if (!alreadyExists) {
-                    NSMutableDictionary *entry = [NSMutableDictionary dictionary];
-                    entry[@"pk"] = pk;
-                    entry[@"username"] = resolvedUsername;
-                    entry[@"fullName"] = fullName;
-                    if (profilePicUrl.length > 0) entry[@"profilePicUrl"] = profilePicUrl;
-                    entry[@"addedAt"] = @([[NSDate date] timeIntervalSince1970]);
-                    
-                    [strongSelf.users addObject:entry.copy];
-                    [strongSelf.users sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
-                        NSString *aName = a[@"username"] ?: @"";
-                        NSString *bName = b[@"username"] ?: @"";
-                        return [aName localizedCaseInsensitiveCompare:bName];
-                    }];
-                    SPKStorySetManualSeenUserList(strongSelf.users, strongSelf.manualSeenEnabled);
-                    SPKNotify(kSPKNotificationStorySeenUserRule,
-                              [NSString stringWithFormat:@"Added @%@", resolvedUsername],
-                              SPKStoryManualSeenListTitle(strongSelf.manualSeenEnabled),
-                              @"circle_check_filled",
-                              SPKNotificationToneSuccess);
-                    [strongSelf rebuildSections];
-                }
-            }],
-        ]];
+                                    NSString *message = fullName.length > 0
+                                                            ? [NSString stringWithFormat:@"@%@ (%@)", resolvedUsername, fullName]
+                                                            : [@"@" stringByAppendingString:resolvedUsername];
+
+                                    [SPKIGAlertPresenter presentAlertFromViewController:strongSelf
+                                                                                  title:@"Add to List?"
+                                                                                message:message
+                                                                                actions:@[
+                                                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                                                style:SPKIGAlertActionStyleCancel
+                                                                                                              handler:nil],
+                                                                                    [SPKIGAlertAction actionWithTitle:@"Add"
+                                                                                                                style:SPKIGAlertActionStyleDefault
+                                                                                                              handler:^{
+                                                                                                                  [strongSelf addResolvedUserPK:pk username:resolvedUsername fullName:fullName profilePicUrl:profilePicUrl];
+                                                                                                              }],
+                                                                                ]];
+                                }];
+}
+
+- (void)addResolvedUserPK:(NSString *)pk username:(NSString *)username fullName:(NSString *)fullName profilePicUrl:(NSString *)profilePicUrl {
+    NSMutableArray<NSDictionary *> *users = [SPKStoryManualSeenUserList(self.manualSeenEnabled) mutableCopy];
+    for (NSDictionary *u in users) {
+        if ([u[@"pk"] isEqualToString:pk] || [u[@"username"] isEqualToString:username])
+            return; // already listed
+    }
+    NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+    entry[@"pk"] = pk;
+    entry[@"username"] = username;
+    entry[@"fullName"] = fullName ?: @"";
+    if (profilePicUrl.length > 0)
+        entry[@"profilePicUrl"] = profilePicUrl;
+    entry[@"addedAt"] = @([[NSDate date] timeIntervalSince1970]);
+    [users addObject:entry.copy];
+    [users sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+        return [(a[@"username"] ?: @"") localizedCaseInsensitiveCompare:(b[@"username"] ?: @"")];
     }];
+    SPKStorySetManualSeenUserList(users, self.manualSeenEnabled);
+    SPKNotify(kSPKNotificationStorySeenUserRule,
+              [NSString stringWithFormat:@"Added @%@", username],
+              SPKStoryManualSeenListTitle(self.manualSeenEnabled),
+              @"circle_check_filled",
+              SPKNotificationToneSuccess);
+    [self reloadItems];
 }
 
 @end
@@ -845,45 +845,54 @@ UIViewController *SPKStoryManualSeenListViewController(void) {
 
 static BOOL SPKStoryCurrentUserRuleState(SPKStoryContext *context, NSString **outUsername, NSString **outListTitle, BOOL *outListed, BOOL *outManualSeenEnabled) {
     NSString *username = SPKStoryUsernameForContext(context);
-    if (username.length == 0) return NO;
+    if (username.length == 0)
+        return NO;
 
     BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
     NSString *pk = SPKStoryUserPKFromMediaObject(context.media);
     BOOL listed = SPKStoryManualSeenListContainsUser(pk, manualSeenEnabled);
     NSString *listTitle = SPKStoryManualSeenListTitle(manualSeenEnabled);
 
-    if (outUsername) *outUsername = username;
-    if (outListTitle) *outListTitle = listTitle;
-    if (outListed) *outListed = listed;
-    if (outManualSeenEnabled) *outManualSeenEnabled = manualSeenEnabled;
+    if (outUsername)
+        *outUsername = username;
+    if (outListTitle)
+        *outListTitle = listTitle;
+    if (outListed)
+        *outListed = listed;
+    if (outManualSeenEnabled)
+        *outManualSeenEnabled = manualSeenEnabled;
     return YES;
 }
 
 NSString *SPKStoryCurrentUserRuleActionTitle(SPKStoryContext *context) {
     NSString *username = nil;
-    if (!SPKStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL)) return nil;
+    if (!SPKStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL))
+        return nil;
     BOOL applies = SPKStoryManualSeenAppliesToContext(context);
     return applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
 }
 
 NSString *SPKStoryCurrentUserRuleConfirmationTitle(SPKStoryContext *context) {
     NSString *username = nil;
-    if (!SPKStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL)) return nil;
+    if (!SPKStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL))
+        return nil;
     BOOL applies = SPKStoryManualSeenAppliesToContext(context);
     return applies ? @"Start Marking Stories as Seen" : @"Stop Marking Stories as Seen";
 }
 
 NSString *SPKStoryCurrentUserRuleConfirmationMessage(SPKStoryContext *context) {
     NSString *username = nil;
-    if (!SPKStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL)) return nil;
+    if (!SPKStoryCurrentUserRuleState(context, &username, NULL, NULL, NULL))
+        return nil;
     BOOL applies = SPKStoryManualSeenAppliesToContext(context);
     return applies
-        ? [NSString stringWithFormat:@"Do you want to start marking stories from @%@ as seen?", username]
-        : [NSString stringWithFormat:@"Do you want to stop marking stories from @%@ as seen?", username];
+               ? [NSString stringWithFormat:@"Do you want to start marking stories from @%@ as seen?", username]
+               : [NSString stringWithFormat:@"Do you want to stop marking stories from @%@ as seen?", username];
 }
 
 void SPKStoryToggleUserRuleForPK(NSString *pk, NSString *username, NSString *fullName, NSString *profilePicUrl) {
-    if (pk.length == 0) return;
+    if (pk.length == 0)
+        return;
     BOOL manualSeenEnabled = [SPKUtils getBoolPref:@"stories_manual_seen"];
     BOOL listed = SPKStoryManualSeenListContainsUser(pk, manualSeenEnabled);
     SPKStoryToggleUserForCurrentManualSeenMode(pk, username, fullName, profilePicUrl);
@@ -902,7 +911,8 @@ BOOL SPKStoryToggleCurrentUserRule(SPKStoryContext *context, NSString **notifica
     NSString *listTitle = nil;
     BOOL listed = NO;
     BOOL manualSeenEnabled = NO;
-    if (!SPKStoryCurrentUserRuleState(context, &username, &listTitle, &listed, &manualSeenEnabled)) return NO;
+    if (!SPKStoryCurrentUserRuleState(context, &username, &listTitle, &listed, &manualSeenEnabled))
+        return NO;
 
     BOOL applies = SPKStoryManualSeenAppliesToContext(context);
 
@@ -917,14 +927,15 @@ BOOL SPKStoryToggleCurrentUserRule(SPKStoryContext *context, NSString **notifica
     if (profilePicUrl.length == 0) {
         profilePicUrl = spkDirectUserResolverProfilePicURLStringFromUser(user);
     }
-    
+
     SPKStoryToggleUserRuleForPK(pk, username, fullName, profilePicUrl);
-    
+
     if (notificationTitle) {
         *notificationTitle = applies
-            ? [NSString stringWithFormat:@"Stories seen on for @%@", username]
-            : [NSString stringWithFormat:@"Stories seen off for @%@", username];
+                                 ? [NSString stringWithFormat:@"Stories seen on for @%@", username]
+                                 : [NSString stringWithFormat:@"Stories seen off for @%@", username];
     }
-    if (notificationSubtitle) *notificationSubtitle = listTitle;
+    if (notificationSubtitle)
+        *notificationSubtitle = listTitle;
     return YES;
 }

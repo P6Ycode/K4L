@@ -1,16 +1,15 @@
 #import "SPKProfileAnalyzerViewController.h"
-#import "SPKProfileAnalyzerModels.h"
-#import "SPKProfileAnalyzerStorage.h"
-#import "SPKProfileAnalyzerService.h"
-#import "SPKProfileAnalyzerListViewController.h"
-#import "SPKProfileAnalyzerAvatarView.h"
-#import "SPKProfileAnalyzerAvatarCache.h"
-#import "../../../Utils.h"
 #import "../../../AssetUtils.h"
-#import "../../../Shared/UI/SPKNotificationCenter.h"
-#import "../../../Shared/UI/SPKMediaChrome.h"
 #import "../../../Shared/UI/SPKIGAlertPresenter.h"
+#import "../../../Shared/UI/SPKMediaChrome.h"
+#import "../../../Shared/UI/SPKNotificationCenter.h"
 #import "../../../Shared/UI/SPKSwitch.h"
+#import "../../../Utils.h"
+#import "../../../Shared/Avatars/SPKAvatarView.h"
+#import "SPKProfileAnalyzerListViewController.h"
+#import "SPKProfileAnalyzerModels.h"
+#import "SPKProfileAnalyzerService.h"
+#import "SPKProfileAnalyzerStorage.h"
 
 #pragma mark - Category descriptor
 
@@ -30,16 +29,17 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, copy) NSString *iconName;
 @property (nonatomic, assign) NSInteger count;
-@property (nonatomic, assign) NSInteger unseenCount;   // change rows: unseen "new" badge
+@property (nonatomic, assign) NSInteger unseenCount; // change rows: unseen "new" badge
 @end
-@implementation SPKPACategoryRow @end
+@implementation SPKPACategoryRow
+@end
 
 #pragma mark - Scan pill button (progress fills inside the pill)
 
 @interface SPKPAScanButton : UIControl
 @property (nonatomic, strong) UILabel *label;
 @property (nonatomic, strong) CALayer *fillLayer;
-@property (nonatomic, assign) double progress;   // 0..1
+@property (nonatomic, assign) double progress; // 0..1
 @property (nonatomic, assign, getter=isScanning) BOOL scanning;
 - (void)setProgress:(double)progress animated:(BOOL)animated;
 @end
@@ -48,7 +48,8 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (!self) return self;
+    if (!self)
+        return self;
     self.clipsToBounds = YES;
 
     _fillLayer = [CALayer layer];
@@ -63,8 +64,10 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
     [NSLayoutConstraint activateConstraints:@[
         [_label.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [_label.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [_label.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor constant:16.0],
-        [_label.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-16.0],
+        [_label.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor
+                                                          constant:16.0],
+        [_label.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor
+                                                        constant:-16.0],
     ]];
 
     [self applyColors];
@@ -91,9 +94,9 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    self.layer.cornerRadius = self.bounds.size.height / 2.0;   // pill
+    self.layer.cornerRadius = self.bounds.size.height / 2.0; // pill
     [self updateFillFrameAnimated:NO];
-    [self applyColors];   // re-resolve CGColor for the current trait collection
+    [self applyColors]; // re-resolve CGColor for the current trait collection
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {
@@ -119,7 +122,9 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 
 - (void)setScanning:(BOOL)scanning {
     _scanning = scanning;
-    if (!scanning) { _progress = 0; }
+    if (!scanning) {
+        _progress = 0;
+    }
     [self applyColors];
     [self updateFillFrameAnimated:NO];
 }
@@ -129,14 +134,16 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
     [self updateFillFrameAnimated:animated];
 }
 
-- (void)setText:(NSString *)text { self.label.text = text; }
+- (void)setText:(NSString *)text {
+    self.label.text = text;
+}
 
 @end
 
 #pragma mark - Identity header
 
 @interface SPKPAIdentityHeader : UIView
-@property (nonatomic, strong) SPKProfileAnalyzerAvatarView *avatarView;
+@property (nonatomic, strong) SPKAvatarView *avatarView;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *usernameLabel;
 @property (nonatomic, strong) UIStackView *statsRow;
@@ -148,10 +155,11 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (!self) return self;
+    if (!self)
+        return self;
     self.backgroundColor = [SPKUtils SPKColor_InstagramGroupedBackground];
 
-    _avatarView = [[SPKProfileAnalyzerAvatarView alloc] initWithFrame:CGRectZero];
+    _avatarView = [[SPKAvatarView alloc] initWithFrame:CGRectZero];
     _avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:_avatarView];
 
@@ -188,33 +196,48 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
     [self addSubview:_scanButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:20.0],
+        [_avatarView.topAnchor constraintEqualToAnchor:self.topAnchor
+                                              constant:20.0],
         [_avatarView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [_avatarView.widthAnchor constraintEqualToConstant:88.0],
         [_avatarView.heightAnchor constraintEqualToConstant:88.0],
 
-        [_nameLabel.topAnchor constraintEqualToAnchor:_avatarView.bottomAnchor constant:10.0],
-        [_nameLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16.0],
-        [_nameLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16.0],
+        [_nameLabel.topAnchor constraintEqualToAnchor:_avatarView.bottomAnchor
+                                             constant:10.0],
+        [_nameLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor
+                                                 constant:16.0],
+        [_nameLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                  constant:-16.0],
 
-        [_usernameLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:2.0],
+        [_usernameLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor
+                                                 constant:2.0],
         [_usernameLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
         [_usernameLabel.trailingAnchor constraintEqualToAnchor:_nameLabel.trailingAnchor],
 
-        [_statsRow.topAnchor constraintEqualToAnchor:_usernameLabel.bottomAnchor constant:16.0],
-        [_statsRow.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:24.0],
-        [_statsRow.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-24.0],
+        [_statsRow.topAnchor constraintEqualToAnchor:_usernameLabel.bottomAnchor
+                                            constant:16.0],
+        [_statsRow.leadingAnchor constraintEqualToAnchor:self.leadingAnchor
+                                                constant:24.0],
+        [_statsRow.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                 constant:-24.0],
         [_statsRow.heightAnchor constraintEqualToConstant:44.0],
 
-        [_scanButton.topAnchor constraintEqualToAnchor:_statsRow.bottomAnchor constant:16.0],
-        [_scanButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16.0],
-        [_scanButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16.0],
+        [_scanButton.topAnchor constraintEqualToAnchor:_statsRow.bottomAnchor
+                                              constant:16.0],
+        [_scanButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor
+                                                  constant:16.0],
+        [_scanButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                   constant:-16.0],
         [_scanButton.heightAnchor constraintEqualToConstant:48.0],
 
-        [_scanDateLabel.topAnchor constraintEqualToAnchor:_scanButton.bottomAnchor constant:10.0],
-        [_scanDateLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:24.0],
-        [_scanDateLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-24.0],
-        [_scanDateLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-20.0],
+        [_scanDateLabel.topAnchor constraintEqualToAnchor:_scanButton.bottomAnchor
+                                                 constant:10.0],
+        [_scanDateLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor
+                                                     constant:24.0],
+        [_scanDateLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                      constant:-24.0],
+        [_scanDateLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor
+                                                    constant:-20.0],
     ]];
     return self;
 }
@@ -244,7 +267,10 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 }
 
 - (void)setStatsPosts:(NSString *)posts followers:(NSString *)followers following:(NSString *)following {
-    for (UIView *v in self.statsRow.arrangedSubviews) { [self.statsRow removeArrangedSubview:v]; [v removeFromSuperview]; }
+    for (UIView *v in self.statsRow.arrangedSubviews) {
+        [self.statsRow removeArrangedSubview:v];
+        [v removeFromSuperview];
+    }
     [self.statsRow addArrangedSubview:[self statColumnValue:posts caption:@"Posts"]];
     [self.statsRow addArrangedSubview:[self statColumnValue:followers caption:@"Followers"]];
     [self.statsRow addArrangedSubview:[self statColumnValue:following caption:@"Following"]];
@@ -261,8 +287,8 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @property (nonatomic, strong) SPKProfileAnalyzerReport *report;
 @property (nonatomic, strong) NSArray<SPKProfileAnalyzerVisit *> *visits;
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerChangeEvent *> *changeEvents; // durable change log, newest-first
-@property (nonatomic, copy) NSArray<SPKPACategoryRow *> *currentRows;   // section: current snapshot
-@property (nonatomic, copy) NSArray<SPKPACategoryRow *> *changeRows;    // section: accumulated changes
+@property (nonatomic, copy) NSArray<SPKPACategoryRow *> *currentRows;               // section: current snapshot
+@property (nonatomic, copy) NSArray<SPKPACategoryRow *> *changeRows;                // section: accumulated changes
 @property (nonatomic, copy) NSString *selfPK;
 @property (nonatomic, assign) BOOL trackVisits;
 @end
@@ -271,14 +297,17 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 
 + (void)presentFromTop {
     UIViewController *root = UIApplication.sharedApplication.keyWindow.rootViewController;
-    while (root.presentedViewController) root = root.presentedViewController;
+    while (root.presentedViewController)
+        root = root.presentedViewController;
     // Don't stack a second analyzer if one is already on screen.
     UIViewController *probe = root;
     while (probe) {
-        if ([probe isKindOfClass:[SPKProfileAnalyzerViewController class]]) return;
+        if ([probe isKindOfClass:[SPKProfileAnalyzerViewController class]])
+            return;
         if ([probe isKindOfClass:[UINavigationController class]]) {
             for (UIViewController *vc in ((UINavigationController *)probe).viewControllers) {
-                if ([vc isKindOfClass:[SPKProfileAnalyzerViewController class]]) return;
+                if ([vc isKindOfClass:[SPKProfileAnalyzerViewController class]])
+                    return;
             }
         }
         probe = probe.presentingViewController;
@@ -359,13 +388,15 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     CGFloat w = self.tableView.bounds.size.width;
-    if (w < 1) return;
+    if (w < 1)
+        return;
     self.headerContainer.frame = CGRectMake(0, 0, w, 1);
     [self.headerContainer setNeedsLayout];
     [self.headerContainer layoutIfNeeded];
     CGFloat h = [self.headerContainer systemLayoutSizeFittingSize:CGSizeMake(w, UILayoutFittingCompressedSize.height)
-                                   withHorizontalFittingPriority:UILayoutPriorityRequired
-                                         verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
+                                    withHorizontalFittingPriority:UILayoutPriorityRequired
+                                          verticalFittingPriority:UILayoutPriorityFittingSizeLevel]
+                    .height;
     CGRect target = CGRectMake(0, 0, w, h);
     if (!CGRectEqualToRect(self.headerContainer.frame, target) || self.tableView.tableHeaderView != self.headerContainer) {
         self.headerContainer.frame = target;
@@ -374,9 +405,12 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 }
 
 static NSString *SPKPACompact(NSInteger n) {
-    if (n >= 1000000) return [NSString stringWithFormat:@"%.1fM", n / 1000000.0];
-    if (n >= 10000)   return [NSString stringWithFormat:@"%.0fK", n / 1000.0];
-    if (n >= 1000)    return [NSString stringWithFormat:@"%.1fK", n / 1000.0];
+    if (n >= 1000000)
+        return [NSString stringWithFormat:@"%.1fM", n / 1000000.0];
+    if (n >= 10000)
+        return [NSString stringWithFormat:@"%.0fK", n / 1000.0];
+    if (n >= 1000)
+        return [NSString stringWithFormat:@"%.1fK", n / 1000.0];
     return [NSString stringWithFormat:@"%ld", (long)n];
 }
 
@@ -422,13 +456,15 @@ static NSString *SPKPACompact(NSInteger n) {
 
 - (void)dataChanged:(NSNotification *)note {
     NSString *pk = note.userInfo[@"user_pk"];
-    if (pk.length && self.selfPK.length && ![pk isEqualToString:self.selfPK]) return;
+    if (pk.length && self.selfPK.length && ![pk isEqualToString:self.selfPK])
+        return;
     [self loadCachedData];
     [self paintHeaderIdentity];
 }
 
 - (void)loadCachedData {
-    if (!self.selfPK.length) self.selfPK = [SPKUtils currentUserPK];
+    if (!self.selfPK.length)
+        self.selfPK = [SPKUtils currentUserPK];
     SPKProfileAnalyzerSnapshot *cur = [SPKProfileAnalyzerStorage currentSnapshotForUserPK:self.selfPK];
     SPKProfileAnalyzerSnapshot *prev = [SPKProfileAnalyzerStorage previousSnapshotForUserPK:self.selfPK];
     self.report = [SPKProfileAnalyzerReport reportFromCurrent:cur previous:prev];
@@ -440,19 +476,38 @@ static NSString *SPKPACompact(NSInteger n) {
 
 - (SPKPACategoryRow *)row:(SPKPACategory)cat title:(NSString *)title icon:(NSString *)icon count:(NSInteger)count {
     SPKPACategoryRow *r = [SPKPACategoryRow new];
-    r.category = cat; r.title = title; r.iconName = icon; r.count = count;
+    r.category = cat;
+    r.title = title;
+    r.iconName = icon;
+    r.count = count;
     return r;
 }
 
 // Maps a change category to its change-log type. Returns NO for current-state categories.
 - (BOOL)changeType:(SPKPAChangeType *)outType forCategory:(SPKPACategory)cat {
     switch (cat) {
-        case SPKPACategoryNewFollowers:        if (outType) *outType = SPKPAChangeTypeNewFollower;     return YES;
-        case SPKPACategoryLostFollowers:       if (outType) *outType = SPKPAChangeTypeLostFollower;    return YES;
-        case SPKPACategoryYouStartedFollowing: if (outType) *outType = SPKPAChangeTypeStartedFollowing; return YES;
-        case SPKPACategoryYouUnfollowed:       if (outType) *outType = SPKPAChangeTypeUnfollowed;      return YES;
-        case SPKPACategoryProfileUpdates:      if (outType) *outType = SPKPAChangeTypeProfileUpdate;   return YES;
-        default: return NO;
+    case SPKPACategoryNewFollowers:
+        if (outType)
+            *outType = SPKPAChangeTypeNewFollower;
+        return YES;
+    case SPKPACategoryLostFollowers:
+        if (outType)
+            *outType = SPKPAChangeTypeLostFollower;
+        return YES;
+    case SPKPACategoryYouStartedFollowing:
+        if (outType)
+            *outType = SPKPAChangeTypeStartedFollowing;
+        return YES;
+    case SPKPACategoryYouUnfollowed:
+        if (outType)
+            *outType = SPKPAChangeTypeUnfollowed;
+        return YES;
+    case SPKPACategoryProfileUpdates:
+        if (outType)
+            *outType = SPKPAChangeTypeProfileUpdate;
+        return YES;
+    default:
+        return NO;
     }
 }
 
@@ -484,7 +539,8 @@ static NSString *SPKPACompact(NSInteger n) {
     for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
         NSNumber *k = @(e.type);
         total[k] = @(total[k].integerValue + 1);
-        if (!e.seen) unseen[k] = @(unseen[k].integerValue + 1);
+        if (!e.seen)
+            unseen[k] = @(unseen[k].integerValue + 1);
     }
     if (self.changeEvents.count > 0) {
         [changes addObject:[self changeRow:SPKPACategoryNewFollowers title:@"New Followers" icon:@"face_happy" total:total unseen:unseen]];
@@ -501,8 +557,10 @@ static NSString *SPKPACompact(NSInteger n) {
 
 - (void)scanTapped {
     SPKProfileAnalyzerService *svc = [SPKProfileAnalyzerService sharedService];
-    if (svc.isRunning) return;
-    if (!self.selfPK.length) self.selfPK = [SPKUtils currentUserPK];
+    if (svc.isRunning)
+        return;
+    if (!self.selfPK.length)
+        self.selfPK = [SPKUtils currentUserPK];
 
     [self setScanning:YES];
 
@@ -514,39 +572,47 @@ static NSString *SPKPACompact(NSInteger n) {
         [pill setProgress:0.02f animated:NO];
         // Tapping the pill (during the scan or after it completes) jumps into
         // the analyzer.
-        pill.onTapWhenProgress = ^{ [SPKProfileAnalyzerViewController presentFromTop]; };
+        pill.onTapWhenProgress = ^{
+            [SPKProfileAnalyzerViewController presentFromTop];
+        };
     }
 
     __weak typeof(self) weakSelf = self;
-    [svc runForSelfWithHeaderInfo:^(NSDictionary *userInfo) {
-        [weakSelf paintHeaderIdentity];
-    } progress:^(NSString *status, double fraction) {
-        [pill updateProgressTitle:@"Analyzing profile..." subtitle:status];
-        [pill setProgress:(float)fraction animated:YES];
-    } completion:^(SPKProfileAnalyzerSnapshot *snapshot, NSError *error) {
-        [weakSelf setScanning:NO];
-        if (error) {
-            if (error.code == SPKProfileAnalyzerErrorCancelled) {
-                [pill dismiss];
-            } else {
-                [pill showErrorWithTitle:@"Analysis failed" subtitle:error.localizedDescription icon:nil];
-                SPKNotificationTriggerHaptic(kSPKNotificationProfileAnalyzerComplete, SPKNotificationToneError);
-            }
-            return;
+    [svc
+        runForSelfWithHeaderInfo:^(NSDictionary *userInfo) {
+            [weakSelf paintHeaderIdentity];
         }
-        [pill setProgress:1.0f animated:YES];
-        [pill showSuccessWithTitle:@"Analysis complete" subtitle:@"Tap to view results" icon:nil];
-        pill.onTapWhenCompleted = ^{ [SPKProfileAnalyzerViewController presentFromTop]; };
-        SPKNotificationTriggerHaptic(kSPKNotificationProfileAnalyzerComplete, SPKNotificationToneSuccess);
-        // Auto-dismiss after the configured pill duration (progress pills don't
-        // self-dismiss on completion, so schedule it explicitly).
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(SPKNotificationPillDuration() * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{
-            if (pill.superview) [pill dismiss];
-        });
-        [weakSelf loadCachedData];
-        [weakSelf paintHeaderIdentity];
-    }];
+        progress:^(NSString *status, double fraction) {
+            [pill updateProgressTitle:@"Analyzing profile..." subtitle:status];
+            [pill setProgress:(float)fraction animated:YES];
+        }
+        completion:^(SPKProfileAnalyzerSnapshot *snapshot, NSError *error) {
+            [weakSelf setScanning:NO];
+            if (error) {
+                if (error.code == SPKProfileAnalyzerErrorCancelled) {
+                    [pill dismiss];
+                } else {
+                    [pill showErrorWithTitle:@"Analysis failed" subtitle:error.localizedDescription icon:nil];
+                    SPKNotificationTriggerHaptic(kSPKNotificationProfileAnalyzerComplete, SPKNotificationToneError);
+                }
+                return;
+            }
+            [pill setProgress:1.0f animated:YES];
+            [pill showSuccessWithTitle:@"Analysis complete" subtitle:@"Tap to view results" icon:nil];
+            pill.onTapWhenCompleted = ^{
+                [SPKProfileAnalyzerViewController presentFromTop];
+            };
+            SPKNotificationTriggerHaptic(kSPKNotificationProfileAnalyzerComplete, SPKNotificationToneSuccess);
+            // Auto-dismiss after the configured pill duration (progress pills don't
+            // self-dismiss on completion, so schedule it explicitly).
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(SPKNotificationPillDuration() * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                               if (pill.superview)
+                                   [pill dismiss];
+                           });
+            [weakSelf loadCachedData];
+            [weakSelf paintHeaderIdentity];
+        }];
 }
 
 - (void)setScanning:(BOOL)scanning {
@@ -564,18 +630,24 @@ static NSString *SPKPACompact(NSInteger n) {
     if (svc.isRunning) {
         [self setScanning:YES];
         [self.header.scanButton setProgress:svc.currentFraction animated:NO];
-        if (svc.currentStatus.length) [self.header.scanButton setText:svc.currentStatus];
+        if (svc.currentStatus.length)
+            [self.header.scanButton setText:svc.currentStatus];
     } else {
         [self setScanning:NO];
     }
 }
 
 - (void)progressChanged:(NSNotification *)note {
-    if (![note.userInfo[@"running"] boolValue]) { [self setScanning:NO]; return; }
-    if (!self.header.scanButton.isScanning) [self setScanning:YES];
+    if (![note.userInfo[@"running"] boolValue]) {
+        [self setScanning:NO];
+        return;
+    }
+    if (!self.header.scanButton.isScanning)
+        [self setScanning:YES];
     [self.header.scanButton setProgress:[note.userInfo[@"fraction"] doubleValue] animated:YES];
     NSString *status = note.userInfo[@"status"];
-    if (status.length) [self.header.scanButton setText:status];
+    if (status.length)
+        [self.header.scanButton setText:status];
 }
 
 #pragma mark - Section model
@@ -588,11 +660,11 @@ typedef NS_ENUM(NSInteger, SPKPAOptionRow) {
 };
 
 typedef NS_ENUM(NSInteger, SPKPASectionKind) {
-    SPKPASectionEmpty,     // no scan yet — single explanatory row
-    SPKPASectionCurrent,   // mutuals / not-following-back / don't-follow-back
-    SPKPASectionChanges,   // new/lost/started/unfollowed/updates (needs 2 scans)
-    SPKPASectionOptions,   // track visits + visited profiles + about
-    SPKPASectionReset,     // reset data (destructive)
+    SPKPASectionEmpty,   // no scan yet — single explanatory row
+    SPKPASectionCurrent, // mutuals / not-following-back / don't-follow-back
+    SPKPASectionChanges, // new/lost/started/unfollowed/updates (needs 2 scans)
+    SPKPASectionOptions, // track visits + visited profiles + about
+    SPKPASectionReset,   // reset data (destructive)
 };
 
 - (NSArray<NSNumber *> *)activeSections {
@@ -601,7 +673,8 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
         [s addObject:@(SPKPASectionEmpty)];
     } else {
         [s addObject:@(SPKPASectionCurrent)];
-        if (self.changeRows.count > 0) [s addObject:@(SPKPASectionChanges)];
+        if (self.changeRows.count > 0)
+            [s addObject:@(SPKPASectionChanges)];
     }
     [s addObject:@(SPKPASectionOptions)];
     [s addObject:@(SPKPASectionReset)];
@@ -612,7 +685,8 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
 // when tracking is enabled).
 - (NSArray<NSNumber *> *)optionRows {
     NSMutableArray *rows = [NSMutableArray arrayWithObject:@(SPKPAOptionTrackVisits)];
-    if (self.trackVisits) [rows addObject:@(SPKPAOptionVisitedProfiles)];
+    if (self.trackVisits)
+        [rows addObject:@(SPKPAOptionVisitedProfiles)];
     [rows addObject:@(SPKPAOptionAbout)];
     return rows;
 }
@@ -627,21 +701,31 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     switch ([self kindForSection:section]) {
-        case SPKPASectionEmpty:    return 1;
-        case SPKPASectionCurrent:  return self.currentRows.count;
-        case SPKPASectionChanges:  return self.changeRows.count;
-        case SPKPASectionOptions:  return [self optionRows].count;
-        case SPKPASectionReset:    return 1;
+    case SPKPASectionEmpty:
+        return 1;
+    case SPKPASectionCurrent:
+        return self.currentRows.count;
+    case SPKPASectionChanges:
+        return self.changeRows.count;
+    case SPKPASectionOptions:
+        return [self optionRows].count;
+    case SPKPASectionReset:
+        return 1;
     }
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     switch ([self kindForSection:section]) {
-        case SPKPASectionEmpty:    return nil;
-        case SPKPASectionCurrent:  return @"This Scan";
-        case SPKPASectionChanges:  return @"Changes";
-        case SPKPASectionOptions:  return @"Options";
-        case SPKPASectionReset:    return nil;
+    case SPKPASectionEmpty:
+        return nil;
+    case SPKPASectionCurrent:
+        return @"This Scan";
+    case SPKPASectionChanges:
+        return @"Changes";
+    case SPKPASectionOptions:
+        return @"Options";
+    case SPKPASectionReset:
+        return nil;
     }
 }
 
@@ -761,7 +845,8 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     SPKPASectionKind kind = [self kindForSection:indexPath.section];
 
-    if (kind == SPKPASectionEmpty) return;
+    if (kind == SPKPASectionEmpty)
+        return;
 
     if (kind == SPKPASectionReset) {
         [self confirmReset];
@@ -770,8 +855,10 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
 
     if (kind == SPKPASectionOptions) {
         SPKPAOptionRow opt = (SPKPAOptionRow)[[self optionRows][indexPath.row] integerValue];
-        if (opt == SPKPAOptionVisitedProfiles) [self openVisitedList];
-        else if (opt == SPKPAOptionAbout) [self showAbout];
+        if (opt == SPKPAOptionVisitedProfiles)
+            [self openVisitedList];
+        else if (opt == SPKPAOptionAbout)
+            [self showAbout];
         return;
     }
 
@@ -797,35 +884,41 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
         @"following or unfollowed, and profile changes. These changes accumulate into a history that isn't "
         @"cleared by re-running. Anything you haven't looked at yet is badged and grouped under “Latest.”\n\n"
         @"Because Instagram limits how many requests can be made in a short window, accounts with more than "
-        @"13,000 total connections (followers + following) can't be analyzed.\n\n"
+        @"13,000 total connections (followers, following) can't be analyzed.\n\n"
         @"Analysis runs in the background; you'll get a notification when it finishes.\n\n"
         @"All data stays on your device and is never uploaded.";
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:@"About Profile Analyzer"
                                                 message:message
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleCancel handler:nil],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"OK"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                ]];
 }
 
 - (void)confirmReset {
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:@"Reset Profile Analyzer"
-                                                message:@"This deletes all stored snapshots, the change history, visited-profile history and cached avatars. This cannot be undone."
+                                                message:@"This deletes all stored snapshots, the change history and visited-profile history. This cannot be undone."
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Reset" style:SPKIGAlertActionStyleDestructive handler:^{
-            [SPKProfileAnalyzerStorage resetAll];
-            [[SPKProfileAnalyzerAvatarCache shared] purge];
-            [self loadCachedData];
-            [self paintHeaderIdentity];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Reset"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  [SPKProfileAnalyzerStorage resetAll];
+                                                                                  [self loadCachedData];
+                                                                                  [self paintHeaderIdentity];
+                                                                              }],
+                                                ]];
 }
 
 - (void)openVisitedList {
     SPKProfileAnalyzerListViewController *vc =
-        [[SPKProfileAnalyzerListViewController alloc] initVisitedListWithTitle:@"Visited Profiles" visits:self.visits];
+        [[SPKProfileAnalyzerListViewController alloc] initVisitedListWithTitle:@"Visited Profiles"
+                                                                        visits:self.visits];
     NSString *owner = self.selfPK;
     vc.onRemoveVisit = ^(SPKProfileAnalyzerVisit *visit) {
         [SPKProfileAnalyzerStorage removeVisitForUserPK:owner visitedPK:visit.user.pk];
@@ -836,11 +929,16 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
 // Follow-button behaviour for each change list, mirroring the current-state lists.
 - (SPKPAListKind)listKindForChangeType:(SPKPAChangeType)type {
     switch (type) {
-        case SPKPAChangeTypeNewFollower:     return SPKPAListKindFollow;    // may not follow them back
-        case SPKPAChangeTypeStartedFollowing: return SPKPAListKindUnfollow;  // you follow them
-        case SPKPAChangeTypeUnfollowed:      return SPKPAListKindFollow;    // you don't follow them
-        case SPKPAChangeTypeLostFollower:    return SPKPAListKindFollow;    // live-resolved either way
-        case SPKPAChangeTypeProfileUpdate:   return SPKPAListKindProfileUpdate;
+    case SPKPAChangeTypeNewFollower:
+        return SPKPAListKindFollow; // may not follow them back
+    case SPKPAChangeTypeStartedFollowing:
+        return SPKPAListKindUnfollow; // you follow them
+    case SPKPAChangeTypeUnfollowed:
+        return SPKPAListKindFollow; // you don't follow them
+    case SPKPAChangeTypeLostFollower:
+        return SPKPAListKindFollow; // live-resolved either way
+    case SPKPAChangeTypeProfileUpdate:
+        return SPKPAListKindProfileUpdate;
     }
 }
 
@@ -856,13 +954,25 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     NSArray<SPKProfileAnalyzerUser *> *users = nil;
     SPKPAListKind kind = SPKPAListKindPlain;
     switch (cat) {
-        case SPKPACategoryMutual:           users = r.mutualFollowers;     kind = SPKPAListKindUnfollow; break;
-        case SPKPACategoryNotFollowingBack: users = r.notFollowingYouBack; kind = SPKPAListKindUnfollow; break;
-        case SPKPACategoryDontFollowBack:   users = r.youDontFollowBack;   kind = SPKPAListKindFollow;   break;
-        default: return;
+    case SPKPACategoryMutual:
+        users = r.mutualFollowers;
+        kind = SPKPAListKindUnfollow;
+        break;
+    case SPKPACategoryNotFollowingBack:
+        users = r.notFollowingYouBack;
+        kind = SPKPAListKindUnfollow;
+        break;
+    case SPKPACategoryDontFollowBack:
+        users = r.youDontFollowBack;
+        kind = SPKPAListKindFollow;
+        break;
+    default:
+        return;
     }
     SPKProfileAnalyzerListViewController *vc =
-        [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title users:users kind:kind];
+        [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
+                                                              users:users
+                                                               kind:kind];
     [self.navigationController pushViewController:vc animated:YES];
 }
 
@@ -873,23 +983,26 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     if (type == SPKPAChangeTypeProfileUpdate) {
         NSMutableArray *latest = [NSMutableArray array], *previous = [NSMutableArray array];
         for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
-            if (e.type != type) continue;
+            if (e.type != type)
+                continue;
             SPKProfileAnalyzerProfileChange *ch = e.asProfileChange;
-            if (ch) [(e.seen ? previous : latest) addObject:ch];
+            if (ch)
+                [(e.seen ? previous : latest) addObject:ch];
         }
         vc = [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
-                                                   latestProfileUpdates:latest
-                                                 previousProfileUpdates:previous];
+                                                    latestProfileUpdates:latest
+                                                  previousProfileUpdates:previous];
     } else {
         NSMutableArray *latest = [NSMutableArray array], *previous = [NSMutableArray array];
         for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
-            if (e.type != type) continue;
+            if (e.type != type)
+                continue;
             [(e.seen ? previous : latest) addObject:e.user];
         }
         vc = [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
-                                                            latestUsers:latest
-                                                          previousUsers:previous
-                                                                   kind:[self listKindForChangeType:type]];
+                                                             latestUsers:latest
+                                                           previousUsers:previous
+                                                                    kind:[self listKindForChangeType:type]];
     }
     [self.navigationController pushViewController:vc animated:YES];
     [SPKProfileAnalyzerStorage markChangeEventsSeenForType:type forUserPK:self.selfPK];

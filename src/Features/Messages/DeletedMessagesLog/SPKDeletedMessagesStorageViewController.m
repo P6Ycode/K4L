@@ -1,11 +1,10 @@
 #import "SPKDeletedMessagesStorageViewController.h"
 
-#import "SPKDeletedMessagesAvatarCache.h"
+#import "../../../Settings/SPKTopicSettingsSupport.h"
+#import "../../../Shared/UI/SPKIGAlertPresenter.h"
+#import "../../../Utils.h"
 #import "SPKDeletedMessagesModels.h"
 #import "SPKDeletedMessagesStorage.h"
-#import "../../../Utils.h"
-#import "../../../Shared/UI/SPKIGAlertPresenter.h"
-#import "../../../Settings/SPKTopicSettingsSupport.h"
 
 @interface SPKDeletedMessagesStorageViewController ()
 @property (nonatomic, copy) NSString *ownerPK;
@@ -17,7 +16,6 @@
 @property (nonatomic, assign) NSUInteger otherCount;
 @property (nonatomic, assign) unsigned long long mediaBytes;
 @property (nonatomic, assign) unsigned long long stagedMediaBytes;
-@property (nonatomic, assign) unsigned long long avatarBytes;
 @end
 
 @implementation SPKDeletedMessagesStorageViewController
@@ -26,17 +24,29 @@ static NSString *SPKDMStorageOwnerPK(void) {
     @try {
         for (UIWindow *window in UIApplication.sharedApplication.windows) {
             id session = nil;
-            @try { session = [window valueForKey:@"userSession"]; } @catch (__unused id e) {}
+            @try {
+                session = [window valueForKey:@"userSession"];
+            } @catch (__unused id e) {
+            }
             id user = nil;
-            @try { user = [session valueForKey:@"user"]; } @catch (__unused id e) {}
-            for (NSString *key in @[@"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId"]) {
+            @try {
+                user = [session valueForKey:@"user"];
+            } @catch (__unused id e) {
+            }
+            for (NSString *key in @[ @"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId" ]) {
                 id value = nil;
-                @try { value = [user valueForKey:key]; } @catch (__unused id e) {}
-                if ([value isKindOfClass:NSString.class] && [value length]) return value;
-                if ([value isKindOfClass:NSNumber.class]) return [value stringValue];
+                @try {
+                    value = [user valueForKey:key];
+                } @catch (__unused id e) {
+                }
+                if ([value isKindOfClass:NSString.class] && [value length])
+                    return value;
+                if ([value isKindOfClass:NSNumber.class])
+                    return [value stringValue];
             }
         }
-    } @catch (__unused id e) {}
+    } @catch (__unused id e) {
+    }
     NSArray<NSString *> *owners = [SPKDeletedMessagesStorage allOwnerPKs];
     return owners.firstObject ?: @"anon";
 }
@@ -73,20 +83,25 @@ static NSString *SPKDMStorageOwnerPK(void) {
     NSMutableSet<NSString *> *senders = [NSMutableSet set];
     NSUInteger text = 0, media = 0, voice = 0, other = 0;
     for (SPKDeletedMessage *message in messages) {
-        if (message.senderPk.length) [senders addObject:message.senderPk];
+        if (message.senderPk.length)
+            [senders addObject:message.senderPk];
         switch (message.kind) {
-            case SPKDeletedMessageKindText:
-                text++; break;
-            case SPKDeletedMessageKindPhoto:
-            case SPKDeletedMessageKindVideo:
-            case SPKDeletedMessageKindGif:
-            case SPKDeletedMessageKindSticker:
-                media++; break;
-            case SPKDeletedMessageKindVoice:
-            case SPKDeletedMessageKindAudioShare:
-                voice++; break;
-            default:
-                other++; break;
+        case SPKDeletedMessageKindText:
+            text++;
+            break;
+        case SPKDeletedMessageKindPhoto:
+        case SPKDeletedMessageKindVideo:
+        case SPKDeletedMessageKindGif:
+        case SPKDeletedMessageKindSticker:
+            media++;
+            break;
+        case SPKDeletedMessageKindVoice:
+        case SPKDeletedMessageKindAudioShare:
+            voice++;
+            break;
+        default:
+            other++;
+            break;
         }
     }
     self.senderCount = senders.count;
@@ -96,7 +111,6 @@ static NSString *SPKDMStorageOwnerPK(void) {
     self.otherCount = other;
     self.mediaBytes = [SPKDeletedMessagesStorage mediaSizeBytesForOwnerPK:self.ownerPK];
     self.stagedMediaBytes = [SPKDeletedMessagesStorage stagedMediaSizeBytesForOwnerPK:self.ownerPK];
-    self.avatarBytes = [[SPKDeletedMessagesAvatarCache shared] diskSizeBytes];
 }
 
 - (NSString *)formattedSize:(unsigned long long)bytes {
@@ -106,15 +120,18 @@ static NSString *SPKDMStorageOwnerPK(void) {
 - (void)rebuildSections {
     NSMutableArray *sections = [NSMutableArray array];
 
-    unsigned long long totalDisk = self.mediaBytes + self.stagedMediaBytes + self.avatarBytes;
+    unsigned long long totalDisk = self.mediaBytes + self.stagedMediaBytes;
     NSString *overviewSubtitle = [NSString stringWithFormat:@"%lu message%@ • %lu sender%@ • %@",
-                                  (unsigned long)self.messageCount, self.messageCount == 1 ? @"" : @"s",
-                                  (unsigned long)self.senderCount, self.senderCount == 1 ? @"" : @"s",
-                                  [self formattedSize:totalDisk]];
+                                                            (unsigned long)self.messageCount, self.messageCount == 1 ? @"" : @"s",
+                                                            (unsigned long)self.senderCount, self.senderCount == 1 ? @"" : @"s",
+                                                            [self formattedSize:totalDisk]];
 
     [sections addObject:SPKTopicSection(@"Overview", @[
-        [SPKSetting valueCellWithTitle:@"Logged" subtitle:overviewSubtitle icon:SPKSettingsIcon(@"history")],
-    ], nil)];
+                  [SPKSetting valueCellWithTitle:@"Logged"
+                                        subtitle:overviewSubtitle
+                                            icon:SPKSettingsIcon(@"history")],
+              ],
+                                        nil)];
 
     NSMutableArray *breakdown = [NSMutableArray array];
     [breakdown addObject:[SPKSetting valueCellWithTitle:@"Text" subtitle:[NSString stringWithFormat:@"%lu", (unsigned long)self.textCount] icon:SPKSettingsIcon(@"message")]];
@@ -126,32 +143,45 @@ static NSString *SPKDMStorageOwnerPK(void) {
     [sections addObject:SPKTopicSection(@"Messages", breakdown, nil)];
 
     [sections addObject:SPKTopicSection(@"Disk Usage", @[
-        [SPKSetting valueCellWithTitle:@"Captured Media" subtitle:[self formattedSize:self.mediaBytes] icon:SPKSettingsIcon(@"media")],
-        [SPKSetting valueCellWithTitle:@"Media Recovery Cache" subtitle:[self formattedSize:self.stagedMediaBytes] icon:SPKSettingsIcon(@"clock")],
-        [SPKSetting valueCellWithTitle:@"Profile Pictures" subtitle:[self formattedSize:self.avatarBytes] icon:SPKSettingsIcon(@"user_circle")],
-    ], @"View-once, view-twice, GIF, and sticker media is cached on-device before an unsend so it remains recoverable. It is excluded from deleted-message exports until the message is unsent.")];
+                  [SPKSetting valueCellWithTitle:@"Captured Media"
+                                        subtitle:[self formattedSize:self.mediaBytes]
+                                            icon:SPKSettingsIcon(@"media")],
+                  [SPKSetting valueCellWithTitle:@"Media Recovery Cache"
+                                        subtitle:[self formattedSize:self.stagedMediaBytes]
+                                            icon:SPKSettingsIcon(@"clock")],
+              ],
+                                        @"View-once, view-twice, GIF, and sticker media is cached on-device before an unsend so it remains recoverable. It is excluded from deleted-message exports until the message is unsent. Cached profile pictures are shared across Sparkle — manage them in Data & Settings › Storage.")];
 
     __weak typeof(self) weakSelf = self;
 
-    SPKSetting *clearMedia = [SPKSetting buttonCellWithTitle:@"Clear Captured Media" subtitle:nil icon:SPKSettingsIcon(@"media") action:^{
-        [weakSelf confirmClearMedia];
-    }];
+    SPKSetting *clearMedia = [SPKSetting buttonCellWithTitle:@"Clear Captured Media"
+                                                    subtitle:nil
+                                                        icon:SPKSettingsIcon(@"media")
+                                                      action:^{
+                                                          [weakSelf confirmClearMedia];
+                                                      }];
     clearMedia.tintColor = [SPKUtils SPKColor_InstagramDestructive];
     clearMedia.iconTintColor = [SPKUtils SPKColor_InstagramDestructive];
 
-    SPKSetting *clearStaged = [SPKSetting buttonCellWithTitle:@"Clear Media Recovery Cache" subtitle:nil icon:SPKSettingsIcon(@"clock") action:^{
-        [weakSelf confirmClearStagedMedia];
-    }];
+    SPKSetting *clearStaged = [SPKSetting buttonCellWithTitle:@"Clear Media Recovery Cache"
+                                                     subtitle:nil
+                                                         icon:SPKSettingsIcon(@"clock")
+                                                       action:^{
+                                                           [weakSelf confirmClearStagedMedia];
+                                                       }];
     clearStaged.tintColor = [SPKUtils SPKColor_InstagramDestructive];
     clearStaged.iconTintColor = [SPKUtils SPKColor_InstagramDestructive];
 
-    SPKSetting *clearLog = [SPKSetting buttonCellWithTitle:@"Clear Entire Log" subtitle:nil icon:SPKSettingsIcon(@"trash") action:^{
-        [weakSelf confirmClearLog];
-    }];
+    SPKSetting *clearLog = [SPKSetting buttonCellWithTitle:@"Clear Entire Log"
+                                                  subtitle:nil
+                                                      icon:SPKSettingsIcon(@"trash")
+                                                    action:^{
+                                                        [weakSelf confirmClearLog];
+                                                    }];
     clearLog.tintColor = [SPKUtils SPKColor_InstagramDestructive];
     clearLog.iconTintColor = [SPKUtils SPKColor_InstagramDestructive];
 
-    [sections addObject:SPKTopicSection(@"Maintenance", @[clearMedia, clearStaged, clearLog],
+    [sections addObject:SPKTopicSection(@"Maintenance", @[ clearMedia, clearStaged, clearLog ],
                                         @"Clearing the media recovery cache keeps lightweight message metadata for best-effort fallback after a future unsend. Clearing the log does not clear the recovery cache.")];
 
     [self replaceSections:sections];
@@ -164,34 +194,43 @@ static NSString *SPKDMStorageOwnerPK(void) {
                                                   title:@"Clear captured media?"
                                                 message:@"This removes all captured media (photos, videos, voice notes) but keeps the message log."
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Clear Media" style:SPKIGAlertActionStyleDestructive handler:^{
-            for (SPKDeletedMessage *message in [SPKDeletedMessagesStorage allMessagesForOwnerPK:self.ownerPK]) {
-                NSString *media = [SPKDeletedMessagesStorage absolutePathForRelativePath:message.mediaPath ownerPK:self.ownerPK];
-                NSString *thumb = [SPKDeletedMessagesStorage absolutePathForRelativePath:message.thumbnailPath ownerPK:self.ownerPK];
-                if (media.length) [NSFileManager.defaultManager removeItemAtPath:media error:nil];
-                if (thumb.length) [NSFileManager.defaultManager removeItemAtPath:thumb error:nil];
-                message.mediaPath = nil;
-                message.thumbnailPath = nil;
-                [SPKDeletedMessagesStorage saveMessage:message forOwnerPK:self.ownerPK];
-            }
-            [self reloadStatsAndRebuild];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Clear Media"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  for (SPKDeletedMessage *message in [SPKDeletedMessagesStorage allMessagesForOwnerPK:self.ownerPK]) {
+                                                                                      NSString *media = [SPKDeletedMessagesStorage absolutePathForRelativePath:message.mediaPath ownerPK:self.ownerPK];
+                                                                                      NSString *thumb = [SPKDeletedMessagesStorage absolutePathForRelativePath:message.thumbnailPath ownerPK:self.ownerPK];
+                                                                                      if (media.length)
+                                                                                          [NSFileManager.defaultManager removeItemAtPath:media error:nil];
+                                                                                      if (thumb.length)
+                                                                                          [NSFileManager.defaultManager removeItemAtPath:thumb error:nil];
+                                                                                      message.mediaPath = nil;
+                                                                                      message.thumbnailPath = nil;
+                                                                                      [SPKDeletedMessagesStorage saveMessage:message forOwnerPK:self.ownerPK];
+                                                                                  }
+                                                                                  [self reloadStatsAndRebuild];
+                                                                              }],
+                                                ]];
 }
 
 - (void)confirmClearLog {
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:@"Clear entire log?"
-                                                message:@"This removes every logged deleted message, captured media, and cached profile pictures for this account."
+                                                message:@"This removes every logged deleted message and captured media for this account."
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Clear" style:SPKIGAlertActionStyleDestructive handler:^{
-            [SPKDeletedMessagesStorage resetForOwnerPK:self.ownerPK];
-            [[SPKDeletedMessagesAvatarCache shared] purge];
-            [self reloadStatsAndRebuild];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Clear"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  [SPKDeletedMessagesStorage resetForOwnerPK:self.ownerPK];
+                                                                                  [self reloadStatsAndRebuild];
+                                                                              }],
+                                                ]];
 }
 
 - (void)confirmClearStagedMedia {
@@ -199,12 +238,16 @@ static NSString *SPKDMStorageOwnerPK(void) {
                                                   title:@"Clear media recovery cache?"
                                                 message:@"This removes pre-cached view-once, view-twice, GIF, and sticker media. Lightweight metadata remains so Sparkle can still attempt a best-effort download after a future unsend."
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Clear Media" style:SPKIGAlertActionStyleDestructive handler:^{
-            [SPKDeletedMessagesStorage clearStagedMediaForOwnerPK:self.ownerPK];
-            [self reloadStatsAndRebuild];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Clear Media"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  [SPKDeletedMessagesStorage clearStagedMediaForOwnerPK:self.ownerPK];
+                                                                                  [self reloadStatsAndRebuild];
+                                                                              }],
+                                                ]];
 }
 
 @end

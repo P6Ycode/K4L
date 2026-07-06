@@ -1,11 +1,12 @@
 #import "SPKSettingsViewController.h"
 #import "../App/SPKStartupHooks.h"
+#import "../AssetUtils.h"
 #import "../Shared/ActionButton/ActionButtonCore.h"
+#import "../Shared/Avatars/SPKAvatarCache.h"
 #import "../Shared/UI/SPKIGAlertPresenter.h"
 #import "../Shared/UI/SPKMediaChrome.h"
 #import "../Shared/UI/SPKSwitch.h"
 #import "SPKPreferenceAvailability.h"
-#import "../AssetUtils.h"
 
 static char rowStaticRef[] = "row";
 static CGFloat const kSPKSettingsRemoteImageSize = 45.0;
@@ -21,7 +22,8 @@ static NSCache<NSString *, UIImage *> *SPKSettingsRemoteImageCache(void) {
 }
 
 static double SPKNormalizedStepperValue(SPKSetting *row, double value) {
-    if (!row) return value;
+    if (!row)
+        return value;
 
     if (row.max >= row.min) {
         value = MIN(row.max, MAX(row.min, value));
@@ -62,13 +64,14 @@ static double SPKNormalizedStepperValue(SPKSetting *row, double value) {
 static UIImage *SPKSettingsReorderCompositeImage(UIImage *iconImage, UIColor *tintColor) {
     UIImageSymbolConfiguration *grabberConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightSemibold];
     UIImage *grabber = [[UIImage systemImageNamed:@"line.3.horizontal" withConfiguration:grabberConfig] imageWithTintColor:[SPKUtils SPKColor_InstagramTertiaryText] renderingMode:UIImageRenderingModeAlwaysOriginal];
-    if (!grabber || !iconImage) return iconImage ?: grabber;
+    if (!grabber || !iconImage)
+        return iconImage ?: grabber;
 
     CGFloat spacing = 8.0;
     CGSize size = CGSizeMake(grabber.size.width + spacing + iconImage.size.width,
                              MAX(grabber.size.height, iconImage.size.height));
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
-    return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext *_Nonnull context) {
         CGFloat grabberY = floor((size.height - grabber.size.height) / 2.0);
         [grabber drawAtPoint:CGPointMake(0.0, grabberY)];
 
@@ -90,14 +93,15 @@ static NSMutableArray *SPKMutableSectionsCopy(NSArray *sections) {
 }
 
 static UIImage *SPKSettingsSizedRemoteImage(UIImage *image, BOOL circular) {
-    if (!image) return nil;
+    if (!image)
+        return nil;
 
     CGSize targetSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
     UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
     format.scale = UIScreen.mainScreen.scale;
 
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:targetSize format:format];
-    return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext *_Nonnull context) {
         CGRect bounds = (CGRect){.origin = CGPointZero, .size = targetSize};
         if (circular) {
             [[UIBezierPath bezierPathWithOvalInRect:bounds] addClip];
@@ -119,7 +123,8 @@ static NSString *SPKSettingsNormalizedQuery(NSString *query) {
 
 static NSString *SPKSettingsAccessoryText(SPKSetting *row) {
     NSString *providedText = row.accessoryTextProvider ? row.accessoryTextProvider() : nil;
-    if ([providedText isKindOfClass:[NSString class]]) return providedText;
+    if ([providedText isKindOfClass:[NSString class]])
+        return providedText;
 
     NSString *staticText = [row.userInfo[@"accessoryText"] isKindOfClass:[NSString class]] ? row.userInfo[@"accessoryText"] : nil;
     return staticText;
@@ -127,7 +132,8 @@ static NSString *SPKSettingsAccessoryText(SPKSetting *row) {
 
 static NSArray<NSString *> *SPKSettingsSearchTokens(NSString *query) {
     NSString *normalized = SPKSettingsNormalizedQuery(query);
-    if (normalized.length == 0) return @[];
+    if (normalized.length == 0)
+        return @[];
 
     NSMutableArray<NSString *> *tokens = [NSMutableArray array];
     NSCharacterSet *separators = [[NSCharacterSet alphanumericCharacterSet] invertedSet];
@@ -144,12 +150,14 @@ static void SPKSettingsAppendSearchString(NSMutableArray<NSString *> *strings, i
         [strings addObject:value];
     } else if ([value respondsToSelector:@selector(stringValue)]) {
         NSString *stringValue = [value stringValue];
-        if (stringValue.length > 0) [strings addObject:stringValue];
+        if (stringValue.length > 0)
+            [strings addObject:stringValue];
     }
 }
 
 static void SPKSettingsCollectMenuSearchStrings(UIMenu *menu, NSMutableArray<NSString *> *strings) {
-    if (![menu isKindOfClass:[UIMenu class]]) return;
+    if (![menu isKindOfClass:[UIMenu class]])
+        return;
     SPKSettingsAppendSearchString(strings, menu.title);
 
     for (UIMenuElement *element in menu.children ?: @[]) {
@@ -188,8 +196,10 @@ static NSString *SPKSettingsRowSearchHaystack(SPKSetting *row, NSString *path, N
 }
 
 static BOOL SPKSettingsRowMatchesTokens(SPKSetting *row, NSArray<NSString *> *tokens, NSString *path, NSString *sectionTitle, NSString *sectionFooter) {
-    if (![row isKindOfClass:[SPKSetting class]]) return NO;
-    if (tokens.count == 0) return YES;
+    if (![row isKindOfClass:[SPKSetting class]])
+        return NO;
+    if (tokens.count == 0)
+        return YES;
 
     NSString *haystack = SPKSettingsRowSearchHaystack(row, path, sectionTitle, sectionFooter);
     for (NSString *token in tokens) {
@@ -201,7 +211,8 @@ static BOOL SPKSettingsRowMatchesTokens(SPKSetting *row, NSArray<NSString *> *to
 }
 
 static NSArray<NSString *> *SPKSettingsPathComponentsByAppending(NSArray<NSString *> *components, NSString *component) {
-    if (component.length == 0) return components ?: @[];
+    if (component.length == 0)
+        return components ?: @[];
     NSMutableArray<NSString *> *result = [NSMutableArray arrayWithArray:components ?: @[]];
     [result addObject:component];
     return [result copy];
@@ -213,8 +224,8 @@ static NSString *SPKSettingsBreadcrumbText(NSArray<NSString *> *components) {
 
 static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     UIImage *image = [SPKAssetUtils instagramIconNamed:@"chevron_right"
-                                            pointSize:12.0
-                                        renderingMode:UIImageRenderingModeAlwaysTemplate];
+                                             pointSize:12.0
+                                         renderingMode:UIImageRenderingModeAlwaysTemplate];
     if (!image) {
         UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightSemibold];
         image = [[UIImage systemImageNamed:@"chevron.right" withConfiguration:config] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
@@ -240,26 +251,24 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         // Exclude development cells from release builds
         NSMutableArray *mutableSections = SPKMutableSectionsCopy(sections);
 
-        [mutableSections enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(NSDictionary *section, NSUInteger index, BOOL *stop) {
+        [mutableSections enumerateObjectsWithOptions:NSEnumerationReverse
+                                          usingBlock:^(NSDictionary *section, NSUInteger index, BOOL *stop) {
+                                              if ([section[@"header"] hasPrefix:@"_"] && [section[@"footer"] hasPrefix:@"_"]) {
+                                                  if (![[SPKUtils IGVersionString] isEqualToString:@"0.0.0"]) {
+                                                      [mutableSections removeObjectAtIndex:index];
+                                                  }
+                                              }
 
-            if ([section[@"header"] hasPrefix:@"_"] && [section[@"footer"] hasPrefix:@"_"]) {
-                if (![[SPKUtils IGVersionString] isEqualToString:@"0.0.0"]) {
-                    [mutableSections removeObjectAtIndex:index];
-                }
-            }
-
-            else if ([section[@"header"] isEqualToString:@"Experimental"]) {
-                if (![[SPKUtils IGVersionString] hasSuffix:@"-dev"]) {
-                    [mutableSections removeObjectAtIndex:index];
-                }
-            }
-
-        }];
+                                              else if ([section[@"header"] isEqualToString:@"Experimental"]) {
+                                                  if (![[SPKUtils IGVersionString] hasSuffix:@"-dev"]) {
+                                                      [mutableSections removeObjectAtIndex:index];
+                                                  }
+                                              }
+                                          }];
 
         self.originalSections = [mutableSections copy];
         self.sections = mutableSections;
     }
-
 
     return self;
 }
@@ -272,20 +281,29 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     return self;
 }
 
+- (UITableViewStyle)preferredTableViewStyle {
+    return UITableViewStyleInsetGrouped;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
 
     self.navigationController.navigationBar.prefersLargeTitles = NO;
-    self.view.backgroundColor = [SPKUtils SPKColor_InstagramGroupedBackground];
 
-    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleInsetGrouped];
+    UITableViewStyle style = [self preferredTableViewStyle];
+    UIColor *backgroundColor = (style == UITableViewStylePlain)
+                                   ? [SPKUtils SPKColor_InstagramBackground]
+                                   : [SPKUtils SPKColor_InstagramGroupedBackground];
+    self.view.backgroundColor = backgroundColor;
+
+    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:style];
     self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
     self.tableView.dragInteractionEnabled = [self pageAllowsReordering];
     self.tableView.dragDelegate = self;
     self.tableView.dropDelegate = self;
-    self.tableView.backgroundColor = [SPKUtils SPKColor_InstagramGroupedBackground];
+    self.tableView.backgroundColor = backgroundColor;
     self.tableView.separatorColor = [SPKUtils SPKColor_InstagramSeparator];
     self.tableView.tintColor = [SPKUtils SPKColor_InstagramBlue];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
@@ -318,8 +336,10 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
                                                       title:@"Sparkle Settings Info"
                                                     message:@"In the future: Hold down on the three lines at the top right of your profile page, to re-open Sparkle settings."
                                                     actions:@[
-            [SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil],
-        ]];
+                                                        [SPKIGAlertAction actionWithTitle:@"OK"
+                                                                                    style:SPKIGAlertActionStyleDefault
+                                                                                  handler:nil],
+                                                    ]];
 
         // Done with first-time setup for this version
         [[NSUserDefaults standardUserDefaults] setValue:SPKVersionString forKey:@"app_first_run"];
@@ -330,18 +350,18 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     BOOL isModalRoot = self.navigationController.presentingViewController &&
                        self.navigationController.viewControllers.firstObject == self;
     NSArray<UIBarButtonItem *> *leadingItems = isModalRoot
-        ? @[ SPKMediaChromeTopBarButtonItem(@"xmark", self, @selector(closeTapped)) ]
-        : @[];
+                                                   ? @[ SPKMediaChromeTopBarButtonItem(@"xmark", self, @selector(closeTapped)) ]
+                                                   : @[];
     SPKMediaChromeSetLeadingTopBarItems(self.navigationItem, leadingItems);
 
     NSArray<UIBarButtonItem *> *trailingItems = @[];
     if (self.defersRestartPrompt) {
         UIBarButtonItem *applyItem = SPKMediaChromeTopBarButtonItemWithStyle(@"check",
-                                                                           self,
-                                                                           @selector(applyRestartChanges),
-                                                                           UIBarButtonItemStyleDone,
-                                                                           [SPKUtils SPKColor_InstagramPrimaryText],
-                                                                           @"Apply Liquid Glass changes");
+                                                                             self,
+                                                                             @selector(applyRestartChanges),
+                                                                             UIBarButtonItemStyleDone,
+                                                                             [SPKUtils SPKColor_InstagramPrimaryText],
+                                                                             @"Apply Liquid Glass changes");
         applyItem.enabled = self.hasPendingRestartChanges;
         self.applyRestartItem = applyItem;
         trailingItems = @[ applyItem ];
@@ -356,9 +376,9 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     self.searchController.searchResultsUpdater = self;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.searchController.hidesNavigationBarDuringPresentation = NO;
-    [self.searchController.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
-                         forSearchBarIcon:UISearchBarIconSearch 
-                                    state:UIControlStateNormal];
+    [self.searchController.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0]
+                             forSearchBarIcon:UISearchBarIconSearch
+                                        state:UIControlStateNormal];
     self.searchController.searchBar.placeholder = self.searchesAllSettings ? @"Search All Settings" : [NSString stringWithFormat:@"Search %@", self.title ?: @"settings"];
     self.navigationItem.searchController = self.searchController;
     self.navigationItem.hidesSearchBarWhenScrolling = YES;
@@ -373,11 +393,16 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     SPKSetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
-    if (!row) return nil;
+    if (!row)
+        return nil;
 
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     UIListContentConfiguration *cellContentConfig = cell.defaultContentConfiguration;
-    cell.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
+    // Plain (flat) pages use the page background so rows sit edge-to-edge with no
+    // grouped-card tint; inset-grouped pages keep the elevated secondary color.
+    cell.backgroundColor = ([self preferredTableViewStyle] == UITableViewStylePlain)
+                               ? [SPKUtils SPKColor_InstagramBackground]
+                               : [SPKUtils SPKColor_InstagramSecondaryBackground];
     cell.tintColor = [SPKUtils SPKColor_InstagramBlue];
     cell.selectedBackgroundView = [self selectionBackgroundView];
     cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramPrimaryText];
@@ -386,8 +411,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     cellContentConfig.secondaryTextProperties.numberOfLines = 0;
     cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByWordWrapping;
     BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) &&
-        (!row.enabledProvider || row.enabledProvider()) &&
-        SPKPrefIsAvailable(row.defaultsKey);
+                      (!row.enabledProvider || row.enabledProvider()) &&
+                      SPKPrefIsAvailable(row.defaultsKey);
 
     cellContentConfig.text = row.title;
 
@@ -419,8 +444,28 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         cellContentConfig.imageToTextPadding = 12.0;
     }
 
+    // Self-healing avatar (SPKAvatarCache, keyed by PK)
+    if (row.avatarPK.length > 0) {
+        UIImage *warm = [[SPKAvatarCache shared] cachedImageForPK:row.avatarPK];
+        if (warm) {
+            cellContentConfig.image = SPKSettingsSizedRemoteImage(warm, YES);
+            cellContentConfig.imageProperties.tintColor = nil;
+        } else {
+            // Crisp native-size glyph placeholder (the asset is 24px — don't upscale).
+            NSString *glyphName = row.avatarIsGroup ? @"group" : @"user_circle";
+            UIImage *placeholder = [SPKAssetUtils instagramIconNamed:glyphName pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                       ?: [SPKAssetUtils instagramIconNamed:@"user_circle" pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
+            cellContentConfig.image = placeholder;
+            cellContentConfig.imageProperties.tintColor = [SPKUtils SPKColor_InstagramSecondaryText];
+            [self loadAvatarForPK:row.avatarPK urlString:row.avatarURLString atIndexPath:indexPath forTableView:tableView];
+        }
+        cellContentConfig.imageProperties.maximumSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
+        cellContentConfig.imageProperties.reservedLayoutSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
+        cellContentConfig.imageToTextPadding = 14;
+    }
+
     // Image url
-    if (row.imageUrl != nil) {
+    if (row.avatarPK.length == 0 && row.imageUrl != nil) {
         BOOL circular = ![row.userInfo[@"remoteImageCircular"] isEqual:@NO];
         NSString *cacheKey = [NSString stringWithFormat:@"%@|%@", row.imageUrl.absoluteString, circular ? @"circle" : @"square"];
         UIImage *cachedImage = [SPKSettingsRemoteImageCache() objectForKey:cacheKey];
@@ -441,182 +486,185 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     }
 
     switch (row.type) {
-        case SPKTableCellStatic: {
-            cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            break;
+    case SPKTableCellStatic: {
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        break;
+    }
+
+    case SPKTableCellLink: {
+        cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramBlue];
+        UIFont *linkFont = [row.userInfo[@"titleFont"] isKindOfClass:[UIFont class]]
+                               ? row.userInfo[@"titleFont"]
+                               : [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
+        cellContentConfig.textProperties.font = linkFont;
+
+        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+
+        UIImageView *imageView = [[UIImageView alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"compass" pointSize:20.0]];
+        imageView.tintColor = [SPKUtils SPKColor_InstagramTertiaryText];
+        cell.accessoryView = imageView;
+
+        break;
+    }
+
+    case SPKTableCellSwitch: {
+        SPKSwitch *toggle = [SPKSwitch new];
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if (row.switchValueProvider) {
+            toggle.on = row.switchValueProvider();
+        } else if (!SPKPrefIsAvailable(row.defaultsKey)) {
+            toggle.on = NO;
+        } else {
+            NSString *effectiveKey = SPKEffectivePreferenceKey(row.defaultsKey);
+            id storedValue = [defaults objectForKey:effectiveKey] ?: [defaults objectForKey:row.defaultsKey];
+            NSNumber *defaultValue = row.userInfo[@"defaultValue"];
+            toggle.on = storedValue ? [storedValue boolValue] : defaultValue.boolValue;
+        }
+        if (!row.switchValueProvider && row.mutuallyExclusiveDefaultsKey.length) {
+            BOOL otherOn = [SPKUtils getBoolPref:row.mutuallyExclusiveDefaultsKey];
+            toggle.enabled = toggle.isOn || !otherOn;
+        }
+        toggle.enabled = toggle.enabled && rowEnabled;
+        if (!rowEnabled) {
+            cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+            cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
         }
 
-        case SPKTableCellLink: {
-            cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramBlue];
-            UIFont *linkFont = [row.userInfo[@"titleFont"] isKindOfClass:[UIFont class]]
-                ? row.userInfo[@"titleFont"]
-                : [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
-            cellContentConfig.textProperties.font = linkFont;
+        objc_setAssociatedObject(toggle, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-            cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+        [toggle addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
 
-            UIImageView *imageView = [[UIImageView alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"compass" pointSize:20.0]];
-            imageView.tintColor = [SPKUtils SPKColor_InstagramTertiaryText];
-            cell.accessoryView = imageView;
+        cell.accessoryView = toggle;
+        cell.editingAccessoryView = toggle;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        break;
+    }
 
-            break;
+    case SPKTableCellStepper: {
+        UIStepper *stepper = [UIStepper new];
+        stepper.minimumValue = row.min;
+        stepper.maximumValue = row.max;
+        stepper.stepValue = row.step;
+        stepper.value = SPKNormalizedStepperValue(row, [SPKUtils getDoublePref:row.defaultsKey]);
+
+        objc_setAssociatedObject(stepper, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+        [stepper addTarget:self
+                      action:@selector(stepperChanged:)
+            forControlEvents:UIControlEventValueChanged];
+
+        // Template subtitle
+        if (row.subtitle.length) {
+            cellContentConfig.secondaryText = [self formatString:row.subtitle withValue:stepper.value step:row.step label:row.label singularLabel:row.singularLabel];
         }
 
-        case SPKTableCellSwitch: {
-            SPKSwitch *toggle = [SPKSwitch new];
-            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            if (row.switchValueProvider) {
-                toggle.on = row.switchValueProvider();
-            } else if (!SPKPrefIsAvailable(row.defaultsKey)) {
-                toggle.on = NO;
-            } else {
-                NSString *effectiveKey = SPKEffectivePreferenceKey(row.defaultsKey);
-                id storedValue = [defaults objectForKey:effectiveKey] ?: [defaults objectForKey:row.defaultsKey];
-                NSNumber *defaultValue = row.userInfo[@"defaultValue"];
-                toggle.on = storedValue ? [storedValue boolValue] : defaultValue.boolValue;
-            }
-            if (!row.switchValueProvider && row.mutuallyExclusiveDefaultsKey.length) {
-                BOOL otherOn = [SPKUtils getBoolPref:row.mutuallyExclusiveDefaultsKey];
-                toggle.enabled = toggle.isOn || !otherOn;
-            }
-            toggle.enabled = toggle.enabled && rowEnabled;
-            if (!rowEnabled) {
-                cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-                cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
-            }
+        cell.accessoryView = stepper;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        break;
+    }
 
-            objc_setAssociatedObject(toggle, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-            [toggle addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
-
-            cell.accessoryView = toggle;
-            cell.editingAccessoryView = toggle;
-            cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            break;
-        }
-
-        case SPKTableCellStepper: {
-            UIStepper *stepper = [UIStepper new];
-            stepper.minimumValue = row.min;
-            stepper.maximumValue = row.max;
-            stepper.stepValue = row.step;
-            stepper.value = SPKNormalizedStepperValue(row, [SPKUtils getDoublePref:row.defaultsKey]);
-
-            objc_setAssociatedObject(stepper, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-            [stepper addTarget:self
-                        action:@selector(stepperChanged:)
-              forControlEvents:UIControlEventValueChanged];
-
-            // Template subtitle
-            if (row.subtitle.length) {
-                cellContentConfig.secondaryText = [self formatString:row.subtitle withValue:stepper.value step:row.step label:row.label singularLabel:row.singularLabel];
-            }
-
-            cell.accessoryView = stepper;
-            cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            break;
-        }
-
-        case SPKTableCellButton: {
-            NSString *accessoryText = SPKSettingsAccessoryText(row);
-            if (rowEnabled && accessoryText.length > 0) {
-                cellContentConfig.secondaryText = accessoryText;
-                cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
-                cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-                cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
-                                                                                   weight:UIFontWeightMedium];
-            }
-            cell.accessoryType = rowEnabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
-            if (!rowEnabled) {
-                cell.selectionStyle = UITableViewCellSelectionStyleNone;
-                cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-                cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
-            }
-            break;
-        }
-
-        case SPKTableCellMenu: {
-            UIButton *menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
-            [menuButton setTitle:@"•••" forState:UIControlStateNormal];
-            menuButton.menu = [row menuForButton:menuButton];
-            menuButton.showsMenuAsPrimaryAction = YES;
-            menuButton.enabled = rowEnabled;
-            menuButton.titleLabel.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
-                                                           weight:UIFontWeightMedium];
-            menuButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-            [menuButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-            [menuButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-
-            UIButtonConfiguration *config = menuButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
-            config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
-            config.image = [UIImage systemImageNamed:@"chevron.up.chevron.down"];
-            config.imagePlacement = NSDirectionalRectEdgeTrailing;
-            config.imagePadding = 6.0;
-            config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
-            
-            menuButton.configuration = config;
-            menuButton.tintColor = rowEnabled ? [SPKUtils SPKColor_InstagramSecondaryText] : [SPKUtils SPKColor_InstagramTertiaryText];
-            if (!rowEnabled) {
-                cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-                cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
-            }
-
-            [menuButton sizeToFit];
-
-            cell.accessoryView = menuButton;
-            cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            break;
-        }
-
-        case SPKTableCellNavigation: {
-            NSString *accessoryText = SPKSettingsAccessoryText(row);
-            if (rowEnabled && accessoryText.length > 0) {
-                cellContentConfig.secondaryText = accessoryText;
-                cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
-                cellContentConfig.secondaryTextProperties.numberOfLines = 1;
-                cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByTruncatingTail;
-                cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-                cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
-                                                                                   weight:UIFontWeightMedium];
-            }
-            cell.accessoryType = rowEnabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
-            if (!rowEnabled) {
-                cell.selectionStyle = UITableViewCellSelectionStyleNone;
-                cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-                cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
-            }
-            break;
-        }
-
-        case SPKTableCellTextField: {
-            UITextField *textField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 150, 34)];
-            textField.textAlignment = NSTextAlignmentRight;
-            textField.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
-            textField.textColor = rowEnabled ? [SPKUtils SPKColor_InstagramPrimaryText] : [SPKUtils SPKColor_InstagramTertiaryText];
-            textField.placeholder = row.placeholder;
-            textField.keyboardType = row.keyboardType;
-            textField.text = [SPKUtils getStringPref:row.defaultsKey];
-            textField.enabled = rowEnabled;
-
-            if (!rowEnabled) {
-                cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
-            }
-
-            objc_setAssociatedObject(textField, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            [textField addTarget:self action:@selector(textFieldChanged:) forControlEvents:UIControlEventEditingDidEnd];
-
-            cell.accessoryView = textField;
-            cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            break;
-        }
-
-        case SPKTableCellValue: {
-            cellContentConfig.secondaryText = row.subtitle;
+    case SPKTableCellButton: {
+        NSString *accessoryText = SPKSettingsAccessoryText(row);
+        if (rowEnabled && accessoryText.length > 0) {
+            cellContentConfig.secondaryText = accessoryText;
             cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
-            cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            break;
+            cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+            cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
+                                                                               weight:UIFontWeightMedium];
         }
+        // Avatar rows read as flat list entries (like Profile Analyzer), not
+        // settings nav rows — no disclosure chevron.
+        BOOL hidesChevron = row.avatarPK.length > 0 || [row.userInfo[@"hidesDisclosure"] boolValue];
+        cell.accessoryType = (rowEnabled && !hidesChevron) ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
+        if (!rowEnabled) {
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+            cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
+        }
+        break;
+    }
+
+    case SPKTableCellMenu: {
+        UIButton *menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [menuButton setTitle:@"•••" forState:UIControlStateNormal];
+        menuButton.menu = [row menuForButton:menuButton];
+        menuButton.showsMenuAsPrimaryAction = YES;
+        menuButton.enabled = rowEnabled;
+        menuButton.titleLabel.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
+                                                       weight:UIFontWeightMedium];
+        menuButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        [menuButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [menuButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+        UIButtonConfiguration *config = menuButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
+        config.image = [UIImage systemImageNamed:@"chevron.up.chevron.down"];
+        config.imagePlacement = NSDirectionalRectEdgeTrailing;
+        config.imagePadding = 6.0;
+        config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
+
+        menuButton.configuration = config;
+        menuButton.tintColor = rowEnabled ? [SPKUtils SPKColor_InstagramSecondaryText] : [SPKUtils SPKColor_InstagramTertiaryText];
+        if (!rowEnabled) {
+            cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+            cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
+        }
+
+        [menuButton sizeToFit];
+
+        cell.accessoryView = menuButton;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        break;
+    }
+
+    case SPKTableCellNavigation: {
+        NSString *accessoryText = SPKSettingsAccessoryText(row);
+        if (rowEnabled && accessoryText.length > 0) {
+            cellContentConfig.secondaryText = accessoryText;
+            cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
+            cellContentConfig.secondaryTextProperties.numberOfLines = 1;
+            cellContentConfig.secondaryTextProperties.lineBreakMode = NSLineBreakByTruncatingTail;
+            cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+            cellContentConfig.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize
+                                                                               weight:UIFontWeightMedium];
+        }
+        cell.accessoryType = rowEnabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
+        if (!rowEnabled) {
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+            cellContentConfig.secondaryTextProperties.color = [SPKUtils SPKColor_InstagramTertiaryText];
+        }
+        break;
+    }
+
+    case SPKTableCellTextField: {
+        UITextField *textField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 150, 34)];
+        textField.textAlignment = NSTextAlignmentRight;
+        textField.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
+        textField.textColor = rowEnabled ? [SPKUtils SPKColor_InstagramPrimaryText] : [SPKUtils SPKColor_InstagramTertiaryText];
+        textField.placeholder = row.placeholder;
+        textField.keyboardType = row.keyboardType;
+        textField.text = [SPKUtils getStringPref:row.defaultsKey];
+        textField.enabled = rowEnabled;
+
+        if (!rowEnabled) {
+            cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
+        }
+
+        objc_setAssociatedObject(textField, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [textField addTarget:self action:@selector(textFieldChanged:) forControlEvents:UIControlEventEditingDidEnd];
+
+        cell.accessoryView = textField;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        break;
+    }
+
+    case SPKTableCellValue: {
+        cellContentConfig.secondaryText = row.subtitle;
+        cellContentConfig.prefersSideBySideTextAndSecondaryText = YES;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        break;
+    }
     }
 
     cell.contentConfiguration = cellContentConfig;
@@ -686,8 +734,10 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     [NSLayoutConstraint activateConstraints:@[
         [stack.leadingAnchor constraintEqualToAnchor:header.contentView.layoutMarginsGuide.leadingAnchor],
         [stack.trailingAnchor constraintLessThanOrEqualToAnchor:header.contentView.layoutMarginsGuide.trailingAnchor],
-        [stack.topAnchor constraintEqualToAnchor:header.contentView.topAnchor constant:8.0],
-        [stack.bottomAnchor constraintEqualToAnchor:header.contentView.bottomAnchor constant:-4.0]
+        [stack.topAnchor constraintEqualToAnchor:header.contentView.topAnchor
+                                        constant:8.0],
+        [stack.bottomAnchor constraintEqualToAnchor:header.contentView.bottomAnchor
+                                           constant:-4.0]
     ]];
     header.accessibilityLabel = SPKSettingsBreadcrumbText(components);
     return header;
@@ -696,6 +746,12 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     if ([self isSearching] && [self.sections[section][@"breadcrumbComponents"] isKindOfClass:[NSArray class]] && [self.sections[section][@"breadcrumbComponents"] count] > 0) {
         return 34.0;
+    }
+    // Flat pages: collapse the empty section header so rows meet the nav bar with
+    // no grey plain-header strip.
+    NSString *header = self.sections[section][@"header"];
+    if ([self preferredTableViewStyle] == UITableViewStylePlain && header.length == 0) {
+        return CGFLOAT_MIN;
     }
     return UITableViewAutomaticDimension;
 }
@@ -712,10 +768,11 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     SPKSetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
-    if (!row) return;
+    if (!row)
+        return;
     BOOL rowEnabled = (row.userInfo[@"enabled"] ? [row.userInfo[@"enabled"] boolValue] : YES) &&
-        (!row.enabledProvider || row.enabledProvider()) &&
-        SPKPrefIsAvailable(row.defaultsKey);
+                      (!row.enabledProvider || row.enabledProvider()) &&
+                      SPKPrefIsAvailable(row.defaultsKey);
     if (!rowEnabled) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         return;
@@ -723,21 +780,18 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
     if (row.type == SPKTableCellLink) {
         [[UIApplication sharedApplication] openURL:row.url options:@{} completionHandler:nil];
-    }
-    else if (row.type == SPKTableCellButton) {
+    } else if (row.type == SPKTableCellButton) {
         if (row.action != nil) {
             row.action();
             [tableView reloadData];
         }
-    }
-    else if (row.type == SPKTableCellNavigation) {
+    } else if (row.type == SPKTableCellNavigation) {
         if (row.navSections.count > 0) {
             UIViewController *vc = [[SPKSettingsViewController alloc] initWithTitle:row.title sections:row.navSections reduceMargin:NO];
             ((SPKSettingsViewController *)vc).defersRestartPrompt = [row.userInfo[@"deferRestartPrompt"] boolValue];
             vc.title = row.title;
             [self.navigationController pushViewController:vc animated:YES];
-        }
-        else if (row.navViewController) {
+        } else if (row.navViewController) {
             [self.navigationController pushViewController:row.navViewController animated:YES];
         }
     }
@@ -746,7 +800,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 }
 
 - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
-    if ([self isSearching]) return NO;
+    if ([self isSearching])
+        return NO;
     return [self.sections[indexPath.section][@"allowsReordering"] boolValue];
 }
 
@@ -761,7 +816,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)sourceIndexPath toIndexPath:(NSIndexPath *)destinationIndexPath {
     NSMutableArray *rows = self.sections[sourceIndexPath.section][@"rows"];
-    if (![rows isKindOfClass:[NSMutableArray class]]) return;
+    if (![rows isKindOfClass:[NSMutableArray class]])
+        return;
 
     SPKSetting *row = rows[sourceIndexPath.row];
     [rows removeObjectAtIndex:sourceIndexPath.row];
@@ -772,7 +828,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         NSMutableArray<NSString *> *order = [NSMutableArray array];
         for (SPKSetting *candidate in rows) {
             NSString *identifier = candidate.userInfo[@"actionIdentifier"];
-            if (identifier.length > 0) [order addObject:identifier];
+            if (identifier.length > 0)
+                [order addObject:identifier];
         }
         [[NSUserDefaults standardUserDefaults] setObject:[order copy] forKey:SPKEffectivePreferenceKey(reorderDefaultsKey)];
     }
@@ -789,11 +846,12 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     }
 
     SPKSetting *row = self.sections[indexPath.section][@"rows"][indexPath.row];
-    NSString *identifier = row.userInfo[@"actionIdentifier"] ?: row.title ?: @"action";
+    NSString *identifier = row.userInfo[@"actionIdentifier"] ?: row.title ?
+                                                                          : @"action";
     NSItemProvider *provider = [[NSItemProvider alloc] initWithObject:identifier];
     UIDragItem *item = [[UIDragItem alloc] initWithItemProvider:provider];
     item.localObject = row;
-    return @[item];
+    return @[ item ];
 }
 
 - (BOOL)tableView:(UITableView *)tableView dragSessionAllowsMoveOperation:(id<UIDragSession>)session {
@@ -816,21 +874,26 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (void)tableView:(UITableView *)tableView performDropWithCoordinator:(id<UITableViewDropCoordinator>)coordinator {
     NSIndexPath *destinationIndexPath = coordinator.destinationIndexPath;
-    if (destinationIndexPath == nil) return;
+    if (destinationIndexPath == nil)
+        return;
 
     id<UITableViewDropItem> dropItem = coordinator.items.firstObject;
     NSIndexPath *sourceIndexPath = dropItem.sourceIndexPath;
-    if (sourceIndexPath == nil || sourceIndexPath.section != destinationIndexPath.section) return;
-    if (![self tableView:tableView canMoveRowAtIndexPath:sourceIndexPath]) return;
+    if (sourceIndexPath == nil || sourceIndexPath.section != destinationIndexPath.section)
+        return;
+    if (![self tableView:tableView canMoveRowAtIndexPath:sourceIndexPath])
+        return;
 
     NSInteger rowCount = [self.sections[sourceIndexPath.section][@"rows"] count];
     NSInteger destinationRow = MIN(MAX(0, destinationIndexPath.row), MAX(0, rowCount - 1));
     NSIndexPath *clampedDestination = [NSIndexPath indexPathForRow:destinationRow inSection:destinationIndexPath.section];
 
-    [tableView performBatchUpdates:^{
-        [self tableView:tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:clampedDestination];
-        [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:clampedDestination];
-    } completion:nil];
+    [tableView
+        performBatchUpdates:^{
+            [self tableView:tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:clampedDestination];
+            [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:clampedDestination];
+        }
+                 completion:nil];
 
     [coordinator dropItem:dropItem.dragItem toRowAtIndexPath:clampedDestination];
 }
@@ -867,7 +930,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
                 [matchedRows addObject:row];
             }
         }
-        if (matchedRows.count == 0) continue;
+        if (matchedRows.count == 0)
+            continue;
 
         NSMutableDictionary *filteredSection = [section mutableCopy];
         filteredSection[@"rows"] = matchedRows;
@@ -892,29 +956,31 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     NSMutableArray *sections = [NSMutableArray array];
     for (NSString *path in orderedPaths) {
         NSArray *rows = rowsByPath[path];
-        if (rows.count == 0) continue;
+        if (rows.count == 0)
+            continue;
         [sections addObject:[@{
-            @"header": path,
-            @"breadcrumbComponents": componentsByPath[path] ?: @[],
-            @"rows": [rows mutableCopy],
-            @"allowsReordering": @NO
-        } mutableCopy]];
+                      @"header" : path,
+                      @"breadcrumbComponents" : componentsByPath[path] ?: @[],
+                      @"rows" : [rows mutableCopy],
+                      @"allowsReordering" : @NO
+                  } mutableCopy]];
     }
     return sections;
 }
 
 - (void)collectSearchRowsFromSections:(NSArray *)sections
-                        pathComponents:(NSArray<NSString *> *)pathComponents
-                                tokens:(NSArray<NSString *> *)tokens
-                            rowsByPath:(NSMutableDictionary<NSString *, NSMutableArray<SPKSetting *> *> *)rowsByPath
-                      componentsByPath:(NSMutableDictionary<NSString *, NSArray<NSString *> *> *)componentsByPath
-                          orderedPaths:(NSMutableArray<NSString *> *)orderedPaths {
+                       pathComponents:(NSArray<NSString *> *)pathComponents
+                               tokens:(NSArray<NSString *> *)tokens
+                           rowsByPath:(NSMutableDictionary<NSString *, NSMutableArray<SPKSetting *> *> *)rowsByPath
+                     componentsByPath:(NSMutableDictionary<NSString *, NSArray<NSString *> *> *)componentsByPath
+                         orderedPaths:(NSMutableArray<NSString *> *)orderedPaths {
     for (NSDictionary *section in sections) {
         NSString *sectionTitle = section[@"header"];
         NSString *sectionFooter = section[@"footer"];
         NSArray<NSString *> *sectionPathComponents = SPKSettingsPathComponentsByAppending(pathComponents, sectionTitle);
         for (SPKSetting *row in section[@"rows"]) {
-            if (![row isKindOfClass:[SPKSetting class]]) continue;
+            if (![row isKindOfClass:[SPKSetting class]])
+                continue;
 
             NSArray<NSString *> *rowPathComponents = sectionPathComponents.count > 0 ? sectionPathComponents : SPKSettingsPathComponentsByAppending(pathComponents, row.title);
             NSString *rowPath = SPKSettingsBreadcrumbText(rowPathComponents);
@@ -952,7 +1018,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (void)switchChanged:(UISwitch *)sender {
     SPKSetting *row = objc_getAssociatedObject(sender, rowStaticRef);
-    if (!row) return;
+    if (!row)
+        return;
     if (!SPKPrefIsAvailable(row.defaultsKey)) {
         sender.on = NO;
         return;
@@ -1003,7 +1070,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (void)textFieldChanged:(UITextField *)sender {
     SPKSetting *row = objc_getAssociatedObject(sender, rowStaticRef);
-    if (!row) return;
+    if (!row)
+        return;
 
     NSString *value = [sender.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     [[NSUserDefaults standardUserDefaults] setObject:value ?: @"" forKey:SPKEffectivePreferenceKey(row.defaultsKey)];
@@ -1080,12 +1148,14 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     while (cell && ![cell isKindOfClass:[UITableViewCell class]]) {
         cell = (UITableViewCell *)cell.superview;
     }
-    if (!cell) return;
+    if (!cell)
+        return;
 
     NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
-    if (!indexPath) return;
+    if (!indexPath)
+        return;
 
-    [self.tableView reloadRowsAtIndexPaths:@[indexPath]
+    [self.tableView reloadRowsAtIndexPaths:@[ indexPath ]
                           withRowAnimation:animated ? UITableViewRowAnimationAutomatic : UITableViewRowAnimationNone];
 }
 - (void)reloadCellForView:(UIView *)view {
@@ -1093,7 +1163,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 }
 
 - (BOOL)pageAllowsReordering {
-    if ([self isSearching]) return NO;
+    if ([self isSearching])
+        return NO;
     for (NSDictionary *section in self.sections) {
         if ([section[@"allowsReordering"] boolValue]) {
             return YES;
@@ -1102,31 +1173,59 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     return NO;
 }
 
-- (void)loadImageFromURL:(NSURL *)url atIndexPath:(NSIndexPath *)indexPath forTableView:(UITableView *)tableView circular:(BOOL)circular
-{
-    if (!url) return;
+- (void)loadAvatarForPK:(NSString *)pk urlString:(NSString *)urlString atIndexPath:(NSIndexPath *)indexPath forTableView:(UITableView *)tableView {
+    if (pk.length == 0)
+        return;
+    // SPKAvatarCache self-heals: tries the stored URL, then re-resolves a fresh one
+    // for numeric user PKs when it has expired. Completion is on the main queue.
+    [[SPKAvatarCache shared] avatarForPK:pk
+                               urlString:urlString
+                              completion:^(UIImage *image) {
+                                  if (!image)
+                                      return;
+                                  UIImage *circular = SPKSettingsSizedRemoteImage(image, YES);
+                                  if (!circular)
+                                      return;
+
+                                  UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+                                  if (![cell.contentConfiguration isKindOfClass:UIListContentConfiguration.class])
+                                      return;
+                                  UIListContentConfiguration *config = (UIListContentConfiguration *)cell.contentConfiguration;
+                                  config.image = circular;
+                                  config.imageProperties.tintColor = nil;
+                                  config.imageProperties.maximumSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
+                                  config.imageProperties.reservedLayoutSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
+                                  cell.contentConfiguration = config;
+                              }];
+}
+
+- (void)loadImageFromURL:(NSURL *)url atIndexPath:(NSIndexPath *)indexPath forTableView:(UITableView *)tableView circular:(BOOL)circular {
+    if (!url)
+        return;
 
     NSString *cacheKey = [NSString stringWithFormat:@"%@|%@", url.absoluteString, circular ? @"circle" : @"square"];
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url
-                                                             completionHandler:^(NSData *data, NSURLResponse *response, NSError *error)
-    {
-        if (!data || error) return;
+                                                             completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                                                                 if (!data || error)
+                                                                     return;
 
-        UIImage *image = SPKSettingsSizedRemoteImage([UIImage imageWithData:data], circular);
-        if (!image) return;
-        [SPKSettingsRemoteImageCache() setObject:image forKey:cacheKey];
+                                                                 UIImage *image = SPKSettingsSizedRemoteImage([UIImage imageWithData:data], circular);
+                                                                 if (!image)
+                                                                     return;
+                                                                 [SPKSettingsRemoteImageCache() setObject:image forKey:cacheKey];
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-            if (!cell) return;
+                                                                 dispatch_async(dispatch_get_main_queue(), ^{
+                                                                     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+                                                                     if (!cell)
+                                                                         return;
 
-            UIListContentConfiguration *config = (UIListContentConfiguration *)cell.contentConfiguration;
-            config.image = image;
-            config.imageProperties.maximumSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
-            config.imageProperties.reservedLayoutSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
-            cell.contentConfiguration = config;
-        });
-    }];
+                                                                     UIListContentConfiguration *config = (UIListContentConfiguration *)cell.contentConfiguration;
+                                                                     config.image = image;
+                                                                     config.imageProperties.maximumSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
+                                                                     config.imageProperties.reservedLayoutSize = CGSizeMake(kSPKSettingsRemoteImageSize, kSPKSettingsRemoteImageSize);
+                                                                     cell.contentConfiguration = config;
+                                                                 });
+                                                             }];
 
     [task resume];
 }

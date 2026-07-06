@@ -1,6 +1,10 @@
 #import "SPKDeletedMessagesViewController.h"
 
-#import "SPKDeletedMessagesAvatarCache.h"
+#import "../../../AssetUtils.h"
+#import "../../../Shared/Avatars/SPKAvatarCache.h"
+#import "../../../Shared/UI/SPKIGAlertPresenter.h"
+#import "../../../Shared/UI/SPKMediaChrome.h"
+#import "../../../Utils.h"
 #import "SPKDeletedMessagesChipBar.h"
 #import "SPKDeletedMessagesDate.h"
 #import "SPKDeletedMessagesFilter.h"
@@ -8,10 +12,6 @@
 #import "SPKDeletedMessagesStorage.h"
 #import "SPKDeletedMessagesStorageViewController.h"
 #import "SPKDeletedMessagesUserDetailViewController.h"
-#import "../../../Utils.h"
-#import "../../../AssetUtils.h"
-#import "../../../Shared/UI/SPKMediaChrome.h"
-#import "../../../Shared/UI/SPKIGAlertPresenter.h"
 
 #import <objc/runtime.h>
 
@@ -19,17 +19,29 @@ static NSString *SPKDMCurrentUserPK(void) {
     @try {
         for (UIWindow *window in UIApplication.sharedApplication.windows) {
             id session = nil;
-            @try { session = [window valueForKey:@"userSession"]; } @catch (__unused id e) {}
+            @try {
+                session = [window valueForKey:@"userSession"];
+            } @catch (__unused id e) {
+            }
             id user = nil;
-            @try { user = [session valueForKey:@"user"]; } @catch (__unused id e) {}
-            for (NSString *key in @[@"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId"]) {
+            @try {
+                user = [session valueForKey:@"user"];
+            } @catch (__unused id e) {
+            }
+            for (NSString *key in @[ @"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId" ]) {
                 id value = nil;
-                @try { value = [user valueForKey:key]; } @catch (__unused id e) {}
-                if ([value isKindOfClass:NSString.class] && [value length]) return value;
-                if ([value isKindOfClass:NSNumber.class]) return [value stringValue];
+                @try {
+                    value = [user valueForKey:key];
+                } @catch (__unused id e) {
+                }
+                if ([value isKindOfClass:NSString.class] && [value length])
+                    return value;
+                if ([value isKindOfClass:NSNumber.class])
+                    return [value stringValue];
             }
         }
-    } @catch (__unused id e) {}
+    } @catch (__unused id e) {
+    }
     NSArray<NSString *> *owners = [SPKDeletedMessagesStorage allOwnerPKs];
     return owners.firstObject ?: @"anon";
 }
@@ -55,33 +67,44 @@ static NSString *SPKDMCurrentUserPK(void) {
 // there's no dedicated "All" chip. Index maps to an explicit kind so chip order
 // is decoupled from the enum's numeric values.
 static NSArray<NSString *> *SPKDMChipTitles(void) {
-    return @[@"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Shares", @"Link", @"Reaction"];
+    return @[ @"Text", @"Photo", @"Video", @"Voice", @"GIF", @"Sticker", @"Shares", @"Link", @"Reaction" ];
 }
 static NSArray<NSString *> *SPKDMChipSymbols(void) {
-    return @[@"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"shares", @"link", @"reactions"];
+    return @[ @"message", @"photo", @"video", @"voice", @"gif", @"sticker", @"shares", @"link", @"reactions" ];
 }
 // Filled variants used when a chip is selected.
 static NSArray<NSString *> *SPKDMChipSelectedSymbols(void) {
-    return @[@"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"shares_filled", @"link", @"reactions"];
+    return @[ @"message", @"photo_filled", @"video_filled", @"voice_filled", @"gif_filled", @"sticker_filled", @"shares_filled", @"link", @"reactions" ];
 }
 static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     switch (index) {
-        case 0: return SPKDeletedMessageKindText;
-        case 1: return SPKDeletedMessageKindPhoto;
-        case 2: return SPKDeletedMessageKindVideo;
-        case 3: return SPKDeletedMessageKindVoice;
-        case 4: return SPKDeletedMessageKindGif;
-        case 5: return SPKDeletedMessageKindSticker;
-        case 6: return SPKDeletedMessageKindShare;
-        case 7: return SPKDeletedMessageKindLink;
-        case 8: return SPKDeletedMessageKindReaction;
-        default: return SPKDeletedMessageKindUnknown;
+    case 0:
+        return SPKDeletedMessageKindText;
+    case 1:
+        return SPKDeletedMessageKindPhoto;
+    case 2:
+        return SPKDeletedMessageKindVideo;
+    case 3:
+        return SPKDeletedMessageKindVoice;
+    case 4:
+        return SPKDeletedMessageKindGif;
+    case 5:
+        return SPKDeletedMessageKindSticker;
+    case 6:
+        return SPKDeletedMessageKindShare;
+    case 7:
+        return SPKDeletedMessageKindLink;
+    case 8:
+        return SPKDeletedMessageKindReaction;
+    default:
+        return SPKDeletedMessageKindUnknown;
     }
 }
 
 + (void)presentFromViewController:(UIViewController *)presenter {
     UIViewController *root = presenter ?: UIApplication.sharedApplication.keyWindow.rootViewController;
-    while (root.presentedViewController) root = root.presentedViewController;
+    while (root.presentedViewController)
+        root = root.presentedViewController;
     UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:[SPKDeletedMessagesViewController new]];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     [root presentViewController:nav animated:YES completion:nil];
@@ -92,7 +115,8 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
                 senderName:(NSString *)senderName
         fromViewController:(UIViewController *)presenter {
     UIViewController *root = presenter ?: UIApplication.sharedApplication.keyWindow.rootViewController;
-    while (root.presentedViewController) root = root.presentedViewController;
+    while (root.presentedViewController)
+        root = root.presentedViewController;
 
     SPKDeletedMessagesViewController *list = [SPKDeletedMessagesViewController new];
     UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:list];
@@ -113,11 +137,13 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
         detail = [[SPKDeletedMessagesUserDetailViewController alloc] initWithGroup:group ownerPK:ownerPK];
     }
 
-    [root presentViewController:nav animated:YES completion:^{
-        if (detail) {
-            [list.navigationController pushViewController:detail animated:YES];
-        }
-    }];
+    [root presentViewController:nav
+                       animated:YES
+                     completion:^{
+                         if (detail) {
+                             [list.navigationController pushViewController:detail animated:YES];
+                         }
+                     }];
 }
 
 - (instancetype)init {
@@ -137,7 +163,7 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     UIBarButtonItem *sortItem = SPKMediaChromeTopBarMenuButtonItem(@"sort", [self sortMenu], @"Sort and Filter");
     // More button is always rightmost (last in trailing-group order), matching
     // the downloads history convention.
-    SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[sortItem, moreItem]);
+    SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ sortItem, moreItem ]);
     if (self.navigationController.viewControllers.firstObject == self) {
         SPKMediaChromeSetLeadingTopBarItems(self.navigationItem, @[ SPKMediaChromeTopBarButtonItem(@"xmark", self, @selector(close)) ]);
     }
@@ -147,8 +173,8 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.searchController.searchBar.placeholder = @"Search Deleted Messages";
     [self.searchController.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0]
-                            forSearchBarIcon:UISearchBarIconSearch
-                                       state:UIControlStateNormal];
+                             forSearchBarIcon:UISearchBarIconSearch
+                                        state:UIControlStateNormal];
     self.navigationItem.searchController = self.searchController;
     self.navigationItem.hidesSearchBarWhenScrolling = NO;
     self.definesPresentationContext = YES;
@@ -218,20 +244,25 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
 
     [NSLayoutConstraint activateConstraints:@[
         [self.emptyStateView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-30.0],
-        [self.emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:40.0],
-        [self.emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-40.0],
+        [self.emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor
+                                                          constant:-30.0],
+        [self.emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor
+                                                                       constant:40.0],
+        [self.emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor
+                                                                     constant:-40.0],
 
         [self.emptyStateIcon.topAnchor constraintEqualToAnchor:self.emptyStateView.topAnchor],
         [self.emptyStateIcon.centerXAnchor constraintEqualToAnchor:self.emptyStateView.centerXAnchor],
         [self.emptyStateIcon.widthAnchor constraintEqualToConstant:72.0],
         [self.emptyStateIcon.heightAnchor constraintEqualToConstant:72.0],
 
-        [self.emptyStateTitle.topAnchor constraintEqualToAnchor:self.emptyStateIcon.bottomAnchor constant:18.0],
+        [self.emptyStateTitle.topAnchor constraintEqualToAnchor:self.emptyStateIcon.bottomAnchor
+                                                       constant:18.0],
         [self.emptyStateTitle.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor],
         [self.emptyStateTitle.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor],
 
-        [self.emptyStateSubtitle.topAnchor constraintEqualToAnchor:self.emptyStateTitle.bottomAnchor constant:6.0],
+        [self.emptyStateSubtitle.topAnchor constraintEqualToAnchor:self.emptyStateTitle.bottomAnchor
+                                                          constant:6.0],
         [self.emptyStateSubtitle.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor],
         [self.emptyStateSubtitle.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor],
         [self.emptyStateSubtitle.bottomAnchor constraintEqualToAnchor:self.emptyStateView.bottomAnchor],
@@ -252,7 +283,8 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     NSMutableArray<SPKDeletedMessageGroup *> *filtered = [NSMutableArray array];
     for (SPKDeletedMessageGroup *g in allGroups) {
         // Hide the owner's own 1:1 bucket (self-thread); group threads always show.
-        if (!g.isGroup && [g.senderPk isEqualToString:self.ownerPK]) continue;
+        if (!g.isGroup && [g.senderPk isEqualToString:self.ownerPK])
+            continue;
         [filtered addObject:g];
     }
     self.groups = [filtered copy];
@@ -300,7 +332,8 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     self.emptyStateView.hidden = !isEmpty;
     self.tableView.hidden = isEmpty;
 
-    if (!isEmpty) return;
+    if (!isEmpty)
+        return;
 
     if (!loggingEnabled && !hasAnyData) {
         self.emptyStateIcon.image = [SPKAssetUtils instagramIconNamed:@"messages_empty" pointSize:96.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
@@ -330,7 +363,8 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     [self.filter clearKinds];
     for (NSNumber *index in selectedIndices) {
         SPKDeletedMessageKind kind = SPKDMChipKindForIndex(index.integerValue);
-        if (kind != SPKDeletedMessageKindUnknown) [self.filter toggleKind:kind];
+        if (kind != SPKDeletedMessageKindUnknown)
+            [self.filter toggleKind:kind];
     }
     [self applyFilter];
 }
@@ -345,15 +379,15 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
         completion([weakSelf sortMenuElements]);
     }];
-    return [UIMenu menuWithTitle:@"" children:@[deferred]];
+    return [UIMenu menuWithTitle:@"" children:@[ deferred ]];
 }
 
 - (NSArray<UIMenuElement *> *)sortMenuElements {
     __weak typeof(self) weakSelf = self;
     NSArray *items = @[
-        @[@"Recent", @(SPKDMSortRecent)],
-        @[@"Oldest", @(SPKDMSortOldest)],
-        @[@"Most Messages", @(SPKDMSortCountDesc)]
+        @[ @"Recent", @(SPKDMSortRecent) ],
+        @[ @"Oldest", @(SPKDMSortOldest) ],
+        @[ @"Most Messages", @(SPKDMSortCountDesc) ]
     ];
     NSMutableArray<UIAction *> *sortActions = [NSMutableArray array];
     for (NSArray *item in items) {
@@ -362,20 +396,21 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
                                                image:nil
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
-            weakSelf.filter.sort = sort;
-            [weakSelf applyFilter];
-        }];
-        if (self.filter.sort == sort) action.state = UIMenuElementStateOn;
+                                                 weakSelf.filter.sort = sort;
+                                                 [weakSelf applyFilter];
+                                             }];
+        if (self.filter.sort == sort)
+            action.state = UIMenuElementStateOn;
         [sortActions addObject:action];
     }
     UIMenu *sortSection = [UIMenu menuWithTitle:@"Sort" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:sortActions];
 
     NSMutableArray<UIAction *> *dateActions = [NSMutableArray array];
     NSArray *dateItems = @[
-        @[@"All Time", @(SPKDMDateRangeAll)],
-        @[@"Today", @(SPKDMDateRangeToday)],
-        @[@"Last 7 Days", @(SPKDMDateRangeWeek)],
-        @[@"Last 30 Days", @(SPKDMDateRangeMonth)]
+        @[ @"All Time", @(SPKDMDateRangeAll) ],
+        @[ @"Today", @(SPKDMDateRangeToday) ],
+        @[ @"Last 7 Days", @(SPKDMDateRangeWeek) ],
+        @[ @"Last 30 Days", @(SPKDMDateRangeMonth) ]
     ];
     for (NSArray *item in dateItems) {
         SPKDMDateRange range = [item[1] integerValue];
@@ -383,15 +418,16 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
                                                image:nil
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
-            weakSelf.filter.dateRange = range;
-            [weakSelf applyFilter];
-        }];
-        if (self.filter.dateRange == range) action.state = UIMenuElementStateOn;
+                                                 weakSelf.filter.dateRange = range;
+                                                 [weakSelf applyFilter];
+                                             }];
+        if (self.filter.dateRange == range)
+            action.state = UIMenuElementStateOn;
         [dateActions addObject:action];
     }
     UIMenu *dateSection = [UIMenu menuWithTitle:@"Date Range" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:dateActions];
 
-    return @[sortSection, dateSection];
+    return @[ sortSection, dateSection ];
 }
 
 - (UIMenu *)moreMenu {
@@ -399,41 +435,49 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
     UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
         completion([weakSelf moreMenuElements]);
     }];
-    return [UIMenu menuWithTitle:@"" children:@[deferred]];
+    return [UIMenu menuWithTitle:@"" children:@[ deferred ]];
 }
 
 - (NSArray<UIMenuElement *> *)moreMenuElements {
     __weak typeof(self) weakSelf = self;
 
     UIAction *storageAction = [UIAction actionWithTitle:@"Storage"
-                                                 image:[SPKAssetUtils instagramIconNamed:@"info" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
-                                            identifier:nil
-                                               handler:^(__unused UIAction *a) {
-        [weakSelf.navigationController pushViewController:[SPKDeletedMessagesStorageViewController new] animated:YES];
-    }];
+                                                  image:[SPKAssetUtils instagramIconNamed:@"info" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                             identifier:nil
+                                                handler:^(__unused UIAction *a) {
+                                                    [weakSelf.navigationController pushViewController:[SPKDeletedMessagesStorageViewController new] animated:YES];
+                                                }];
+
+    UIAction *refreshAvatarsAction = [UIAction actionWithTitle:@"Refresh Profile Pictures"
+                                                         image:[SPKAssetUtils instagramIconNamed:@"user_circle" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                    identifier:nil
+                                                       handler:^(__unused UIAction *a) {
+                                                           [[SPKAvatarCache shared] purge];
+                                                           [weakSelf.tableView reloadData];
+                                                       }];
 
     UIAction *clearFiltersAction = [UIAction actionWithTitle:@"Clear Filters"
-                                                      image:[SPKAssetUtils instagramIconNamed:@"filter" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
-                                                 identifier:nil
-                                                    handler:^(__unused UIAction *a) {
-        weakSelf.filter = [SPKDeletedMessagesFilter new];
-        weakSelf.searchController.searchBar.text = nil;
-        [weakSelf.chipBar clearSelection];
-        [weakSelf applyFilter];
-    }];
+                                                       image:[SPKAssetUtils instagramIconNamed:@"filter" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                                  identifier:nil
+                                                     handler:^(__unused UIAction *a) {
+                                                         weakSelf.filter = [SPKDeletedMessagesFilter new];
+                                                         weakSelf.searchController.searchBar.text = nil;
+                                                         [weakSelf.chipBar clearSelection];
+                                                         [weakSelf applyFilter];
+                                                     }];
 
     UIAction *clearAllAction = [UIAction actionWithTitle:@"Clear All Messages"
                                                    image:[SPKAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
                                               identifier:nil
                                                  handler:^(__unused UIAction *a) {
-        [weakSelf confirmClearAll];
-    }];
+                                                     [weakSelf confirmClearAll];
+                                                 }];
     /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     clearAllAction.attributes = UIMenuElementAttributesDestructive;
 
-    UIMenu *destructiveSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[clearAllAction]];
+    UIMenu *destructiveSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[ clearAllAction ]];
 
-    return @[storageAction, clearFiltersAction, destructiveSection];
+    return @[ storageAction, refreshAvatarsAction, clearFiltersAction, destructiveSection ];
 }
 
 - (void)confirmClearAll {
@@ -441,29 +485,39 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
                                                   title:@"Clear deleted messages?"
                                                 message:@"This removes the log and captured media for the current account."
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Clear" style:SPKIGAlertActionStyleDestructive handler:^{
-            [SPKDeletedMessagesStorage resetForOwnerPK:self.ownerPK];
-            [[SPKDeletedMessagesAvatarCache shared] purge];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Clear"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  [SPKDeletedMessagesStorage resetForOwnerPK:self.ownerPK];
+                                                                              }],
+                                                ]];
 }
 
 - (void)confirmDeleteGroup:(SPKDeletedMessageGroup *)group {
     BOOL isGroup = group.isGroup;
-    if (isGroup ? !group.threadId.length : !group.senderPk.length) return;
+    if (isGroup ? !group.threadId.length : !group.senderPk.length)
+        return;
     NSString *who = isGroup ? group.displayName
                             : (group.senderUsername.length ? [@"@" stringByAppendingString:group.senderUsername] : @"this sender");
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:isGroup ? @"Delete group log?" : @"Delete sender log?"
                                                 message:[NSString stringWithFormat:@"This removes all logged messages from %@.", who]
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Delete" style:SPKIGAlertActionStyleDestructive handler:^{
-            if (isGroup) [SPKDeletedMessagesStorage deleteMessagesForThreadId:group.threadId ownerPK:self.ownerPK];
-            else [SPKDeletedMessagesStorage deleteMessagesForSenderPK:group.senderPk ownerPK:self.ownerPK];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Delete"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  if (isGroup)
+                                                                                      [SPKDeletedMessagesStorage deleteMessagesForThreadId:group.threadId ownerPK:self.ownerPK];
+                                                                                  else
+                                                                                      [SPKDeletedMessagesStorage deleteMessagesForSenderPK:group.senderPk ownerPK:self.ownerPK];
+                                                                              }],
+                                                ]];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -484,28 +538,34 @@ static SPKDeletedMessageKind SPKDMChipKindForIndex(NSInteger index) {
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     SPKDeletedMessageGroup *group = self.visibleGroups[indexPath.row];
-    UIContextualAction *pinAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [SPKDeletedMessagesStorage setSenderPinned:!group.isPinned senderPK:group.flagKey ownerPK:self.ownerPK];
-        completionHandler(YES);
-    }];
+    UIContextualAction *pinAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+                                                                            title:nil
+                                                                          handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+                                                                              [SPKDeletedMessagesStorage setSenderPinned:!group.isPinned senderPK:group.flagKey ownerPK:self.ownerPK];
+                                                                              completionHandler(YES);
+                                                                          }];
     pinAction.image = [SPKAssetUtils instagramIconNamed:(group.isPinned ? @"pin_filled" : @"pin") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     pinAction.backgroundColor = [SPKUtils SPKColor_InstagramBlue];
     pinAction.accessibilityLabel = group.isPinned ? @"Unpin" : @"Pin";
-    UIContextualAction *blockAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [SPKDeletedMessagesStorage setSenderBlocked:!group.isBlocked senderPK:group.flagKey ownerPK:self.ownerPK];
-        completionHandler(YES);
-    }];
+    UIContextualAction *blockAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+                                                                              title:nil
+                                                                            handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+                                                                                [SPKDeletedMessagesStorage setSenderBlocked:!group.isBlocked senderPK:group.flagKey ownerPK:self.ownerPK];
+                                                                                completionHandler(YES);
+                                                                            }];
     blockAction.image = [SPKAssetUtils instagramIconNamed:(group.isBlocked ? @"circle" : @"circle_off") pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     blockAction.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryText];
     blockAction.accessibilityLabel = group.isBlocked ? @"Unblock" : @"Block";
-    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [self confirmDeleteGroup:group];
-        completionHandler(NO);
-    }];
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+                                                                               title:nil
+                                                                             handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+                                                                                 [self confirmDeleteGroup:group];
+                                                                                 completionHandler(NO);
+                                                                             }];
     deleteAction.image = [SPKAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     deleteAction.backgroundColor = [SPKUtils SPKColor_InstagramDestructive];
     deleteAction.accessibilityLabel = @"Delete";
-    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction, blockAction, pinAction]];
+    return [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction, blockAction, pinAction ]];
 }
 
 @end

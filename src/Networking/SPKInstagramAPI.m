@@ -6,7 +6,7 @@
 #import <sys/sysctl.h>
 
 #define SPK_API_BASE @"https://i.instagram.com/api/v1/"
-#define SPK_APP_ID   @"124024574287414"
+#define SPK_APP_ID @"124024574287414"
 
 static NSString *spkUserAgent(void) {
     static NSString *ua = nil;
@@ -22,14 +22,14 @@ static NSString *spkUserAgent(void) {
         NSString *language = [[NSLocale preferredLanguages] firstObject] ?: @"en";
         UIScreen *screen = [UIScreen mainScreen];
         ua = [NSString stringWithFormat:@"Instagram %@ (%@; iOS %@; %@; %@; scale=%.2f; %.0fx%.0f; 0)",
-              version,
-              device,
-              iosVersion,
-              locale,
-              language,
-              screen.scale,
-              screen.nativeBounds.size.width,
-              screen.nativeBounds.size.height];
+                                        version,
+                                        device,
+                                        iosVersion,
+                                        locale,
+                                        language,
+                                        screen.scale,
+                                        screen.nativeBounds.size.width,
+                                        screen.nativeBounds.size.height];
     });
     return ua;
 }
@@ -42,18 +42,22 @@ static id spkCurrentUserSession(void) {
             [windows addObject:application.keyWindow];
         }
         for (UIWindow *window in application.windows) {
-            if (window) [windows addObject:window];
+            if (window)
+                [windows addObject:window];
         }
         for (UIScene *scene in application.connectedScenes) {
-            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            if (![scene isKindOfClass:[UIWindowScene class]])
+                continue;
             for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-                if (window) [windows addObject:window];
+                if (window)
+                    [windows addObject:window];
             }
         }
         for (id window in windows) {
             if ([window respondsToSelector:@selector(userSession)]) {
                 id session = [window valueForKey:@"userSession"];
-                if (session) return session;
+                if (session)
+                    return session;
             }
         }
     } @catch (__unused NSException *exception) {
@@ -65,10 +69,12 @@ static NSString *spkAuthHeader(void) {
     @try {
         id session = spkCurrentUserSession();
         SEL authHeaderManagerSel = NSSelectorFromString(@"authHeaderManager");
-        if (!session || ![session respondsToSelector:authHeaderManagerSel]) return nil;
+        if (!session || ![session respondsToSelector:authHeaderManagerSel])
+            return nil;
         id manager = ((id (*)(id, SEL))objc_msgSend)(session, authHeaderManagerSel);
         SEL authHeaderSel = NSSelectorFromString(@"authHeader");
-        if (!manager || ![manager respondsToSelector:authHeaderSel]) return nil;
+        if (!manager || ![manager respondsToSelector:authHeaderSel])
+            return nil;
         id header = ((id (*)(id, SEL))objc_msgSend)(manager, authHeaderSel);
         if ([header isKindOfClass:[NSString class]] && [(NSString *)header length] > 0) {
             return (NSString *)header;
@@ -79,7 +85,8 @@ static NSString *spkAuthHeader(void) {
 }
 
 static NSString *spkFormEncode(NSDictionary *params) {
-    if (!params.count) return @"";
+    if (!params.count)
+        return @"";
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     NSCharacterSet *allowed = [NSCharacterSet URLQueryAllowedCharacterSet];
     for (NSString *key in params) {
@@ -115,7 +122,7 @@ static NSMutableURLRequest *spkBuildRequest(NSString *method, NSURL *url, NSDict
     if (body) {
         request.HTTPBody = [spkFormEncode(body) dataUsingEncoding:NSUTF8StringEncoding];
         [request setValue:@"application/x-www-form-urlencoded; charset=UTF-8"
-       forHTTPHeaderField:@"Content-Type"];
+            forHTTPHeaderField:@"Content-Type"];
     }
 
     return request;
@@ -123,24 +130,25 @@ static NSMutableURLRequest *spkBuildRequest(NSString *method, NSURL *url, NSDict
 
 static void spkPerformRequest(NSMutableURLRequest *request, SPKAPICompletion completion) {
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
-                                                                  completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        (void)response;
-        NSDictionary *parsedResponse = nil;
-        if (data.length > 0) {
-            @try {
-                id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                if ([parsed isKindOfClass:[NSDictionary class]]) {
-                    parsedResponse = (NSDictionary *)parsed;
-                }
-            } @catch (__unused NSException *exception) {
-            }
-        }
+                                                                 completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                                                                     (void)response;
+                                                                     NSDictionary *parsedResponse = nil;
+                                                                     if (data.length > 0) {
+                                                                         @try {
+                                                                             id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                                                                             if ([parsed isKindOfClass:[NSDictionary class]]) {
+                                                                                 parsedResponse = (NSDictionary *)parsed;
+                                                                             }
+                                                                         } @catch (__unused NSException *exception) {
+                                                                         }
+                                                                     }
 
-        if (!completion) return;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(parsedResponse, error);
-        });
-    }];
+                                                                     if (!completion)
+                                                                         return;
+                                                                     dispatch_async(dispatch_get_main_queue(), ^{
+                                                                         completion(parsedResponse, error);
+                                                                     });
+                                                                 }];
     [task resume];
 }
 
@@ -153,7 +161,8 @@ static void spkPerformRequest(NSMutableURLRequest *request, SPKAPICompletion com
     NSString *cleanPath = [path hasPrefix:@"/"] ? [path substringFromIndex:1] : path;
     NSURL *url = [NSURL URLWithString:[SPK_API_BASE stringByAppendingString:cleanPath ?: @""]];
     if (!url) {
-        if (completion) completion(nil, nil);
+        if (completion)
+            completion(nil, nil);
         return;
     }
     spkPerformRequest(spkBuildRequest(method, url, body), completion);
@@ -161,43 +170,74 @@ static void spkPerformRequest(NSMutableURLRequest *request, SPKAPICompletion com
 
 + (void)followUserPK:(NSString *)pk completion:(SPKAPICompletion)completion {
     if (pk.length == 0) {
-        if (completion) completion(nil, nil);
+        if (completion)
+            completion(nil, nil);
         return;
     }
     [self sendRequestWithMethod:@"POST"
                            path:[NSString stringWithFormat:@"friendships/create/%@/", pk]
-                           body:@{@"user_id": pk, @"radio_type": @"wifi-none"}
+                           body:@{@"user_id" : pk, @"radio_type" : @"wifi-none"}
                      completion:completion];
 }
 
 + (void)unfollowUserPK:(NSString *)pk completion:(SPKAPICompletion)completion {
     if (pk.length == 0) {
-        if (completion) completion(nil, nil);
+        if (completion)
+            completion(nil, nil);
         return;
     }
     [self sendRequestWithMethod:@"POST"
                            path:[NSString stringWithFormat:@"friendships/destroy/%@/", pk]
-                           body:@{@"user_id": pk, @"radio_type": @"wifi-none"}
+                           body:@{@"user_id" : pk, @"radio_type" : @"wifi-none"}
                      completion:completion];
 }
 
 + (void)fetchFriendshipStatusesForPKs:(NSArray<NSString *> *)pks
                            completion:(SPKAPIStatusesCompletion)completion {
     if (pks.count == 0) {
-        if (completion) completion(nil, nil);
+        if (completion)
+            completion(nil, nil);
         return;
     }
     [self sendRequestWithMethod:@"POST"
                            path:@"friendships/show_many/"
-                           body:@{@"user_ids": [pks componentsJoinedByString:@","]}
+                           body:@{@"user_ids" : [pks componentsJoinedByString:@","]}
                      completion:^(NSDictionary *response, NSError *error) {
-        NSDictionary *statuses = nil;
-        id raw = response[@"friendship_statuses"];
-        if ([raw isKindOfClass:[NSDictionary class]]) {
-            statuses = (NSDictionary *)raw;
-        }
-        if (completion) completion(statuses, error);
-    }];
+                         NSDictionary *statuses = nil;
+                         id raw = response[@"friendship_statuses"];
+                         if ([raw isKindOfClass:[NSDictionary class]]) {
+                             statuses = (NSDictionary *)raw;
+                         }
+                         if (completion)
+                             completion(statuses, error);
+                     }];
+}
+
++ (void)resolveProfilePicURLForPK:(NSString *)pk
+                       completion:(void (^)(NSString *_Nullable, NSError *_Nullable))completion {
+    if (pk.length == 0) {
+        if (completion)
+            completion(nil, nil);
+        return;
+    }
+    [self sendRequestWithMethod:@"GET"
+                           path:[NSString stringWithFormat:@"users/%@/info/", pk]
+                           body:nil
+                     completion:^(NSDictionary *response, NSError *error) {
+                         NSString *url = nil;
+                         id user = response[@"user"];
+                         if ([user isKindOfClass:[NSDictionary class]]) {
+                             id hd = ((NSDictionary *)user)[@"hd_profile_pic_url_info"];
+                             if ([hd isKindOfClass:[NSDictionary class]] && [((NSDictionary *)hd)[@"url"] isKindOfClass:[NSString class]]) {
+                                 url = ((NSDictionary *)hd)[@"url"];
+                             }
+                             if (url.length == 0 && [((NSDictionary *)user)[@"profile_pic_url"] isKindOfClass:[NSString class]]) {
+                                 url = ((NSDictionary *)user)[@"profile_pic_url"];
+                             }
+                         }
+                         if (completion)
+                             completion(url.length > 0 ? url : nil, error);
+                     }];
 }
 
 @end

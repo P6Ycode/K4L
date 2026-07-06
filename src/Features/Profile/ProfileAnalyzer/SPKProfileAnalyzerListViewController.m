@@ -1,9 +1,10 @@
 #import "SPKProfileAnalyzerListViewController.h"
-#import "SPKProfileAnalyzerAvatarView.h"
-#import "../../../Networking/SPKInstagramAPI.h"
-#import "../../../Utils.h"
 #import "../../../AssetUtils.h"
+#import "../../../Networking/SPKInstagramAPI.h"
+#import "../../../Shared/Avatars/SPKAvatarCache.h"
 #import "../../../Shared/UI/SPKMediaChrome.h"
+#import "../../../Utils.h"
+#import "../../../Shared/Avatars/SPKAvatarView.h"
 
 // IG throttles /friendships/ — batch follow-state lookups (50/request) with a
 // short cushion stays inside the limit.
@@ -15,8 +16,8 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     SPKPASortModeDefault,
     SPKPASortModeAZ,
     SPKPASortModeZA,
-    SPKPASortModeRecent,       // visited only
-    SPKPASortModeMostVisited,  // visited only
+    SPKPASortModeRecent,      // visited only
+    SPKPASortModeMostVisited, // visited only
 };
 
 #pragma mark - Follow-state memory cache (process-wide, TTL'd)
@@ -30,13 +31,17 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 + (NSMutableDictionary *)store {
     static NSMutableDictionary *m;
     static dispatch_once_t once;
-    dispatch_once(&once, ^{ m = [NSMutableDictionary dictionary]; });
+    dispatch_once(&once, ^{
+        m = [NSMutableDictionary dictionary];
+    });
     return m;
 }
 + (NSNumber *)followingForPK:(NSString *)pk {
-    if (!pk.length) return nil;
+    if (!pk.length)
+        return nil;
     NSDictionary *e = [self store][pk];
-    if (!e) return nil;
+    if (!e)
+        return nil;
     if (-[e[@"ts"] timeIntervalSinceNow] > kSPKPAFriendshipTTL) {
         [[self store] removeObjectForKey:pk];
         return nil;
@@ -44,15 +49,16 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     return e[@"following"];
 }
 + (void)setFollowing:(BOOL)following forPK:(NSString *)pk {
-    if (!pk.length) return;
-    [self store][pk] = @{ @"following": @(following), @"ts": [NSDate date] };
+    if (!pk.length)
+        return;
+    [self store][pk] = @{@"following" : @(following), @"ts" : [NSDate date]};
 }
 @end
 
 #pragma mark - Cell
 
 @interface SPKPAUserCell : UITableViewCell
-@property (nonatomic, strong) SPKProfileAnalyzerAvatarView *avatarView;
+@property (nonatomic, strong) SPKAvatarView *avatarView;
 @property (nonatomic, strong) UILabel *usernameLabel;
 @property (nonatomic, strong) UIImageView *verifiedBadge;
 @property (nonatomic, strong) UILabel *subtitleLabel;
@@ -60,22 +66,23 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 @property (nonatomic, strong) UIActivityIndicatorView *actionSpinner;
 @property (nonatomic, strong) NSLayoutConstraint *nameTrailingToButton;
 @property (nonatomic, strong) NSLayoutConstraint *nameTrailingToEdge;
-@property (nonatomic, strong) NSLayoutConstraint *nameTopConstraint;     // active when a subtitle is shown
-@property (nonatomic, strong) NSLayoutConstraint *nameCenterConstraint;  // active when the name stands alone
+@property (nonatomic, strong) NSLayoutConstraint *nameTopConstraint;    // active when a subtitle is shown
+@property (nonatomic, strong) NSLayoutConstraint *nameCenterConstraint; // active when the name stands alone
 @property (nonatomic, copy) NSString *boundPK;
-@property (nonatomic, copy) void(^onActionTap)(SPKPAUserCell *);
+@property (nonatomic, copy) void (^onActionTap)(SPKPAUserCell *);
 @end
 
 @implementation SPKPAUserCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (!self) return self;
+    if (!self)
+        return self;
     self.backgroundColor = [SPKUtils SPKColor_InstagramBackground];
     self.selectedBackgroundView = [UIView new];
     self.selectedBackgroundView.backgroundColor = [SPKUtils SPKColor_ListRowPressedOverlay];
 
-    _avatarView = [[SPKProfileAnalyzerAvatarView alloc] initWithFrame:CGRectZero];
+    _avatarView = [[SPKAvatarView alloc] initWithFrame:CGRectZero];
     _avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_avatarView];
 
@@ -92,7 +99,7 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     _verifiedBadge.hidden = YES;
     [_verifiedBadge setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
-    UIStackView *nameRow = [[UIStackView alloc] initWithArrangedSubviews:@[_usernameLabel, _verifiedBadge]];
+    UIStackView *nameRow = [[UIStackView alloc] initWithArrangedSubviews:@[ _usernameLabel, _verifiedBadge ]];
     nameRow.translatesAutoresizingMaskIntoConstraints = NO;
     nameRow.axis = UILayoutConstraintAxisHorizontal;
     nameRow.alignment = UIStackViewAlignmentCenter;
@@ -129,18 +136,23 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     _nameCenterConstraint = [nameRow.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
+        [_avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                  constant:16.0],
         [_avatarView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
         [_avatarView.widthAnchor constraintEqualToConstant:kSPKPAAvatarSize],
         [_avatarView.heightAnchor constraintEqualToConstant:kSPKPAAvatarSize],
 
-        [nameRow.leadingAnchor constraintEqualToAnchor:_avatarView.trailingAnchor constant:12.0],
+        [nameRow.leadingAnchor constraintEqualToAnchor:_avatarView.trailingAnchor
+                                              constant:12.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:nameRow.leadingAnchor],
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:nameRow.bottomAnchor constant:3.0],
-        [_subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor constant:-10.0],
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:nameRow.bottomAnchor
+                                                 constant:3.0],
+        [_subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor
+                                                                constant:-10.0],
 
-        [_actionButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
+        [_actionButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                     constant:-16.0],
         [_actionButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
 
         [_actionSpinner.centerXAnchor constraintEqualToAnchor:_actionButton.centerXAnchor],
@@ -165,7 +177,10 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     self.nameTopConstraint.active = shown;
 }
 
-- (void)onAction { if (self.onActionTap) self.onActionTap(self); }
+- (void)onAction {
+    if (self.onActionTap)
+        self.onActionTap(self);
+}
 
 - (void)prepareForReuse {
     [super prepareForReuse];
@@ -188,7 +203,7 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 // Previous split. Only used when `grouped` is set.
 @interface SPKPAListSection : NSObject
 @property (nonatomic, copy) NSString *title;
-@property (nonatomic, copy) NSArray *items;   // users or profile-changes, per kind
+@property (nonatomic, copy) NSArray *items; // users or profile-changes, per kind
 @end
 @implementation SPKPAListSection
 @end
@@ -198,8 +213,8 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 @interface SPKProfileAnalyzerListViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating>
 @property (nonatomic, assign) SPKPAListKind kind;
 @property (nonatomic, assign) BOOL grouped;
-@property (nonatomic, copy) NSArray<SPKPAListSection *> *baseSections;    // unfiltered
-@property (nonatomic, copy) NSArray<SPKPAListSection *> *shownSections;   // filtered + sorted
+@property (nonatomic, copy) NSArray<SPKPAListSection *> *baseSections;  // unfiltered
+@property (nonatomic, copy) NSArray<SPKPAListSection *> *shownSections; // filtered + sorted
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerUser *> *allUsers;
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerProfileChange *> *allUpdates;
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerVisit *> *allVisits;
@@ -246,10 +261,16 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 - (NSArray<SPKPAListSection *> *)sectionsFromLatest:(NSArray *)latest previous:(NSArray *)previous {
     NSMutableArray<SPKPAListSection *> *out = [NSMutableArray array];
     if (latest.count) {
-        SPKPAListSection *s = [SPKPAListSection new]; s.title = @"Latest"; s.items = latest; [out addObject:s];
+        SPKPAListSection *s = [SPKPAListSection new];
+        s.title = @"Latest";
+        s.items = latest;
+        [out addObject:s];
     }
     if (previous.count) {
-        SPKPAListSection *s = [SPKPAListSection new]; s.title = @"Previous"; s.items = previous; [out addObject:s];
+        SPKPAListSection *s = [SPKPAListSection new];
+        s.title = @"Previous";
+        s.items = previous;
+        [out addObject:s];
     }
     return out;
 }
@@ -357,20 +378,25 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 
     [NSLayoutConstraint activateConstraints:@[
         [self.emptyStateView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-30.0],
-        [self.emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:40.0],
-        [self.emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-40.0],
+        [self.emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor
+                                                          constant:-30.0],
+        [self.emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor
+                                                                       constant:40.0],
+        [self.emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor
+                                                                     constant:-40.0],
 
         [self.emptyStateIcon.topAnchor constraintEqualToAnchor:self.emptyStateView.topAnchor],
         [self.emptyStateIcon.centerXAnchor constraintEqualToAnchor:self.emptyStateView.centerXAnchor],
         [self.emptyStateIcon.widthAnchor constraintEqualToConstant:72.0],
         [self.emptyStateIcon.heightAnchor constraintEqualToConstant:72.0],
 
-        [self.emptyStateTitle.topAnchor constraintEqualToAnchor:self.emptyStateIcon.bottomAnchor constant:18.0],
+        [self.emptyStateTitle.topAnchor constraintEqualToAnchor:self.emptyStateIcon.bottomAnchor
+                                                       constant:18.0],
         [self.emptyStateTitle.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor],
         [self.emptyStateTitle.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor],
 
-        [self.emptyStateSubtitle.topAnchor constraintEqualToAnchor:self.emptyStateTitle.bottomAnchor constant:6.0],
+        [self.emptyStateSubtitle.topAnchor constraintEqualToAnchor:self.emptyStateTitle.bottomAnchor
+                                                          constant:6.0],
         [self.emptyStateSubtitle.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor],
         [self.emptyStateSubtitle.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor],
         [self.emptyStateSubtitle.bottomAnchor constraintEqualToAnchor:self.emptyStateView.bottomAnchor],
@@ -381,7 +407,20 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 
 - (void)installSortItem {
     UIBarButtonItem *sortItem = SPKMediaChromeTopBarMenuButtonItem(@"sort", [self sortMenu], @"Sort");
-    SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[sortItem]);
+    UIBarButtonItem *moreItem = SPKMediaChromeTopBarMenuButtonItem(@"more", [self moreMenu], @"More");
+    SPKMediaChromeSetTrailingTopBarItems(self.navigationItem, @[ sortItem, moreItem ]);
+}
+
+- (UIMenu *)moreMenu {
+    __weak typeof(self) weakSelf = self;
+    UIAction *refreshAvatars = [UIAction actionWithTitle:@"Refresh Profile Pictures"
+                                                   image:[SPKAssetUtils instagramIconNamed:@"user_circle" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate]
+                                              identifier:nil
+                                                 handler:^(__unused UIAction *action) {
+                                                     [[SPKAvatarCache shared] purge];
+                                                     [weakSelf.tableView reloadData];
+                                                 }];
+    return [UIMenu menuWithTitle:@"" children:@[ refreshAvatars ]];
 }
 
 - (UIMenu *)sortMenu {
@@ -389,18 +428,22 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
         completion([weakSelf sortMenuElements]);
     }];
-    return [UIMenu menuWithTitle:@"" children:@[deferred]];
+    return [UIMenu menuWithTitle:@"" children:@[ deferred ]];
 }
 
 - (NSArray<UIMenuElement *> *)sortMenuElements {
     __weak typeof(self) weakSelf = self;
     NSMutableArray<UIAction *> *actions = [NSMutableArray array];
     void (^add)(NSString *, SPKPASortMode) = ^(NSString *titleStr, SPKPASortMode mode) {
-        UIAction *a = [UIAction actionWithTitle:titleStr image:nil identifier:nil handler:^(__unused UIAction *action) {
-            weakSelf.sortMode = mode;
-            [weakSelf applyFilterAndSort];
-        }];
-        if (weakSelf.sortMode == mode) a.state = UIMenuElementStateOn;
+        UIAction *a = [UIAction actionWithTitle:titleStr
+                                          image:nil
+                                     identifier:nil
+                                        handler:^(__unused UIAction *action) {
+                                            weakSelf.sortMode = mode;
+                                            [weakSelf applyFilterAndSort];
+                                        }];
+        if (weakSelf.sortMode == mode)
+            a.state = UIMenuElementStateOn;
         [actions addObject:a];
     };
     if (self.kind == SPKPAListKindVisited) {
@@ -413,7 +456,7 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
         add(@"A–Z", SPKPASortModeAZ);
         add(@"Z–A", SPKPASortModeZA);
     }
-    return @[[UIMenu menuWithTitle:@"Sort" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:actions]];
+    return @[ [UIMenu menuWithTitle:@"Sort" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:actions] ];
 }
 
 #pragma mark - Filter + sort
@@ -438,23 +481,24 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 
 - (NSArray *)sortVisits:(NSArray<SPKProfileAnalyzerVisit *> *)visits {
     switch (self.sortMode) {
-        case SPKPASortModeMostVisited:
-            return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
-                if (a.visitCount != b.visitCount) return a.visitCount > b.visitCount ? NSOrderedAscending : NSOrderedDescending;
-                return [b.lastSeen compare:a.lastSeen];
-            }];
-        case SPKPASortModeAZ:
-            return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
-                return [(a.user.username ?: @"") caseInsensitiveCompare:(b.user.username ?: @"")];
-            }];
-        case SPKPASortModeZA:
-            return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
-                return [(b.user.username ?: @"") caseInsensitiveCompare:(a.user.username ?: @"")];
-            }];
-        default:
-            return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
-                return [b.lastSeen compare:a.lastSeen];
-            }];
+    case SPKPASortModeMostVisited:
+        return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
+            if (a.visitCount != b.visitCount)
+                return a.visitCount > b.visitCount ? NSOrderedAscending : NSOrderedDescending;
+            return [b.lastSeen compare:a.lastSeen];
+        }];
+    case SPKPASortModeAZ:
+        return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
+            return [(a.user.username ?: @"") caseInsensitiveCompare:(b.user.username ?: @"")];
+        }];
+    case SPKPASortModeZA:
+        return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
+            return [(b.user.username ?: @"") caseInsensitiveCompare:(a.user.username ?: @"")];
+        }];
+    default:
+        return [visits sortedArrayUsingComparator:^NSComparisonResult(SPKProfileAnalyzerVisit *a, SPKProfileAnalyzerVisit *b) {
+            return [b.lastSeen compare:a.lastSeen];
+        }];
     }
 }
 
@@ -470,12 +514,14 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
                 NSMutableArray *out = [NSMutableArray array];
                 for (id item in items) {
                     SPKProfileAnalyzerUser *u = [self userForItem:item];
-                    if (u && [[self haystackForUser:u] containsString:q]) [out addObject:item];
+                    if (u && [[self haystackForUser:u] containsString:q])
+                        [out addObject:item];
                 }
                 items = out;
             }
             // Sort only user lists; profile-update groups stay in chronological order.
-            if (self.kind != SPKPAListKindProfileUpdate) items = [self sortUsers:items];
+            if (self.kind != SPKPAListKindProfileUpdate)
+                items = [self sortUsers:items];
             if (items.count) {
                 SPKPAListSection *s = [SPKPAListSection new];
                 s.title = base.title;
@@ -495,7 +541,9 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
         NSArray *visits = self.allVisits;
         if (hasQuery) {
             NSMutableArray *out = [NSMutableArray array];
-            for (SPKProfileAnalyzerVisit *v in visits) if ([[self haystackForUser:v.user] containsString:q]) [out addObject:v];
+            for (SPKProfileAnalyzerVisit *v in visits)
+                if ([[self haystackForUser:v.user] containsString:q])
+                    [out addObject:v];
             visits = out;
         }
         self.shownVisits = [self sortVisits:visits];
@@ -503,7 +551,9 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
         NSArray *users = self.allUsers;
         if (hasQuery) {
             NSMutableArray *out = [NSMutableArray array];
-            for (SPKProfileAnalyzerUser *u in users) if ([[self haystackForUser:u] containsString:q]) [out addObject:u];
+            for (SPKProfileAnalyzerUser *u in users)
+                if ([[self haystackForUser:u] containsString:q])
+                    [out addObject:u];
             users = out;
         }
         self.shownUsers = [self sortUsers:users];
@@ -516,14 +566,16 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 - (void)updateEmptyState {
     NSInteger count = 0;
     if (self.grouped) {
-        for (SPKPAListSection *s in self.shownSections) count += s.items.count;
+        for (SPKPAListSection *s in self.shownSections)
+            count += s.items.count;
     } else {
         count = [self.tableView numberOfRowsInSection:0];
     }
     BOOL isEmpty = count == 0;
     self.emptyStateView.hidden = !isEmpty;
     self.tableView.hidden = isEmpty;
-    if (!isEmpty) return;
+    if (!isEmpty)
+        return;
     if (self.searchText.length) {
         self.emptyStateIcon.image = [SPKAssetUtils instagramIconNamed:@"promote_empty" pointSize:72.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
         self.emptyStateTitle.text = @"No matches";
@@ -543,7 +595,8 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 #pragma mark - Helpers
 
 static NSString *SPKPARelativeDate(NSDate *date) {
-    if (!date) return @"";
+    if (!date)
+        return @"";
     static NSDateFormatter *df;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -557,12 +610,14 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 
 // Extracts the displayable user from a section item (a user, or a profile-change's current side).
 - (SPKProfileAnalyzerUser *)userForItem:(id)item {
-    if ([item isKindOfClass:[SPKProfileAnalyzerProfileChange class]]) return ((SPKProfileAnalyzerProfileChange *)item).current;
+    if ([item isKindOfClass:[SPKProfileAnalyzerProfileChange class]])
+        return ((SPKProfileAnalyzerProfileChange *)item).current;
     return [item isKindOfClass:[SPKProfileAnalyzerUser class]] ? item : nil;
 }
 
 - (id)itemAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section >= (NSInteger)self.shownSections.count) return nil;
+    if (indexPath.section >= (NSInteger)self.shownSections.count)
+        return nil;
     NSArray *items = self.shownSections[indexPath.section].items;
     return indexPath.row < (NSInteger)items.count ? items[indexPath.row] : nil;
 }
@@ -576,14 +631,15 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 }
 
 - (SPKProfileAnalyzerUser *)userAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.grouped) return [self userForItem:[self itemAtIndexPath:indexPath]];
+    if (self.grouped)
+        return [self userForItem:[self itemAtIndexPath:indexPath]];
     switch (self.kind) {
-        case SPKPAListKindVisited:
-            return indexPath.row < (NSInteger)self.shownVisits.count ? self.shownVisits[indexPath.row].user : nil;
-        case SPKPAListKindProfileUpdate:
-            return indexPath.row < (NSInteger)self.shownUpdates.count ? self.shownUpdates[indexPath.row].current : nil;
-        default:
-            return indexPath.row < (NSInteger)self.shownUsers.count ? self.shownUsers[indexPath.row] : nil;
+    case SPKPAListKindVisited:
+        return indexPath.row < (NSInteger)self.shownVisits.count ? self.shownVisits[indexPath.row].user : nil;
+    case SPKPAListKindProfileUpdate:
+        return indexPath.row < (NSInteger)self.shownUpdates.count ? self.shownUpdates[indexPath.row].current : nil;
+    default:
+        return indexPath.row < (NSInteger)self.shownUsers.count ? self.shownUsers[indexPath.row] : nil;
     }
 }
 
@@ -598,9 +654,12 @@ static NSString *SPKPARelativeDate(NSDate *date) {
         return section < (NSInteger)self.shownSections.count ? (NSInteger)self.shownSections[section].items.count : 0;
     }
     switch (self.kind) {
-        case SPKPAListKindVisited:        return self.shownVisits.count;
-        case SPKPAListKindProfileUpdate:  return self.shownUpdates.count;
-        default:                          return self.shownUsers.count;
+    case SPKPAListKindVisited:
+        return self.shownVisits.count;
+    case SPKPAListKindProfileUpdate:
+        return self.shownUpdates.count;
+    default:
+        return self.shownUsers.count;
     }
 }
 
@@ -610,7 +669,8 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    if (!self.grouped || section >= (NSInteger)self.shownSections.count) return nil;
+    if (!self.grouped || section >= (NSInteger)self.shownSections.count)
+        return nil;
     SPKPAListSection *s = self.shownSections[section];
 
     UIView *container = [UIView new];
@@ -624,8 +684,10 @@ static NSString *SPKPARelativeDate(NSDate *date) {
     [container addSubview:label];
 
     [NSLayoutConstraint activateConstraints:@[
-        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
-        [label.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-6.0],
+        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor
+                                            constant:16.0],
+        [label.bottomAnchor constraintEqualToAnchor:container.bottomAnchor
+                                           constant:-6.0],
     ]];
     return container;
 }
@@ -655,10 +717,13 @@ static NSString *SPKPARelativeDate(NSDate *date) {
     if (wantsButton) {
         BOOL following = (self.kind == SPKPAListKindUnfollow);
         NSNumber *cached = [SPKPAFollowCache followingForPK:user.pk];
-        if (cached) following = cached.boolValue;
+        if (cached)
+            following = cached.boolValue;
         [self styleButton:cell.actionButton following:following];
         __weak typeof(self) weakSelf = self;
-        cell.onActionTap = ^(SPKPAUserCell *c) { [weakSelf toggleFollowForCell:c]; };
+        cell.onActionTap = ^(SPKPAUserCell *c) {
+            [weakSelf toggleFollowForCell:c];
+        };
     }
 
     [cell.avatarView configureWithPK:user.pk urlString:user.profilePicURL];
@@ -667,34 +732,43 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 
 - (NSString *)changeSummaryForUpdate:(SPKProfileAnalyzerProfileChange *)ch {
     NSMutableArray *parts = [NSMutableArray array];
-    if (ch.usernameChanged)   [parts addObject:[NSString stringWithFormat:@"@%@ → @%@", ch.previous.username ?: @"", ch.current.username ?: @""]];
-    if (ch.fullNameChanged)   [parts addObject:[NSString stringWithFormat:@"name: %@ → %@", ch.previous.fullName ?: @"—", ch.current.fullName ?: @"—"]];
-    if (ch.profilePicChanged) [parts addObject:@"changed profile picture"];
+    if (ch.usernameChanged)
+        [parts addObject:[NSString stringWithFormat:@"@%@ → @%@", ch.previous.username ?: @"", ch.current.username ?: @""]];
+    if (ch.fullNameChanged)
+        [parts addObject:[NSString stringWithFormat:@"name: %@ → %@", ch.previous.fullName ?: @"—", ch.current.fullName ?: @"—"]];
+    if (ch.profilePicChanged)
+        [parts addObject:@"changed profile picture"];
     return [parts componentsJoinedByString:@"  •  "];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     SPKProfileAnalyzerUser *user = [self userAtIndexPath:indexPath];
-    if (user.username.length) [SPKUtils openInstagramProfileForUsername:user.username];
+    if (user.username.length)
+        [SPKUtils openInstagramProfileForUsername:user.username];
 }
 
 #pragma mark - Live follow-state resolution (batched)
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.kind != SPKPAListKindFollow && self.kind != SPKPAListKindUnfollow) return;
+    if (self.kind != SPKPAListKindFollow && self.kind != SPKPAListKindUnfollow)
+        return;
     SPKProfileAnalyzerUser *user = [self userAtIndexPath:indexPath];
     NSString *pk = user.pk;
-    if (!pk.length) return;
-    if ([SPKPAFollowCache followingForPK:pk]) return;
-    if ([self.requestedFollowPKs containsObject:pk]) return;
+    if (!pk.length)
+        return;
+    if ([SPKPAFollowCache followingForPK:pk])
+        return;
+    if ([self.requestedFollowPKs containsObject:pk])
+        return;
     [self.requestedFollowPKs addObject:pk];
     [self.pendingFollowPKs addObject:pk];
     [self scheduleFollowBatchFlush];
 }
 
 - (void)scheduleFollowBatchFlush {
-    if (self.followFlushScheduled) return;
+    if (self.followFlushScheduled)
+        return;
     self.followFlushScheduled = YES;
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -704,56 +778,66 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 }
 
 - (void)flushFollowBatch {
-    if (!self.pendingFollowPKs.count) return;
+    if (!self.pendingFollowPKs.count)
+        return;
     NSArray *batch = [self.pendingFollowPKs.allObjects subarrayWithRange:NSMakeRange(0, MIN(kSPKPABatchCap, self.pendingFollowPKs.count))];
     [self.pendingFollowPKs minusSet:[NSSet setWithArray:batch]];
 
     __weak typeof(self) weakSelf = self;
-    [SPKInstagramAPI fetchFriendshipStatusesForPKs:batch completion:^(NSDictionary *statuses, NSError *error) {
-        if (!error && statuses.count) {
-            for (NSString *pk in statuses) {
-                id s = statuses[pk];
-                if ([s isKindOfClass:[NSDictionary class]]) [SPKPAFollowCache setFollowing:[s[@"following"] boolValue] forPK:pk];
-            }
-            [weakSelf refreshVisibleFollowButtons];
-        }
-        if (weakSelf.pendingFollowPKs.count) [weakSelf scheduleFollowBatchFlush];
-    }];
+    [SPKInstagramAPI fetchFriendshipStatusesForPKs:batch
+                                        completion:^(NSDictionary *statuses, NSError *error) {
+                                            if (!error && statuses.count) {
+                                                for (NSString *pk in statuses) {
+                                                    id s = statuses[pk];
+                                                    if ([s isKindOfClass:[NSDictionary class]])
+                                                        [SPKPAFollowCache setFollowing:[s[@"following"] boolValue] forPK:pk];
+                                                }
+                                                [weakSelf refreshVisibleFollowButtons];
+                                            }
+                                            if (weakSelf.pendingFollowPKs.count)
+                                                [weakSelf scheduleFollowBatchFlush];
+                                        }];
 }
 
 - (void)refreshVisibleFollowButtons {
     for (NSIndexPath *ip in self.tableView.indexPathsForVisibleRows) {
         SPKPAUserCell *cell = (SPKPAUserCell *)[self.tableView cellForRowAtIndexPath:ip];
-        if (![cell isKindOfClass:[SPKPAUserCell class]]) continue;
+        if (![cell isKindOfClass:[SPKPAUserCell class]])
+            continue;
         NSNumber *cached = [SPKPAFollowCache followingForPK:cell.boundPK];
-        if (cached && !cell.actionButton.hidden) [self styleButton:cell.actionButton following:cached.boolValue];
+        if (cached && !cell.actionButton.hidden)
+            [self styleButton:cell.actionButton following:cached.boolValue];
     }
 }
 
 #pragma mark - Swipe to delete (visited list only)
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.kind != SPKPAListKindVisited) return nil;
-    if (indexPath.row >= (NSInteger)self.shownVisits.count) return nil;
+    if (self.kind != SPKPAListKindVisited)
+        return nil;
+    if (indexPath.row >= (NSInteger)self.shownVisits.count)
+        return nil;
 
     __weak typeof(self) weakSelf = self;
     SPKProfileAnalyzerVisit *visit = self.shownVisits[indexPath.row];
-    UIContextualAction *del = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil
+    UIContextualAction *del = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+                                                                      title:nil
                                                                     handler:^(UIContextualAction *action, UIView *sourceView, void (^done)(BOOL)) {
-        [weakSelf removeVisit:visit];
-        done(YES);
-    }];
+                                                                        [weakSelf removeVisit:visit];
+                                                                        done(YES);
+                                                                    }];
     del.image = [SPKAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     del.backgroundColor = [SPKUtils SPKColor_InstagramDestructive];
     del.accessibilityLabel = @"Remove";
-    return [UISwipeActionsConfiguration configurationWithActions:@[del]];
+    return [UISwipeActionsConfiguration configurationWithActions:@[ del ]];
 }
 
 - (void)removeVisit:(SPKProfileAnalyzerVisit *)visit {
     NSMutableArray *all = [self.allVisits mutableCopy];
     [all removeObject:visit];
     self.allVisits = all;
-    if (self.onRemoveVisit) self.onRemoveVisit(visit);
+    if (self.onRemoveVisit)
+        self.onRemoveVisit(visit);
     [self applyFilterAndSort];
 }
 
@@ -775,7 +859,8 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 
 - (void)toggleFollowForCell:(SPKPAUserCell *)cell {
     NSString *pk = cell.boundPK;
-    if (!pk.length) return;
+    if (!pk.length)
+        return;
 
     NSNumber *cached = [SPKPAFollowCache followingForPK:pk];
     BOOL currentlyFollowing = cached ? cached.boolValue : (self.kind == SPKPAListKindUnfollow);
@@ -793,9 +878,15 @@ static NSString *SPKPARelativeDate(NSDate *date) {
     };
 
     if (currentlyFollowing) {
-        [SPKInstagramAPI unfollowUserPK:pk completion:^(NSDictionary *resp, NSError *error) { finish(error ? currentlyFollowing : NO); }];
+        [SPKInstagramAPI unfollowUserPK:pk
+                             completion:^(NSDictionary *resp, NSError *error) {
+                                 finish(error ? currentlyFollowing : NO);
+                             }];
     } else {
-        [SPKInstagramAPI followUserPK:pk completion:^(NSDictionary *resp, NSError *error) { finish(error ? currentlyFollowing : YES); }];
+        [SPKInstagramAPI followUserPK:pk
+                           completion:^(NSDictionary *resp, NSError *error) {
+                               finish(error ? currentlyFollowing : YES);
+                           }];
     }
 }
 

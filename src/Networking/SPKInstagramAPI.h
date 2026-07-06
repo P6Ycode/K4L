@@ -4,8 +4,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef void(^SPKAPICompletion)(NSDictionary * _Nullable response, NSError * _Nullable error);
-typedef void(^SPKAPIStatusesCompletion)(NSDictionary * _Nullable statuses, NSError * _Nullable error);
+typedef void (^SPKAPICompletion)(NSDictionary *_Nullable response, NSError *_Nullable error);
+typedef void (^SPKAPIStatusesCompletion)(NSDictionary *_Nullable statuses, NSError *_Nullable error);
 
 @interface SPKInstagramAPI : NSObject
 
@@ -21,6 +21,11 @@ typedef void(^SPKAPIStatusesCompletion)(NSDictionary * _Nullable statuses, NSErr
 
 + (void)fetchFriendshipStatusesForPKs:(NSArray<NSString *> *)pks
                            completion:(nullable SPKAPIStatusesCompletion)completion;
+
+// Resolves the current (short-lived) profile-pic CDN URL for a user PK via
+// users/<pk>/info/. `completion` runs on the main queue; url is nil on failure.
++ (void)resolveProfilePicURLForPK:(NSString *)pk
+                       completion:(void (^)(NSString *_Nullable url, NSError *_Nullable error))completion;
 
 @end
 
