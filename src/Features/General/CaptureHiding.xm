@@ -1,12 +1,11 @@
-#import <objc/runtime.h>
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
-#import "../../Utils.h"
 #import "../../Shared/UI/SPKChrome.h"
+#import "../../Utils.h"
 #import "CaptureHiding.h"
 
-
-static const void *kSPKCaptureFieldKey  = &kSPKCaptureFieldKey;
+static const void *kSPKCaptureFieldKey = &kSPKCaptureFieldKey;
 static const void *kSPKCaptureCanvasKey = &kSPKCaptureCanvasKey;
 
 const NSInteger kSPKCaptureFollowIndicatorTag = 926003;
@@ -37,12 +36,15 @@ static NSSet<NSNumber *> *SPKCaptureHiddenTags(void) {
 static inline Class SPKChromeButtonClass(void) {
     static Class cls;
     static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{ cls = NSClassFromString(@"SPKChromeButton"); });
+    dispatch_once(&onceToken, ^{
+        cls = NSClassFromString(@"SPKChromeButton");
+    });
     return cls;
 }
 
 static UIView *SPKFindCanvasView(UIView *root, int depth) {
-    if (!root || depth > 4) return nil;
+    if (!root || depth > 4)
+        return nil;
     for (UIView *sub in root.subviews) {
         NSString *cls = NSStringFromClass([sub class]);
         if ([cls containsString:@"CanvasView"] ||
@@ -50,34 +52,40 @@ static UIView *SPKFindCanvasView(UIView *root, int depth) {
             return sub;
         }
         UIView *found = SPKFindCanvasView(sub, depth + 1);
-        if (found) return found;
+        if (found)
+            return found;
     }
     return nil;
 }
 
 static NSString *SPKCaptureSubviewSummary(UIView *view) {
-    if (!view) return @"(nil)";
+    if (!view)
+        return @"(nil)";
 
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     for (UIView *subview in view.subviews) {
         [parts addObject:[NSString stringWithFormat:@"%@<%p> tag=%ld hidden=%@ alpha=%.2f",
-            NSStringFromClass(subview.class),
-            subview,
-            (long)subview.tag,
-            subview.hidden ? @"YES" : @"NO",
-            subview.alpha]];
+                                                    NSStringFromClass(subview.class),
+                                                    subview,
+                                                    (long)subview.tag,
+                                                    subview.hidden ? @"YES" : @"NO",
+                                                    subview.alpha]];
     }
     return parts.count ? [parts componentsJoinedByString:@", "] : @"(none)";
 }
 
 static void SPKEnsureSecureCanvas(UIView *button) {
-    if (!button || !button.window) return;
-    if ([button isKindOfClass:NSClassFromString(@"SPKChromeButton")]) return;
-    if (![SPKUtils getBoolPref:@"interface_hide_ui_on_capture"]) return;
+    if (!button || !button.window)
+        return;
+    if ([button isKindOfClass:NSClassFromString(@"SPKChromeButton")])
+        return;
+    if (![SPKUtils getBoolPref:@"interface_hide_ui_on_capture"])
+        return;
 
     // Check if secure field already exists
     UITextField *field = objc_getAssociatedObject(button, kSPKCaptureFieldKey);
-    if (field) return;
+    if (field)
+        return;
 
     SPKLog(@"Capture", @"Creating secure canvas for tag=%ld class=%@",
            (long)button.tag, NSStringFromClass([button class]));
@@ -165,7 +173,8 @@ static void SPKEnsureSecureCanvas(UIView *button) {
 - (void)didMoveToWindow {
     %orig;
     // Fast path: 99.9% of views have tag 0 — exit without any ObjC messaging.
-    if (!SPKCaptureTagMayMatch(self.tag)) return;
+    if (!SPKCaptureTagMayMatch(self.tag))
+        return;
     if (self.window &&
         ![self isKindOfClass:SPKChromeButtonClass()] &&
         [SPKCaptureHiddenTags() containsObject:@(self.tag)]) {

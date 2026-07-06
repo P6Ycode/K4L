@@ -4,22 +4,28 @@
 // Reads a value from an IGUser's `_fieldCache` dict, walking the superclass
 // chain to find the ivar. Returns nil for missing keys and NSNull.
 static id spkFieldCacheValue(id obj, NSString *key) {
-    if (!obj || !key) return nil;
+    if (!obj || !key)
+        return nil;
     Ivar fcIvar = NULL;
     for (Class c = [obj class]; c && !fcIvar; c = class_getSuperclass(c)) {
         fcIvar = class_getInstanceVariable(c, "_fieldCache");
     }
-    if (!fcIvar) return nil;
+    if (!fcIvar)
+        return nil;
     NSDictionary *fc = object_getIvar(obj, fcIvar);
-    if (![fc isKindOfClass:[NSDictionary class]]) return nil;
+    if (![fc isKindOfClass:[NSDictionary class]])
+        return nil;
     id v = fc[key];
-    if (!v || [v isKindOfClass:[NSNull class]]) return nil;
+    if (!v || [v isKindOfClass:[NSNull class]])
+        return nil;
     return v;
 }
 
 static NSString *spkStringFromValue(id value) {
-    if ([value isKindOfClass:[NSString class]]) return value;
-    if ([value respondsToSelector:@selector(stringValue)]) return [value stringValue];
+    if ([value isKindOfClass:[NSString class]])
+        return value;
+    if ([value respondsToSelector:@selector(stringValue)])
+        return [value stringValue];
     return nil;
 }
 
@@ -28,9 +34,12 @@ static NSString *spkStringFromValue(id value) {
 @implementation SPKProfileAnalyzerUser
 
 + (instancetype)userFromAPIDict:(NSDictionary *)d {
-    if (![d isKindOfClass:[NSDictionary class]]) return nil;
-    NSString *pk = spkStringFromValue(d[@"pk"] ?: d[@"pk_id"] ?: d[@"id"]);
-    if (!pk.length) return nil;
+    if (![d isKindOfClass:[NSDictionary class]])
+        return nil;
+    NSString *pk = spkStringFromValue(d[@"pk"] ?: d[@"pk_id"] ?
+                                                              : d[@"id"]);
+    if (!pk.length)
+        return nil;
 
     SPKProfileAnalyzerUser *u = [self new];
     u.pk = pk;
@@ -44,20 +53,25 @@ static NSString *spkStringFromValue(id value) {
 }
 
 + (instancetype)userFromIGUserObject:(id)igUser {
-    if (!igUser) return nil;
+    if (!igUser)
+        return nil;
     NSString *pk = spkStringFromValue(spkFieldCacheValue(igUser, @"strong_id__")
-                                      ?: spkFieldCacheValue(igUser, @"pk")
-                                      ?: spkFieldCacheValue(igUser, @"pk_id"));
-    if (!pk.length) return nil;
+                                          ?: spkFieldCacheValue(igUser, @"pk")
+                                             ?
+                                             : spkFieldCacheValue(igUser, @"pk_id"));
+    if (!pk.length)
+        return nil;
 
     SPKProfileAnalyzerUser *u = [self new];
     u.pk = pk;
     id un = spkFieldCacheValue(igUser, @"username");
     u.username = [un isKindOfClass:[NSString class]] ? un : @"";
     id fn = spkFieldCacheValue(igUser, @"full_name");
-    if ([fn isKindOfClass:[NSString class]]) u.fullName = fn;
+    if ([fn isKindOfClass:[NSString class]])
+        u.fullName = fn;
     id pic = spkFieldCacheValue(igUser, @"profile_pic_url");
-    if ([pic isKindOfClass:[NSString class]]) u.profilePicURL = pic;
+    if ([pic isKindOfClass:[NSString class]])
+        u.profilePicURL = pic;
     u.profilePicID = spkStringFromValue(spkFieldCacheValue(igUser, @"profile_pic_id"));
     u.isPrivate = [spkFieldCacheValue(igUser, @"is_private") boolValue];
     u.isVerified = [spkFieldCacheValue(igUser, @"is_verified") boolValue];
@@ -65,7 +79,8 @@ static NSString *spkStringFromValue(id value) {
 }
 
 + (instancetype)userFromJSONDict:(NSDictionary *)d {
-    if (![d[@"pk"] isKindOfClass:[NSString class]]) return nil;
+    if (![d[@"pk"] isKindOfClass:[NSString class]])
+        return nil;
     SPKProfileAnalyzerUser *u = [self new];
     u.pk = d[@"pk"];
     u.username = [d[@"username"] isKindOfClass:[NSString class]] ? d[@"username"] : @"";
@@ -81,9 +96,12 @@ static NSString *spkStringFromValue(id value) {
     NSMutableDictionary *d = [NSMutableDictionary dictionary];
     d[@"pk"] = self.pk ?: @"";
     d[@"username"] = self.username ?: @"";
-    if (self.fullName) d[@"full_name"] = self.fullName;
-    if (self.profilePicURL) d[@"profile_pic_url"] = self.profilePicURL;
-    if (self.profilePicID)  d[@"profile_pic_id"]  = self.profilePicID;
+    if (self.fullName)
+        d[@"full_name"] = self.fullName;
+    if (self.profilePicURL)
+        d[@"profile_pic_url"] = self.profilePicURL;
+    if (self.profilePicID)
+        d[@"profile_pic_id"] = self.profilePicID;
     d[@"is_private"] = @(self.isPrivate);
     d[@"is_verified"] = @(self.isVerified);
     return d;
@@ -101,10 +119,14 @@ static NSString *spkStringFromValue(id value) {
     return u;
 }
 
-- (NSUInteger)hash { return self.pk.hash; }
+- (NSUInteger)hash {
+    return self.pk.hash;
+}
 - (BOOL)isEqual:(id)other {
-    if (other == self) return YES;
-    if (![other isKindOfClass:[SPKProfileAnalyzerUser class]]) return NO;
+    if (other == self)
+        return YES;
+    if (![other isKindOfClass:[SPKProfileAnalyzerUser class]])
+        return NO;
     return [self.pk isEqualToString:((SPKProfileAnalyzerUser *)other).pk];
 }
 
@@ -115,29 +137,34 @@ static NSString *spkStringFromValue(id value) {
 @implementation SPKProfileAnalyzerVisit
 
 + (instancetype)visitFromJSONDict:(NSDictionary *)d {
-    if (![d isKindOfClass:[NSDictionary class]]) return nil;
+    if (![d isKindOfClass:[NSDictionary class]])
+        return nil;
     NSDictionary *userDict = d[@"user"];
-    if (![userDict isKindOfClass:[NSDictionary class]]) return nil;
+    if (![userDict isKindOfClass:[NSDictionary class]])
+        return nil;
     SPKProfileAnalyzerUser *u = [SPKProfileAnalyzerUser userFromJSONDict:userDict];
-    if (!u) return nil;
+    if (!u)
+        return nil;
     double first = [d[@"first_seen"] doubleValue];
-    double last  = [d[@"last_seen"]  doubleValue];
-    if (last  <= 0) last  = [[NSDate date] timeIntervalSince1970];   // legacy zero -> "now"
-    if (first <= 0) first = last;
+    double last = [d[@"last_seen"] doubleValue];
+    if (last <= 0)
+        last = [[NSDate date] timeIntervalSince1970]; // legacy zero -> "now"
+    if (first <= 0)
+        first = last;
     SPKProfileAnalyzerVisit *v = [self new];
     v.user = u;
     v.firstSeen = [NSDate dateWithTimeIntervalSince1970:first];
-    v.lastSeen  = [NSDate dateWithTimeIntervalSince1970:last];
+    v.lastSeen = [NSDate dateWithTimeIntervalSince1970:last];
     v.visitCount = MAX(1, [d[@"visit_count"] integerValue]);
     return v;
 }
 
 - (NSDictionary *)toJSONDict {
     return @{
-        @"user": [self.user toJSONDict],
-        @"first_seen": @([self.firstSeen timeIntervalSince1970]),
-        @"last_seen":  @([self.lastSeen  timeIntervalSince1970]),
-        @"visit_count": @(self.visitCount),
+        @"user" : [self.user toJSONDict],
+        @"first_seen" : @([self.firstSeen timeIntervalSince1970]),
+        @"last_seen" : @([self.lastSeen timeIntervalSince1970]),
+        @"visit_count" : @(self.visitCount),
     };
 }
 
@@ -148,8 +175,10 @@ static NSString *spkStringFromValue(id value) {
 @implementation SPKProfileAnalyzerSnapshot
 
 + (instancetype)snapshotFromJSONDict:(NSDictionary *)d {
-    if (![d isKindOfClass:[NSDictionary class]]) return nil;
-    if (![d[@"self_pk"] isKindOfClass:[NSString class]]) return nil;
+    if (![d isKindOfClass:[NSDictionary class]])
+        return nil;
+    if (![d[@"self_pk"] isKindOfClass:[NSString class]])
+        return nil;
     SPKProfileAnalyzerSnapshot *s = [self new];
     s.scanDate = [NSDate dateWithTimeIntervalSince1970:[d[@"scan_date"] doubleValue]];
     s.selfPK = d[@"self_pk"];
@@ -164,7 +193,8 @@ static NSString *spkStringFromValue(id value) {
     if ([d[@"followers"] isKindOfClass:[NSArray class]]) {
         for (NSDictionary *u in d[@"followers"]) {
             SPKProfileAnalyzerUser *user = [SPKProfileAnalyzerUser userFromJSONDict:u];
-            if (user) [f addObject:user];
+            if (user)
+                [f addObject:user];
         }
     }
     s.followers = f;
@@ -173,7 +203,8 @@ static NSString *spkStringFromValue(id value) {
     if ([d[@"following"] isKindOfClass:[NSArray class]]) {
         for (NSDictionary *u in d[@"following"]) {
             SPKProfileAnalyzerUser *user = [SPKProfileAnalyzerUser userFromJSONDict:u];
-            if (user) [g addObject:user];
+            if (user)
+                [g addObject:user];
         }
     }
     s.following = g;
@@ -182,21 +213,23 @@ static NSString *spkStringFromValue(id value) {
 
 - (NSDictionary *)toJSONDict {
     NSMutableArray *f = [NSMutableArray arrayWithCapacity:self.followers.count];
-    for (SPKProfileAnalyzerUser *u in self.followers) [f addObject:[u toJSONDict]];
+    for (SPKProfileAnalyzerUser *u in self.followers)
+        [f addObject:[u toJSONDict]];
     NSMutableArray *g = [NSMutableArray arrayWithCapacity:self.following.count];
-    for (SPKProfileAnalyzerUser *u in self.following) [g addObject:[u toJSONDict]];
+    for (SPKProfileAnalyzerUser *u in self.following)
+        [g addObject:[u toJSONDict]];
 
     return @{
-        @"scan_date": @([self.scanDate timeIntervalSince1970]),
-        @"self_pk": self.selfPK ?: @"",
-        @"self_username": self.selfUsername ?: @"",
-        @"self_full_name": self.selfFullName ?: @"",
-        @"self_profile_pic_url": self.selfProfilePicURL ?: @"",
-        @"follower_count": @(self.followerCount),
-        @"following_count": @(self.followingCount),
-        @"media_count": @(self.mediaCount),
-        @"followers": f,
-        @"following": g,
+        @"scan_date" : @([self.scanDate timeIntervalSince1970]),
+        @"self_pk" : self.selfPK ?: @"",
+        @"self_username" : self.selfUsername ?: @"",
+        @"self_full_name" : self.selfFullName ?: @"",
+        @"self_profile_pic_url" : self.selfProfilePicURL ?: @"",
+        @"follower_count" : @(self.followerCount),
+        @"following_count" : @(self.followingCount),
+        @"media_count" : @(self.mediaCount),
+        @"followers" : f,
+        @"following" : g,
     };
 }
 
@@ -205,14 +238,19 @@ static NSString *spkStringFromValue(id value) {
 #pragma mark - Profile change
 
 @implementation SPKProfileAnalyzerProfileChange
-- (BOOL)usernameChanged  { return ![(self.previous.username ?: @"") isEqualToString:(self.current.username ?: @"")]; }
-- (BOOL)fullNameChanged  { return ![(self.previous.fullName ?: @"") isEqualToString:(self.current.fullName ?: @"")]; }
+- (BOOL)usernameChanged {
+    return ![(self.previous.username ?: @"") isEqualToString:(self.current.username ?: @"")];
+}
+- (BOOL)fullNameChanged {
+    return ![(self.previous.fullName ?: @"") isEqualToString:(self.current.fullName ?: @"")];
+}
 // Compare profile_pic_id (stable per upload); URL diffing is useless because
 // IG rotates the CDN host per request. Skip when either side lacks the id.
 - (BOOL)profilePicChanged {
     NSString *a = self.previous.profilePicID;
     NSString *b = self.current.profilePicID;
-    if (!a.length || !b.length) return NO;
+    if (!a.length || !b.length)
+        return NO;
     return ![a isEqualToString:b];
 }
 @end
@@ -222,16 +260,22 @@ static NSString *spkStringFromValue(id value) {
 @implementation SPKProfileAnalyzerReport
 
 static NSArray *spkSubtract(NSArray *a, NSSet *bSet) {
-    if (!a.count) return @[];
+    if (!a.count)
+        return @[];
     NSMutableArray *out = [NSMutableArray arrayWithCapacity:a.count];
-    for (SPKProfileAnalyzerUser *u in a) if (![bSet containsObject:u]) [out addObject:u];
+    for (SPKProfileAnalyzerUser *u in a)
+        if (![bSet containsObject:u])
+            [out addObject:u];
     return out;
 }
 
 static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
-    if (!a.count) return @[];
+    if (!a.count)
+        return @[];
     NSMutableArray *out = [NSMutableArray arrayWithCapacity:a.count];
-    for (SPKProfileAnalyzerUser *u in a) if ([bSet containsObject:u]) [out addObject:u];
+    for (SPKProfileAnalyzerUser *u in a)
+        if ([bSet containsObject:u])
+            [out addObject:u];
     return out;
 }
 
@@ -248,7 +292,8 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
     r.youStartedFollowing = @[];
     r.youUnfollowed = @[];
     r.profileUpdates = @[];
-    if (!current) return r;
+    if (!current)
+        return r;
 
     NSSet *followersSet = [NSSet setWithArray:current.followers];
     NSSet *followingSet = [NSSet setWithArray:current.following];
@@ -267,21 +312,26 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
 
         // Same pk in both snapshots, any tracked field differs.
         NSMutableDictionary *prevByPK = [NSMutableDictionary dictionary];
-        for (SPKProfileAnalyzerUser *u in previous.followers) prevByPK[u.pk] = u;
-        for (SPKProfileAnalyzerUser *u in previous.following) prevByPK[u.pk] = u;
+        for (SPKProfileAnalyzerUser *u in previous.followers)
+            prevByPK[u.pk] = u;
+        for (SPKProfileAnalyzerUser *u in previous.following)
+            prevByPK[u.pk] = u;
 
         NSMutableArray *updates = [NSMutableArray array];
         NSMutableSet *seen = [NSMutableSet set];
         NSArray *currentAll = [current.followers arrayByAddingObjectsFromArray:current.following];
         for (SPKProfileAnalyzerUser *u in currentAll) {
-            if ([seen containsObject:u.pk]) continue;
+            if ([seen containsObject:u.pk])
+                continue;
             [seen addObject:u.pk];
             SPKProfileAnalyzerUser *prev = prevByPK[u.pk];
-            if (!prev) continue;
+            if (!prev)
+                continue;
             SPKProfileAnalyzerProfileChange *ch = [SPKProfileAnalyzerProfileChange new];
             ch.previous = prev;
             ch.current = u;
-            if (ch.usernameChanged || ch.fullNameChanged || ch.profilePicChanged) [updates addObject:ch];
+            if (ch.usernameChanged || ch.fullNameChanged || ch.profilePicChanged)
+                [updates addObject:ch];
         }
         r.profileUpdates = updates;
     }
@@ -296,11 +346,12 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
 
 - (NSString *)eventID {
     return [NSString stringWithFormat:@"%ld|%@|%.0f",
-            (long)self.type, self.user.pk ?: @"", [self.date timeIntervalSince1970]];
+                                      (long)self.type, self.user.pk ?: @"", [self.date timeIntervalSince1970]];
 }
 
 - (SPKProfileAnalyzerProfileChange *)asProfileChange {
-    if (self.type != SPKPAChangeTypeProfileUpdate || !self.previousUser) return nil;
+    if (self.type != SPKPAChangeTypeProfileUpdate || !self.previousUser)
+        return nil;
     SPKProfileAnalyzerProfileChange *ch = [SPKProfileAnalyzerProfileChange new];
     ch.previous = self.previousUser;
     ch.current = self.user;
@@ -308,9 +359,11 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
 }
 
 + (instancetype)eventFromJSONDict:(NSDictionary *)d {
-    if (![d isKindOfClass:[NSDictionary class]]) return nil;
+    if (![d isKindOfClass:[NSDictionary class]])
+        return nil;
     SPKProfileAnalyzerUser *u = [SPKProfileAnalyzerUser userFromJSONDict:d[@"user"]];
-    if (!u) return nil;
+    if (!u)
+        return nil;
     SPKProfileAnalyzerChangeEvent *e = [self new];
     e.type = [d[@"type"] integerValue];
     e.user = u;
@@ -324,7 +377,8 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
     NSMutableDictionary *d = [NSMutableDictionary dictionary];
     d[@"type"] = @(self.type);
     d[@"user"] = [self.user toJSONDict];
-    if (self.previousUser) d[@"previous_user"] = [self.previousUser toJSONDict];
+    if (self.previousUser)
+        d[@"previous_user"] = [self.previousUser toJSONDict];
     d[@"date"] = @([self.date timeIntervalSince1970]);
     d[@"seen"] = @(self.seen);
     return d;
@@ -342,8 +396,9 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
 }
 
 + (NSArray<SPKProfileAnalyzerChangeEvent *> *)eventsFromReport:(SPKProfileAnalyzerReport *)report
-                                                         date:(NSDate *)date {
-    if (!date) date = [NSDate date];
+                                                          date:(NSDate *)date {
+    if (!date)
+        date = [NSDate date];
     NSMutableArray<SPKProfileAnalyzerChangeEvent *> *out = [NSMutableArray array];
     for (SPKProfileAnalyzerUser *u in report.recentFollowers)
         [out addObject:[self eventOfType:SPKPAChangeTypeNewFollower user:u date:date]];

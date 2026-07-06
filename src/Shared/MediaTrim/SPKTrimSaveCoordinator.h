@@ -62,7 +62,7 @@ typedef void (^SPKTrimStoreBlock)(NSURL *renderedURL, SPKTrimStoreCompletion don
        progressTitle:(nullable NSString *)progressTitle
         existingPill:(nullable SPKNotificationPillView *)existingPill
                store:(SPKTrimStoreBlock)store
-         onSuccessTap:(nullable void (^)(void))onSuccessTap
+        onSuccessTap:(nullable void (^)(void))onSuccessTap
           completion:(nullable void (^)(BOOL ok))completion;
 
 /// Renders `result` and routes the output to one of the save-flow destinations

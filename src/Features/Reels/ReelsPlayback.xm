@@ -11,11 +11,12 @@
          seekResumeScrubberCooldownSec:(double)seekSec
           tapResumeScrubberCooldownSec:(double)tapSec
     persistentScrubberMinVideoDuration:(long long)duration
-        isScrubberForShortVideoEnabled:(_Bool)shortScrubberEnabled
-{
+        isScrubberForShortVideoEnabled:(_Bool)shortScrubberEnabled {
     _Bool userTapPauseEnabled = tapPauseEnabled;
-    if ([[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"pause"]) userTapPauseEnabled = true;
-    else if ([[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"mute"]) userTapPauseEnabled = false;
+    if ([[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"pause"])
+        userTapPauseEnabled = true;
+    else if ([[SPKUtils getStringPref:@"reels_tap_control"] isEqualToString:@"mute"])
+        userTapPauseEnabled = false;
 
     long long userMinSec = minSec;
     long long userDuration = duration;
@@ -44,17 +45,20 @@
 
     if ([SPKUtils getBoolPref:@"reels_confirm_refresh"] && arg2) {
         SPKLog(@"General", @"[Sparkle] Reel refresh triggered");
-        
-        [SPKUtils showConfirmation:^(void) { %orig(arg1, arg2); }
-                     cancelHandler:^(void) {
-                         IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
-                         [_refreshControl finishLoading];
-                         if ([self respondsToSelector:@selector(finishPullToRefreshLoading)]) {
-                             [self finishPullToRefreshLoading];
-                         }
-                     }
-                             title:@"Confirm Reels Refresh"
-                           message:@"Are you sure you want to refresh the reels feed?"];
+
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig(arg1, arg2);
+            }
+            cancelHandler:^(void) {
+                IGRefreshControl *_refreshControl = MSHookIvar<IGRefreshControl *>(self, "_refreshControl");
+                [_refreshControl finishLoading];
+                if ([self respondsToSelector:@selector(finishPullToRefreshLoading)]) {
+                    [self finishPullToRefreshLoading];
+                }
+            }
+            title:@"Confirm Reels Refresh"
+            message:@"Are you sure you want to refresh the reels feed?"];
     } else {
         return %orig(arg1, arg2);
     }
@@ -62,11 +66,13 @@
 
 - (void)triggerRefreshFromTabTap {
     if ([SPKUtils getBoolPref:@"reels_confirm_refresh"]) {
-        [SPKUtils showConfirmation:^(void) {
-            %orig;
-        } cancelHandler:nil
-            title:@"Confirm Reels Refresh"
-            message:@"Are you sure you want to refresh the reels feed?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+               cancelHandler:nil
+                       title:@"Confirm Reels Refresh"
+                     message:@"Are you sure you want to refresh the reels feed?"];
     } else {
         %orig;
     }
@@ -100,7 +106,8 @@ extern "C" void SPKInstallReelsPlaybackHooksIfNeeded(void) {
                          [SPKUtils getBoolPref:@"reels_prevent_doom_scroll"] ||
                          [SPKUtils getBoolPref:@"reels_confirm_refresh"] ||
                          [SPKUtils getBoolPref:@"reels_disable_auto_unmute"];
-    if (!shouldInstall) return;
+    if (!shouldInstall)
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

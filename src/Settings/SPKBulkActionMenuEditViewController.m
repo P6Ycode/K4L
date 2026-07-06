@@ -1,10 +1,10 @@
 #import "SPKBulkActionMenuEditViewController.h"
 
-#import "SPKTopicSettingsSupport.h"
 #import "../AssetUtils.h"
-#import "../Utils.h"
 #import "../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "../Shared/ActionButton/SPKActionDescriptor.h"
+#import "../Utils.h"
+#import "SPKTopicSettingsSupport.h"
 
 @interface SPKBulkActionMenuEditViewController () <UITableViewDataSource, UITableViewDelegate, UITableViewDragDelegate, UITableViewDropDelegate>
 
@@ -22,8 +22,7 @@
                        source:(SPKActionButtonSource)source
              supportedActions:(NSArray<NSString *> *)supportedActions
             configuredActions:(NSArray<NSString *> *)configuredActions
-                       onSave:(void (^)(NSArray<NSString *> *actions))onSave
-{
+                       onSave:(void (^)(NSArray<NSString *> *actions))onSave {
     self = [super init];
     if (self) {
         self.title = title;
@@ -69,7 +68,8 @@
 }
 
 - (void)persist {
-    if (self.onSave) self.onSave([self.configuredActions copy]);
+    if (self.onSave)
+        self.onSave([self.configuredActions copy]);
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
@@ -85,7 +85,8 @@
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) return @"Drag to reorder. Tap to disable an action.";
+    if (section == 0)
+        return @"Drag to reorder. Tap to disable an action.";
     return @"Tap an action to enable it in this submenu.";
 }
 
@@ -112,11 +113,12 @@
 }
 
 - (NSArray<UIDragItem *> *)tableView:(UITableView *)tableView itemsForBeginningDragSession:(id<UIDragSession>)session atIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section != 0) return @[];
+    if (indexPath.section != 0)
+        return @[];
     NSString *identifier = self.configuredActions[indexPath.row];
     UIDragItem *item = [[UIDragItem alloc] initWithItemProvider:[[NSItemProvider alloc] initWithObject:identifier]];
     item.localObject = identifier;
-    return @[item];
+    return @[ item ];
 }
 
 - (BOOL)tableView:(UITableView *)tableView dragSessionAllowsMoveOperation:(id<UIDragSession>)session {
@@ -138,16 +140,19 @@
     NSIndexPath *destinationIndexPath = coordinator.destinationIndexPath;
     id<UITableViewDropItem> dropItem = coordinator.items.firstObject;
     NSIndexPath *sourceIndexPath = dropItem.sourceIndexPath;
-    if (!destinationIndexPath || !sourceIndexPath || sourceIndexPath.section != 0 || destinationIndexPath.section != 0) return;
+    if (!destinationIndexPath || !sourceIndexPath || sourceIndexPath.section != 0 || destinationIndexPath.section != 0)
+        return;
 
     NSInteger destinationRow = MIN(MAX(0, destinationIndexPath.row), MAX(0, self.configuredActions.count - 1));
     NSString *identifier = self.configuredActions[sourceIndexPath.row];
-    [tableView performBatchUpdates:^{
-        [self.configuredActions removeObjectAtIndex:sourceIndexPath.row];
-        [self.configuredActions insertObject:identifier atIndex:destinationRow];
-        [self persist];
-        [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:[NSIndexPath indexPathForRow:destinationRow inSection:0]];
-    } completion:nil];
+    [tableView
+        performBatchUpdates:^{
+            [self.configuredActions removeObjectAtIndex:sourceIndexPath.row];
+            [self.configuredActions insertObject:identifier atIndex:destinationRow];
+            [self persist];
+            [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:[NSIndexPath indexPathForRow:destinationRow inSection:0]];
+        }
+                 completion:nil];
     [coordinator dropItem:dropItem.dragItem toRowAtIndexPath:[NSIndexPath indexPathForRow:destinationRow inSection:0]];
 }
 

@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import <os/log.h>
 #import <objc/message.h>
+#import <os/log.h>
 
 #import "InstagramHeaders.h"
 #import "Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
@@ -14,7 +14,7 @@ FOUNDATION_EXPORT void SPKLogMessage(NSString *category,
                                      NSString *format, ...) NS_FORMAT_FUNCTION(3, 4);
 
 /// Master toggle for per-account preferences (global, default off).
-FOUNDATION_EXPORT NSString * const kSPKPrefPerAccountSettings;
+FOUNDATION_EXPORT NSString *const kSPKPrefPerAccountSettings;
 
 /// Maps a preference key to the key actually stored/read. When per-account mode
 /// is on and the key isn't forced-global, returns a `u_<accountPK>_<key>`
@@ -51,7 +51,7 @@ FOUNDATION_EXPORT Class _Nullable SPKReelsVerticalUFIClass(void);
 /// Swift `@"Module.Class"` name as `qualified` and the legacy plain name as
 /// `legacy`; returns whichever the runtime currently has (or nil). Hook groups bind
 /// to it via `%init(Group, BareName = SPKResolveIGClass(@"Module.Class", @"BareName"))`.
-FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSString * _Nullable legacy);
+FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSString *_Nullable legacy);
 
 #define SPKLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_DEFAULT, (fmt), ##__VA_ARGS__)
 #define SPKWarnLog(category, fmt, ...) SPKLogMessage((category), OS_LOG_TYPE_ERROR, (fmt), ##__VA_ARGS__)
@@ -60,13 +60,13 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 
 /*
  *  System Versioning Preprocessor Macros
- */ 
+ */
 
-#define SYSTEM_VERSION_EQUAL_TO(v)                  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedSame)
-#define SYSTEM_VERSION_GREATER_THAN(v)              ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedDescending)
-#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
-#define SYSTEM_VERSION_LESS_THAN(v)                 ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
-#define SYSTEM_VERSION_LESS_THAN_OR_EQUAL_TO(v)     ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedDescending)
+#define SYSTEM_VERSION_EQUAL_TO(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedSame)
+#define SYSTEM_VERSION_GREATER_THAN(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedDescending)
+#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
+#define SYSTEM_VERSION_LESS_THAN(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
+#define SYSTEM_VERSION_LESS_THAN_OR_EQUAL_TO(v) ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedDescending)
 
 @interface SPKUtils : NSObject
 
@@ -152,12 +152,12 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 + (UIViewController *)nearestViewControllerForView:(UIView *)view;
 
 // Alerts
-+ (BOOL)showConfirmation:(void(^)(void))okHandler title:(NSString *)title;
-+ (BOOL)showConfirmation:(void(^)(void))okHandler title:(NSString *)title message:(NSString *)message;
-+ (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title;
-+ (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title message:(NSString *)message;
-+ (BOOL)showConfirmation:(void(^)(void))okHandler;
-+ (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler;
++ (BOOL)showConfirmation:(void (^)(void))okHandler title:(NSString *)title;
++ (BOOL)showConfirmation:(void (^)(void))okHandler title:(NSString *)title message:(NSString *)message;
++ (BOOL)showConfirmation:(void (^)(void))okHandler cancelHandler:(void (^)(void))cancelHandler title:(NSString *)title;
++ (BOOL)showConfirmation:(void (^)(void))okHandler cancelHandler:(void (^)(void))cancelHandler title:(NSString *)title message:(NSString *)message;
++ (BOOL)showConfirmation:(void (^)(void))okHandler;
++ (BOOL)showConfirmation:(void (^)(void))okHandler cancelHandler:(void (^)(void))cancelHandler;
 + (void)showRestartConfirmation;
 
 // Math

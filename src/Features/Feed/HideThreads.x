@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 // Remove suggested threads posts (carousel, under suggested posts in feed)
 %group SPKHideThreadsHooks
@@ -11,7 +11,7 @@
 
         return nil;
     }
-    
+
     return %orig;
 }
 %end
@@ -19,7 +19,8 @@
 %end
 
 void SPKInstallHideThreadsHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"feed_hide_suggested_threads"]) return;
+    if (![SPKUtils getBoolPref:@"feed_hide_suggested_threads"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

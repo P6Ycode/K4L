@@ -1,7 +1,7 @@
 #import "SPKGalleryFolderChipBar.h"
-#import "../UI/SPKChipGlass.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../UI/SPKChipGlass.h"
 
 static CGFloat const kChipBarHeight = 52.0;
 static CGFloat const kChipHeight = 34.0;
@@ -12,7 +12,7 @@ static CGFloat const kChipHorizontalInset = 14.0;
 @property (nonatomic, strong) UIScrollView *scroll;
 @property (nonatomic, strong) UIStackView *stack;
 @property (nonatomic, copy, nullable) void (^onSelect)(NSInteger index);
-@property (nonatomic, copy, nullable) UIMenu * _Nullable (^menuProvider)(NSInteger index);
+@property (nonatomic, copy, nullable) UIMenu *_Nullable (^menuProvider)(NSInteger index);
 @end
 
 @implementation SPKGalleryFolderChipBar
@@ -67,7 +67,7 @@ static CGFloat const kChipHorizontalInset = 14.0;
 - (void)configureWithFolderNames:(NSArray<NSString *> *)names
                           counts:(NSArray<NSNumber *> *)counts
                         onSelect:(void (^)(NSInteger))onSelect
-                    menuProvider:(UIMenu * _Nullable (^)(NSInteger))menuProvider {
+                    menuProvider:(UIMenu *_Nullable (^)(NSInteger))menuProvider {
     self.onSelect = onSelect;
     self.menuProvider = menuProvider;
 
@@ -89,8 +89,8 @@ static CGFloat const kChipHorizontalInset = 14.0;
     chip.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
 
     NSString *title = count > 0
-        ? [NSString stringWithFormat:@"%@  •  %ld", name, (long)count]
-        : name;
+                          ? [NSString stringWithFormat:@"%@  •  %ld", name, (long)count]
+                          : name;
     [chip setTitle:title forState:UIControlStateNormal];
 
     UIImage *icon = [SPKAssetUtils instagramIconNamed:@"folder"
@@ -138,7 +138,7 @@ static CGFloat const kChipHorizontalInset = 14.0;
 #pragma mark - UIContextMenuInteractionDelegate
 
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
-                       configurationForMenuAtLocation:(CGPoint)location {
+                        configurationForMenuAtLocation:(CGPoint)location {
     UIView *view = interaction.view;
     if (![view isKindOfClass:[UIButton class]] || !self.menuProvider) {
         return nil;
@@ -146,12 +146,13 @@ static CGFloat const kChipHorizontalInset = 14.0;
     NSInteger index = view.tag;
     __weak typeof(self) weakSelf = self;
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
-                                                  previewProvider:nil
-                                                   actionProvider:^UIMenu * _Nullable(NSArray<UIMenuElement *> * _Nonnull suggested) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf.menuProvider) return nil;
-        return strongSelf.menuProvider(index);
-    }];
+                                                   previewProvider:nil
+                                                    actionProvider:^UIMenu *_Nullable(NSArray<UIMenuElement *> *_Nonnull suggested) {
+                                                        __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                        if (!strongSelf.menuProvider)
+                                                            return nil;
+                                                        return strongSelf.menuProvider(index);
+                                                    }];
 }
 
 @end

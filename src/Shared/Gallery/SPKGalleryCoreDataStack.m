@@ -1,17 +1,17 @@
 #import "SPKGalleryCoreDataStack.h"
-#import "SPKGalleryPaths.h"
 #import "../../Utils.h"
+#import "SPKGalleryPaths.h"
 
 @interface SPKGalleryCoreDataStack ()
 @property (nonatomic, strong, readwrite) NSPersistentContainer *persistentContainer;
 @end
 
-static NSString * const kSPKGalleryEntityName = @"SPKGalleryFile";
+static NSString *const kSPKGalleryEntityName = @"SPKGalleryFile";
 // On-disk entity name used by stores created before the SCInsta -> Sparkle rename.
 // Existing gallery.sqlite files carry this name; the Core Data migration below
 // renames the entity to kSPKGalleryEntityName via renamingIdentifier.
-static NSString * const kSPKGalleryLegacyEntityName = @"SCIGalleryFile";
-static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
+static NSString *const kSPKGalleryLegacyEntityName = @"SCIGalleryFile";
+static NSString *const kSPKGalleryStoreName = @"gallery.sqlite";
 
 @implementation SPKGalleryCoreDataStack
 
@@ -34,8 +34,8 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
 
 - (NSManagedObjectModel *)buildModelWithAccountOwnership:(BOOL)includeAccountOwnership {
     return [self buildModelWithAccountOwnership:includeAccountOwnership
-                                    entityName:kSPKGalleryEntityName
-                                  renamingFrom:kSPKGalleryLegacyEntityName];
+                                     entityName:kSPKGalleryEntityName
+                                   renamingFrom:kSPKGalleryLegacyEntityName];
 }
 
 // `entityName` is the entity's on-disk name. `renamingIdentifier`, when non-nil,
@@ -167,11 +167,11 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
         ownerUsername.attributeType = NSStringAttributeType;
         ownerUsername.optional = YES;
 
-        [properties addObjectsFromArray:@[ownerAccountPK, ownerUsername]];
+        [properties addObjectsFromArray:@[ ownerAccountPK, ownerUsername ]];
     }
 
     entity.properties = properties;
-    model.entities = @[entity];
+    model.entities = @[ entity ];
 
     return model;
 }
@@ -207,7 +207,8 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
     NSMutableArray<NSURL *> *urls = [NSMutableArray arrayWithObject:storeURL];
     [urls addObjectsFromArray:[self sidecarURLsForStoreURL:storeURL]];
     for (NSURL *url in urls) {
-        if (![fm fileExistsAtPath:url.path]) continue;
+        if (![fm fileExistsAtPath:url.path])
+            continue;
         NSString *backupPath = [url.path stringByAppendingFormat:@".%@", suffix];
         [fm removeItemAtPath:backupPath error:nil];
         NSError *error = nil;
@@ -219,13 +220,14 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
 
 - (BOOL)migrateStoreAtURLIfNeeded:(NSURL *)storeURL toModel:(NSManagedObjectModel *)destinationModel {
     NSFileManager *fm = [NSFileManager defaultManager];
-    if (![fm fileExistsAtPath:storeURL.path]) return YES;
+    if (![fm fileExistsAtPath:storeURL.path])
+        return YES;
 
     NSError *metadataError = nil;
     NSDictionary *metadata = [NSPersistentStoreCoordinator metadataForPersistentStoreOfType:NSSQLiteStoreType
-                                                                                       URL:storeURL
-                                                                                   options:nil
-                                                                                     error:&metadataError];
+                                                                                        URL:storeURL
+                                                                                    options:nil
+                                                                                      error:&metadataError];
     if (!metadata) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed reading store metadata: %@", metadataError);
         return NO;
@@ -239,9 +241,15 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
     // pre-/post-account schemas AND the pre-rename entity name (SCIGalleryFile), so a
     // single inferred mapping can rename the entity and add the account columns at once.
     NSArray<NSManagedObjectModel *> *candidateSourceModels = @[
-        [self buildModelWithAccountOwnership:YES entityName:kSPKGalleryLegacyEntityName renamingFrom:nil],
-        [self buildModelWithAccountOwnership:NO  entityName:kSPKGalleryLegacyEntityName renamingFrom:nil],
-        [self buildModelWithAccountOwnership:NO  entityName:kSPKGalleryEntityName       renamingFrom:nil],
+        [self buildModelWithAccountOwnership:YES
+                                  entityName:kSPKGalleryLegacyEntityName
+                                renamingFrom:nil],
+        [self buildModelWithAccountOwnership:NO
+                                  entityName:kSPKGalleryLegacyEntityName
+                                renamingFrom:nil],
+        [self buildModelWithAccountOwnership:NO
+                                  entityName:kSPKGalleryEntityName
+                                renamingFrom:nil],
     ];
     NSManagedObjectModel *sourceModel = nil;
     for (NSManagedObjectModel *candidate in candidateSourceModels) {
@@ -257,8 +265,8 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
 
     NSError *mappingError = nil;
     NSMappingModel *mapping = [NSMappingModel inferredMappingModelForSourceModel:sourceModel
-                                                                 destinationModel:destinationModel
-                                                                            error:&mappingError];
+                                                                destinationModel:destinationModel
+                                                                           error:&mappingError];
     if (!mapping) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed creating inferred migration mapping: %@", mappingError);
         return NO;
@@ -267,7 +275,7 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
     NSString *tmpName = [NSString stringWithFormat:@"gallery-migration-%@.sqlite", [NSUUID UUID].UUIDString];
     NSURL *tmpURL = [[storeURL URLByDeletingLastPathComponent] URLByAppendingPathComponent:tmpName];
     NSMigrationManager *manager = [[NSMigrationManager alloc] initWithSourceModel:sourceModel destinationModel:destinationModel];
-    NSDictionary *destinationOptions = @{ NSSQLitePragmasOption: @{ @"journal_mode": @"DELETE" } };
+    NSDictionary *destinationOptions = @{NSSQLitePragmasOption : @{@"journal_mode" : @"DELETE"}};
 
     NSError *migrationError = nil;
     BOOL migrated = [manager migrateStoreFromURL:storeURL
@@ -312,7 +320,7 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
     NSPersistentStoreDescription *storeDesc = [[NSPersistentStoreDescription alloc] initWithURL:storeURL];
     storeDesc.shouldMigrateStoreAutomatically = YES;
     storeDesc.shouldInferMappingModelAutomatically = YES;
-    self.persistentContainer.persistentStoreDescriptions = @[storeDesc];
+    self.persistentContainer.persistentStoreDescriptions = @[ storeDesc ];
 
     [self.persistentContainer loadPersistentStoresWithCompletionHandler:^(NSPersistentStoreDescription *desc, NSError *error) {
         if (error) {
@@ -329,7 +337,8 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
 
 - (void)saveContext {
     NSManagedObjectContext *ctx = self.viewContext;
-    if (![ctx hasChanges]) return;
+    if (![ctx hasChanges])
+        return;
 
     NSError *error;
     if (![ctx save:&error]) {
@@ -355,7 +364,8 @@ static NSString * const kSPKGalleryStoreName = @"gallery.sqlite";
 
 // Treat nil and empty owner PKs as the same (both "unassigned").
 static BOOL SPKGalleryOwnerEqual(NSString *a, NSString *b) {
-    if (a.length == 0 && b.length == 0) return YES;
+    if (a.length == 0 && b.length == 0)
+        return YES;
     return [a isEqualToString:b];
 }
 
@@ -363,16 +373,19 @@ static BOOL SPKGalleryOwnerEqual(NSString *a, NSString *b) {
 // callers on a background queue can interleave fast main-thread CD work with their own
 // background file I/O.
 static void SPKGalleryRunOnMain(void (^block)(void)) {
-    if ([NSThread isMainThread]) block();
-    else dispatch_sync(dispatch_get_main_queue(), block);
+    if ([NSThread isMainThread])
+        block();
+    else
+        dispatch_sync(dispatch_get_main_queue(), block);
 }
 
 // Opens an exported bundle's gallery.sqlite read-only against the current model
 // (migrating an older-schema archive first). Returns nil + sets *error on failure,
 // or nil + no error when the bundle has no store.
-- (NSManagedObjectContext *)archiveContextForBundleDirectory:(NSString *)bundleGalleryDirectory error:(NSError * _Nullable * _Nullable)error {
+- (NSManagedObjectContext *)archiveContextForBundleDirectory:(NSString *)bundleGalleryDirectory error:(NSError *_Nullable *_Nullable)error {
     NSString *archiveStorePath = [bundleGalleryDirectory stringByAppendingPathComponent:kSPKGalleryStoreName];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:archiveStorePath]) return nil;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:archiveStorePath])
+        return nil;
 
     NSManagedObjectModel *model = [self buildModel];
     NSURL *archiveStoreURL = [NSURL fileURLWithPath:archiveStorePath];
@@ -380,42 +393,48 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
 
     NSPersistentStoreCoordinator *coordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
     NSDictionary *options = @{
-        NSReadOnlyPersistentStoreOption: @YES,
-        NSSQLitePragmasOption: @{ @"journal_mode": @"DELETE" }
+        NSReadOnlyPersistentStoreOption : @YES,
+        NSSQLitePragmasOption : @{@"journal_mode" : @"DELETE"}
     };
     if (![coordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:archiveStoreURL options:options error:error]) {
         return nil;
     }
     NSManagedObjectContext *context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
-    context.persistentStoreCoordinator = coordinator;  // context retains the coordinator
+    context.persistentStoreCoordinator = coordinator; // context retains the coordinator
     return context;
 }
 
 - (NSInteger)galleryImportConflictCountForBundleDirectory:(NSString *)bundleGalleryDirectory
                                            ownerAccountPK:(nullable NSString *)ownerAccountPK {
-    if (ownerAccountPK.length == 0) return 0;
+    if (ownerAccountPK.length == 0)
+        return 0;
     NSManagedObjectContext *archiveContext = [self archiveContextForBundleDirectory:bundleGalleryDirectory error:nil];
-    if (!archiveContext) return 0;
+    if (!archiveContext)
+        return 0;
 
     NSFetchRequest *archiveRequest = [NSFetchRequest fetchRequestWithEntityName:kSPKGalleryEntityName];
     archiveRequest.resultType = NSDictionaryResultType;
-    archiveRequest.propertiesToFetch = @[@"identifier"];
+    archiveRequest.propertiesToFetch = @[ @"identifier" ];
     NSMutableSet<NSString *> *archiveIDs = [NSMutableSet set];
     for (NSDictionary *row in [archiveContext executeFetchRequest:archiveRequest error:nil]) {
         NSString *identifier = row[@"identifier"];
-        if ([identifier isKindOfClass:[NSString class]]) [archiveIDs addObject:identifier];
+        if ([identifier isKindOfClass:[NSString class]])
+            [archiveIDs addObject:identifier];
     }
 
     NSFetchRequest *mainRequest = [NSFetchRequest fetchRequestWithEntityName:kSPKGalleryEntityName];
     mainRequest.resultType = NSDictionaryResultType;
-    mainRequest.propertiesToFetch = @[@"identifier", @"ownerAccountPK"];
+    mainRequest.propertiesToFetch = @[ @"identifier", @"ownerAccountPK" ];
     NSInteger conflicts = 0;
     for (NSDictionary *row in [self.viewContext executeFetchRequest:mainRequest error:nil]) {
         NSString *identifier = row[@"identifier"];
-        if (![identifier isKindOfClass:[NSString class]] || ![archiveIDs containsObject:identifier]) continue;
+        if (![identifier isKindOfClass:[NSString class]] || ![archiveIDs containsObject:identifier])
+            continue;
         NSString *owner = row[@"ownerAccountPK"];
-        if (![owner isKindOfClass:[NSString class]]) owner = nil;
-        if (!SPKGalleryOwnerEqual(owner, ownerAccountPK)) conflicts++;
+        if (![owner isKindOfClass:[NSString class]])
+            owner = nil;
+        if (!SPKGalleryOwnerEqual(owner, ownerAccountPK))
+            conflicts++;
     }
     return conflicts;
 }
@@ -425,7 +444,7 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
                                     ownerUsername:(nullable NSString *)ownerUsername
                                  conflictStrategy:(SPKGalleryImportConflictStrategy)conflictStrategy
                                   progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
-                                            error:(NSError * _Nullable * _Nullable)error {
+                                            error:(NSError *_Nullable *_Nullable)error {
     NSFileManager *fm = [NSFileManager defaultManager];
     NSArray<NSString *> *attributeNames = [self buildModel].entitiesByName[kSPKGalleryEntityName].attributesByName.allKeys;
 
@@ -433,35 +452,43 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
     // Core Data reads happen on the main queue; everything after is plain data + file I/O.
     __block NSArray<NSDictionary *> *archiveRows = nil;
     __block NSError *readError = nil;
-    NSMutableDictionary<NSString *, NSString *> *existingOwners = [NSMutableDictionary dictionary];  // identifier → ownerPK ("" = unassigned)
+    NSMutableDictionary<NSString *, NSString *> *existingOwners = [NSMutableDictionary dictionary]; // identifier → ownerPK ("" = unassigned)
     SPKGalleryRunOnMain(^{
         NSManagedObjectContext *archiveContext = [self archiveContextForBundleDirectory:bundleGalleryDirectory error:&readError];
-        if (!archiveContext) return;
+        if (!archiveContext)
+            return;
         NSArray<NSManagedObject *> *objs = [archiveContext executeFetchRequest:[NSFetchRequest fetchRequestWithEntityName:kSPKGalleryEntityName] error:&readError];
         NSMutableArray<NSDictionary *> *dicts = [NSMutableArray arrayWithCapacity:objs.count];
         for (NSManagedObject *o in objs) {
             NSMutableDictionary *d = [NSMutableDictionary dictionary];
-            for (NSString *a in attributeNames) { id v = [o valueForKey:a]; if (v) d[a] = v; }
+            for (NSString *a in attributeNames) {
+                id v = [o valueForKey:a];
+                if (v)
+                    d[a] = v;
+            }
             [dicts addObject:d];
         }
         archiveRows = dicts;
 
         NSFetchRequest *mreq = [NSFetchRequest fetchRequestWithEntityName:kSPKGalleryEntityName];
         mreq.resultType = NSDictionaryResultType;
-        mreq.propertiesToFetch = @[@"identifier", @"ownerAccountPK"];
+        mreq.propertiesToFetch = @[ @"identifier", @"ownerAccountPK" ];
         for (NSDictionary *row in [self.viewContext executeFetchRequest:mreq error:nil]) {
             NSString *identifier = row[@"identifier"];
-            if (![identifier isKindOfClass:[NSString class]]) continue;
+            if (![identifier isKindOfClass:[NSString class]])
+                continue;
             NSString *owner = [row[@"ownerAccountPK"] isKindOfClass:[NSString class]] ? row[@"ownerAccountPK"] : @"";
             existingOwners[identifier] = owner;
         }
     });
     if (readError) {
         SPKLog(@"General", @"[Sparkle Gallery] Merge: failed reading archive: %@", readError);
-        if (error) *error = readError;
+        if (error)
+            *error = readError;
         return -1;
     }
-    if (archiveRows.count == 0) return 0;
+    if (archiveRows.count == 0)
+        return 0;
 
     NSString *mediaDir = [SPKGalleryPaths galleryMediaDirectory];
     NSString *thumbDir = [SPKGalleryPaths galleryThumbnailsDirectory];
@@ -469,10 +496,11 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
     NSString *archiveThumbsDir = [bundleGalleryDirectory stringByAppendingPathComponent:@"Thumbnails"];
 
     // Copies a row's media (collision-safe) + thumbnail. Returns the dest relativePath, or nil.
-    NSString *(^copyFiles)(NSDictionary *, NSString *, NSString *) = ^NSString *(NSDictionary *row, NSString *srcId, NSString *targetId) {
+    NSString * (^copyFiles)(NSDictionary *, NSString *, NSString *) = ^NSString *(NSDictionary *row, NSString *srcId, NSString *targetId) {
         NSString *relativePath = row[@"relativePath"];
         NSString *srcMedia = [archiveFilesDir stringByAppendingPathComponent:relativePath];
-        if (![fm fileExistsAtPath:srcMedia]) return nil;
+        if (![fm fileExistsAtPath:srcMedia])
+            return nil;
         NSString *destRelative = relativePath;
         NSString *destMedia = [mediaDir stringByAppendingPathComponent:destRelative];
         if ([fm fileExistsAtPath:destMedia]) {
@@ -486,7 +514,8 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
                 n++;
             } while ([fm fileExistsAtPath:destMedia]);
         }
-        if (![fm copyItemAtPath:srcMedia toPath:destMedia error:nil]) return nil;
+        if (![fm copyItemAtPath:srcMedia toPath:destMedia error:nil])
+            return nil;
         NSString *srcThumb = [archiveThumbsDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", srcId]];
         NSString *destThumb = [thumbDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", targetId]];
         if ([fm fileExistsAtPath:srcThumb] && ![fm fileExistsAtPath:destThumb]) {
@@ -496,7 +525,7 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
     };
 
     // 2. Plan + copy files (no Core Data here — safe to run on a background queue), with progress.
-    NSMutableArray<NSDictionary *> *insertPlans = [NSMutableArray array];  // {row, targetId, destRelative}
+    NSMutableArray<NSDictionary *> *insertPlans = [NSMutableArray array]; // {row, targetId, destRelative}
     NSMutableArray<NSString *> *claimIdentifiers = [NSMutableArray array];
     NSInteger total = archiveRows.count, done = 0;
     for (NSDictionary *row in archiveRows) {
@@ -512,20 +541,22 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
                     } else if (conflict && conflictStrategy == SPKGalleryImportConflictStrategyDuplicate) {
                         NSString *newId = [NSUUID UUID].UUIDString;
                         NSString *destRel = copyFiles(row, identifier, newId);
-                        if (destRel) [insertPlans addObject:@{ @"row": row, @"targetId": newId, @"destRelative": destRel }];
+                        if (destRel)
+                            [insertPlans addObject:@{@"row" : row, @"targetId" : newId, @"destRelative" : destRel}];
                     }
                     // No conflict, or Skip strategy: leave the existing file untouched.
                 } else {
                     NSString *destRel = copyFiles(row, identifier, identifier);
                     if (destRel) {
-                        [insertPlans addObject:@{ @"row": row, @"targetId": identifier, @"destRelative": destRel }];
-                        existingOwners[identifier] = remapOwnerAccountPK.length ? remapOwnerAccountPK : @"";  // guard duplicate ids in the archive
+                        [insertPlans addObject:@{@"row" : row, @"targetId" : identifier, @"destRelative" : destRel}];
+                        existingOwners[identifier] = remapOwnerAccountPK.length ? remapOwnerAccountPK : @""; // guard duplicate ids in the archive
                     }
                 }
             }
         }
         done++;
-        if (progressHandler) progressHandler(done, total);
+        if (progressHandler)
+            progressHandler(done, total);
     }
 
     // 3. Apply to the live store (fast Core Data work on the main queue).
@@ -536,7 +567,11 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
         for (NSDictionary *plan in insertPlans) {
             NSDictionary *row = plan[@"row"];
             NSManagedObject *dst = [NSEntityDescription insertNewObjectForEntityForName:kSPKGalleryEntityName inManagedObjectContext:ctx];
-            for (NSString *attribute in attributeNames) { id v = row[attribute]; if (v) [dst setValue:v forKey:attribute]; }
+            for (NSString *attribute in attributeNames) {
+                id v = row[attribute];
+                if (v)
+                    [dst setValue:v forKey:attribute];
+            }
             [dst setValue:plan[@"targetId"] forKey:@"identifier"];
             [dst setValue:plan[@"destRelative"] forKey:@"relativePath"];
             if (remapOwnerAccountPK.length > 0) {
@@ -559,7 +594,8 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
         }
     });
     if (saveError) {
-        if (error) *error = saveError;
+        if (error)
+            *error = saveError;
         return -1;
     }
 
@@ -570,7 +606,7 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
 - (BOOL)exportGalleryFilesToBundleDirectory:(NSString *)bundleGalleryDirectory
                              ownerAccountPK:(nullable NSString *)ownerAccountPK
                             progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
-                                      error:(NSError * _Nullable * _Nullable)error {
+                                      error:(NSError *_Nullable *_Nullable)error {
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *destFiles = [bundleGalleryDirectory stringByAppendingPathComponent:@"Files"];
     NSString *destThumbs = [bundleGalleryDirectory stringByAppendingPathComponent:@"Thumbnails"];
@@ -584,17 +620,26 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
     __block NSError *fetchError = nil;
     SPKGalleryRunOnMain(^{
         NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:kSPKGalleryEntityName];
-        if (ownerAccountPK.length > 0) request.predicate = [NSPredicate predicateWithFormat:@"ownerAccountPK == %@", ownerAccountPK];
+        if (ownerAccountPK.length > 0)
+            request.predicate = [NSPredicate predicateWithFormat:@"ownerAccountPK == %@", ownerAccountPK];
         NSArray<NSManagedObject *> *objs = [self.viewContext executeFetchRequest:request error:&fetchError];
         NSMutableArray<NSDictionary *> *dicts = [NSMutableArray arrayWithCapacity:objs.count];
         for (NSManagedObject *o in objs) {
             NSMutableDictionary *d = [NSMutableDictionary dictionary];
-            for (NSString *a in attributeNames) { id v = [o valueForKey:a]; if (v) d[a] = v; }
+            for (NSString *a in attributeNames) {
+                id v = [o valueForKey:a];
+                if (v)
+                    d[a] = v;
+            }
             [dicts addObject:d];
         }
         rows = dicts;
     });
-    if (!rows) { if (error) *error = fetchError; return NO; }
+    if (!rows) {
+        if (error)
+            *error = fetchError;
+        return NO;
+    }
 
     // 2. Copy the media + thumbnails (no Core Data — safe on a background queue), with progress.
     NSString *srcFiles = [SPKGalleryPaths galleryMediaDirectory];
@@ -618,7 +663,8 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
             }
         }
         done++;
-        if (progressHandler) progressHandler(done, total);
+        if (progressHandler)
+            progressHandler(done, total);
     }
 
     // 3. Build the fresh export store with the exported rows (isolated context; on main).
@@ -627,7 +673,7 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
     SPKGalleryRunOnMain(^{
         NSPersistentStoreCoordinator *destCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self buildModel]];
         NSURL *destStoreURL = [NSURL fileURLWithPath:[bundleGalleryDirectory stringByAppendingPathComponent:kSPKGalleryStoreName]];
-        if (![destCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:destStoreURL options:@{ NSSQLitePragmasOption: @{ @"journal_mode": @"DELETE" } } error:&storeError]) {
+        if (![destCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:destStoreURL options:@{NSSQLitePragmasOption : @{@"journal_mode" : @"DELETE"}} error:&storeError]) {
             ok = NO;
             return;
         }
@@ -635,12 +681,22 @@ static void SPKGalleryRunOnMain(void (^block)(void)) {
         destContext.persistentStoreCoordinator = destCoordinator;
         for (NSDictionary *row in exported) {
             NSManagedObject *dst = [NSEntityDescription insertNewObjectForEntityForName:kSPKGalleryEntityName inManagedObjectContext:destContext];
-            for (NSString *attribute in attributeNames) { id v = row[attribute]; if (v) [dst setValue:v forKey:attribute]; }
+            for (NSString *attribute in attributeNames) {
+                id v = row[attribute];
+                if (v)
+                    [dst setValue:v forKey:attribute];
+            }
         }
-        if (destContext.hasChanges && ![destContext save:&storeError]) ok = NO;
-        for (NSPersistentStore *store in [destCoordinator.persistentStores copy]) [destCoordinator removePersistentStore:store error:nil];
+        if (destContext.hasChanges && ![destContext save:&storeError])
+            ok = NO;
+        for (NSPersistentStore *store in [destCoordinator.persistentStores copy])
+            [destCoordinator removePersistentStore:store error:nil];
     });
-    if (!ok) { if (error) *error = storeError; return NO; }
+    if (!ok) {
+        if (error)
+            *error = storeError;
+        return NO;
+    }
     return YES;
 }
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#import <UIKit/UIKit.h>
 #import "../Shared/ActionButton/SPKActionButtonConfiguration.h"
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

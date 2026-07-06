@@ -16,7 +16,7 @@ typedef NS_ENUM(NSInteger, SPKPhotoEditorAspectMode) {
 /// destination completion instead of the plain image completion.
 @interface SPKPhotoEditorDoneOption : NSObject
 @property (nonatomic, copy) NSString *title;
-@property (nonatomic, copy) NSString *identifier;   // e.g. "photos", "gallery", "share", "clipboard"
+@property (nonatomic, copy) NSString *identifier; // e.g. "photos", "gallery", "share", "clipboard"
 @property (nonatomic, copy, nullable) NSString *iconName;
 + (instancetype)optionWithTitle:(NSString *)title
                      identifier:(NSString *)identifier
@@ -34,8 +34,8 @@ typedef NS_ENUM(NSInteger, SPKPhotoEditorAspectMode) {
 /// a plain confirm that returns just the image (gallery/instants flows).
 @property (nonatomic, copy, nullable) NSArray<SPKPhotoEditorDoneOption *> *doneOptions;
 
-+ (instancetype)lockedSquareConfiguration;   // confirm = "Use"
-+ (instancetype)freeformConfiguration;       // confirm = "Done"
++ (instancetype)lockedSquareConfiguration; // confirm = "Use"
++ (instancetype)freeformConfiguration;     // confirm = "Done"
 @end
 
 /// A self-contained, full-screen photo editor: pan/zoom crop with a selectable

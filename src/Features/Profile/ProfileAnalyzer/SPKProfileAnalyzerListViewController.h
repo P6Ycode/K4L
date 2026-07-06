@@ -1,14 +1,14 @@
-#import <UIKit/UIKit.h>
 #import "SPKProfileAnalyzerModels.h"
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, SPKPAListKind) {
-    SPKPAListKindPlain,           // no action button (e.g. lost followers)
-    SPKPAListKindUnfollow,        // you follow them — show Unfollow
-    SPKPAListKindFollow,          // you don't follow them — show Follow
-    SPKPAListKindProfileUpdate,   // previous → current change rows
-    SPKPAListKindVisited,         // visited-profiles tracker — last-seen subtitle
+    SPKPAListKindPlain,         // no action button (e.g. lost followers)
+    SPKPAListKindUnfollow,      // you follow them — show Unfollow
+    SPKPAListKindFollow,        // you don't follow them — show Follow
+    SPKPAListKindProfileUpdate, // previous → current change rows
+    SPKPAListKindVisited,       // visited-profiles tracker — last-seen subtitle
 };
 
 @interface SPKProfileAnalyzerListViewController : UIViewController

@@ -1,7 +1,7 @@
 #import "SPKNotificationPillView.h"
+#import "../../AssetUtils.h"
 #import "SPKNotificationCenter.h"
 #import <math.h>
-#import "../../AssetUtils.h"
 
 @interface SPKUtils : NSObject
 + (UIColor *)SPKColor_InstagramBlue;
@@ -14,7 +14,8 @@
 // back to the material blur when unavailable or the toggle is off.
 static BOOL SPKNotificationPillGlassActive(void) {
     if (@available(iOS 26.0, *)) {
-        if (!NSClassFromString(@"UIGlassEffect")) return NO;
+        if (!NSClassFromString(@"UIGlassEffect"))
+            return NO;
         return [SPKUtils getBoolPref:@"notifs_pill_liquid_glass"];
     }
     return NO;
@@ -27,20 +28,21 @@ static UIVisualEffect *SPKNotificationPillBackgroundEffect(void) {
         // +effect convenience constructor that UIBlurEffect offers).
         if (glassClass && [glassClass instancesRespondToSelector:@selector(init)]) {
             UIVisualEffect *glass = [[glassClass alloc] init];
-            if ([glass isKindOfClass:[UIVisualEffect class]]) return glass;
+            if ([glass isKindOfClass:[UIVisualEffect class]])
+                return glass;
         }
     }
     return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
 }
 
-static CGFloat const kPillCorner     = 28.0;
-static CGFloat const kHorizontalPad  = 16.0;
+static CGFloat const kPillCorner = 28.0;
+static CGFloat const kHorizontalPad = 16.0;
 static CGFloat const kDynamicMinWidth = 200.0;
 static CGFloat const kDynamicMaxWidth = 360.0;
-static CGFloat const kRingLineWidth   = 2.5;
+static CGFloat const kRingLineWidth = 2.5;
 static CGFloat const kDynamicPillHeight = 52.0;
 static CGFloat const kDynamicTallHeight = 64.0;
-static CGFloat const kIconBadgeSize  = 28.0;
+static CGFloat const kIconBadgeSize = 28.0;
 static CGFloat const kEntranceTranslateY = -24.0;
 static CGFloat const kEntranceScale = 0.88;
 
@@ -63,22 +65,22 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
 @interface SPKNotificationPillView () <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UIVisualEffectView *blurView;
-@property (nonatomic, strong) UIView             *chromeOverlayView;
-@property (nonatomic, strong) CAGradientLayer    *chromeGradientLayer;
-@property (nonatomic, strong) UILabel            *titleLabel;
-@property (nonatomic, strong) UILabel            *subtitleLabel;
-@property (nonatomic, strong) UIStackView        *textStack;
-@property (nonatomic, strong) UIProgressView       *progressView;
-@property (nonatomic, strong) UIView               *progressRowContainer;
-@property (nonatomic, strong) UIImageView        *iconView;
-@property (nonatomic, strong) UIView             *iconBadgeView;
-@property (nonatomic, strong) CAGradientLayer    *iconBadgeGradientLayer;
-@property (nonatomic, strong) UIButton           *closeButton;
-@property (nonatomic, assign) float              currentProgress;
-@property (nonatomic, assign) int64_t            currentBytesWritten;
-@property (nonatomic, assign) int64_t            currentBytesExpected;
-@property (nonatomic, assign) BOOL               isCompleted;
-@property (nonatomic, assign) BOOL               usesAutomaticProgressSubtitle;
+@property (nonatomic, strong) UIView *chromeOverlayView;
+@property (nonatomic, strong) CAGradientLayer *chromeGradientLayer;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UIStackView *textStack;
+@property (nonatomic, strong) UIProgressView *progressView;
+@property (nonatomic, strong) UIView *progressRowContainer;
+@property (nonatomic, strong) UIImageView *iconView;
+@property (nonatomic, strong) UIView *iconBadgeView;
+@property (nonatomic, strong) CAGradientLayer *iconBadgeGradientLayer;
+@property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, assign) float currentProgress;
+@property (nonatomic, assign) int64_t currentBytesWritten;
+@property (nonatomic, assign) int64_t currentBytesExpected;
+@property (nonatomic, assign) BOOL isCompleted;
+@property (nonatomic, assign) BOOL usesAutomaticProgressSubtitle;
 @property (nonatomic, assign) SPKNotificationPillMode mode;
 @property (nonatomic, assign) SPKPillVisualTone tone;
 @property (nonatomic, strong) NSLayoutConstraint *textCenterYConstraint;
@@ -138,9 +140,9 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 }
 
 + (instancetype)toastPillWithTitle:(NSString *)title
-                           subtitle:(NSString *)subtitle
-                               icon:(UIImage *)icon
-                               tone:(SPKNotificationTone)tone {
+                          subtitle:(NSString *)subtitle
+                              icon:(UIImage *)icon
+                              tone:(SPKNotificationTone)tone {
     SPKNotificationPillView *pill = [self detachedPill];
     [pill configureForToastModeWithTitle:title subtitle:subtitle icon:icon tone:tone];
     return pill;
@@ -154,7 +156,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
 - (instancetype)init {
     self = [super initWithFrame:CGRectZero];
-    if (!self) return nil;
+    if (!self)
+        return nil;
 
     self.layer.cornerRadius = kPillCorner;
     self.clipsToBounds = YES;
@@ -213,7 +216,7 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     UIImage *arrowImage = [SPKAssetUtils instagramIconNamed:@"download"
                                                   pointSize:16.0
-                                             renderingMode:UIImageRenderingModeAlwaysTemplate];
+                                              renderingMode:UIImageRenderingModeAlwaysTemplate];
     _iconView = [[UIImageView alloc] initWithImage:arrowImage];
     _iconView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.96];
     _iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -221,7 +224,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     [_iconBadgeView addSubview:_iconView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_iconBadgeView.leadingAnchor constraintEqualToAnchor:contentHost.leadingAnchor constant:kHorizontalPad],
+        [_iconBadgeView.leadingAnchor constraintEqualToAnchor:contentHost.leadingAnchor
+                                                     constant:kHorizontalPad],
         [_iconBadgeView.centerYAnchor constraintEqualToAnchor:contentHost.centerYAnchor],
         [_iconBadgeView.widthAnchor constraintEqualToConstant:kIconBadgeSize],
         [_iconBadgeView.heightAnchor constraintEqualToConstant:kIconBadgeSize],
@@ -242,7 +246,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     [contentHost addSubview:_closeButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_closeButton.trailingAnchor constraintEqualToAnchor:contentHost.trailingAnchor constant:-13.0],
+        [_closeButton.trailingAnchor constraintEqualToAnchor:contentHost.trailingAnchor
+                                                    constant:-13.0],
         [_closeButton.centerYAnchor constraintEqualToAnchor:contentHost.centerYAnchor],
         [_closeButton.widthAnchor constraintEqualToConstant:24.0],
         [_closeButton.heightAnchor constraintEqualToConstant:24.0],
@@ -286,7 +291,7 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
         _progressRowHeightConstraint,
     ]];
 
-    _textStack = [[UIStackView alloc] initWithArrangedSubviews:@[_titleLabel, _subtitleLabel, _progressRowContainer]];
+    _textStack = [[UIStackView alloc] initWithArrangedSubviews:@[ _titleLabel, _subtitleLabel, _progressRowContainer ]];
     _textStack.axis = UILayoutConstraintAxisVertical;
     _textStack.spacing = 2.0;
     _textStack.alignment = UIStackViewAlignmentFill;
@@ -299,7 +304,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     _textTrailingWithoutButtonConstraint = [_textStack.trailingAnchor constraintLessThanOrEqualToAnchor:contentHost.trailingAnchor constant:-kHorizontalPad];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_textStack.leadingAnchor constraintEqualToAnchor:_iconBadgeView.trailingAnchor constant:10.0],
+        [_textStack.leadingAnchor constraintEqualToAnchor:_iconBadgeView.trailingAnchor
+                                                 constant:10.0],
         _textCenterYConstraint,
         _textTrailingWithButtonConstraint
     ]];
@@ -317,19 +323,19 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     // --- Dynamic style: progress ring on icon badge ---
     _progressRingTrackLayer = [CAShapeLayer layer];
-    _progressRingTrackLayer.fillColor   = [UIColor clearColor].CGColor;
+    _progressRingTrackLayer.fillColor = [UIColor clearColor].CGColor;
     _progressRingTrackLayer.strokeColor = [[UIColor whiteColor] colorWithAlphaComponent:0.15].CGColor;
-    _progressRingTrackLayer.lineWidth   = kRingLineWidth;
+    _progressRingTrackLayer.lineWidth = kRingLineWidth;
     _progressRingTrackLayer.hidden = YES;
     [_iconBadgeView.layer addSublayer:_progressRingTrackLayer];
 
     _progressRingLayer = [CAShapeLayer layer];
-    _progressRingLayer.fillColor     = [UIColor clearColor].CGColor;
-    _progressRingLayer.strokeColor   = [UIColor whiteColor].CGColor;
-    _progressRingLayer.lineWidth     = kRingLineWidth;
-    _progressRingLayer.lineCap       = kCALineCapRound;
-    _progressRingLayer.strokeStart   = 0.0;
-    _progressRingLayer.strokeEnd     = 0.0;
+    _progressRingLayer.fillColor = [UIColor clearColor].CGColor;
+    _progressRingLayer.strokeColor = [UIColor whiteColor].CGColor;
+    _progressRingLayer.lineWidth = kRingLineWidth;
+    _progressRingLayer.lineCap = kCALineCapRound;
+    _progressRingLayer.strokeStart = 0.0;
+    _progressRingLayer.strokeEnd = 0.0;
     _progressRingLayer.hidden = YES;
     [_iconBadgeView.layer addSublayer:_progressRingLayer];
 
@@ -359,70 +365,117 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     self.blurView.layer.cornerRadius = effectiveCorner;
     self.chromeOverlayView.layer.cornerRadius = effectiveCorner;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                                      cornerRadius:effectiveCorner].CGPath;
+                                                       cornerRadius:effectiveCorner]
+                                .CGPath;
 }
 
 - (NSArray<UIColor *> *)chromeColorsForTone:(SPKPillVisualTone)tone {
     (void)tone;
     return @[
-        [UIColor colorWithWhite:0.0 alpha:0.0],
-        [UIColor colorWithWhite:0.0 alpha:0.0]
+        [UIColor colorWithWhite:0.0
+                          alpha:0.0],
+        [UIColor colorWithWhite:0.0
+                          alpha:0.0]
     ];
 }
 
 - (NSArray<UIColor *> *)badgeColorsForTone:(SPKPillVisualTone)tone {
     switch (tone) {
-        case SPKPillVisualToneSuccess:
-            return @[
-                [UIColor colorWithRed:0.22 green:0.80 blue:0.55 alpha:0.30],
-                [UIColor colorWithRed:0.16 green:0.60 blue:0.42 alpha:0.25]
-            ];
-        case SPKPillVisualToneError:
-            return @[
-                [UIColor colorWithRed:0.90 green:0.30 blue:0.38 alpha:0.30],
-                [UIColor colorWithRed:0.70 green:0.18 blue:0.25 alpha:0.25]
-            ];
-        case SPKPillVisualToneInfo:
-        default:
-            return @[
-                [UIColor colorWithRed:0.30 green:0.65 blue:0.95 alpha:0.28],
-                [UIColor colorWithRed:0.20 green:0.50 blue:0.80 alpha:0.22]
-            ];
+    case SPKPillVisualToneSuccess:
+        return @[
+            [UIColor colorWithRed:0.22
+                            green:0.80
+                             blue:0.55
+                            alpha:0.30],
+            [UIColor colorWithRed:0.16
+                            green:0.60
+                             blue:0.42
+                            alpha:0.25]
+        ];
+    case SPKPillVisualToneError:
+        return @[
+            [UIColor colorWithRed:0.90
+                            green:0.30
+                             blue:0.38
+                            alpha:0.30],
+            [UIColor colorWithRed:0.70
+                            green:0.18
+                             blue:0.25
+                            alpha:0.25]
+        ];
+    case SPKPillVisualToneInfo:
+    default:
+        return @[
+            [UIColor colorWithRed:0.30
+                            green:0.65
+                             blue:0.95
+                            alpha:0.28],
+            [UIColor colorWithRed:0.20
+                            green:0.50
+                             blue:0.80
+                            alpha:0.22]
+        ];
     }
 }
 
 - (NSArray<UIColor *> *)progressColorsForTone:(SPKPillVisualTone)tone {
     switch (tone) {
-        case SPKPillVisualToneSuccess:
-            return @[
-                [UIColor colorWithRed:0.66 green:1.00 blue:0.84 alpha:1.0],
-                [UIColor colorWithRed:0.29 green:0.83 blue:0.55 alpha:1.0]
-            ];
-        case SPKPillVisualToneError:
-            return @[
-                [UIColor colorWithRed:1.00 green:0.67 blue:0.71 alpha:1.0],
-                [UIColor colorWithRed:0.95 green:0.34 blue:0.44 alpha:1.0]
-            ];
-        case SPKPillVisualToneInfo:
-            return @[
-                [UIColor colorWithRed:0.50 green:0.90 blue:1.00 alpha:1.0],
-                [UIColor colorWithRed:0.15 green:0.70 blue:0.95 alpha:1.0]
-            ];
-        default:
-            return @[
-                [UIColor colorWithRed:0.66 green:1.00 blue:0.84 alpha:1.0],
-                [UIColor colorWithRed:0.29 green:0.83 blue:0.55 alpha:1.0]
-            ];
+    case SPKPillVisualToneSuccess:
+        return @[
+            [UIColor colorWithRed:0.66
+                            green:1.00
+                             blue:0.84
+                            alpha:1.0],
+            [UIColor colorWithRed:0.29
+                            green:0.83
+                             blue:0.55
+                            alpha:1.0]
+        ];
+    case SPKPillVisualToneError:
+        return @[
+            [UIColor colorWithRed:1.00
+                            green:0.67
+                             blue:0.71
+                            alpha:1.0],
+            [UIColor colorWithRed:0.95
+                            green:0.34
+                             blue:0.44
+                            alpha:1.0]
+        ];
+    case SPKPillVisualToneInfo:
+        return @[
+            [UIColor colorWithRed:0.50
+                            green:0.90
+                             blue:1.00
+                            alpha:1.0],
+            [UIColor colorWithRed:0.15
+                            green:0.70
+                             blue:0.95
+                            alpha:1.0]
+        ];
+    default:
+        return @[
+            [UIColor colorWithRed:0.66
+                            green:1.00
+                             blue:0.84
+                            alpha:1.0],
+            [UIColor colorWithRed:0.29
+                            green:0.83
+                             blue:0.55
+                            alpha:1.0]
+        ];
     }
 }
 
 - (UIColor *)titleColorForCurrentStyle {
-    if (SPKNotificationPillGlassActive()) return [UIColor labelColor];
+    if (SPKNotificationPillGlassActive())
+        return [UIColor labelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.98];
 }
 
 - (UIColor *)subtitleColorForCurrentStyle {
-    if (SPKNotificationPillGlassActive()) return [UIColor secondaryLabelColor];
+    if (SPKNotificationPillGlassActive())
+        return [UIColor secondaryLabelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.82];
 }
 
@@ -460,30 +513,32 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
 - (UIImage *)defaultIconForTone:(SPKPillVisualTone)tone {
     switch (tone) {
-        case SPKPillVisualToneSuccess:
-            return [SPKAssetUtils instagramIconNamed:@"circle_check_filled"
-                                           pointSize:16.0
-                                      renderingMode:UIImageRenderingModeAlwaysTemplate];
-        case SPKPillVisualToneError:
-            return [SPKAssetUtils instagramIconNamed:@"error_filled"
-                                           pointSize:16.0
-                                      renderingMode:UIImageRenderingModeAlwaysTemplate];
-        case SPKPillVisualToneInfo:
-        default:
-            return [SPKAssetUtils instagramIconNamed:@"info_filled"
-                                           pointSize:16.0
-                                      renderingMode:UIImageRenderingModeAlwaysTemplate];
+    case SPKPillVisualToneSuccess:
+        return [SPKAssetUtils instagramIconNamed:@"circle_check_filled"
+                                       pointSize:16.0
+                                   renderingMode:UIImageRenderingModeAlwaysTemplate];
+    case SPKPillVisualToneError:
+        return [SPKAssetUtils instagramIconNamed:@"error_filled"
+                                       pointSize:16.0
+                                   renderingMode:UIImageRenderingModeAlwaysTemplate];
+    case SPKPillVisualToneInfo:
+    default:
+        return [SPKAssetUtils instagramIconNamed:@"info_filled"
+                                       pointSize:16.0
+                                   renderingMode:UIImageRenderingModeAlwaysTemplate];
     }
 }
 
 - (UIColor *)iconTintForTone:(SPKPillVisualTone)tone {
     (void)tone;
-    if (SPKNotificationPillGlassActive()) return [UIColor labelColor];
+    if (SPKNotificationPillGlassActive())
+        return [UIColor labelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.95];
 }
 
 - (UIColor *)cancelButtonTintColor {
-    if (SPKNotificationPillGlassActive()) return [UIColor labelColor];
+    if (SPKNotificationPillGlassActive())
+        return [UIColor labelColor];
     return [UIColor colorWithWhite:1.0 alpha:0.83];
 }
 
@@ -520,7 +575,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
         self.clipsToBounds = NO;
 
         CGFloat effectiveCorner = CGRectGetHeight(self.bounds) / 2.0;
-        if (effectiveCorner < 1.0) effectiveCorner = kPillCorner;
+        if (effectiveCorner < 1.0)
+            effectiveCorner = kPillCorner;
         self.layer.cornerRadius = effectiveCorner;
         self.blurView.layer.cornerRadius = effectiveCorner;
         self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -537,13 +593,13 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
         self.layer.shadowRadius = glowEnabled ? 20.0 : 0.0;
         self.layer.shadowOffset = CGSizeMake(0.0, glowEnabled ? 4.0 : 0.0);
         self.layer.shadowPath = glowEnabled
-            ? [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:effectiveCorner].CGPath
-            : nil;
+                                    ? [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:effectiveCorner].CGPath
+                                    : nil;
 
         NSArray<UIColor *> *progressColors = [self progressColorsForTone:self.tone];
         self.progressRingLayer.strokeColor = (progressColors.count > 0)
-            ? progressColors[0].CGColor
-            : [UIColor whiteColor].CGColor;
+                                                 ? progressColors[0].CGColor
+                                                 : [UIColor whiteColor].CGColor;
 
         self.panGesture.enabled = YES;
     };
@@ -553,9 +609,13 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
         return;
     }
 
-    [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        applyColors();
-    } completion:nil];
+    [UIView animateWithDuration:0.25
+                          delay:0
+                        options:UIViewAnimationOptionCurveEaseInOut
+                     animations:^{
+                         applyColors();
+                     }
+                     completion:nil];
 }
 
 - (void)applyTone:(SPKPillVisualTone)tone animated:(BOOL)animated {
@@ -577,7 +637,7 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 - (void)spk_applyProgressModeInfoIcon {
     self.iconView.image = [SPKAssetUtils instagramIconNamed:@"info_filled"
                                                   pointSize:16.0
-                                             renderingMode:UIImageRenderingModeAlwaysTemplate];
+                                              renderingMode:UIImageRenderingModeAlwaysTemplate];
     self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneInfo];
 }
 
@@ -600,14 +660,22 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 }
 
 - (void)animateIconPulse {
-    [UIView animateKeyframesWithDuration:0.32 delay:0 options:UIViewKeyframeAnimationOptionCalculationModeCubic animations:^{
-        [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.55 animations:^{
-            self.iconBadgeView.transform = CGAffineTransformMakeScale(1.08, 1.08);
-        }];
-        [UIView addKeyframeWithRelativeStartTime:0.55 relativeDuration:0.45 animations:^{
-            self.iconBadgeView.transform = CGAffineTransformIdentity;
-        }];
-    } completion:nil];
+    [UIView animateKeyframesWithDuration:0.32
+                                   delay:0
+                                 options:UIViewKeyframeAnimationOptionCalculationModeCubic
+                              animations:^{
+                                  [UIView addKeyframeWithRelativeStartTime:0.0
+                                                          relativeDuration:0.55
+                                                                animations:^{
+                                                                    self.iconBadgeView.transform = CGAffineTransformMakeScale(1.08, 1.08);
+                                                                }];
+                                  [UIView addKeyframeWithRelativeStartTime:0.55
+                                                          relativeDuration:0.45
+                                                                animations:^{
+                                                                    self.iconBadgeView.transform = CGAffineTransformIdentity;
+                                                                }];
+                              }
+                              completion:nil];
 }
 
 - (void)updateToastWidthForTitle:(NSString *)title subtitle:(NSString *)subtitle {
@@ -647,13 +715,13 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
 - (SPKPillVisualTone)visualToneFromPublicTone:(SPKNotificationTone)tone {
     switch (tone) {
-        case SPKNotificationToneError:
-            return SPKPillVisualToneError;
-        case SPKNotificationToneSuccess:
-            return SPKPillVisualToneSuccess;
-        case SPKNotificationToneInfo:
-        default:
-            return SPKPillVisualToneInfo;
+    case SPKNotificationToneError:
+        return SPKPillVisualToneError;
+    case SPKNotificationToneSuccess:
+        return SPKPillVisualToneSuccess;
+    case SPKNotificationToneInfo:
+    default:
+        return SPKPillVisualToneInfo;
     }
 }
 
@@ -679,22 +747,26 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     SPKPillVisualTone visualTone = [self visualToneFromPublicTone:tone];
     UIImage *resolvedIcon = (visualTone == SPKPillVisualToneInfo)
-        ? (icon ?: [self defaultIconForTone:visualTone])
-        : [self defaultIconForTone:visualTone];
+                                ? (icon ?: [self defaultIconForTone:visualTone])
+                                : [self defaultIconForTone:visualTone];
     self.iconView.image = resolvedIcon;
     self.iconView.tintColor = [self iconTintForTone:visualTone];
     [self applyTone:visualTone animated:YES];
 
-    [UIView animateWithDuration:0.24 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        [self layoutIfNeeded];
-    } completion:nil];
+    [UIView animateWithDuration:0.24
+                          delay:0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+                         [self layoutIfNeeded];
+                     }
+                     completion:nil];
     [self animateIconPulse];
 }
 
 - (void)applyCancelButtonStyle {
     UIImage *closeImage = [SPKAssetUtils instagramIconNamed:@"xmark"
                                                   pointSize:12.0
-                                             renderingMode:UIImageRenderingModeAlwaysTemplate];
+                                              renderingMode:UIImageRenderingModeAlwaysTemplate];
     [self.closeButton setImage:closeImage forState:UIControlStateNormal];
     self.closeButton.tintColor = [self cancelButtonTintColor];
     self.closeButton.backgroundColor = [self cancelButtonBackgroundColor];
@@ -713,7 +785,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 }
 
 - (NSString *)spk_byteCountString:(int64_t)bytes {
-    if (bytes < 0) bytes = 0;
+    if (bytes < 0)
+        bytes = 0;
     NSByteCountFormatter *formatter = [[NSByteCountFormatter alloc] init];
     formatter.countStyle = NSByteCountFormatterCountStyleFile;
     formatter.allowedUnits = NSByteCountFormatterUseKB | NSByteCountFormatterUseMB | NSByteCountFormatterUseGB;
@@ -730,7 +803,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     NSString *percentString = [NSString stringWithFormat:@"%3ld%%", (long)percent];
 
     NSString *style = [SPKUtils getStringPref:kSPKNotificationProgressSubtitleStyleKey];
-    if (style.length == 0) style = @"both";
+    if (style.length == 0)
+        style = @"both";
     if ([style isEqualToString:@"off"]) {
         return nil;
     }
@@ -740,10 +814,10 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     BOOL hasByteTotals = (bytesWritten > 0 && totalBytesExpected > 0);
     NSString *bytesString = hasByteTotals
-        ? [NSString stringWithFormat:@"%@ of %@",
-           [self spk_byteCountString:bytesWritten],
-           [self spk_byteCountString:totalBytesExpected]]
-        : nil;
+                                ? [NSString stringWithFormat:@"%@ of %@",
+                                                             [self spk_byteCountString:bytesWritten],
+                                                             [self spk_byteCountString:totalBytesExpected]]
+                                : nil;
 
     if ([style isEqualToString:@"bytes"]) {
         return bytesString.length > 0 ? bytesString : percentString;
@@ -789,9 +863,9 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 }
 
 - (void)setProgress:(float)progress
-       bytesWritten:(int64_t)bytesWritten
- totalBytesExpected:(int64_t)totalBytesExpected
-           animated:(BOOL)animated {
+          bytesWritten:(int64_t)bytesWritten
+    totalBytesExpected:(int64_t)totalBytesExpected
+              animated:(BOOL)animated {
     if (self.mode != SPKNotificationPillModeProgress) {
         [self configureForProgressMode];
     }
@@ -847,8 +921,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     self.titleLabel.text = title.length > 0 ? title : @"Downloading...";
     self.usesAutomaticProgressSubtitle = (subtitle.length == 0);
     self.subtitleLabel.text = self.usesAutomaticProgressSubtitle
-        ? [self spk_progressSubtitleForProgress:self.currentProgress]
-        : subtitle;
+                                  ? [self spk_progressSubtitleForProgress:self.currentProgress]
+                                  : subtitle;
     self.subtitleLabel.hidden = (subtitle.length == 0);
     if (self.usesAutomaticProgressSubtitle) {
         self.subtitleLabel.hidden = (self.subtitleLabel.text.length == 0);
@@ -863,9 +937,13 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     [self applyTone:SPKPillVisualToneInfo animated:YES];
     [self applyCancelButtonStyle];
 
-    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        [self layoutIfNeeded];
-    } completion:nil];
+    [UIView animateWithDuration:0.2
+                          delay:0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+                         [self layoutIfNeeded];
+                     }
+                     completion:nil];
 }
 
 - (void)showSuccess {
@@ -890,20 +968,24 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     UIImage *checkImage = [self defaultIconForTone:SPKPillVisualToneSuccess];
     [self applyTone:SPKPillVisualToneSuccess animated:YES];
-    [UIView transitionWithView:self duration:0.32 options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent animations:^{
-        self.iconView.image = checkImage;
-        self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneSuccess];
-        self.titleLabel.text = title.length ? title : @"Download complete";
-        self.subtitleLabel.text = subtitle;
-        self.subtitleLabel.hidden = (subtitle.length == 0);
-        [self updateToastWidthForTitle:self.titleLabel.text subtitle:subtitle];
-        [self setCloseButtonVisible:NO];
-        [self setProgressVisible:NO];
-        self.heightConstraint.constant = self.subtitleLabel.hidden
-            ? kDynamicPillHeight
-            : kDynamicTallHeight;
-        [self layoutIfNeeded];
-    } completion:nil];
+    [UIView transitionWithView:self
+                      duration:0.32
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                    animations:^{
+                        self.iconView.image = checkImage;
+                        self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneSuccess];
+                        self.titleLabel.text = title.length ? title : @"Download complete";
+                        self.subtitleLabel.text = subtitle;
+                        self.subtitleLabel.hidden = (subtitle.length == 0);
+                        [self updateToastWidthForTitle:self.titleLabel.text subtitle:subtitle];
+                        [self setCloseButtonVisible:NO];
+                        [self setProgressVisible:NO];
+                        self.heightConstraint.constant = self.subtitleLabel.hidden
+                                                             ? kDynamicPillHeight
+                                                             : kDynamicTallHeight;
+                        [self layoutIfNeeded];
+                    }
+                    completion:nil];
     [self animateIconPulse];
 }
 
@@ -935,20 +1017,24 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     UIImage *errorImage = [self defaultIconForTone:SPKPillVisualToneError];
     [self applyTone:SPKPillVisualToneError animated:YES];
-    [UIView transitionWithView:self duration:0.32 options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent animations:^{
-        self.iconView.image = errorImage;
-        self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneError];
-        self.titleLabel.text = title.length ? title : @"Download failed";
-        self.subtitleLabel.text = resolvedSubtitle;
-        self.subtitleLabel.hidden = (resolvedSubtitle.length == 0);
-        [self updateToastWidthForTitle:self.titleLabel.text subtitle:resolvedSubtitle];
-        [self setCloseButtonVisible:YES];
-        [self setProgressVisible:NO];
-        self.heightConstraint.constant = self.subtitleLabel.hidden
-            ? kDynamicPillHeight
-            : kDynamicTallHeight;
-        [self layoutIfNeeded];
-    } completion:nil];
+    [UIView transitionWithView:self
+                      duration:0.32
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                    animations:^{
+                        self.iconView.image = errorImage;
+                        self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneError];
+                        self.titleLabel.text = title.length ? title : @"Download failed";
+                        self.subtitleLabel.text = resolvedSubtitle;
+                        self.subtitleLabel.hidden = (resolvedSubtitle.length == 0);
+                        [self updateToastWidthForTitle:self.titleLabel.text subtitle:resolvedSubtitle];
+                        [self setCloseButtonVisible:YES];
+                        [self setProgressVisible:NO];
+                        self.heightConstraint.constant = self.subtitleLabel.hidden
+                                                             ? kDynamicPillHeight
+                                                             : kDynamicTallHeight;
+                        [self layoutIfNeeded];
+                    }
+                    completion:nil];
     [self animateIconPulse];
 }
 
@@ -970,20 +1056,24 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     UIImage *infoImage = icon ?: [self defaultIconForTone:SPKPillVisualToneInfo];
     [self applyTone:SPKPillVisualToneInfo animated:YES];
-    [UIView transitionWithView:self duration:0.32 options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent animations:^{
-        self.iconView.image = infoImage;
-        self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneInfo];
-        self.titleLabel.text = title.length ? title : @"Info";
-        self.subtitleLabel.text = subtitle;
-        self.subtitleLabel.hidden = (subtitle.length == 0);
-        [self updateToastWidthForTitle:self.titleLabel.text subtitle:subtitle];
-        [self setCloseButtonVisible:NO];
-        [self setProgressVisible:NO];
-        self.heightConstraint.constant = self.subtitleLabel.hidden
-            ? kDynamicPillHeight
-            : kDynamicTallHeight;
-        [self layoutIfNeeded];
-    } completion:nil];
+    [UIView transitionWithView:self
+                      duration:0.32
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                    animations:^{
+                        self.iconView.image = infoImage;
+                        self.iconView.tintColor = [self iconTintForTone:SPKPillVisualToneInfo];
+                        self.titleLabel.text = title.length ? title : @"Info";
+                        self.subtitleLabel.text = subtitle;
+                        self.subtitleLabel.hidden = (subtitle.length == 0);
+                        [self updateToastWidthForTitle:self.titleLabel.text subtitle:subtitle];
+                        [self setCloseButtonVisible:NO];
+                        [self setProgressVisible:NO];
+                        self.heightConstraint.constant = self.subtitleLabel.hidden
+                                                             ? kDynamicPillHeight
+                                                             : kDynamicTallHeight;
+                        [self layoutIfNeeded];
+                    }
+                    completion:nil];
     [self animateIconPulse];
 }
 
@@ -991,9 +1081,10 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     [self dismissWithCompletion:nil];
 }
 
-- (void)dismissWithCompletion:(void(^)(void))completion {
+- (void)dismissWithCompletion:(void (^)(void))completion {
     if (!self.superview) {
-        if (completion) completion();
+        if (completion)
+            completion();
         return;
     }
 
@@ -1005,7 +1096,7 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
     self.iconBadgeView.transform = CGAffineTransformIdentity;
     self.closeButton.transform = CGAffineTransformIdentity;
-    
+
     BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSPKNotificationPillPositionKey] isEqualToString:@"bottom"];
     if (isBottom) {
         self.topConstraint.constant = self.heightConstraint.constant + 10.0;
@@ -1013,20 +1104,25 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
         self.topConstraint.constant = -(self.heightConstraint.constant + 10.0);
     }
     CGAffineTransform exitTransform = isBottom ? CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0), CGAffineTransformMakeScale(0.88, 0.88)) : SPKPillEntranceTransform();
-    
-    [UIView animateWithDuration:0.28 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
-        [self.superview layoutIfNeeded];
-        self.alpha = 0;
-        self.transform = exitTransform;
-        self.iconBadgeView.transform = CGAffineTransformMakeScale(0.78, 0.78);
-        self.closeButton.transform = CGAffineTransformMakeScale(0.84, 0.84);
-    } completion:^(BOOL finished) {
-        [self removeFromSuperview];
-        if (self.onDidDismiss) {
-            self.onDidDismiss();
+
+    [UIView animateWithDuration:0.28
+        delay:0
+        options:UIViewAnimationOptionCurveEaseIn
+        animations:^{
+            [self.superview layoutIfNeeded];
+            self.alpha = 0;
+            self.transform = exitTransform;
+            self.iconBadgeView.transform = CGAffineTransformMakeScale(0.78, 0.78);
+            self.closeButton.transform = CGAffineTransformMakeScale(0.84, 0.84);
         }
-        if (completion) completion();
-    }];
+        completion:^(BOOL finished) {
+            [self removeFromSuperview];
+            if (self.onDidDismiss) {
+                self.onDidDismiss();
+            }
+            if (completion)
+                completion();
+        }];
 }
 
 #pragma mark - Private
@@ -1044,7 +1140,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     if (self.mode == SPKNotificationPillModeToast) {
         void (^onCompletedTap)(void) = [self.onTapWhenCompleted copy];
         [self dismissWithCompletion:^{
-            if (onCompletedTap) onCompletedTap();
+            if (onCompletedTap)
+                onCompletedTap();
         }];
         return;
     }
@@ -1057,7 +1154,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     if (self.isErrorState && self.onTapWhenCompleted) {
         void (^onCompletedTap)(void) = [self.onTapWhenCompleted copy];
         [self dismissWithCompletion:^{
-            if (onCompletedTap) onCompletedTap();
+            if (onCompletedTap)
+                onCompletedTap();
         }];
         return;
     }
@@ -1102,7 +1200,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
 - (void)spk_updateRingPath {
     CGRect bounds = self.iconBadgeView.bounds;
-    if (CGRectIsEmpty(bounds)) return;
+    if (CGRectIsEmpty(bounds))
+        return;
 
     CGFloat inset = kRingLineWidth / 2.0 + 0.5;
     CGRect ringRect = CGRectInset(bounds, inset, inset);
@@ -1123,18 +1222,19 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
 
 - (UIColor *)spk_glowColorForTone:(SPKPillVisualTone)tone {
     switch (tone) {
-        case SPKPillVisualToneSuccess:
-            return [UIColor colorWithRed:0.20 green:0.85 blue:0.55 alpha:1.0];
-        case SPKPillVisualToneError:
-            return [UIColor colorWithRed:0.95 green:0.30 blue:0.40 alpha:1.0];
-        case SPKPillVisualToneInfo:
-        default:
-            return [UIColor colorWithRed:0.30 green:0.65 blue:0.98 alpha:1.0];
+    case SPKPillVisualToneSuccess:
+        return [UIColor colorWithRed:0.20 green:0.85 blue:0.55 alpha:1.0];
+    case SPKPillVisualToneError:
+        return [UIColor colorWithRed:0.95 green:0.30 blue:0.40 alpha:1.0];
+    case SPKPillVisualToneInfo:
+    default:
+        return [UIColor colorWithRed:0.30 green:0.65 blue:0.98 alpha:1.0];
     }
 }
 
 - (void)spk_updateDynamicWidthForTitle:(NSString *)title subtitle:(NSString *)subtitle hasButton:(BOOL)hasButton {
-    if (!self.widthConstraint) return;
+    if (!self.widthConstraint)
+        return;
 
     UIFont *titleFont = self.titleLabel.font ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
     UIFont *subtitleFont = self.subtitleLabel.font ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
@@ -1142,17 +1242,19 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     CGFloat titleWidth = 0.0;
     if (title.length > 0) {
         titleWidth = ceil([title boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, titleFont.lineHeight)
-                                             options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                          attributes:@{NSFontAttributeName: titleFont}
-                                             context:nil].size.width);
+                                              options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                           attributes:@{NSFontAttributeName : titleFont}
+                                              context:nil]
+                              .size.width);
     }
 
     CGFloat subtitleWidth = 0.0;
     if (subtitle.length > 0) {
         subtitleWidth = ceil([subtitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, subtitleFont.lineHeight)
-                                                   options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                attributes:@{NSFontAttributeName: subtitleFont}
-                                                   context:nil].size.width);
+                                                    options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                                 attributes:@{NSFontAttributeName : subtitleFont}
+                                                    context:nil]
+                                 .size.width);
     }
 
     CGFloat textWidth = MAX(titleWidth, subtitleWidth);
@@ -1170,7 +1272,8 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     CGFloat newWidth = targetWidth;
     CGFloat currentWidth = self.widthConstraint.constant;
 
-    if (fabs(newWidth - currentWidth) < 1.0) return;
+    if (fabs(newWidth - currentWidth) < 1.0)
+        return;
 
     self.widthConstraint.constant = newWidth;
 
@@ -1181,8 +1284,9 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
           initialSpringVelocity:0.6
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        [self.superview layoutIfNeeded];
-    } completion:nil];
+                         [self.superview layoutIfNeeded];
+                     }
+                     completion:nil];
 }
 
 - (void)handlePan:(UIPanGestureRecognizer *)pan {
@@ -1190,67 +1294,68 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
     BOOL isBottom = [[NSUserDefaults.standardUserDefaults stringForKey:kSPKNotificationPillPositionKey] isEqualToString:@"bottom"];
 
     switch (pan.state) {
-        case UIGestureRecognizerStateBegan:
-            self.panOriginCenter = self.center;
-            break;
+    case UIGestureRecognizerStateBegan:
+        self.panOriginCenter = self.center;
+        break;
 
-        case UIGestureRecognizerStateChanged: {
-            CGFloat yDelta = translation.y;
-            if (isBottom) {
-                // Bottom position: dismiss is down (positive values), rubberband up (negative values)
-                if (yDelta < 0) {
-                    yDelta = yDelta * 0.25;
-                }
-            } else {
-                // Top position: dismiss is up (negative values), rubberband down (positive values)
-                if (yDelta > 0) {
-                    yDelta = yDelta * 0.25;
-                }
+    case UIGestureRecognizerStateChanged: {
+        CGFloat yDelta = translation.y;
+        if (isBottom) {
+            // Bottom position: dismiss is down (positive values), rubberband up (negative values)
+            if (yDelta < 0) {
+                yDelta = yDelta * 0.25;
             }
-            self.center = CGPointMake(self.panOriginCenter.x, self.panOriginCenter.y + yDelta);
+        } else {
+            // Top position: dismiss is up (negative values), rubberband down (positive values)
+            if (yDelta > 0) {
+                yDelta = yDelta * 0.25;
+            }
+        }
+        self.center = CGPointMake(self.panOriginCenter.x, self.panOriginCenter.y + yDelta);
 
-            // Fade out as it moves towards the dismissal direction
-            CGFloat progress = 0.0;
-            if (isBottom) {
-                progress = MIN(1.0, MAX(0.0, yDelta / 60.0));
-            } else {
-                progress = MIN(1.0, MAX(0.0, -yDelta / 60.0));
-            }
-            self.alpha = 1.0 - (progress * 0.5);
-            break;
+        // Fade out as it moves towards the dismissal direction
+        CGFloat progress = 0.0;
+        if (isBottom) {
+            progress = MIN(1.0, MAX(0.0, yDelta / 60.0));
+        } else {
+            progress = MIN(1.0, MAX(0.0, -yDelta / 60.0));
+        }
+        self.alpha = 1.0 - (progress * 0.5);
+        break;
+    }
+
+    case UIGestureRecognizerStateEnded:
+    case UIGestureRecognizerStateCancelled: {
+        CGFloat velocity = [pan velocityInView:self.superview].y;
+        CGFloat yOffset = self.center.y - self.panOriginCenter.y;
+
+        BOOL shouldDismiss = NO;
+        if (isBottom) {
+            shouldDismiss = (yOffset > 20.0 || velocity > 300.0);
+        } else {
+            shouldDismiss = (yOffset < -20.0 || velocity < -300.0);
         }
 
-        case UIGestureRecognizerStateEnded:
-        case UIGestureRecognizerStateCancelled: {
-            CGFloat velocity = [pan velocityInView:self.superview].y;
-            CGFloat yOffset = self.center.y - self.panOriginCenter.y;
-
-            BOOL shouldDismiss = NO;
-            if (isBottom) {
-                shouldDismiss = (yOffset > 20.0 || velocity > 300.0);
-            } else {
-                shouldDismiss = (yOffset < -20.0 || velocity < -300.0);
-            }
-
-            if (shouldDismiss) {
-                [self dismiss];
-            } else {
-                // Snap back with spring
-                [UIView animateWithDuration:0.4
-                                      delay:0
-                     usingSpringWithDamping:0.7
-                      initialSpringVelocity:0.5
-                                    options:UIViewAnimationOptionCurveEaseOut
-                                 animations:^{
-                    self.center = self.panOriginCenter;
-                    self.alpha = 1.0;
-                } completion:nil];
-            }
-            break;
+        if (shouldDismiss) {
+            [self dismiss];
+        } else {
+            // Snap back with spring
+            [UIView animateWithDuration:0.4
+                                  delay:0
+                 usingSpringWithDamping:0.7
+                  initialSpringVelocity:0.5
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                                 self.center = self.panOriginCenter;
+                                 self.alpha = 1.0;
+                             }
+                             completion:nil];
         }
+        break;
+    }
 
-        default:
-            break;
+    default:
+        break;
     }
 }
 
@@ -1263,8 +1368,9 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
                           delay:0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        self.transform = CGAffineTransformMakeScale(0.96, 0.96);
-    } completion:nil];
+                         self.transform = CGAffineTransformMakeScale(0.96, 0.96);
+                     }
+                     completion:nil];
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -1276,8 +1382,9 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
           initialSpringVelocity:0.8
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        self.transform = CGAffineTransformIdentity;
-    } completion:nil];
+                         self.transform = CGAffineTransformIdentity;
+                     }
+                     completion:nil];
 }
 
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -1289,8 +1396,9 @@ typedef NS_ENUM(NSUInteger, SPKPillVisualTone) {
           initialSpringVelocity:0.8
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        self.transform = CGAffineTransformIdentity;
-    } completion:nil];
+                         self.transform = CGAffineTransformIdentity;
+                     }
+                     completion:nil];
 }
 
 @end

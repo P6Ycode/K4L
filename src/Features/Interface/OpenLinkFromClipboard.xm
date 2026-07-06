@@ -4,10 +4,12 @@
 #import "../../Utils.h"
 
 static NSURL *SPKNormalizedInstagramClipboardURL(NSString *raw) {
-    if (raw.length == 0) return nil;
+    if (raw.length == 0)
+        return nil;
 
     NSString *trimmed = [raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (trimmed.length == 0) return nil;
+    if (trimmed.length == 0)
+        return nil;
     if (![trimmed containsString:@"://"]) {
         trimmed = [@"https://" stringByAppendingString:trimmed];
     }
@@ -22,7 +24,8 @@ static NSURL *SPKNormalizedInstagramClipboardURL(NSString *raw) {
     }
 
     NSString *host = url.host.lowercaseString ?: @"";
-    if (host.length == 0) return nil;
+    if (host.length == 0)
+        return nil;
 
     if ([host isEqualToString:@"instagram.com"] ||
         [host hasSuffix:@".instagram.com"] ||
@@ -42,7 +45,8 @@ static NSURL *SPKNormalizedInstagramClipboardURL(NSString *raw) {
 }
 
 static BOOL SPKCanAttemptOpenInstagramClipboardURL(NSURL *url) {
-    if (!url) return NO;
+    if (!url)
+        return NO;
 
     NSString *scheme = url.scheme.lowercaseString ?: @"";
     if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
@@ -108,7 +112,8 @@ static BOOL SPKHandleExploreLongPressClipboard(void) {
 %end
 
 extern "C" void SPKInstallOpenLinkFromClipboardHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"interface_open_clipboard_link"]) return;
+    if (![SPKUtils getBoolPref:@"interface_open_clipboard_link"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

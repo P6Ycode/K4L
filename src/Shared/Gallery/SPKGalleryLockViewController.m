@@ -1,7 +1,7 @@
 #import "SPKGalleryLockViewController.h"
-#import "SPKGalleryManager.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "SPKGalleryManager.h"
 #import <LocalAuthentication/LocalAuthentication.h>
 
 static NSInteger const kPasscodeLength = 4;
@@ -43,7 +43,8 @@ static NSInteger const kPasscodeLength = 4;
     if ([mgr isBiometricsAvailable]) {
         [mgr authenticateWithBiometricsWithCompletion:^(BOOL success, NSError *err) {
             if (success) {
-                if (completion) completion(YES);
+                if (completion)
+                    completion(YES);
                 return;
             }
 
@@ -51,14 +52,15 @@ static NSInteger const kPasscodeLength = 4;
             // dropping the user into the passcode keypad. Only genuine auth
             // failures (or an explicit fallback request) open the keypad.
             switch (err.code) {
-                case LAErrorUserCancel:
-                case LAErrorSystemCancel:
-                case LAErrorAppCancel:
-                    if (completion) completion(NO);
-                    return;
-                default:
-                    [self presentMode:SPKGalleryLockModeUnlock forManager:mgr fromViewController:presenter completion:completion];
-                    return;
+            case LAErrorUserCancel:
+            case LAErrorSystemCancel:
+            case LAErrorAppCancel:
+                if (completion)
+                    completion(NO);
+                return;
+            default:
+                [self presentMode:SPKGalleryLockModeUnlock forManager:mgr fromViewController:presenter completion:completion];
+                return;
             }
         }];
     } else {
@@ -67,15 +69,15 @@ static NSInteger const kPasscodeLength = 4;
 }
 
 + (void)presentMode:(SPKGalleryLockMode)mode
-   fromViewController:(UIViewController *)presenter
-           completion:(void (^)(BOOL))completion {
+    fromViewController:(UIViewController *)presenter
+            completion:(void (^)(BOOL))completion {
     [self presentMode:mode forManager:[SPKGalleryManager sharedManager] fromViewController:presenter completion:completion];
 }
 
 + (void)presentMode:(SPKGalleryLockMode)mode
-         forManager:(SPKGalleryManager *)manager
- fromViewController:(UIViewController *)presenter
-         completion:(void (^)(BOOL))completion {
+            forManager:(SPKGalleryManager *)manager
+    fromViewController:(UIViewController *)presenter
+            completion:(void (^)(BOOL))completion {
     SPKGalleryLockViewController *vc = [[SPKGalleryLockViewController alloc] init];
     vc.mode = mode;
     vc.lockManager = manager;
@@ -156,19 +158,24 @@ static NSInteger const kPasscodeLength = 4;
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [self.titleLabel.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.titleLabel.topAnchor constraintEqualToAnchor:safe.topAnchor constant:50],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:safe.topAnchor
+                                                  constant:50],
 
         [self.subtitleLabel.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:8],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor
+                                                     constant:8],
 
         [self.dotsStackView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.dotsStackView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:32],
+        [self.dotsStackView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor
+                                                     constant:32],
 
         [self.keypadStackView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.keypadStackView.topAnchor constraintEqualToAnchor:self.dotsStackView.bottomAnchor constant:48],
+        [self.keypadStackView.topAnchor constraintEqualToAnchor:self.dotsStackView.bottomAnchor
+                                                       constant:48],
 
         [self.cancelButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.cancelButton.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-20],
+        [self.cancelButton.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor
+                                                       constant:-20],
     ]];
 }
 
@@ -181,10 +188,10 @@ static NSInteger const kPasscodeLength = 4;
     [self.view addSubview:self.keypadStackView];
 
     NSArray<NSArray<NSNumber *> *> *layout = @[
-        @[@1, @2, @3],
-        @[@4, @5, @6],
-        @[@7, @8, @9],
-        @[@(-3), @0, @(-2)], // -3 = biometric, -2 = delete
+        @[ @1, @2, @3 ],
+        @[ @4, @5, @6 ],
+        @[ @7, @8, @9 ],
+        @[ @(-3), @0, @(-2) ], // -3 = biometric, -2 = delete
     ];
 
     for (NSArray<NSNumber *> *row in layout) {
@@ -282,29 +289,29 @@ static NSInteger const kPasscodeLength = 4;
 - (void)updateUIForMode {
     NSString *protectedName = self.lockManager.protectedContentName;
     switch (self.mode) {
-        case SPKGalleryLockModeUnlock:
-            self.titleLabel.text = @"Enter Passcode";
-            self.subtitleLabel.text = [NSString stringWithFormat:@"Enter your passcode to unlock %@", protectedName];
-            break;
+    case SPKGalleryLockModeUnlock:
+        self.titleLabel.text = @"Enter Passcode";
+        self.subtitleLabel.text = [NSString stringWithFormat:@"Enter your passcode to unlock %@", protectedName];
+        break;
 
-        case SPKGalleryLockModeSetPasscode:
+    case SPKGalleryLockModeSetPasscode:
+        self.titleLabel.text = self.firstPasscode ? @"Confirm Passcode" : @"New Passcode";
+        self.subtitleLabel.text = self.firstPasscode
+                                      ? @"Re-enter your new passcode"
+                                      : [NSString stringWithFormat:@"Create a passcode to protect %@", protectedName];
+        break;
+
+    case SPKGalleryLockModeChangePasscode:
+        if (!self.hasVerifiedOldPasscode) {
+            self.titleLabel.text = @"Enter Current Passcode";
+            self.subtitleLabel.text = [NSString stringWithFormat:@"Enter your current %@ passcode", protectedName];
+        } else {
             self.titleLabel.text = self.firstPasscode ? @"Confirm Passcode" : @"New Passcode";
             self.subtitleLabel.text = self.firstPasscode
-                ? @"Re-enter your new passcode"
-                : [NSString stringWithFormat:@"Create a passcode to protect %@", protectedName];
-            break;
-
-        case SPKGalleryLockModeChangePasscode:
-            if (!self.hasVerifiedOldPasscode) {
-                self.titleLabel.text = @"Enter Current Passcode";
-                self.subtitleLabel.text = [NSString stringWithFormat:@"Enter your current %@ passcode", protectedName];
-            } else {
-                self.titleLabel.text = self.firstPasscode ? @"Confirm Passcode" : @"New Passcode";
-                self.subtitleLabel.text = self.firstPasscode
-                    ? @"Re-enter your new passcode"
-                    : @"Create a new passcode";
-            }
-            break;
+                                          ? @"Re-enter your new passcode"
+                                          : @"Create a new passcode";
+        }
+        break;
     }
 
     // Biometrics button only active during unlock, when available. We keep the
@@ -336,7 +343,7 @@ static NSInteger const kPasscodeLength = 4;
 - (void)shakeDots {
     CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
     shake.duration = 0.4;
-    shake.values = @[@(-12), @(12), @(-10), @(10), @(-6), @(6), @(-2), @(2), @(0)];
+    shake.values = @[ @(-12), @(12), @(-10), @(10), @(-6), @(6), @(-2), @(2), @(0) ];
     [self.dotsStackView.layer addAnimation:shake forKey:@"shake"];
 
     UIImpactFeedbackGenerator *gen = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleHeavy];
@@ -367,7 +374,8 @@ static NSInteger const kPasscodeLength = 4;
 }
 
 - (void)numberTapped:(UIButton *)sender {
-    if (self.enteredPasscode.length >= kPasscodeLength) return;
+    if (self.enteredPasscode.length >= kPasscodeLength)
+        return;
     [self.keyPressFeedbackGenerator selectionChanged];
     [self.keyPressFeedbackGenerator prepare];
     [self.enteredPasscode appendFormat:@"%ld", (long)sender.tag];
@@ -376,13 +384,14 @@ static NSInteger const kPasscodeLength = 4;
     if (self.enteredPasscode.length == kPasscodeLength) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
-            [self handlePasscodeComplete];
-        });
+                           [self handlePasscodeComplete];
+                       });
     }
 }
 
 - (void)deleteTapped {
-    if (self.enteredPasscode.length == 0) return;
+    if (self.enteredPasscode.length == 0)
+        return;
     [self.keyPressFeedbackGenerator selectionChanged];
     [self.keyPressFeedbackGenerator prepare];
     [self.enteredPasscode deleteCharactersInRange:NSMakeRange(self.enteredPasscode.length - 1, 1)];
@@ -391,18 +400,23 @@ static NSInteger const kPasscodeLength = 4;
 
 - (void)cancelTapped {
     [self.lockManager cancelBiometricAuthentication];
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (self.completion) self.completion(NO);
-    }];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                                 if (self.completion)
+                                     self.completion(NO);
+                             }];
 }
 
 - (void)triggerBiometrics {
     __weak typeof(self) weakSelf = self;
     [self.lockManager authenticateWithBiometricsWithCompletion:^(BOOL success, NSError *err) {
-        if (!success) return;
-        [weakSelf.presentingViewController dismissViewControllerAnimated:YES completion:^{
-            if (weakSelf.completion) weakSelf.completion(YES);
-        }];
+        if (!success)
+            return;
+        [weakSelf.presentingViewController dismissViewControllerAnimated:YES
+                                                              completion:^{
+                                                                  if (weakSelf.completion)
+                                                                      weakSelf.completion(YES);
+                                                              }];
     }];
 }
 
@@ -413,71 +427,77 @@ static NSInteger const kPasscodeLength = 4;
     NSString *entered = [self.enteredPasscode copy];
 
     switch (self.mode) {
-        case SPKGalleryLockModeUnlock: {
+    case SPKGalleryLockModeUnlock: {
+        if ([mgr verifyPasscode:entered]) {
+            [mgr cancelBiometricAuthentication];
+            [self.presentingViewController dismissViewControllerAnimated:YES
+                                                              completion:^{
+                                                                  if (self.completion)
+                                                                      self.completion(YES);
+                                                              }];
+        } else {
+            [self shakeDots];
+            [self.enteredPasscode setString:@""];
+            [self updateDots];
+        }
+        break;
+    }
+
+    case SPKGalleryLockModeSetPasscode: {
+        if (!self.firstPasscode) {
+            self.firstPasscode = entered;
+            [self.enteredPasscode setString:@""];
+            [self updateUIForMode];
+        } else if ([self.firstPasscode isEqualToString:entered]) {
+            if ([mgr setPasscode:entered]) {
+                [self.presentingViewController dismissViewControllerAnimated:YES
+                                                                  completion:^{
+                                                                      if (self.completion)
+                                                                          self.completion(YES);
+                                                                  }];
+            } else {
+                [self shakeDots];
+                [self resetSetFlow];
+            }
+        } else {
+            [self shakeDots];
+            [self resetSetFlow];
+        }
+        break;
+    }
+
+    case SPKGalleryLockModeChangePasscode: {
+        if (!self.hasVerifiedOldPasscode) {
             if ([mgr verifyPasscode:entered]) {
-                [mgr cancelBiometricAuthentication];
-                [self.presentingViewController dismissViewControllerAnimated:YES completion:^{
-                    if (self.completion) self.completion(YES);
-                }];
+                self.hasVerifiedOldPasscode = YES;
+                [self.enteredPasscode setString:@""];
+                [self updateUIForMode];
             } else {
                 [self shakeDots];
                 [self.enteredPasscode setString:@""];
                 [self updateDots];
             }
-            break;
-        }
-
-        case SPKGalleryLockModeSetPasscode: {
-            if (!self.firstPasscode) {
-                self.firstPasscode = entered;
-                [self.enteredPasscode setString:@""];
-                [self updateUIForMode];
-            } else if ([self.firstPasscode isEqualToString:entered]) {
-                if ([mgr setPasscode:entered]) {
-                    [self.presentingViewController dismissViewControllerAnimated:YES completion:^{
-                        if (self.completion) self.completion(YES);
-                    }];
-                } else {
-                    [self shakeDots];
-                    [self resetSetFlow];
-                }
+        } else if (!self.firstPasscode) {
+            self.firstPasscode = entered;
+            [self.enteredPasscode setString:@""];
+            [self updateUIForMode];
+        } else if ([self.firstPasscode isEqualToString:entered]) {
+            if ([mgr setPasscode:entered]) {
+                [self.presentingViewController dismissViewControllerAnimated:YES
+                                                                  completion:^{
+                                                                      if (self.completion)
+                                                                          self.completion(YES);
+                                                                  }];
             } else {
                 [self shakeDots];
                 [self resetSetFlow];
             }
-            break;
+        } else {
+            [self shakeDots];
+            [self resetSetFlow];
         }
-
-        case SPKGalleryLockModeChangePasscode: {
-            if (!self.hasVerifiedOldPasscode) {
-                if ([mgr verifyPasscode:entered]) {
-                    self.hasVerifiedOldPasscode = YES;
-                    [self.enteredPasscode setString:@""];
-                    [self updateUIForMode];
-                } else {
-                    [self shakeDots];
-                    [self.enteredPasscode setString:@""];
-                    [self updateDots];
-                }
-            } else if (!self.firstPasscode) {
-                self.firstPasscode = entered;
-                [self.enteredPasscode setString:@""];
-                [self updateUIForMode];
-            } else if ([self.firstPasscode isEqualToString:entered]) {
-                if ([mgr setPasscode:entered]) {
-                    [self.presentingViewController dismissViewControllerAnimated:YES completion:^{
-                        if (self.completion) self.completion(YES);
-                    }];
-                } else {
-                    [self shakeDots];
-                    [self resetSetFlow];
-                }
-            } else {
-                [self shakeDots];
-                [self resetSetFlow];
-            }
-            break;
-        }
+        break;
+    }
     }
 }
 

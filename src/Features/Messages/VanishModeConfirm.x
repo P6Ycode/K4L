@@ -12,10 +12,10 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
 
 %hook IGDirectBottomSwipeableScrollManager
 - (id)initWithKeyboardVisibleSwipeThreshold:(double)arg1
-                keyboardHiddenSwipeThreshold:(double)arg2
-                            keyboardObserver:(id)arg3
-                        enableHapticFeedback:(BOOL)arg4
-                                 launcherSet:(id)arg5 {
+               keyboardHiddenSwipeThreshold:(double)arg2
+                           keyboardObserver:(id)arg3
+                       enableHapticFeedback:(BOOL)arg4
+                                launcherSet:(id)arg5 {
     if (SPKBlockDisappearingSwipeUpEnabled()) {
         SPKLog(@"General", @"[Sparkle] Blocking disappearing swipe-up initializer (launcherSet)");
         return nil;
@@ -25,9 +25,9 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
 }
 
 - (id)initWithKeyboardVisibleSwipeThreshold:(double)arg1
-                keyboardHiddenSwipeThreshold:(double)arg2
-                            keyboardObserver:(id)arg3
-                        enableHapticFeedback:(BOOL)arg4 {
+               keyboardHiddenSwipeThreshold:(double)arg2
+                           keyboardObserver:(id)arg3
+                       enableHapticFeedback:(BOOL)arg4 {
     if (SPKBlockDisappearingSwipeUpEnabled()) {
         SPKLog(@"General", @"[Sparkle] Blocking disappearing swipe-up initializer");
         return nil;
@@ -47,9 +47,12 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
     if ([SPKUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SPKLog(@"General", @"[Sparkle] Confirm shh mode triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Vanish Mode"
-                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Vanish Mode"
+                     message:@"Are you sure you want to change disappearing messages for this chat?"];
     } else {
         return %orig;
     }
@@ -66,9 +69,12 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
     if ([SPKUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SPKLog(@"General", @"[Sparkle] Confirm shh mode triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Vanish Mode"
-                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Vanish Mode"
+                     message:@"Are you sure you want to change disappearing messages for this chat?"];
     } else {
         return %orig;
     }
@@ -87,9 +93,12 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
     if ([SPKUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SPKLog(@"General", @"[Sparkle] Confirm shh mode triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Vanish Mode"
-                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Vanish Mode"
+                     message:@"Are you sure you want to change disappearing messages for this chat?"];
     } else {
         return %orig;
     }
@@ -99,9 +108,12 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
     if ([SPKUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SPKLog(@"General", @"[Sparkle] Confirm shh mode triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Vanish Mode"
-                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Vanish Mode"
+                     message:@"Are you sure you want to change disappearing messages for this chat?"];
     } else {
         return %orig;
     }
@@ -122,9 +134,12 @@ static inline BOOL SPKHideVanishScreenshotEnabled(void) {
     if ([SPKUtils getBoolPref:@"msgs_confirm_vanish_mode"]) {
         SPKLog(@"General", @"[Sparkle] Confirm shh mode triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Vanish Mode"
-                               message:@"Are you sure you want to change disappearing messages for this chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Vanish Mode"
+                     message:@"Are you sure you want to change disappearing messages for this chat?"];
     } else {
         return %orig;
     }

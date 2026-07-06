@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)configureWithFolderNames:(NSArray<NSString *> *)names
                           counts:(NSArray<NSNumber *> *)counts
                         onSelect:(void (^)(NSInteger index))onSelect
-                    menuProvider:(nullable UIMenu * _Nullable (^)(NSInteger index))menuProvider;
+                    menuProvider:(nullable UIMenu *_Nullable (^)(NSInteger index))menuProvider;
 
 @end
 

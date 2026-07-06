@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../AssetUtils.h"
+#import "../../Utils.h"
 
 // Replace the Meta-AI "gen AI" search glyph (e.g. ig_icon_search_gen_ai_pano_outline_20)
 // with the plain search icon when Meta AI in Explore & Search is hidden.
@@ -36,9 +36,11 @@ static NSString *SPKPlainSearchIconName(NSString *genAIName) {
     if (SPKNameIsGenAISearchIcon(name) && SPKSearchIconRemapActive()) {
         NSString *plain = SPKPlainSearchIconName(name);
         UIImage *replacement = %orig(plain, bundle, traitCollection)
-            ?: %orig(plain, nil, traitCollection)
-            ?: [SPKAssetUtils instagramIconNamed:@"search"];
-        if (replacement) return replacement;
+                                   ?: %orig(plain, nil, traitCollection)
+                                      ?
+                                      : [SPKAssetUtils instagramIconNamed:@"search"];
+        if (replacement)
+            return replacement;
     }
     return %orig;
 }
@@ -47,9 +49,11 @@ static NSString *SPKPlainSearchIconName(NSString *genAIName) {
     if (SPKNameIsGenAISearchIcon(name) && SPKSearchIconRemapActive()) {
         NSString *plain = SPKPlainSearchIconName(name);
         UIImage *replacement = %orig(plain, bundle, configuration)
-            ?: %orig(plain, nil, configuration)
-            ?: [SPKAssetUtils instagramIconNamed:@"search"];
-        if (replacement) return replacement;
+                                   ?: %orig(plain, nil, configuration)
+                                      ?
+                                      : [SPKAssetUtils instagramIconNamed:@"search"];
+        if (replacement)
+            return replacement;
     }
     return %orig;
 }
@@ -58,7 +62,8 @@ static NSString *SPKPlainSearchIconName(NSString *genAIName) {
     if (SPKNameIsGenAISearchIcon(name) && SPKSearchIconRemapActive()) {
         NSString *plain = SPKPlainSearchIconName(name);
         UIImage *replacement = %orig(plain) ?: [SPKAssetUtils instagramIconNamed:@"search"];
-        if (replacement) return replacement;
+        if (replacement)
+            return replacement;
     }
     return %orig;
 }

@@ -1,5 +1,5 @@
-#import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -19,7 +19,7 @@ typedef NS_ENUM(NSInteger, SPKDeletedMessageKind) {
 };
 
 FOUNDATION_EXPORT NSString *SPKDeletedMessageKindToString(SPKDeletedMessageKind kind);
-FOUNDATION_EXPORT SPKDeletedMessageKind SPKDeletedMessageKindFromString(NSString * _Nullable s);
+FOUNDATION_EXPORT SPKDeletedMessageKind SPKDeletedMessageKindFromString(NSString *_Nullable s);
 FOUNDATION_EXPORT NSString *SPKDeletedMessageKindLocalizedName(SPKDeletedMessageKind kind);
 FOUNDATION_EXPORT NSString *SPKDeletedMessageKindSymbol(SPKDeletedMessageKind kind);
 // Variant that returns the filled glyph for photo/video/voice/gif when
@@ -30,14 +30,14 @@ FOUNDATION_EXPORT NSString *SPKDeletedMessageKindSymbolFilled(SPKDeletedMessageK
 // "story"→"Story", "profile"→"Profile", "note"→"Note", "location"→"Location",
 // "audio"→"Audio"). Returns "Shared post" for nil/unknown/generic. Used to label
 // Share-kind messages by the actual content type instead of a generic "Share".
-FOUNDATION_EXPORT NSString *SPKDeletedMessageShareSubtypeName(NSString * _Nullable subtype);
+FOUNDATION_EXPORT NSString *SPKDeletedMessageShareSubtypeName(NSString *_Nullable subtype);
 // Icon glyph for a Share subtype, falling back to the generic share glyph.
-FOUNDATION_EXPORT NSString *SPKDeletedMessageShareSubtypeSymbol(NSString * _Nullable subtype);
+FOUNDATION_EXPORT NSString *SPKDeletedMessageShareSubtypeSymbol(NSString *_Nullable subtype);
 
 @interface SPKDeletedMessage : NSObject
 
-@property (nonatomic, copy)   NSString *messageId;
-@property (nonatomic, copy)   NSString *threadId;
+@property (nonatomic, copy) NSString *messageId;
+@property (nonatomic, copy) NSString *threadId;
 @property (nonatomic, copy, nullable) NSString *threadTitle;
 // YES when this message belongs to a group thread (captured from the open
 // thread's metadata). Grouping also falls back to a multi-sender heuristic.
@@ -45,33 +45,33 @@ FOUNDATION_EXPORT NSString *SPKDeletedMessageShareSubtypeSymbol(NSString * _Null
 // Group's custom photo URL when one is set (else nil — group has no photo).
 @property (nonatomic, copy, nullable) NSString *threadPhotoURL;
 
-@property (nonatomic, copy)   NSString *senderPk;
+@property (nonatomic, copy) NSString *senderPk;
 @property (nonatomic, copy, nullable) NSString *senderUsername;
 @property (nonatomic, copy, nullable) NSString *senderFullName;
 @property (nonatomic, copy, nullable) NSString *senderProfilePicURL;
 
-@property (nonatomic, strong) NSDate   *sentAt;
-@property (nonatomic, strong) NSDate   *capturedAt;
-@property (nonatomic, strong) NSDate   *deletedAt;
+@property (nonatomic, strong) NSDate *sentAt;
+@property (nonatomic, strong) NSDate *capturedAt;
+@property (nonatomic, strong) NSDate *deletedAt;
 
 @property (nonatomic, assign) SPKDeletedMessageKind kind;
 @property (nonatomic, copy, nullable) NSString *text;
 @property (nonatomic, copy, nullable) NSString *previewText;
 
 @property (nonatomic, copy, nullable) NSString *mediaURL;
-@property (nonatomic, copy, nullable) NSString *mediaPath;       // relative under media root
+@property (nonatomic, copy, nullable) NSString *mediaPath; // relative under media root
 @property (nonatomic, copy, nullable) NSString *thumbnailURL;
 @property (nonatomic, copy, nullable) NSString *thumbnailPath;
 @property (nonatomic, copy, nullable) NSString *mediaMimeType;
-@property (nonatomic, assign) NSInteger viewMode;             // -1 when not ephemeral / unknown
+@property (nonatomic, assign) NSInteger viewMode; // -1 when not ephemeral / unknown
 @property (nonatomic, copy, nullable) NSString *stagedMediaPath;
 @property (nonatomic, copy, nullable) NSString *stagedThumbnailPath;
 @property (nonatomic, strong, nullable) NSDate *mediaURLStaleAt;
 
-@property (nonatomic, assign) double   durationSeconds;          // voice/video
+@property (nonatomic, assign) double durationSeconds; // voice/video
 @property (nonatomic, strong, nullable) NSArray<NSNumber *> *waveform;
-@property (nonatomic, assign) CGFloat  width;
-@property (nonatomic, assign) CGFloat  height;
+@property (nonatomic, assign) CGFloat width;
+@property (nonatomic, assign) CGFloat height;
 
 // Server id of the message this one was a reply to (when applicable).
 // Captured best-effort from metadata / KVC probes.

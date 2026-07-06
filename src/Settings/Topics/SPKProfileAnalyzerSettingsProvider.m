@@ -1,10 +1,10 @@
 #import "SPKProfileAnalyzerSettingsProvider.h"
 #import <UIKit/UIKit.h>
 
-#import "../SPKTopicSettingsSupport.h"
-#import "../SPKSetting.h"
-#import "../../Utils.h"
 #import "../../Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerViewController.h"
+#import "../../Utils.h"
+#import "../SPKSetting.h"
+#import "../SPKTopicSettingsSupport.h"
 
 @implementation SPKProfileAnalyzerSettingsProvider
 

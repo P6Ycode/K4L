@@ -12,15 +12,19 @@ static CGFloat SPKStoryTrailingButtonX(UIView *overlayView, CGFloat size) {
 }
 
 CGRect SPKStoryFloatingButtonFrame(UIView *overlayView, CGFloat size) {
-    if (!overlayView) return CGRectZero;
+    if (!overlayView)
+        return CGRectZero;
 
-    if (size <= 0.0) size = 44.0;
+    if (size <= 0.0)
+        size = 44.0;
 
     CGFloat y = 0.0;
     UIView *mediaView = [SPKUtils getIvarForObj:overlayView name:"_mediaView"];
     UIView *footerContainer = [SPKUtils getIvarForObj:overlayView name:"_footerContainerView"];
-    if (![mediaView isKindOfClass:[UIView class]]) mediaView = nil;
-    if (![footerContainer isKindOfClass:[UIView class]]) footerContainer = nil;
+    if (![mediaView isKindOfClass:[UIView class]])
+        mediaView = nil;
+    if (![footerContainer isKindOfClass:[UIView class]])
+        footerContainer = nil;
 
     if (mediaView) {
         CGRect mediaFrame = mediaView.frame;

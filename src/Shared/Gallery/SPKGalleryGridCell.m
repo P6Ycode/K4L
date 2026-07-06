@@ -1,7 +1,7 @@
 #import "SPKGalleryGridCell.h"
-#import "SPKGalleryFile.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "SPKGalleryFile.h"
 
 @interface SPKGalleryGridCell ()
 
@@ -42,8 +42,8 @@
         // Bottom gradient scrim so the video glyph / duration stay legible over
         // bright thumbnails. Sits above the thumbnail, below the badges.
         _bottomScrim = [CAGradientLayer layer];
-        _bottomScrim.colors = @[(id)[UIColor clearColor].CGColor,
-                                (id)[[UIColor blackColor] colorWithAlphaComponent:0.95].CGColor];
+        _bottomScrim.colors = @[ (id)[UIColor clearColor].CGColor,
+                                 (id)[[UIColor blackColor] colorWithAlphaComponent:0.95].CGColor ];
         _bottomScrim.startPoint = CGPointMake(0.5, 0.0);
         _bottomScrim.endPoint = CGPointMake(0.5, 1.0);
         _bottomScrim.hidden = YES;
@@ -51,8 +51,8 @@
 
         // Top gradient scrim keeps the source badge / favorite legible.
         _topScrim = [CAGradientLayer layer];
-        _topScrim.colors = @[(id)[[UIColor blackColor] colorWithAlphaComponent:0.95].CGColor,
-                             (id)[UIColor clearColor].CGColor];
+        _topScrim.colors = @[ (id)[[UIColor blackColor] colorWithAlphaComponent:0.95].CGColor,
+                              (id)[UIColor clearColor].CGColor ];
         _topScrim.startPoint = CGPointMake(0.5, 0.0);
         _topScrim.endPoint = CGPointMake(0.5, 1.0);
         _topScrim.hidden = YES;
@@ -145,35 +145,47 @@
             [_thumbnailView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
 
             // Source badge (top-left).
-            [_sourceBadge.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6],
-            [_sourceBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
+            [_sourceBadge.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                       constant:6],
+            [_sourceBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                                   constant:6],
             [_sourceBadge.widthAnchor constraintEqualToConstant:14],
             [_sourceBadge.heightAnchor constraintEqualToConstant:14],
 
             // Video glyph + duration (bottom-right).
-            [_durationLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6],
-            [_durationLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
+            [_durationLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                          constant:-6],
+            [_durationLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor
+                                                        constant:-6],
 
-            [_videoBadge.trailingAnchor constraintEqualToAnchor:_durationLabel.leadingAnchor constant:-4],
+            [_videoBadge.trailingAnchor constraintEqualToAnchor:_durationLabel.leadingAnchor
+                                                       constant:-4],
             [_videoBadge.centerYAnchor constraintEqualToAnchor:_durationLabel.centerYAnchor],
             [_videoBadge.widthAnchor constraintEqualToConstant:14],
             [_videoBadge.heightAnchor constraintEqualToConstant:14],
 
             // Bottom-left stack constraints.
-            [_bottomLeftStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6],
-            [_bottomLeftStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
-            [_bottomLeftStack.trailingAnchor constraintLessThanOrEqualToAnchor:_videoBadge.leadingAnchor constant:-6],
-            [_bottomLeftStack.trailingAnchor constraintLessThanOrEqualToAnchor:_durationLabel.leadingAnchor constant:-6],
+            [_bottomLeftStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                           constant:6],
+            [_bottomLeftStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor
+                                                          constant:-6],
+            [_bottomLeftStack.trailingAnchor constraintLessThanOrEqualToAnchor:_videoBadge.leadingAnchor
+                                                                      constant:-6],
+            [_bottomLeftStack.trailingAnchor constraintLessThanOrEqualToAnchor:_durationLabel.leadingAnchor
+                                                                      constant:-6],
 
             [_folderIcon.widthAnchor constraintEqualToConstant:11],
             [_folderIcon.heightAnchor constraintEqualToConstant:11],
 
-            [_favoriteBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
+            [_favoriteBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                                     constant:6],
             [_favoriteBadge.widthAnchor constraintEqualToConstant:16],
             [_favoriteBadge.heightAnchor constraintEqualToConstant:16],
 
-            [_selectionBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
-            [_selectionBadge.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6],
+            [_selectionBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                                      constant:6],
+            [_selectionBadge.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                           constant:-6],
             [_selectionBadge.widthAnchor constraintEqualToConstant:20],
             [_selectionBadge.heightAnchor constraintEqualToConstant:20],
 
@@ -221,7 +233,8 @@
 }
 
 static NSString *SPKGalleryGridFormatDuration(double seconds) {
-    if (seconds <= 0.0 || !isfinite(seconds)) return nil;
+    if (seconds <= 0.0 || !isfinite(seconds))
+        return nil;
     NSInteger total = (NSInteger)llround(seconds);
     NSInteger h = total / 3600;
     NSInteger m = (total % 3600) / 60;
@@ -238,8 +251,8 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
 }
 
 - (void)configureWithGalleryFile:(SPKGalleryFile *)file
-                 selectionMode:(BOOL)selectionMode
-                      selected:(BOOL)selected {
+                   selectionMode:(BOOL)selectionMode
+                        selected:(BOOL)selected {
     [self configureWithGalleryFile:file
                      selectionMode:selectionMode
                           selected:selected
@@ -249,10 +262,10 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
 }
 
 - (void)configureWithGalleryFile:(SPKGalleryFile *)file
-                 selectionMode:(BOOL)selectionMode
-                      selected:(BOOL)selected
-                    showsSource:(BOOL)showsSource
-                  showsUsername:(BOOL)showsUsername {
+                   selectionMode:(BOOL)selectionMode
+                        selected:(BOOL)selected
+                     showsSource:(BOOL)showsSource
+                   showsUsername:(BOOL)showsUsername {
     [self configureWithGalleryFile:file
                      selectionMode:selectionMode
                           selected:selected
@@ -262,11 +275,11 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
 }
 
 - (void)configureWithGalleryFile:(SPKGalleryFile *)file
-                 selectionMode:(BOOL)selectionMode
-                      selected:(BOOL)selected
-                    showsSource:(BOOL)showsSource
-                  showsUsername:(BOOL)showsUsername
-                     folderName:(nullable NSString *)folderName {
+                   selectionMode:(BOOL)selectionMode
+                        selected:(BOOL)selected
+                     showsSource:(BOOL)showsSource
+                   showsUsername:(BOOL)showsUsername
+                      folderName:(nullable NSString *)folderName {
     self.file = file;
     UIImage *thumb = [SPKGalleryFile loadThumbnailForFile:file];
     if (thumb) {
@@ -274,14 +287,15 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
     } else {
         self.thumbnailView.image = nil;
         __weak typeof(self) weakSelf = self;
-        [SPKGalleryFile generateThumbnailForFile:file completion:^(BOOL success) {
-            if (success && weakSelf && weakSelf.file == file) {
-                UIImage *newThumb = [UIImage imageWithContentsOfFile:[file thumbnailPath]];
-                if (newThumb) {
-                    weakSelf.thumbnailView.image = newThumb;
-                }
-            }
-        }];
+        [SPKGalleryFile generateThumbnailForFile:file
+                                      completion:^(BOOL success) {
+                                          if (success && weakSelf && weakSelf.file == file) {
+                                              UIImage *newThumb = [UIImage imageWithContentsOfFile:[file thumbnailPath]];
+                                              if (newThumb) {
+                                                  weakSelf.thumbnailView.image = newThumb;
+                                              }
+                                          }
+                                      }];
     }
 
     BOOL isVideo = (file.mediaType == SPKGalleryMediaTypeVideo);
@@ -366,8 +380,8 @@ static NSString *SPKGalleryGridFormatDuration(double seconds) {
                             options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:applyState
                          completion:^(__unused BOOL finished) {
-            finishState();
-        }];
+                             finishState();
+                         }];
     } else {
         applyState();
         finishState();

@@ -1,12 +1,12 @@
 #import "SPKDownloadService.h"
 
-#import "SPKDownloadPresenter.h"
-#import "SPKDownloadScheduler.h"
-#import "SPKDownloadsHistoryViewController.h"
 #import "../../Utils.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKMediaChrome.h"
 #import "../UI/SPKNotificationCenter.h"
+#import "SPKDownloadPresenter.h"
+#import "SPKDownloadScheduler.h"
+#import "SPKDownloadsHistoryViewController.h"
 
 @interface SPKDownloadService ()
 @property (nonatomic, strong) SPKDownloadScheduler *scheduler;
@@ -25,7 +25,8 @@
 }
 
 - (instancetype)init {
-    if (!(self = [super init])) return nil;
+    if (!(self = [super init]))
+        return nil;
     _scheduler = [SPKDownloadScheduler new];
     _presenter = [SPKDownloadPresenter new];
     _scheduler.presenter = _presenter;
@@ -67,16 +68,21 @@
 + (void)confirmCancelAllActive {
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presenter = topMostController();
-        if (!presenter) return;
+        if (!presenter)
+            return;
         [SPKIGAlertPresenter presentAlertFromViewController:presenter
                                                       title:@"Cancel Pending Downloads"
                                                     message:@"This stops queued work and any active downloads that can still be cancelled."
                                                     actions:@[
-            [SPKIGAlertAction actionWithTitle:@"Keep" style:SPKIGAlertActionStyleCancel handler:nil],
-            [SPKIGAlertAction actionWithTitle:@"Cancel All" style:SPKIGAlertActionStyleDestructive handler:^{
-                [[SPKDownloadService shared] cancelAllActive];
-            }],
-        ]];
+                                                        [SPKIGAlertAction actionWithTitle:@"Keep"
+                                                                                    style:SPKIGAlertActionStyleCancel
+                                                                                  handler:nil],
+                                                        [SPKIGAlertAction actionWithTitle:@"Cancel All"
+                                                                                    style:SPKIGAlertActionStyleDestructive
+                                                                                  handler:^{
+                                                                                      [[SPKDownloadService shared] cancelAllActive];
+                                                                                  }],
+                                                    ]];
     });
 }
 
@@ -99,22 +105,23 @@
 - (NSArray<SPKDownloadJob *> *)jobsMatchingFilter:(SPKDownloadHistoryFilter)filter {
     NSArray<SPKDownloadJob *> *jobs = [self.scheduler allJobs];
     NSArray *filtered = [jobs filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(SPKDownloadJob *job, NSDictionary *bindings) {
-        (void)bindings;
-        switch (filter) {
-            case SPKDownloadHistoryFilterActive:
-                return job.state == SPKDownloadStateRunning || job.state == SPKDownloadStateFinalizing;
-            case SPKDownloadHistoryFilterQueued:
-                return job.state == SPKDownloadStateQueued || job.state == SPKDownloadStatePending;
-            case SPKDownloadHistoryFilterFailed:
-                return job.state == SPKDownloadStateFailed || job.state == SPKDownloadStatePartial || job.state == SPKDownloadStateInterrupted;
-            case SPKDownloadHistoryFilterRecent:
-                return job.state == SPKDownloadStateSucceeded || job.state == SPKDownloadStateCancelled;
-            default:
-                return YES;
-        }
-    }]];
+                                  (void)bindings;
+                                  switch (filter) {
+                                  case SPKDownloadHistoryFilterActive:
+                                      return job.state == SPKDownloadStateRunning || job.state == SPKDownloadStateFinalizing;
+                                  case SPKDownloadHistoryFilterQueued:
+                                      return job.state == SPKDownloadStateQueued || job.state == SPKDownloadStatePending;
+                                  case SPKDownloadHistoryFilterFailed:
+                                      return job.state == SPKDownloadStateFailed || job.state == SPKDownloadStatePartial || job.state == SPKDownloadStateInterrupted;
+                                  case SPKDownloadHistoryFilterRecent:
+                                      return job.state == SPKDownloadStateSucceeded || job.state == SPKDownloadStateCancelled;
+                                  default:
+                                      return YES;
+                                  }
+                              }]];
     return [filtered sortedArrayUsingComparator:^NSComparisonResult(SPKDownloadJob *a, SPKDownloadJob *b) {
-        if (a.updatedAt == b.updatedAt) return NSOrderedSame;
+        if (a.updatedAt == b.updatedAt)
+            return NSOrderedSame;
         return a.updatedAt < b.updatedAt ? NSOrderedDescending : NSOrderedAscending;
     }];
 }
@@ -123,12 +130,24 @@
     return [self.scheduler jobWithID:jobID];
 }
 
-- (void)cancelJobID:(NSString *)jobID { [self.scheduler cancelJobID:jobID]; }
-- (void)cancelItemID:(NSString *)itemID inJobID:(NSString *)jobID { [self.scheduler cancelItemID:itemID inJobID:jobID]; }
-- (void)retryJobID:(NSString *)jobID { [self.scheduler retryJobID:jobID]; }
-- (void)retryItemID:(NSString *)itemID inJobID:(NSString *)jobID { [self.scheduler retryItemID:itemID inJobID:jobID]; }
-- (void)clearFinishedHistory { [self.scheduler clearFinishedHistory]; }
-- (void)removeJobID:(NSString *)jobID { [self.scheduler removeJobID:jobID]; }
+- (void)cancelJobID:(NSString *)jobID {
+    [self.scheduler cancelJobID:jobID];
+}
+- (void)cancelItemID:(NSString *)itemID inJobID:(NSString *)jobID {
+    [self.scheduler cancelItemID:itemID inJobID:jobID];
+}
+- (void)retryJobID:(NSString *)jobID {
+    [self.scheduler retryJobID:jobID];
+}
+- (void)retryItemID:(NSString *)itemID inJobID:(NSString *)jobID {
+    [self.scheduler retryItemID:itemID inJobID:jobID];
+}
+- (void)clearFinishedHistory {
+    [self.scheduler clearFinishedHistory];
+}
+- (void)removeJobID:(NSString *)jobID {
+    [self.scheduler removeJobID:jobID];
+}
 
 - (BOOL)hasActiveJobWithHiddenPill {
     for (SPKDownloadJob *job in [self.scheduler allJobs]) {
@@ -153,39 +172,47 @@
 }
 
 - (void)confirmCancelForJobID:(NSString *)jobID {
-    if (!jobID) return;
+    if (!jobID)
+        return;
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presenterHost = topMostController();
-        if (!presenterHost) return;
-        
+        if (!presenterHost)
+            return;
+
         NSUInteger activeCount = 0;
         for (SPKDownloadJob *job in [self.scheduler allJobs]) {
             if ([self.presenter jobIsActive:job]) {
                 activeCount++;
             }
         }
-        
+
         NSMutableArray<SPKIGAlertAction *> *actions = [NSMutableArray array];
-        
+
         // Keep at the top, blue bold font
         [actions addObject:[SPKIGAlertAction actionWithTitle:@"Keep" style:SPKIGAlertActionStyleCancel handler:nil]];
-        
+
         if (activeCount > 1) {
             // Cancel current, still blue but not bold
-            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel Current" style:SPKIGAlertActionStyleDefault handler:^{
-                [self cancelJobID:jobID];
-            }]];
+            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel Current"
+                                                           style:SPKIGAlertActionStyleDefault
+                                                         handler:^{
+                                                             [self cancelJobID:jobID];
+                                                         }]];
             // Cancel all, red, not bold
-            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel All" style:SPKIGAlertActionStyleDestructive handler:^{
-                [self cancelAllActive];
-            }]];
+            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel All"
+                                                           style:SPKIGAlertActionStyleDestructive
+                                                         handler:^{
+                                                             [self cancelAllActive];
+                                                         }]];
         } else {
             // Cancel, red not bold
-            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleDestructive handler:^{
-                [self cancelJobID:jobID];
-            }]];
+            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                           style:SPKIGAlertActionStyleDestructive
+                                                         handler:^{
+                                                             [self cancelJobID:jobID];
+                                                         }]];
         }
-        
+
         [SPKIGAlertPresenter presentAlertFromViewController:presenterHost
                                                       title:@"Cancel Download"
                                                     message:activeCount > 1 ? @"Do you want to cancel the current download or all active downloads?" : @"Are you sure you want to cancel the download?"

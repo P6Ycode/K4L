@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SPKDownloadPresenter : NSObject
 
-@property (nonatomic, copy, nullable) void (^openHistoryForJobID)(NSString * _Nullable jobID);
+@property (nonatomic, copy, nullable) void (^openHistoryForJobID)(NSString *_Nullable jobID);
 @property (nonatomic, copy, nullable) void (^cancelAllActiveHandler)(void);
 @property (nonatomic, copy, readonly, nullable) NSString *activeJobID;
 @property (nonatomic, copy, nullable) void (^cancelHandlerForActiveJob)(NSString *jobID);

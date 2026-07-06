@@ -12,7 +12,7 @@
 //
 // The local in-app copies carry IG's payload keys ("ig"/"gid") in content.userInfo,
 // which the extension-delivered push does not surface through this method.
-// When the toggle is on, the app is foreground, and the request looks like one 
+// When the toggle is on, the app is foreground, and the request looks like one
 // of these in-app duplicates, swallow it (invoke the completion handler with no error and skip %orig)
 // so only the extension's banner remains.
 
@@ -39,7 +39,8 @@
         userInfo[@"gid"] != nil) {
         // Looks like IG's in-app duplicate — drop it but still satisfy the API
         // contract by completing without error.
-        if (completionHandler) completionHandler(nil);
+        if (completionHandler)
+            completionHandler(nil);
         return;
     }
 

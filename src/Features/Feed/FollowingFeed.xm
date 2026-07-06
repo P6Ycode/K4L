@@ -2,8 +2,8 @@
 // https://github.com/n3d1117/InstaSane
 
 #import <Foundation/Foundation.h>
-#import <objc/runtime.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
 #import <substrate.h>
 
 #import "../../Utils.h"
@@ -22,11 +22,11 @@ static BOOL SPKFollowingFeedEnabled(void) {
 %hook IGHomeFeedPickerMenuController
 
 - (id)initWithUserSession:(id)userSession
-                menuItems:(NSArray *)menuItems
-        homeFeedViewModel:(id)homeViewModel
-          analyticsModule:(id)analyticsModule
-     navigationController:(id)navigationController
-isForYouContentLaneEnabled:(BOOL)forYouEnabled {
+                     menuItems:(NSArray *)menuItems
+             homeFeedViewModel:(id)homeViewModel
+               analyticsModule:(id)analyticsModule
+          navigationController:(id)navigationController
+    isForYouContentLaneEnabled:(BOOL)forYouEnabled {
     if (!SPKFollowingFeedEnabled() || ![menuItems isKindOfClass:[NSArray class]])
         return %orig;
     // Surface "Following" at the top of the picker dropdown.
@@ -45,7 +45,8 @@ isForYouContentLaneEnabled:(BOOL)forYouEnabled {
 - (id)selectedMainFeedViewModel {
     if (SPKFollowingFeedEnabled()) {
         id following = ((id (*)(id, SEL))objc_msgSend)(self, @selector(_followingMainFeedViewModel));
-        if (following) return following;
+        if (following)
+            return following;
     }
     return %orig;
 }
@@ -69,31 +70,31 @@ isForYouContentLaneEnabled:(BOOL)forYouEnabled {
 %hook IGMainFeedViewModel
 
 - (id)initWithDeps:(id)deps
-             posts:(id)posts
-         nextMaxID:(id)nextMaxID
-initialPaginationSource:(NSString *)paginationSource
-contentCoordinator:(id)coordinator
-dataSourceSupplementaryItemsProvider:(id)supplementaryProvider
-disableAutomaticRefresh:(BOOL)disableRefresh
-disableSerialization:(BOOL)disableSerialization
-         sessionId:(id)sessionId
-   analyticsModule:(id)analyticsModule
-disableFlashFeedTLI:(BOOL)disableFlashFeedTLI
-disableFlashFeedOnColdStart:(BOOL)disableColdStart
-disableResponseDeferral:(BOOL)disableResponseDeferral
-  hidesStoriesTray:(BOOL)hidesStoriesTray
-shouldRegisterAsStoryDataListener:(BOOL)shouldRegisterAsStoryDataListener
-   isSecondaryFeed:(BOOL)isSecondaryFeed
-collectionViewBackgroundColorOverride:(id)backgroundColor
-minWarmStartFetchInterval:(double)minWarmStart
-peakMinWarmStartFetchInterval:(double)peakMinWarmStart
-minimumWarmStartBackgroundedInterval:(double)backgroundedMinWarmStart
-peakMinimumWarmStartBackgroundedInterval:(double)peakBackgroundedMinWarmStart
-supplementalFeedHoistedMediaID:(id)hoistedMediaId
-headerTitleOverride:(id)headerTitle
-  isInFollowingTab:(BOOL)isInFollowingTab
-useShimmerLoadingWhenNoStoriesTray:(BOOL)useShimmer
-mainFeedDataFetcher:(id)dataFetcher {
+                                       posts:(id)posts
+                                   nextMaxID:(id)nextMaxID
+                     initialPaginationSource:(NSString *)paginationSource
+                          contentCoordinator:(id)coordinator
+        dataSourceSupplementaryItemsProvider:(id)supplementaryProvider
+                     disableAutomaticRefresh:(BOOL)disableRefresh
+                        disableSerialization:(BOOL)disableSerialization
+                                   sessionId:(id)sessionId
+                             analyticsModule:(id)analyticsModule
+                         disableFlashFeedTLI:(BOOL)disableFlashFeedTLI
+                 disableFlashFeedOnColdStart:(BOOL)disableColdStart
+                     disableResponseDeferral:(BOOL)disableResponseDeferral
+                            hidesStoriesTray:(BOOL)hidesStoriesTray
+           shouldRegisterAsStoryDataListener:(BOOL)shouldRegisterAsStoryDataListener
+                             isSecondaryFeed:(BOOL)isSecondaryFeed
+       collectionViewBackgroundColorOverride:(id)backgroundColor
+                   minWarmStartFetchInterval:(double)minWarmStart
+               peakMinWarmStartFetchInterval:(double)peakMinWarmStart
+        minimumWarmStartBackgroundedInterval:(double)backgroundedMinWarmStart
+    peakMinimumWarmStartBackgroundedInterval:(double)peakBackgroundedMinWarmStart
+              supplementalFeedHoistedMediaID:(id)hoistedMediaId
+                         headerTitleOverride:(id)headerTitle
+                            isInFollowingTab:(BOOL)isInFollowingTab
+          useShimmerLoadingWhenNoStoriesTray:(BOOL)useShimmer
+                         mainFeedDataFetcher:(id)dataFetcher {
     if (SPKFollowingFeedEnabled()) {
         paginationSource = @"following";
         isInFollowingTab = YES;
@@ -108,14 +109,14 @@ mainFeedDataFetcher:(id)dataFetcher {
 %hook IGMainFeedNetworkSource
 
 - (id)initWithPosts:(id)posts
-          nextMaxID:(id)nextMaxID
-initialPaginationSource:(NSString *)paginationSource
-          fetchPath:(id)fetchPath
-     responseParser:(id)responseParser
-mainFeedNetworkSourceSessionDeps:(id)deps
-     sessionTracker:(id)sessionTracker
-    analyticsModule:(id)analyticsModule
-      useNewUIGraph:(BOOL)useNewGraph {
+                           nextMaxID:(id)nextMaxID
+             initialPaginationSource:(NSString *)paginationSource
+                           fetchPath:(id)fetchPath
+                      responseParser:(id)responseParser
+    mainFeedNetworkSourceSessionDeps:(id)deps
+                      sessionTracker:(id)sessionTracker
+                     analyticsModule:(id)analyticsModule
+                       useNewUIGraph:(BOOL)useNewGraph {
     if (SPKFollowingFeedEnabled())
         paginationSource = @"following";
     return %orig;
@@ -162,7 +163,7 @@ mainFeedNetworkSourceSessionDeps:(id)deps
 
 - (double)avatarSizeAdjustment {
     if (SPKFollowingFeedEnabled()) {
-        NSString *module = ((NSString *(*)(id, SEL))objc_msgSend)(self, @selector(module));
+        NSString *module = ((NSString * (*)(id, SEL)) objc_msgSend)(self, @selector(module));
         if ([module isKindOfClass:[NSString class]] && [module hasPrefix:@"feed_timeline"]) {
             return 28.5;
         }
@@ -177,10 +178,10 @@ mainFeedNetworkSourceSessionDeps:(id)deps
 extern "C" void SPKInstallFollowingFeedHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        Class picker  = SPKResolveIGClass(@"IGHomeFeedPicker.IGHomeFeedPickerMenuController", @"IGHomeFeedPickerMenuController");
-        Class dsa     = SPKResolveIGClass(@"IGDSAShared.IGDSAGatingManager", @"IGDSAGatingManager");
+        Class picker = SPKResolveIGClass(@"IGHomeFeedPicker.IGHomeFeedPickerMenuController", @"IGHomeFeedPickerMenuController");
+        Class dsa = SPKResolveIGClass(@"IGDSAShared.IGDSAGatingManager", @"IGDSAGatingManager");
         Class factory = SPKResolveIGClass(@"IGMainFeedDataFetcherKit.IGMainFeedRequestConfigFactory", @"IGMainFeedRequestConfigFactory");
-        Class tray    = SPKResolveIGClass(@"IGStoryTrayUIModels.IGStoryTrayCellViewModel", @"IGStoryTrayCellViewModel");
+        Class tray = SPKResolveIGClass(@"IGStoryTrayUIModels.IGStoryTrayCellViewModel", @"IGStoryTrayCellViewModel");
 
         SPKLog(@"FollowingFeed", @"installing hooks — picker=%@ dsa=%@ factory=%@ tray=%@ session=%@ viewModel=%@",
                picker ? @"OK" : @"NIL", dsa ? @"OK" : @"NIL", factory ? @"OK" : @"NIL",
@@ -189,9 +190,9 @@ extern "C" void SPKInstallFollowingFeedHooksIfEnabled(void) {
                objc_getClass("IGMainFeedViewModel") ? @"OK" : @"NIL");
 
         %init(SPKFollowingFeedHooks,
-              IGHomeFeedPickerMenuController = picker,
-              IGDSAGatingManager = dsa,
-              IGMainFeedRequestConfigFactory = factory,
-              IGStoryTrayCellViewModel = tray);
+                       IGHomeFeedPickerMenuController = picker,
+                       IGDSAGatingManager = dsa,
+                       IGMainFeedRequestConfigFactory = factory,
+                       IGStoryTrayCellViewModel = tray);
     });
 }

@@ -13,13 +13,16 @@ static SEL SPKMediaDMSendImageSelector(void) {
 }
 
 static id SPKMediaDMIvarValue(id object, const char *name) {
-    if (!object || !name) return nil;
+    if (!object || !name)
+        return nil;
     @try {
         for (Class cls = [object class]; cls && cls != NSObject.class; cls = class_getSuperclass(cls)) {
             Ivar ivar = class_getInstanceVariable(cls, name);
-            if (!ivar) continue;
+            if (!ivar)
+                continue;
             const char *encoding = ivar_getTypeEncoding(ivar);
-            if (encoding && encoding[0] == '@') return object_getIvar(object, ivar);
+            if (encoding && encoding[0] == '@')
+                return object_getIvar(object, ivar);
         }
     } @catch (__unused NSException *exception) {
     }
@@ -28,7 +31,8 @@ static id SPKMediaDMIvarValue(id object, const char *name) {
 
 static id SPKMediaDMCall(id object, NSString *selectorName) {
     SEL selector = NSSelectorFromString(selectorName);
-    if (!object || ![object respondsToSelector:selector]) return nil;
+    if (!object || ![object respondsToSelector:selector])
+        return nil;
     @try {
         return ((id (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -42,11 +46,13 @@ static id SPKMediaDMThreadContextFromTarget(id target) {
 
 static id SPKMediaDMMessageSenderFromTarget(id target) {
     id sender = SPKMediaDMCall(target, @"messageSenderFeatureController") ?: SPKMediaDMIvarValue(target, "_messageSenderFeatureController");
-    if (sender) return sender;
+    if (sender)
+        return sender;
 
     id threadContext = SPKMediaDMThreadContextFromTarget(target);
     sender = SPKMediaDMCall(threadContext, @"messageSenderFeatureController") ?: SPKMediaDMIvarValue(threadContext, "_messageSenderFeatureController");
-    if (sender) return sender;
+    if (sender)
+        return sender;
 
     id featureDelegate = SPKMediaDMCall(target, @"featureDelegate") ?: SPKMediaDMIvarValue(target, "_featureDelegate");
     return SPKMediaDMCall(featureDelegate, @"messageSenderFeatureController") ?: SPKMediaDMIvarValue(featureDelegate, "_messageSenderFeatureController");
@@ -94,32 +100,35 @@ static SPKMediaDMUploadCoordinator *sSPKMediaActiveDMUploadCoordinator;
 
     __weak typeof(coordinator) weakCoordinator = coordinator;
     [SPKGalleryPickerViewController presentFromViewController:presenter
-                                                       title:@"Gallery"
-                                           allowedMediaTypes:mediaTypes
-                                     allowsMultipleSelection:NO
-                                                  completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
-        SPKGalleryFile *file = selectedFiles.firstObject;
-        NSURL *fileURL = [file fileURL];
-        if (!file || ![file fileExists] || !fileURL) {
-            if (sSPKMediaActiveDMUploadCoordinator == weakCoordinator) sSPKMediaActiveDMUploadCoordinator = nil;
-            return;
-        }
-        [weakCoordinator sendImageFromURL:fileURL];
-    }];
+                                                        title:@"Gallery"
+                                            allowedMediaTypes:mediaTypes
+                                      allowsMultipleSelection:NO
+                                                   completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
+                                                       SPKGalleryFile *file = selectedFiles.firstObject;
+                                                       NSURL *fileURL = [file fileURL];
+                                                       if (!file || ![file fileExists] || !fileURL) {
+                                                           if (sSPKMediaActiveDMUploadCoordinator == weakCoordinator)
+                                                               sSPKMediaActiveDMUploadCoordinator = nil;
+                                                           return;
+                                                       }
+                                                       [weakCoordinator sendImageFromURL:fileURL];
+                                                   }];
 }
 
 - (void)sendImageFromURL:(NSURL *)url {
     UIImage *image = [UIImage imageWithContentsOfFile:url.path];
     if (!image) {
         SPKMediaDMNotify(@"Media upload failed", @"Could not read the selected photo.", NO);
-        if (sSPKMediaActiveDMUploadCoordinator == self) sSPKMediaActiveDMUploadCoordinator = nil;
+        if (sSPKMediaActiveDMUploadCoordinator == self)
+            sSPKMediaActiveDMUploadCoordinator = nil;
         return;
     }
 
     id sender = SPKMediaDMMessageSenderFromTarget(self.senderTarget) ?: self.senderTarget;
     if (![sender respondsToSelector:SPKMediaDMSendImageSelector()]) {
         SPKMediaDMNotify(@"Media upload unavailable", @"The direct media sender disappeared before sending.", NO);
-        if (sSPKMediaActiveDMUploadCoordinator == self) sSPKMediaActiveDMUploadCoordinator = nil;
+        if (sSPKMediaActiveDMUploadCoordinator == self)
+            sSPKMediaActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -129,7 +138,8 @@ static SPKMediaDMUploadCoordinator *sSPKMediaActiveDMUploadCoordinator;
     } @catch (__unused NSException *exception) {
         SPKMediaDMNotify(@"Media upload failed", @"Instagram rejected the selected photo.", NO);
     }
-    if (sSPKMediaActiveDMUploadCoordinator == self) sSPKMediaActiveDMUploadCoordinator = nil;
+    if (sSPKMediaActiveDMUploadCoordinator == self)
+        sSPKMediaActiveDMUploadCoordinator = nil;
 }
 
 @end

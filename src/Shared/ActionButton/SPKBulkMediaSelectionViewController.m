@@ -88,10 +88,14 @@
         [self.contentView addSubview:_selectionBadge];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_videoBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
-            [_videoBadge.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6.0],
-            [_selectionBadge.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6.0],
-            [_selectionBadge.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6.0],
+            [_videoBadge.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                                  constant:6.0],
+            [_videoBadge.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                      constant:6.0],
+            [_selectionBadge.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor
+                                                         constant:-6.0],
+            [_selectionBadge.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                           constant:-6.0],
             [_selectionBadge.widthAnchor constraintEqualToConstant:24.0],
             [_selectionBadge.heightAnchor constraintEqualToConstant:24.0],
         ]];
@@ -165,14 +169,17 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
 }
 
 + (void)presentFromViewController:(UIViewController *)presenter
-                             items:(NSArray<SPKBulkSelectionItem *> *)items
-                      destinations:(NSArray<SPKBulkSelectionDestination *> *)destinations
-                        completion:(SPKBulkSelectionCompletion)completion {
-    if (items.count == 0 || destinations.count == 0) return;
+                            items:(NSArray<SPKBulkSelectionItem *> *)items
+                     destinations:(NSArray<SPKBulkSelectionDestination *> *)destinations
+                       completion:(SPKBulkSelectionCompletion)completion {
+    if (items.count == 0 || destinations.count == 0)
+        return;
 
     UIViewController *host = presenter;
-    while (host.presentedViewController) host = host.presentedViewController;
-    if (!host) return;
+    while (host.presentedViewController)
+        host = host.presentedViewController;
+    if (!host)
+        return;
 
     SPKBulkMediaSelectionViewController *vc =
         [[SPKBulkMediaSelectionViewController alloc] initWithItems:items
@@ -239,8 +246,8 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
     NSUInteger total = self.items.count;
 
     self.navigationItem.title = count == 0
-        ? @"Select Media"
-        : [NSString stringWithFormat:@"%lu of %lu", (unsigned long)count, (unsigned long)total];
+                                    ? @"Select Media"
+                                    : [NSString stringWithFormat:@"%lu of %lu", (unsigned long)count, (unsigned long)total];
 
     BOOL enabled = (count > 0);
     for (UIBarButtonItem *item in self.destinationBarItems) {
@@ -283,12 +290,15 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
 }
 
 - (void)confirmWithDestination:(NSString *)destinationIdentifier {
-    if (self.selectedIndexes.count == 0) return;
+    if (self.selectedIndexes.count == 0)
+        return;
     NSIndexSet *selection = [self.selectedIndexes copy];
     SPKBulkSelectionCompletion completion = self.completion;
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (completion) completion(selection, destinationIdentifier);
-    }];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                                 if (completion)
+                                     completion(selection, destinationIdentifier);
+                             }];
 }
 
 #pragma mark - Data source
@@ -316,7 +326,8 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
 
     NSURL *url = item.thumbnailURL;
     cell.representedURL = url;
-    if (!url) return;
+    if (!url)
+        return;
 
     UIImage *cached = [SPKBulkSelectionThumbnailCache() objectForKey:url];
     if (cached) {
@@ -326,7 +337,8 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
 
     __weak typeof(cell) weakCell = cell;
     void (^apply)(UIImage *) = ^(UIImage *image) {
-        if (!image) return;
+        if (!image)
+            return;
         [SPKBulkSelectionThumbnailCache() setObject:image forKey:url];
         dispatch_async(dispatch_get_main_queue(), ^{
             SPKBulkSelectionCell *strongCell = weakCell;
@@ -345,10 +357,11 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
     }
 
     NSURLSessionDataTask *task = [self.thumbnailSession dataTaskWithURL:url
-                                                     completionHandler:^(NSData *data, __unused NSURLResponse *response, __unused NSError *error) {
-        if (!data) return;
-        apply([UIImage imageWithData:data]);
-    }];
+                                                      completionHandler:^(NSData *data, __unused NSURLResponse *response, __unused NSError *error) {
+                                                          if (!data)
+                                                              return;
+                                                          apply([UIImage imageWithData:data]);
+                                                      }];
     [task resume];
 }
 
@@ -369,8 +382,8 @@ static NSCache<NSURL *, UIImage *> *SPKBulkSelectionThumbnailCache(void) {
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
-                  layout:(UICollectionViewLayout *)collectionViewLayout
-  sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+                    layout:(UICollectionViewLayout *)collectionViewLayout
+    sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)collectionViewLayout;
     CGFloat columns = collectionView.bounds.size.width > 540.0 ? 4.0 : 3.0;
     CGFloat insets = layout.sectionInset.left + layout.sectionInset.right;

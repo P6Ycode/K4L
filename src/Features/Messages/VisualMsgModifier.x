@@ -17,7 +17,7 @@
             SPKLog(@"General", @"[Sparkle] Modifying visual message from read-once to replayable");
         }
     }
-    
+
     return mode;
 }
 %end
@@ -25,7 +25,8 @@
 %end
 
 void SPKInstallVisualMsgModifierHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"msgs_disable_view_once"]) return;
+    if (![SPKUtils getBoolPref:@"msgs_disable_view_once"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

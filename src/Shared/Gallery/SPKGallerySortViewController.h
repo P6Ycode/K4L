@@ -3,14 +3,14 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, SPKGallerySortMode) {
-    SPKGallerySortModeDateAddedDesc = 0,  // Newest first (default)
-    SPKGallerySortModeDateAddedAsc,       // Oldest first
-    SPKGallerySortModeNameAsc,            // A→Z
-    SPKGallerySortModeNameDesc,           // Z→A
-    SPKGallerySortModeSizeDesc,           // Largest first
-    SPKGallerySortModeSizeAsc,            // Smallest first
-    SPKGallerySortModeTypeAsc,            // Legacy: grouped by media type
-    SPKGallerySortModeTypeDesc,           // Legacy: grouped by media type
+    SPKGallerySortModeDateAddedDesc = 0, // Newest first (default)
+    SPKGallerySortModeDateAddedAsc,      // Oldest first
+    SPKGallerySortModeNameAsc,           // A→Z
+    SPKGallerySortModeNameDesc,          // Z→A
+    SPKGallerySortModeSizeDesc,          // Largest first
+    SPKGallerySortModeSizeAsc,           // Smallest first
+    SPKGallerySortModeTypeAsc,           // Legacy: grouped by media type
+    SPKGallerySortModeTypeDesc,          // Legacy: grouped by media type
 };
 
 @class SPKGallerySortViewController;

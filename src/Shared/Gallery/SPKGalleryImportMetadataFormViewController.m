@@ -1,9 +1,9 @@
 #import "SPKGalleryImportMetadataFormViewController.h"
 
-#import "SPKGallerySaveMetadata.h"
+#import "../../Utils.h"
 #import "SPKGalleryFile.h"
 #import "SPKGalleryOriginController.h"
-#import "../../Utils.h"
+#import "SPKGallerySaveMetadata.h"
 
 typedef NS_ENUM(NSInteger, SPKGalleryImportFormRow) {
     SPKGalleryImportFormRowDisplayName = 0,
@@ -22,7 +22,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportFormRow) {
     SPKGalleryImportFormRowCount
 };
 
-static NSString *SPKFormFormattedGallerySortDate(NSDate * _Nullable date) {
+static NSString *SPKFormFormattedGallerySortDate(NSDate *_Nullable date) {
     if (!date) {
         return @"";
     }
@@ -36,7 +36,7 @@ static NSString *SPKFormFormattedGallerySortDate(NSDate * _Nullable date) {
     return [fmt stringFromDate:date];
 }
 
-static NSDate * _Nullable SPKFormParsedGallerySortDate(NSString *raw) {
+static NSDate *_Nullable SPKFormParsedGallerySortDate(NSString *raw) {
     NSString *s = [raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (s.length == 0) {
         return nil;
@@ -121,71 +121,98 @@ static NSDate * _Nullable SPKFormParsedGallerySortDate(NSString *raw) {
 
 - (NSString *)titleForRow:(SPKGalleryImportFormRow)row {
     switch (row) {
-        case SPKGalleryImportFormRowDisplayName: return @"Display name";
-        case SPKGalleryImportFormRowFileStem: return @"File name key";
-        case SPKGalleryImportFormRowSource: return @"Source";
-        case SPKGalleryImportFormRowUsername: return @"Username";
-        case SPKGalleryImportFormRowUserPK: return @"User id (pk)";
-        case SPKGalleryImportFormRowProfileURL: return @"Profile URL";
-        case SPKGalleryImportFormRowMediaPK: return @"Media id (pk)";
-        case SPKGalleryImportFormRowMediaCode: return @"Shortcode";
-        case SPKGalleryImportFormRowMediaURL: return @"Permalink URL";
-        case SPKGalleryImportFormRowPixelWidth: return @"Width (px)";
-        case SPKGalleryImportFormRowPixelHeight: return @"Height (px)";
-        case SPKGalleryImportFormRowDuration: return @"Duration (seconds)";
-        case SPKGalleryImportFormRowGallerySortDate: return @"Gallery date";
-        default: return @"";
+    case SPKGalleryImportFormRowDisplayName:
+        return @"Display name";
+    case SPKGalleryImportFormRowFileStem:
+        return @"File name key";
+    case SPKGalleryImportFormRowSource:
+        return @"Source";
+    case SPKGalleryImportFormRowUsername:
+        return @"Username";
+    case SPKGalleryImportFormRowUserPK:
+        return @"User id (pk)";
+    case SPKGalleryImportFormRowProfileURL:
+        return @"Profile URL";
+    case SPKGalleryImportFormRowMediaPK:
+        return @"Media id (pk)";
+    case SPKGalleryImportFormRowMediaCode:
+        return @"Shortcode";
+    case SPKGalleryImportFormRowMediaURL:
+        return @"Permalink URL";
+    case SPKGalleryImportFormRowPixelWidth:
+        return @"Width (px)";
+    case SPKGalleryImportFormRowPixelHeight:
+        return @"Height (px)";
+    case SPKGalleryImportFormRowDuration:
+        return @"Duration (seconds)";
+    case SPKGalleryImportFormRowGallerySortDate:
+        return @"Gallery date";
+    default:
+        return @"";
     }
 }
 
 - (NSString *)footerTextForRow:(SPKGalleryImportFormRow)row {
     switch (row) {
-        case SPKGalleryImportFormRowDisplayName:
-            return @"Optional label shown in the gallery list instead of the file name.";
-        case SPKGalleryImportFormRowFileStem:
-            return @"Used only in the saved filename when the imported name is useless (UUID, generic export). Not Instagram’s shortcode — use Shortcode below for posts.";
-        case SPKGalleryImportFormRowSource:
-            return @"Feed, Story, Reels, etc. Story builds /stories/<user>/<media id>/. Reels opens shortcode as /reel/...; Feed uses /p/... when building a link.";
-        case SPKGalleryImportFormRowUsername:
-            return @"Account handle without @. Used for Open profile and, if Profile URL is empty, to fill an instagram:// profile link. Required to open a Story.";
-        case SPKGalleryImportFormRowUserPK:
-            return @"Numeric Instagram user id when you have it (some tweaks export this).";
-        case SPKGalleryImportFormRowProfileURL:
-            return @"https or instagram:// profile link. Open profile uses this or Username.";
-        case SPKGalleryImportFormRowMediaPK:
-            return @"Numeric media id. For posts/reels it's converted to a shortcode when no permalink/shortcode is set; for Stories it forms /stories/<user>/<media id>/.";
-        case SPKGalleryImportFormRowMediaCode:
-            return @"The code in the URL (e.g. ABCde123). With Permalink empty, Open original can build https://instagram.com/p/ or /reel/ from Source + shortcode.";
-        case SPKGalleryImportFormRowMediaURL:
-            return @"Full post URL (https or instagram://). Prefer this when you copied a share link from Instagram.";
-        case SPKGalleryImportFormRowPixelWidth:
-        case SPKGalleryImportFormRowPixelHeight:
-            return @"Leave empty to detect from the file. Override only if probing is wrong.";
-        case SPKGalleryImportFormRowDuration:
-            return @"Video length in seconds. Leave empty to probe; override for broken files.";
-        case SPKGalleryImportFormRowGallerySortDate:
-            return @"Used for the gallery “downloaded” line and sorting. In tweak-style names, we prefer a leading epoch token (save-time), and fall back to trailing compact digits when needed. Clear to use the device import time.";
-        default:
-            return @"";
+    case SPKGalleryImportFormRowDisplayName:
+        return @"Optional label shown in the gallery list instead of the file name.";
+    case SPKGalleryImportFormRowFileStem:
+        return @"Used only in the saved filename when the imported name is useless (UUID, generic export). Not Instagram’s shortcode — use Shortcode below for posts.";
+    case SPKGalleryImportFormRowSource:
+        return @"Feed, Story, Reels, etc. Story builds /stories/<user>/<media id>/. Reels opens shortcode as /reel/...; Feed uses /p/... when building a link.";
+    case SPKGalleryImportFormRowUsername:
+        return @"Account handle without @. Used for Open profile and, if Profile URL is empty, to fill an instagram:// profile link. Required to open a Story.";
+    case SPKGalleryImportFormRowUserPK:
+        return @"Numeric Instagram user id when you have it (some tweaks export this).";
+    case SPKGalleryImportFormRowProfileURL:
+        return @"https or instagram:// profile link. Open profile uses this or Username.";
+    case SPKGalleryImportFormRowMediaPK:
+        return @"Numeric media id. For posts/reels it's converted to a shortcode when no permalink/shortcode is set; for Stories it forms /stories/<user>/<media id>/.";
+    case SPKGalleryImportFormRowMediaCode:
+        return @"The code in the URL (e.g. ABCde123). With Permalink empty, Open original can build https://instagram.com/p/ or /reel/ from Source + shortcode.";
+    case SPKGalleryImportFormRowMediaURL:
+        return @"Full post URL (https or instagram://). Prefer this when you copied a share link from Instagram.";
+    case SPKGalleryImportFormRowPixelWidth:
+    case SPKGalleryImportFormRowPixelHeight:
+        return @"Leave empty to detect from the file. Override only if probing is wrong.";
+    case SPKGalleryImportFormRowDuration:
+        return @"Video length in seconds. Leave empty to probe; override for broken files.";
+    case SPKGalleryImportFormRowGallerySortDate:
+        return @"Used for the gallery “downloaded” line and sorting. In tweak-style names, we prefer a leading epoch token (save-time), and fall back to trailing compact digits when needed. Clear to use the device import time.";
+    default:
+        return @"";
     }
 }
 
 - (NSString *)stringValueForRow:(SPKGalleryImportFormRow)row {
     SPKGallerySaveMetadata *m = self.metadata;
     switch (row) {
-        case SPKGalleryImportFormRowDisplayName: return m.customName ?: @"";
-        case SPKGalleryImportFormRowFileStem: return m.importFileNameStem ?: @"";
-        case SPKGalleryImportFormRowUsername: return m.sourceUsername ?: @"";
-        case SPKGalleryImportFormRowUserPK: return m.sourceUserPK ?: @"";
-        case SPKGalleryImportFormRowProfileURL: return m.sourceProfileURLString ?: @"";
-        case SPKGalleryImportFormRowMediaPK: return m.sourceMediaPK ?: @"";
-        case SPKGalleryImportFormRowMediaCode: return m.sourceMediaCode ?: @"";
-        case SPKGalleryImportFormRowMediaURL: return m.sourceMediaURLString ?: @"";
-        case SPKGalleryImportFormRowPixelWidth: return m.pixelWidth > 0 ? [NSString stringWithFormat:@"%d", (int)m.pixelWidth] : @"";
-        case SPKGalleryImportFormRowPixelHeight: return m.pixelHeight > 0 ? [NSString stringWithFormat:@"%d", (int)m.pixelHeight] : @"";
-        case SPKGalleryImportFormRowDuration: return m.durationSeconds > 0.05 ? [NSString stringWithFormat:@"%.3f", m.durationSeconds] : @"";
-        case SPKGalleryImportFormRowGallerySortDate: return SPKFormFormattedGallerySortDate(m.importCapturedDate);
-        default: return @"";
+    case SPKGalleryImportFormRowDisplayName:
+        return m.customName ?: @"";
+    case SPKGalleryImportFormRowFileStem:
+        return m.importFileNameStem ?: @"";
+    case SPKGalleryImportFormRowUsername:
+        return m.sourceUsername ?: @"";
+    case SPKGalleryImportFormRowUserPK:
+        return m.sourceUserPK ?: @"";
+    case SPKGalleryImportFormRowProfileURL:
+        return m.sourceProfileURLString ?: @"";
+    case SPKGalleryImportFormRowMediaPK:
+        return m.sourceMediaPK ?: @"";
+    case SPKGalleryImportFormRowMediaCode:
+        return m.sourceMediaCode ?: @"";
+    case SPKGalleryImportFormRowMediaURL:
+        return m.sourceMediaURLString ?: @"";
+    case SPKGalleryImportFormRowPixelWidth:
+        return m.pixelWidth > 0 ? [NSString stringWithFormat:@"%d", (int)m.pixelWidth] : @"";
+    case SPKGalleryImportFormRowPixelHeight:
+        return m.pixelHeight > 0 ? [NSString stringWithFormat:@"%d", (int)m.pixelHeight] : @"";
+    case SPKGalleryImportFormRowDuration:
+        return m.durationSeconds > 0.05 ? [NSString stringWithFormat:@"%.3f", m.durationSeconds] : @"";
+    case SPKGalleryImportFormRowGallerySortDate:
+        return SPKFormFormattedGallerySortDate(m.importCapturedDate);
+    default:
+        return @"";
     }
 }
 
@@ -193,48 +220,48 @@ static NSDate * _Nullable SPKFormParsedGallerySortDate(NSString *raw) {
     NSString *t = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     SPKGallerySaveMetadata *m = self.metadata;
     switch (row) {
-        case SPKGalleryImportFormRowDisplayName:
-            m.customName = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowFileStem:
-            m.importFileNameStem = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowUsername: {
-            m.sourceUsername = t.length ? t : nil;
-            if (t.length > 0) {
-                [SPKGalleryOriginController populateProfileMetadata:m username:t user:nil];
-            }
-            break;
+    case SPKGalleryImportFormRowDisplayName:
+        m.customName = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowFileStem:
+        m.importFileNameStem = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowUsername: {
+        m.sourceUsername = t.length ? t : nil;
+        if (t.length > 0) {
+            [SPKGalleryOriginController populateProfileMetadata:m username:t user:nil];
         }
-        case SPKGalleryImportFormRowUserPK:
-            m.sourceUserPK = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowProfileURL:
-            m.sourceProfileURLString = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowMediaPK:
-            m.sourceMediaPK = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowMediaCode:
-            m.sourceMediaCode = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowMediaURL:
-            m.sourceMediaURLString = t.length ? t : nil;
-            break;
-        case SPKGalleryImportFormRowPixelWidth:
-            m.pixelWidth = t.length ? (int32_t)[t intValue] : 0;
-            break;
-        case SPKGalleryImportFormRowPixelHeight:
-            m.pixelHeight = t.length ? (int32_t)[t intValue] : 0;
-            break;
-        case SPKGalleryImportFormRowDuration:
-            m.durationSeconds = t.length ? [t doubleValue] : 0;
-            break;
-        case SPKGalleryImportFormRowGallerySortDate:
-            m.importCapturedDate = t.length ? SPKFormParsedGallerySortDate(t) : nil;
-            break;
-        default:
-            break;
+        break;
+    }
+    case SPKGalleryImportFormRowUserPK:
+        m.sourceUserPK = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowProfileURL:
+        m.sourceProfileURLString = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowMediaPK:
+        m.sourceMediaPK = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowMediaCode:
+        m.sourceMediaCode = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowMediaURL:
+        m.sourceMediaURLString = t.length ? t : nil;
+        break;
+    case SPKGalleryImportFormRowPixelWidth:
+        m.pixelWidth = t.length ? (int32_t)[t intValue] : 0;
+        break;
+    case SPKGalleryImportFormRowPixelHeight:
+        m.pixelHeight = t.length ? (int32_t)[t intValue] : 0;
+        break;
+    case SPKGalleryImportFormRowDuration:
+        m.durationSeconds = t.length ? [t doubleValue] : 0;
+        break;
+    case SPKGalleryImportFormRowGallerySortDate:
+        m.importCapturedDate = t.length ? SPKFormParsedGallerySortDate(t) : nil;
+        break;
+    default:
+        break;
     }
 }
 
@@ -254,10 +281,10 @@ static NSDate * _Nullable SPKFormParsedGallerySortDate(NSString *raw) {
                                           image:nil
                                      identifier:nil
                                         handler:^(__unused UIAction *action) {
-            self.metadata.source = (int16_t)src;
-            [self.sourceMenuButton setTitle:[SPKGalleryFile labelForSource:src] forState:UIControlStateNormal];
-            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:SPKGalleryImportFormRowSource] withRowAnimation:UITableViewRowAnimationNone];
-        }];
+                                            self.metadata.source = (int16_t)src;
+                                            [self.sourceMenuButton setTitle:[SPKGalleryFile labelForSource:src] forState:UIControlStateNormal];
+                                            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:SPKGalleryImportFormRowSource] withRowAnimation:UITableViewRowAnimationNone];
+                                        }];
         a.state = checked ? UIMenuElementStateOn : UIMenuElementStateOff;
         [actions addObject:a];
     }
@@ -330,8 +357,10 @@ static NSDate * _Nullable SPKFormParsedGallerySortDate(NSString *raw) {
     [NSLayoutConstraint activateConstraints:@[
         [tf.leadingAnchor constraintEqualToAnchor:g.leadingAnchor],
         [tf.trailingAnchor constraintEqualToAnchor:g.trailingAnchor],
-        [tf.topAnchor constraintEqualToAnchor:g.topAnchor constant:4],
-        [tf.bottomAnchor constraintEqualToAnchor:g.bottomAnchor constant:-4],
+        [tf.topAnchor constraintEqualToAnchor:g.topAnchor
+                                     constant:4],
+        [tf.bottomAnchor constraintEqualToAnchor:g.bottomAnchor
+                                        constant:-4],
         [cell.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:44],
     ]];
 

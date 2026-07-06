@@ -1,9 +1,9 @@
-#import <substrate.h>
 #import <objc/runtime.h>
+#import <substrate.h>
 
 #import "../../Utils.h"
 
-static NSString * const kSPKDMVoiceMessageConfirmPref = @"msgs_confirm_voice_msg";
+static NSString *const kSPKDMVoiceMessageConfirmPref = @"msgs_confirm_voice_msg";
 
 typedef void (*SPKDMVoiceNoArgIMP)(id, SEL);
 typedef void (*SPKDMVoiceLegacyRecordedIMP)(id, SEL, id, id, id, double, long long);
@@ -26,24 +26,31 @@ static BOOL SPKDMShouldConfirmVoiceMessage(void) {
 
 void SPKDMConfirmVoiceMessageIfNeeded(void (^confirmBlock)(void), void (^cancelBlock)(void)) {
     if (sSPKDMVoiceConfirmBypassing || !SPKDMShouldConfirmVoiceMessage()) {
-        if (confirmBlock) confirmBlock();
+        if (confirmBlock)
+            confirmBlock();
         return;
     }
 
-    if (sSPKDMVoiceConfirmVisible) return;
+    if (sSPKDMVoiceConfirmVisible)
+        return;
 
     sSPKDMVoiceConfirmVisible = YES;
     SPKLog(@"General", @"[Sparkle] DM audio message confirm triggered");
-    [SPKUtils showConfirmation:^{
-        sSPKDMVoiceConfirmVisible = NO;
-        sSPKDMVoiceConfirmBypassing = YES;
-        if (confirmBlock) confirmBlock();
-        sSPKDMVoiceConfirmBypassing = NO;
-    } cancelHandler:^{
-        sSPKDMVoiceConfirmVisible = NO;
-        if (cancelBlock) cancelBlock();
-    } title:@"Confirm Sending Voice Message"
-      message:@"Are you sure you want to send this voice message?"];
+    [SPKUtils
+        showConfirmation:^{
+            sSPKDMVoiceConfirmVisible = NO;
+            sSPKDMVoiceConfirmBypassing = YES;
+            if (confirmBlock)
+                confirmBlock();
+            sSPKDMVoiceConfirmBypassing = NO;
+        }
+        cancelHandler:^{
+            sSPKDMVoiceConfirmVisible = NO;
+            if (cancelBlock)
+                cancelBlock();
+        }
+        title:@"Confirm Sending Voice Message"
+        message:@"Are you sure you want to send this voice message?"];
 }
 
 static void SPKDMConfirmVoiceMessage(void (^confirmBlock)(void)) {
@@ -100,13 +107,15 @@ static void replaced_aiVoiceCompactBarDidTapSend(id self, SEL _cmd) {
 
 static void SPKHookDMVoiceInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
     Class cls = objc_getClass(className);
-    if (!cls || !class_getInstanceMethod(cls, selector)) return;
+    if (!cls || !class_getInstanceMethod(cls, selector))
+        return;
 
     MSHookMessageEx(cls, selector, replacement, original);
 }
 
 void SPKInstallDMAudioMsgConfirmHooksIfEnabled(void) {
-    if (!SPKDMShouldConfirmVoiceMessage()) return;
+    if (!SPKDMShouldConfirmVoiceMessage())
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

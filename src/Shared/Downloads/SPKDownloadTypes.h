@@ -4,7 +4,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 FOUNDATION_EXPORT NSErrorDomain const SPKDownloadErrorDomain;
 
-typedef NS_ERROR_ENUM(SPKDownloadErrorDomain, SPKDownloadErrorCode) {
+typedef NS_ERROR_ENUM(SPKDownloadErrorDomain, SPKDownloadErrorCode){
     SPKDownloadErrorInvalidURL = 1,
     SPKDownloadErrorUnsupportedScheme,
     SPKDownloadErrorExpiredURL,
@@ -95,18 +95,18 @@ typedef NS_ENUM(NSInteger, SPKDownloadHistoryFilter) {
 
 FOUNDATION_EXPORT NSInteger const SPKDownloadStoreSchemaVersion;
 
-FOUNDATION_EXPORT NSString * const kSPKDownloadMaxConcurrentKey;
-FOUNDATION_EXPORT NSString * const kSPKDownloadHistoryLimitKey;
-FOUNDATION_EXPORT NSString * const kSPKDownloadDetectDuplicatesKey;
+FOUNDATION_EXPORT NSString *const kSPKDownloadMaxConcurrentKey;
+FOUNDATION_EXPORT NSString *const kSPKDownloadHistoryLimitKey;
+FOUNDATION_EXPORT NSString *const kSPKDownloadDetectDuplicatesKey;
 
 FOUNDATION_EXPORT NSNotificationName const SPKDownloadServiceDidChangeNotification;
 FOUNDATION_EXPORT NSNotificationName const SPKDownloadJobDidChangeNotification;
 
-FOUNDATION_EXPORT NSString * const SPKDownloadNotificationJobIDKey;
-FOUNDATION_EXPORT NSString * const SPKDownloadNotificationItemIDKey;
-FOUNDATION_EXPORT NSString * const SPKDownloadNotificationSnapshotKey;
+FOUNDATION_EXPORT NSString *const SPKDownloadNotificationJobIDKey;
+FOUNDATION_EXPORT NSString *const SPKDownloadNotificationItemIDKey;
+FOUNDATION_EXPORT NSString *const SPKDownloadNotificationSnapshotKey;
 
-FOUNDATION_EXPORT NSError *SPKDownloadError(SPKDownloadErrorCode code, NSString *description, NSString * _Nullable recovery);
+FOUNDATION_EXPORT NSError *SPKDownloadError(SPKDownloadErrorCode code, NSString *description, NSString *_Nullable recovery);
 FOUNDATION_EXPORT BOOL SPKDownloadStateIsTerminal(SPKDownloadState state);
 FOUNDATION_EXPORT BOOL SPKDownloadStateAllowsTransition(SPKDownloadState from, SPKDownloadState to);
 FOUNDATION_EXPORT SPKDownloadState SPKDownloadDerivedJobState(NSArray<NSNumber *> *itemStates);

@@ -33,9 +33,11 @@ static NSInteger const kSPKTrimWaveformBars = 96;
 
 - (void)drawRect:(CGRect)rect {
     NSArray<NSNumber *> *samples = self.samples;
-    if (samples.count == 0) return;
+    if (samples.count == 0)
+        return;
     CGContextRef ctx = UIGraphicsGetCurrentContext();
-    if (!ctx) return;
+    if (!ctx)
+        return;
     CGContextSetFillColorWithColor(ctx, [UIColor colorWithWhite:0.92 alpha:1.0].CGColor);
 
     CGFloat w = self.bounds.size.width;
@@ -51,7 +53,7 @@ static NSInteger const kSPKTrimWaveformBars = 96;
         CGFloat x = i * step + (step - barW) / 2.0;
         CGFloat y = (h - barH) / 2.0;
         UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, barW, barH)
-                                                       cornerRadius:barW / 2.0];
+                                                        cornerRadius:barW / 2.0];
         [path fill];
     }
 }
@@ -66,28 +68,42 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
                                   void (^completion)(NSArray<NSNumber *> *_Nullable)) {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         void (^finish)(NSArray<NSNumber *> *) = ^(NSArray<NSNumber *> *result) {
-            dispatch_async(dispatch_get_main_queue(), ^{ completion(result); });
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(result);
+            });
         };
 
         AVAssetTrack *track = [[asset tracksWithMediaType:AVMediaTypeAudio] firstObject];
-        if (!track) { finish(nil); return; }
+        if (!track) {
+            finish(nil);
+            return;
+        }
 
         NSError *error = nil;
         AVAssetReader *reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
-        if (!reader) { finish(nil); return; }
+        if (!reader) {
+            finish(nil);
+            return;
+        }
 
         NSDictionary *settings = @{
-            AVFormatIDKey: @(kAudioFormatLinearPCM),
-            AVLinearPCMBitDepthKey: @16,
-            AVLinearPCMIsBigEndianKey: @NO,
-            AVLinearPCMIsFloatKey: @NO,
-            AVLinearPCMIsNonInterleaved: @NO,
+            AVFormatIDKey : @(kAudioFormatLinearPCM),
+            AVLinearPCMBitDepthKey : @16,
+            AVLinearPCMIsBigEndianKey : @NO,
+            AVLinearPCMIsFloatKey : @NO,
+            AVLinearPCMIsNonInterleaved : @NO,
         };
         AVAssetReaderTrackOutput *output = [[AVAssetReaderTrackOutput alloc] initWithTrack:track outputSettings:settings];
         output.alwaysCopiesSampleData = NO;
-        if (![reader canAddOutput:output]) { finish(nil); return; }
+        if (![reader canAddOutput:output]) {
+            finish(nil);
+            return;
+        }
         [reader addOutput:output];
-        if (![reader startReading]) { finish(nil); return; }
+        if (![reader startReading]) {
+            finish(nil);
+            return;
+        }
 
         // Estimate total interleaved int16 samples so we can bucket by position.
         double sampleRate = 44100.0;
@@ -96,24 +112,32 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
         if (fmt) {
             const AudioStreamBasicDescription *asbd = CMAudioFormatDescriptionGetStreamBasicDescription(fmt);
             if (asbd) {
-                if (asbd->mSampleRate > 0) sampleRate = asbd->mSampleRate;
-                if (asbd->mChannelsPerFrame > 0) channels = asbd->mChannelsPerFrame;
+                if (asbd->mSampleRate > 0)
+                    sampleRate = asbd->mSampleRate;
+                if (asbd->mChannelsPerFrame > 0)
+                    channels = asbd->mChannelsPerFrame;
             }
         }
         double durationSeconds = CMTimeGetSeconds(asset.duration);
-        if (!isfinite(durationSeconds) || durationSeconds <= 0) durationSeconds = CMTimeGetSeconds(track.timeRange.duration);
+        if (!isfinite(durationSeconds) || durationSeconds <= 0)
+            durationSeconds = CMTimeGetSeconds(track.timeRange.duration);
         int64_t estTotal = (int64_t)(MAX(0.0, durationSeconds) * sampleRate * channels);
-        if (estTotal <= 0) estTotal = targetCount; // Avoid divide-by-zero; buckets clamp below.
+        if (estTotal <= 0)
+            estTotal = targetCount; // Avoid divide-by-zero; buckets clamp below.
 
         NSInteger count = MAX((NSInteger)1, targetCount);
         double *peaks = calloc((size_t)count, sizeof(double));
-        if (!peaks) { finish(nil); return; }
+        if (!peaks) {
+            finish(nil);
+            return;
+        }
 
         int64_t globalIndex = 0;
         double globalMax = 0.0;
         while (reader.status == AVAssetReaderStatusReading) {
             CMSampleBufferRef sampleBuffer = [output copyNextSampleBuffer];
-            if (!sampleBuffer) break;
+            if (!sampleBuffer)
+                break;
             CMBlockBufferRef block = CMSampleBufferGetDataBuffer(sampleBuffer);
             if (block) {
                 size_t length = CMBlockBufferGetDataLength(block);
@@ -124,14 +148,19 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
                         for (size_t s = 0; s < int16Count; s++) {
                             double amp = fabs((double)data[s]) / 32768.0;
                             NSInteger bucket = (NSInteger)((globalIndex * count) / estTotal);
-                            if (bucket < 0) bucket = 0;
-                            if (bucket >= count) bucket = count - 1;
-                            if (amp > peaks[bucket]) peaks[bucket] = amp;
-                            if (amp > globalMax) globalMax = amp;
+                            if (bucket < 0)
+                                bucket = 0;
+                            if (bucket >= count)
+                                bucket = count - 1;
+                            if (amp > peaks[bucket])
+                                peaks[bucket] = amp;
+                            if (amp > globalMax)
+                                globalMax = amp;
                             globalIndex++;
                         }
                     }
-                    if (data) free(data);
+                    if (data)
+                        free(data);
                 }
             }
             CMSampleBufferInvalidate(sampleBuffer);
@@ -311,7 +340,8 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 }
 
 - (void)setFrameOnlyMode:(BOOL)frameOnlyMode {
-    if (_frameOnlyMode == frameOnlyMode) return;
+    if (_frameOnlyMode == frameOnlyMode)
+        return;
     _frameOnlyMode = frameOnlyMode;
     if (frameOnlyMode) {
         // Snap the frame marker into the current selection if outside it.
@@ -338,7 +368,8 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 #pragma mark - Waveform
 
 - (void)setWaveformMode:(BOOL)waveformMode {
-    if (_waveformMode == waveformMode) return;
+    if (_waveformMode == waveformMode)
+        return;
     _waveformMode = waveformMode;
     _waveformView.hidden = !waveformMode;
     for (UIImageView *iv in self.thumbnailViews) {
@@ -348,7 +379,8 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 }
 
 - (void)loadWaveformForAsset:(AVAsset *)asset {
-    if (!asset) return;
+    if (!asset)
+        return;
     self.waveformMode = YES;
     __weak typeof(self) weakSelf = self;
     SPKTrimSampleWaveform(asset, kSPKTrimWaveformBars, ^(NSArray<NSNumber *> *samples) {
@@ -359,7 +391,8 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 #pragma mark - Thumbnails
 
 - (void)loadThumbnailsForAsset:(AVAsset *)asset {
-    if (!asset) return;
+    if (!asset)
+        return;
     AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
     generator.appliesPreferredTrackTransform = YES;
     generator.requestedTimeToleranceBefore = kCMTimePositiveInfinity;
@@ -370,7 +403,8 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 
     CMTime assetDuration = asset.duration;
     NSTimeInterval total = CMTimeGetSeconds(assetDuration);
-    if (total <= 0.0 || !isfinite(total)) return;
+    if (total <= 0.0 || !isfinite(total))
+        return;
 
     NSMutableArray<NSValue *> *times = [NSMutableArray array];
     for (NSInteger i = 0; i < kSPKTrimThumbnailCount; i++) {
@@ -384,20 +418,22 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
                                     completionHandler:^(CMTime requestedTime, CGImageRef _Nullable image,
                                                         CMTime actualTime, AVAssetImageGeneratorResult result,
                                                         NSError *_Nullable error) {
-        if (result != AVAssetImageGeneratorSucceeded || !image) return;
-        // Derive the slot from the requested time — the generator does not
-        // guarantee completion order, so we can't rely on a running counter.
-        NSTimeInterval requested = CMTimeGetSeconds(requestedTime);
-        NSInteger slot = (NSInteger)floor((requested * kSPKTrimThumbnailCount) / total);
-        slot = MAX(0, MIN(slot, kSPKTrimThumbnailCount - 1));
-        UIImage *uiImage = [UIImage imageWithCGImage:image];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || slot >= strongSelf.thumbnailImages.count) return;
-            strongSelf.thumbnailImages[slot] = uiImage;
-            [strongSelf applyThumbnailImageAtSlot:slot image:uiImage];
-        });
-    }];
+                                        if (result != AVAssetImageGeneratorSucceeded || !image)
+                                            return;
+                                        // Derive the slot from the requested time — the generator does not
+                                        // guarantee completion order, so we can't rely on a running counter.
+                                        NSTimeInterval requested = CMTimeGetSeconds(requestedTime);
+                                        NSInteger slot = (NSInteger)floor((requested * kSPKTrimThumbnailCount) / total);
+                                        slot = MAX(0, MIN(slot, kSPKTrimThumbnailCount - 1));
+                                        UIImage *uiImage = [UIImage imageWithCGImage:image];
+                                        dispatch_async(dispatch_get_main_queue(), ^{
+                                            __strong typeof(weakSelf) strongSelf = weakSelf;
+                                            if (!strongSelf || slot >= strongSelf.thumbnailImages.count)
+                                                return;
+                                            strongSelf.thumbnailImages[slot] = uiImage;
+                                            [strongSelf applyThumbnailImageAtSlot:slot image:uiImage];
+                                        });
+                                    }];
 }
 
 - (void)applyThumbnailImageAtSlot:(NSInteger)slot image:(UIImage *)image {
@@ -405,7 +441,10 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
         UIImageView *iv = self.thumbnailViews[slot];
         iv.image = image;
         iv.alpha = 0.0;
-        [UIView animateWithDuration:0.2 animations:^{ iv.alpha = 1.0; }];
+        [UIView animateWithDuration:0.2
+                         animations:^{
+                             iv.alpha = 1.0;
+                         }];
     }
 }
 
@@ -466,13 +505,15 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 }
 
 - (CGFloat)xForTime:(NSTimeInterval)t {
-    if (_duration <= 0.0) return [self contentOriginX];
+    if (_duration <= 0.0)
+        return [self contentOriginX];
     return [self contentOriginX] + (t / _duration) * [self contentWidth];
 }
 
 - (NSTimeInterval)timeForX:(CGFloat)x {
     CGFloat w = [self contentWidth];
-    if (w <= 0.0) return 0.0;
+    if (w <= 0.0)
+        return 0.0;
     CGFloat clamped = MAX(0.0, MIN(x - [self contentOriginX], w));
     return (clamped / w) * _duration;
 }
@@ -581,40 +622,40 @@ static void SPKTrimSampleWaveform(AVAsset *asset, NSInteger targetCount,
 - (void)applyDragAtPoint:(CGPoint)p {
     NSTimeInterval t = [self timeForX:p.x];
     switch (_dragTarget) {
-        case SPKTrimDragTargetLeftHandle: {
-            NSTimeInterval maxStart = MAX(0.0, _endTime - _minimumDuration);
-            _startTime = MAX(0.0, MIN(t, maxStart));
-            _playheadTime = _startTime;
-            [self layoutSelection];
-            [self layoutPlayhead];
-            if ([self.delegate respondsToSelector:@selector(trimScrubber:didChangeStartTime:)]) {
-                [self.delegate trimScrubber:self didChangeStartTime:_startTime];
-            }
-            break;
+    case SPKTrimDragTargetLeftHandle: {
+        NSTimeInterval maxStart = MAX(0.0, _endTime - _minimumDuration);
+        _startTime = MAX(0.0, MIN(t, maxStart));
+        _playheadTime = _startTime;
+        [self layoutSelection];
+        [self layoutPlayhead];
+        if ([self.delegate respondsToSelector:@selector(trimScrubber:didChangeStartTime:)]) {
+            [self.delegate trimScrubber:self didChangeStartTime:_startTime];
         }
-        case SPKTrimDragTargetRightHandle: {
-            NSTimeInterval minEnd = MIN(_duration, _startTime + _minimumDuration);
-            _endTime = MIN(_duration, MAX(t, minEnd));
-            _playheadTime = _endTime;
-            [self layoutSelection];
-            [self layoutPlayhead];
-            if ([self.delegate respondsToSelector:@selector(trimScrubber:didChangeEndTime:)]) {
-                [self.delegate trimScrubber:self didChangeEndTime:_endTime];
-            }
-            break;
+        break;
+    }
+    case SPKTrimDragTargetRightHandle: {
+        NSTimeInterval minEnd = MIN(_duration, _startTime + _minimumDuration);
+        _endTime = MIN(_duration, MAX(t, minEnd));
+        _playheadTime = _endTime;
+        [self layoutSelection];
+        [self layoutPlayhead];
+        if ([self.delegate respondsToSelector:@selector(trimScrubber:didChangeEndTime:)]) {
+            [self.delegate trimScrubber:self didChangeEndTime:_endTime];
         }
-        case SPKTrimDragTargetPlayhead: {
-            if (!_frameOnlyMode) {
-                t = MAX(_startTime, MIN(t, _endTime));
-            }
-            self.playheadTime = t;
-            if ([self.delegate respondsToSelector:@selector(trimScrubber:didScrubToTime:)]) {
-                [self.delegate trimScrubber:self didScrubToTime:t];
-            }
-            break;
+        break;
+    }
+    case SPKTrimDragTargetPlayhead: {
+        if (!_frameOnlyMode) {
+            t = MAX(_startTime, MIN(t, _endTime));
         }
-        case SPKTrimDragTargetNone:
-            break;
+        self.playheadTime = t;
+        if ([self.delegate respondsToSelector:@selector(trimScrubber:didScrubToTime:)]) {
+            [self.delegate trimScrubber:self didScrubToTime:t];
+        }
+        break;
+    }
+    case SPKTrimDragTargetNone:
+        break;
     }
 }
 

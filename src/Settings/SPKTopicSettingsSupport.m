@@ -1,21 +1,21 @@
 #import "SPKTopicSettingsSupport.h"
 #import "../Shared/UI/SPKNotificationCenter.h"
 #import "SPKActionButtonDefaultActionPickerViewController.h"
-#import "SPKEditActionsListViewController.h"
 #import "SPKBulkActionMenuEditViewController.h"
+#import "SPKEditActionsListViewController.h"
 #import "SPKPreferences.h"
 
 #import "../AssetUtils.h"
-#import "../Utils.h"
-#import "../Shared/ActionButton/SPKActionDescriptor.h"
 #import "../Shared/ActionButton/SPKActionButtonConfiguration.h"
+#import "../Shared/ActionButton/SPKActionDescriptor.h"
+#import "../Utils.h"
 
 CGFloat const SPKSettingsCellIconPointSize = 24.0;
 
 NSDictionary *SPKTopicSection(NSString *header, NSArray *rows, NSString *footer) {
     NSMutableDictionary *section = [@{
-        @"header": header ?: @"",
-        @"rows": rows ?: @[]
+        @"header" : header ?: @"",
+        @"rows" : rows ?: @[]
     } mutableCopy];
 
     if (footer.length > 0) {
@@ -35,7 +35,8 @@ UIImage *SPKSettingsSystemIcon(NSString *name, CGFloat pointSize, UIImageSymbolW
                                                  weight:weight
                                                  source:SPKResolvedImageSourceSystemSymbol
                                           renderingMode:UIImageRenderingModeAlwaysTemplate];
-    if (!symbol) return nil;
+    if (!symbol)
+        return nil;
 
     // SF Symbols size by cap-height, so a wide/tall glyph (e.g.
     // button.vertical.right.press) renders to a larger bounding box than the
@@ -58,7 +59,7 @@ UIImage *SPKSettingsSystemIcon(NSString *name, CGFloat pointSize, UIImageSymbolW
     UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
     format.opaque = NO;
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:canvasSize format:format];
-    UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+    UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext *_Nonnull context) {
         (void)context;
         [symbol drawInRect:CGRectIntegral(drawRect)];
     }];
@@ -74,17 +75,20 @@ static UIImage *SPKSelectedMenuIconInMenu(UIMenu *menu) {
     for (UIMenuElement *element in menu.children) {
         if ([element isKindOfClass:[UIMenu class]]) {
             UIImage *icon = SPKSelectedMenuIconInMenu((UIMenu *)element);
-            if (icon) return icon;
+            if (icon)
+                return icon;
             continue;
         }
 
-        if (![element isKindOfClass:[UICommand class]]) continue;
+        if (![element isKindOfClass:[UICommand class]])
+            continue;
         UICommand *command = (UICommand *)element;
         NSDictionary *propertyList = command.propertyList;
         NSString *defaultsKey = propertyList[@"defaultsKey"];
         NSString *value = propertyList[@"value"];
         NSString *iconName = propertyList[@"iconName"];
-        if (defaultsKey.length == 0 || value.length == 0 || iconName.length == 0) continue;
+        if (defaultsKey.length == 0 || value.length == 0 || iconName.length == 0)
+            continue;
 
         // Read through the namespaced accessor so the selected-icon lookup
         // matches how menuChanged: writes (per-account effective key). A raw
@@ -101,10 +105,12 @@ static UIImage *SPKSelectedMenuIconInMenu(UIMenu *menu) {
 
 SPKSetting *SPKSettingApplySelectedMenuIcon(SPKSetting *setting, UIImage *fallbackIcon) {
     __weak SPKSetting *weakSetting = setting;
-    setting.iconProvider = ^UIImage *{
+    setting.iconProvider = ^UIImage * {
         SPKSetting *strongSetting = weakSetting;
-        if (!strongSetting) return fallbackIcon;
-        return SPKSelectedMenuIconInMenu(strongSetting.baseMenu) ?: fallbackIcon ?: strongSetting.icon;
+        if (!strongSetting)
+            return fallbackIcon;
+        return SPKSelectedMenuIconInMenu(strongSetting.baseMenu) ?: fallbackIcon ?
+                                                                                 : strongSetting.icon;
     };
     return setting;
 }
@@ -120,13 +126,13 @@ SPKSetting *SPKTopicNavigationSetting(NSString *title, NSString *iconName, CGFlo
 
 SPKSetting *SPKActionButtonDefaultActionNavigationSetting(SPKActionButtonSource source) {
     SPKSetting *setting = [SPKSetting navigationCellWithTitle:@"Default Tap Action"
-                                                    subtitle:@""
-                                                        icon:SPKSettingsIcon(@"action")
-                                              viewController:[[SPKActionButtonDefaultActionPickerViewController alloc] initWithSource:source]];
-    setting.accessoryTextProvider = ^NSString *{
+                                                     subtitle:@""
+                                                         icon:SPKSettingsIcon(@"action")
+                                               viewController:[[SPKActionButtonDefaultActionPickerViewController alloc] initWithSource:source]];
+    setting.accessoryTextProvider = ^NSString * {
         return SPKActionButtonDefaultActionTitleForSource(source);
     };
-    setting.iconProvider = ^UIImage *{
+    setting.iconProvider = ^UIImage * {
         return SPKSettingsIcon(SPKActionButtonDefaultActionIconNameForSource(source));
     };
     return setting;
@@ -134,8 +140,8 @@ SPKSetting *SPKActionButtonDefaultActionNavigationSetting(SPKActionButtonSource 
 
 static UICommand *SPKMenuCommand(NSString *title, NSString *imageName, NSString *fallback, NSString *defaultsKey, NSString *value, BOOL requiresRestart) {
     NSMutableDictionary *propertyList = [@{
-        @"defaultsKey": defaultsKey,
-        @"value": value
+        @"defaultsKey" : defaultsKey,
+        @"value" : value
     } mutableCopy];
 
     if (requiresRestart) {
@@ -176,9 +182,9 @@ UIMenu *SPKReelsTapControlMenu(void) {
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SPKMenuCommand(@"Pause/Play", nil, nil, @"reels_tap_control", @"pause", YES),
-            SPKMenuCommand(@"Mute/Unmute", nil, nil, @"reels_tap_control", @"mute", YES)
-        ]]
+                         SPKMenuCommand(@"Pause/Play", nil, nil, @"reels_tap_control", @"pause", YES),
+                         SPKMenuCommand(@"Mute/Unmute", nil, nil, @"reels_tap_control", @"mute", YES)
+                     ]]
     ]];
 }
 
@@ -197,10 +203,10 @@ UIMenu *SPKNavigationIconOrderingMenu(void) {
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SPKMenuCommand(@"Classic", nil, nil, @"interface_nav_order", @"classic", YES),
-            SPKMenuCommand(@"Standard", nil, nil, @"interface_nav_order", @"standard", YES),
-            SPKMenuCommand(@"Alternate", nil, nil, @"interface_nav_order", @"alternate", YES)
-        ]]
+                         SPKMenuCommand(@"Classic", nil, nil, @"interface_nav_order", @"classic", YES),
+                         SPKMenuCommand(@"Standard", nil, nil, @"interface_nav_order", @"standard", YES),
+                         SPKMenuCommand(@"Alternate", nil, nil, @"interface_nav_order", @"alternate", YES)
+                     ]]
     ]];
 }
 
@@ -212,12 +218,12 @@ UIMenu *SPKLaunchTabMenu(void) {
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SPKMenuCommand(@"Feed", @"home", nil, @"interface_launch_tab", @"feed", YES),
-            SPKMenuCommand(@"Reels", @"reels", nil, @"interface_launch_tab", @"reels", YES),
-            SPKMenuCommand(@"Messages", @"messages", nil, @"interface_launch_tab", @"inbox", YES),
-            SPKMenuCommand(@"Explore", @"search", nil, @"interface_launch_tab", @"explore", YES),
-            SPKMenuCommand(@"Profile", @"user_circle", nil, @"interface_launch_tab", @"profile", YES)
-        ]]
+                         SPKMenuCommand(@"Feed", @"home", nil, @"interface_launch_tab", @"feed", YES),
+                         SPKMenuCommand(@"Reels", @"reels", nil, @"interface_launch_tab", @"reels", YES),
+                         SPKMenuCommand(@"Messages", @"messages", nil, @"interface_launch_tab", @"inbox", YES),
+                         SPKMenuCommand(@"Explore", @"search", nil, @"interface_launch_tab", @"explore", YES),
+                         SPKMenuCommand(@"Profile", @"user_circle", nil, @"interface_launch_tab", @"profile", YES)
+                     ]]
     ]];
 }
 
@@ -229,9 +235,9 @@ UIMenu *SPKSwipeBetweenTabsMenu(void) {
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SPKMenuCommand(@"Enabled", nil, nil, @"interface_swipe_tabs", @"enabled", YES),
-            SPKMenuCommand(@"Disabled", nil, nil, @"interface_swipe_tabs", @"disabled", YES)
-        ]]
+                         SPKMenuCommand(@"Enabled", nil, nil, @"interface_swipe_tabs", @"enabled", YES),
+                         SPKMenuCommand(@"Disabled", nil, nil, @"interface_swipe_tabs", @"disabled", YES)
+                     ]]
     ]];
 }
 
@@ -243,14 +249,14 @@ UIMenu *SPKLiquidGlassTabBarStateMenu(void) {
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SPKMenuCommand(@"Fixed", nil, nil, kSPKPrefInterfaceLiquidGlassTabBarMode, @"fixed", YES),
-            SPKMenuCommand(@"Hide on Scroll", nil, nil, kSPKPrefInterfaceLiquidGlassTabBarMode, @"hide", YES)
-        ]]
+                         SPKMenuCommand(@"Fixed", nil, nil, kSPKPrefInterfaceLiquidGlassTabBarMode, @"fixed", YES),
+                         SPKMenuCommand(@"Hide on Scroll", nil, nil, kSPKPrefInterfaceLiquidGlassTabBarMode, @"hide", YES)
+                     ]]
     ]];
 }
 
 UIMenu *SPKSwipeCloseCommentsDirectionMenu(void) {
-    static NSString * const kSPKSwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
+    static NSString *const kSPKSwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
     return [UIMenu menuWithChildren:@[
         SPKMenuCommand(@"Both", @"left_right", nil, kSPKSwipeCloseCommentsDirectionKey, @"both", NO),
         SPKMenuCommand(@"Left", @"arrow_left", nil, kSPKSwipeCloseCommentsDirectionKey, @"left", NO),
@@ -292,11 +298,11 @@ UIMenu *SPKMediaVideoQualityMenu(void) {
                    identifier:nil
                       options:UIMenuOptionsDisplayInline
                      children:@[
-            SPKMenuCommand(@"Always Ask", nil, nil, @"downloads_video_quality", @"always_ask", NO),
-            SPKMenuCommand(@"High", nil, nil, @"downloads_video_quality", @"high", NO),
-            SPKMenuCommand(@"Medium", nil, nil, @"downloads_video_quality", @"medium", NO),
-            SPKMenuCommand(@"Low", nil, nil, @"downloads_video_quality", @"low", NO)
-        ]]
+                         SPKMenuCommand(@"Always Ask", nil, nil, @"downloads_video_quality", @"always_ask", NO),
+                         SPKMenuCommand(@"High", nil, nil, @"downloads_video_quality", @"high", NO),
+                         SPKMenuCommand(@"Medium", nil, nil, @"downloads_video_quality", @"medium", NO),
+                         SPKMenuCommand(@"Low", nil, nil, @"downloads_video_quality", @"low", NO)
+                     ]]
     ]];
 }
 
@@ -309,24 +315,24 @@ UIMenu *SPKMediaPhotoQualityMenu(void) {
 }
 
 UIMenu *SPKGalleryShortcutTargetMenu(void) {
-    NSString * const kGalleryLongPressTabKey = @"gallery_quick_access_tab";
-    NSString * const kGalleryQuickAccessDisabledValue = @"none";
+    NSString *const kGalleryLongPressTabKey = @"gallery_quick_access_tab";
+    NSString *const kGalleryQuickAccessDisabledValue = @"none";
 
     NSMutableArray<UIMenuElement *> *commands = [NSMutableArray array];
 
     NSArray<NSDictionary *> *items = @[
-        @{@"title": @"None", @"value": kGalleryQuickAccessDisabledValue, @"icon": @"circle_off"},
-        @{@"title": @"Home", @"value": @"mainfeed-tab", @"icon": @"home"},
-        @{@"title": @"Reels", @"value": @"reels-tab", @"icon": @"reels"}
+        @{@"title" : @"None", @"value" : kGalleryQuickAccessDisabledValue, @"icon" : @"circle_off"},
+        @{@"title" : @"Home", @"value" : @"mainfeed-tab", @"icon" : @"home"},
+        @{@"title" : @"Reels", @"value" : @"reels-tab", @"icon" : @"reels"}
     ];
 
     NSMutableArray *allItems = [items mutableCopy];
     if ([SPKUtils tabOrderSetTo:@"classic"]) {
-        [allItems addObject:@{@"title": @"Create", @"value": @"camera-tab", @"icon": @"plus"}];
+        [allItems addObject:@{@"title" : @"Create", @"value" : @"camera-tab", @"icon" : @"plus"}];
     } else {
-        [allItems addObject:@{@"title": @"Messages", @"value": @"direct-inbox-tab", @"icon": @"messages"}];
+        [allItems addObject:@{@"title" : @"Messages", @"value" : @"direct-inbox-tab", @"icon" : @"messages"}];
     }
-    [allItems addObject:@{@"title": @"Profile", @"value": @"profile-tab", @"icon": @"user_circle"}];
+    [allItems addObject:@{@"title" : @"Profile", @"value" : @"profile-tab", @"icon" : @"user_circle"}];
 
     for (NSDictionary *item in allItems) {
         NSString *title = item[@"title"];

@@ -3,23 +3,23 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <compression.h>
 
-#import "TweakSettings.h"
-#import "SPKPreferenceAvailability.h"
-#import "SPKAppIconCatalog.h"
-#import "../Utils.h"
 #import "../App/SPKCore.h"
+#import "../Features/Messages/DeletedMessagesLog/SPKDeletedMessagesStorage.h"
+#import "../Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerStorage.h"
 #import "../Shared/Account/SPKAccountManager.h"
-#import "../Shared/UI/SPKIGAlertPresenter.h"
 #import "../Shared/Gallery/SPKGalleryCoreDataStack.h"
 #import "../Shared/Gallery/SPKGalleryManager.h"
 #import "../Shared/Gallery/SPKGalleryPaths.h"
 #import "../Shared/Settings/SPKSettingsLockManager.h"
-#import "../Features/Messages/DeletedMessagesLog/SPKDeletedMessagesStorage.h"
-#import "../Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerStorage.h"
+#import "../Shared/UI/SPKIGAlertPresenter.h"
+#import "../Utils.h"
+#import "SPKAppIconCatalog.h"
+#import "SPKPreferenceAvailability.h"
+#import "TweakSettings.h"
 
 typedef NS_ENUM(NSInteger, SPKTransferAccountScope) {
-    SPKTransferAccountScopeAllAccounts = 0,     // global + every account's overrides
-    SPKTransferAccountScopeCurrentAccount = 1,  // global + the active account's overrides
+    SPKTransferAccountScopeAllAccounts = 0,    // global + every account's overrides
+    SPKTransferAccountScopeCurrentAccount = 1, // global + the active account's overrides
 };
 
 @interface SPKSettingsTransferManager () <UIDocumentPickerDelegate>
@@ -54,7 +54,8 @@ static NSArray<SPKSetting *> *SPKFlattenSettingsRowsFromSections(NSArray *sectio
     for (NSDictionary *section in sections) {
         NSArray *sectionRows = [section[@"rows"] isKindOfClass:[NSArray class]] ? section[@"rows"] : @[];
         for (SPKSetting *row in sectionRows) {
-            if (![row isKindOfClass:[SPKSetting class]]) continue;
+            if (![row isKindOfClass:[SPKSetting class]])
+                continue;
             [rows addObject:row];
             if (row.navSections.count > 0) {
                 [rows addObjectsFromArray:SPKFlattenSettingsRowsFromSections(row.navSections)];
@@ -71,7 +72,8 @@ static void SPKAddPreferenceKeysFromMenu(UIMenu *menu, NSMutableSet<NSString *> 
             continue;
         }
 
-        if (![element isKindOfClass:[UICommand class]]) continue;
+        if (![element isKindOfClass:[UICommand class]])
+            continue;
         NSDictionary *propertyList = ((UICommand *)element).propertyList;
         NSString *defaultsKey = [propertyList[@"defaultsKey"] isKindOfClass:[NSString class]] ? propertyList[@"defaultsKey"] : nil;
         if (defaultsKey.length > 0) {
@@ -81,7 +83,8 @@ static void SPKAddPreferenceKeysFromMenu(UIMenu *menu, NSMutableSet<NSString *> 
 }
 
 static BOOL SPKIsSPKPreferenceKey(NSString *key) {
-    if (key.length == 0) return NO;
+    if (key.length == 0)
+        return NO;
 
     static NSSet<NSString *> *exactKeys;
     static NSArray<NSString *> *prefixes;
@@ -112,27 +115,35 @@ static BOOL SPKIsSPKPreferenceKey(NSString *key) {
         ];
     });
 
-    if ([exactKeys containsObject:key]) return YES;
+    if ([exactKeys containsObject:key])
+        return YES;
     for (NSString *prefix in prefixes) {
-        if ([key hasPrefix:prefix]) return YES;
+        if ([key hasPrefix:prefix])
+            return YES;
     }
     return NO;
 }
 
 // Per-account override keys are "u_<pk>_<baseKey>" (see SPKEffectivePreferenceKey in
 // Utils.m); pk is the numeric IG user PK. Parses one out, rejecting anything else.
-static BOOL SPKParsePerAccountKey(NSString *key, NSString * _Nullable * _Nullable pkOut, NSString * _Nullable * _Nullable baseOut) {
-    if (![key hasPrefix:@"u_"] || key.length < 4) return NO;
+static BOOL SPKParsePerAccountKey(NSString *key, NSString *_Nullable *_Nullable pkOut, NSString *_Nullable *_Nullable baseOut) {
+    if (![key hasPrefix:@"u_"] || key.length < 4)
+        return NO;
     NSString *rest = [key substringFromIndex:2];
     NSRange sep = [rest rangeOfString:@"_"];
-    if (sep.location == NSNotFound || sep.location == 0) return NO;
+    if (sep.location == NSNotFound || sep.location == 0)
+        return NO;
     NSString *pk = [rest substringToIndex:sep.location];
     // pk must be all digits so we never mistake an unrelated "u_*" key for ours.
-    if ([pk rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return NO;
+    if ([pk rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound)
+        return NO;
     NSString *base = [rest substringFromIndex:sep.location + 1];
-    if (base.length == 0) return NO;
-    if (pkOut) *pkOut = pk;
-    if (baseOut) *baseOut = base;
+    if (base.length == 0)
+        return NO;
+    if (pkOut)
+        *pkOut = pk;
+    if (baseOut)
+        *baseOut = base;
     return YES;
 }
 
@@ -164,9 +175,12 @@ static NSSet<NSString *> *SPKExportedPreferenceKeys(void) {
     }
 
     for (SPKSetting *row in SPKFlattenSettingsRowsFromSections([SPKTweakSettings sections])) {
-        if (row.defaultsKey.length > 0) [keys addObject:row.defaultsKey];
-        if (row.mutuallyExclusiveDefaultsKey.length > 0) [keys addObject:row.mutuallyExclusiveDefaultsKey];
-        if (row.baseMenu) SPKAddPreferenceKeysFromMenu(row.baseMenu, keys);
+        if (row.defaultsKey.length > 0)
+            [keys addObject:row.defaultsKey];
+        if (row.mutuallyExclusiveDefaultsKey.length > 0)
+            [keys addObject:row.mutuallyExclusiveDefaultsKey];
+        if (row.baseMenu)
+            SPKAddPreferenceKeysFromMenu(row.baseMenu, keys);
     }
 
     [keys addObjectsFromArray:@[
@@ -202,10 +216,14 @@ static NSSet<NSString *> *SPKPerAccountOverrideKeys(SPKTransferAccountScope scop
     NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
     for (NSString *key in allPrefs) {
         NSString *pk = nil, *baseKey = nil;
-        if (!SPKParsePerAccountKey(key, &pk, &baseKey)) continue;
-        if (![base containsObject:baseKey] && !SPKIsSPKPreferenceKey(baseKey)) continue;
-        if ([excluded containsObject:baseKey]) continue;
-        if (scope == SPKTransferAccountScopeCurrentAccount && ![pk isEqualToString:(currentPK ?: @"")]) continue;
+        if (!SPKParsePerAccountKey(key, &pk, &baseKey))
+            continue;
+        if (![base containsObject:baseKey] && !SPKIsSPKPreferenceKey(baseKey))
+            continue;
+        if ([excluded containsObject:baseKey])
+            continue;
+        if (scope == SPKTransferAccountScopeCurrentAccount && ![pk isEqualToString:(currentPK ?: @"")])
+            continue;
         [keys addObject:key];
     }
     return keys;
@@ -228,9 +246,11 @@ static NSDictionary *SPKPreferencesSnapshotForScope(SPKTransferAccountScope scop
         // account's settings. On import these are re-homed into the importing account's
         // namespace, so other accounts are never touched.
         for (NSString *key in SPKExportedPreferenceKeys()) {
-            if (SPKPreferenceKeyIsGlobal(key)) continue;
+            if (SPKPreferenceKeyIsGlobal(key))
+                continue;
             id value = SPKPreferenceObjectForKey(key);
-            if (value) snapshot[key] = value;
+            if (value)
+                snapshot[key] = value;
         }
         return snapshot;
     }
@@ -239,7 +259,8 @@ static NSDictionary *SPKPreferencesSnapshotForScope(SPKTransferAccountScope scop
     NSDictionary *allPrefs = [[NSUserDefaults standardUserDefaults] dictionaryRepresentation];
     for (NSString *key in SPKExportedPreferenceKeysForScope(scope, currentPK)) {
         id value = allPrefs[key];
-        if (value) snapshot[key] = value;
+        if (value)
+            snapshot[key] = value;
     }
     return snapshot;
 }
@@ -254,7 +275,8 @@ static UIViewController *SPKDocumentPickerPresenter(UIViewController *preferredC
     }
     if ([presenter isKindOfClass:[UINavigationController class]]) {
         UIViewController *visible = ((UINavigationController *)presenter).visibleViewController;
-        if (visible) presenter = visible;
+        if (visible)
+            presenter = visible;
     }
     return presenter ?: topMostController();
 }
@@ -263,7 +285,7 @@ static BOOL SPKIsValidSettingsTransferBundleRoot(NSString *bundleRoot);
 static NSString *SPKResolvedSettingsTransferBundleRoot(NSURL *pickedURL);
 
 static void SPKAppendUInt16LE(NSMutableData *data, uint16_t value) {
-    uint8_t bytes[2] = { (uint8_t)(value & 0xff), (uint8_t)((value >> 8) & 0xff) };
+    uint8_t bytes[2] = {(uint8_t)(value & 0xff), (uint8_t)((value >> 8) & 0xff)};
     [data appendBytes:bytes length:sizeof(bytes)];
 }
 
@@ -272,8 +294,7 @@ static void SPKAppendUInt32LE(NSMutableData *data, uint32_t value) {
         (uint8_t)(value & 0xff),
         (uint8_t)((value >> 8) & 0xff),
         (uint8_t)((value >> 16) & 0xff),
-        (uint8_t)((value >> 24) & 0xff)
-    };
+        (uint8_t)((value >> 24) & 0xff)};
     [data appendBytes:bytes length:sizeof(bytes)];
 }
 
@@ -311,8 +332,10 @@ static uint32_t SPKZipCRC32ForBytes(uint32_t crc, const uint8_t *bytes, NSUInteg
 static void SPKZipCurrentDOSTimeDate(uint16_t *timeOut, uint16_t *dateOut) {
     NSDateComponents *components = [[NSCalendar currentCalendar] components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond fromDate:[NSDate date]];
     NSInteger year = MAX(1980, MIN(2107, components.year));
-    if (timeOut) *timeOut = (uint16_t)((components.hour << 11) | (components.minute << 5) | (components.second / 2));
-    if (dateOut) *dateOut = (uint16_t)(((year - 1980) << 9) | (components.month << 5) | components.day);
+    if (timeOut)
+        *timeOut = (uint16_t)((components.hour << 11) | (components.minute << 5) | (components.second / 2));
+    if (dateOut)
+        *dateOut = (uint16_t)(((year - 1980) << 9) | (components.month << 5) | components.day);
 }
 
 @interface SPKZipEntry : NSObject
@@ -338,16 +361,18 @@ static NSArray<SPKZipEntry *> *SPKZipEntriesForDirectory(NSString *root, NSError
         NSNumber *isDirectory = nil;
         NSURL *sourceURL = [NSURL fileURLWithPath:sourcePath];
         [sourceURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
-        if (isDirectory.boolValue) continue;
+        if (isDirectory.boolValue)
+            continue;
 
         NSDictionary *attrs = [fm attributesOfItemAtPath:sourcePath error:error];
-        if (!attrs) return nil;
+        if (!attrs)
+            return nil;
         unsigned long long fileSize = [attrs[NSFileSize] unsignedLongLongValue];
         if (fileSize > UINT32_MAX) {
             if (error) {
                 *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                              code:2001
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Export contains a file larger than 4 GB, which is not supported yet."}];
+                                         userInfo:@{NSLocalizedDescriptionKey : @"Export contains a file larger than 4 GB, which is not supported yet."}];
             }
             return nil;
         }
@@ -360,7 +385,7 @@ static NSArray<SPKZipEntry *> *SPKZipEntriesForDirectory(NSString *root, NSError
             if (error) {
                 *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                              code:2003
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Export contains a path that is too long for zip."}];
+                                         userInfo:@{NSLocalizedDescriptionKey : @"Export contains a path that is too long for zip."}];
             }
             return nil;
         }
@@ -374,7 +399,7 @@ static NSArray<SPKZipEntry *> *SPKZipEntriesForDirectory(NSString *root, NSError
         if (error) {
             *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                          code:2004
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Export contains too many files for this zip writer."}];
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Export contains too many files for this zip writer."}];
         }
         return nil;
     }
@@ -383,14 +408,16 @@ static NSArray<SPKZipEntry *> *SPKZipEntriesForDirectory(NSString *root, NSError
 
 static BOOL SPKWriteStoredZipFromDirectory(NSString *root, NSString *zipPath, NSError **error) {
     NSArray<SPKZipEntry *> *entries = SPKZipEntriesForDirectory(root, error);
-    if (!entries) return NO;
+    if (!entries)
+        return NO;
 
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *parent = [zipPath stringByDeletingLastPathComponent];
     [fm createDirectoryAtPath:parent withIntermediateDirectories:YES attributes:nil error:nil];
     [fm createFileAtPath:zipPath contents:nil attributes:nil];
     NSFileHandle *zip = [NSFileHandle fileHandleForWritingAtPath:zipPath];
-    if (!zip) return NO;
+    if (!zip)
+        return NO;
 
     uint16_t dosTime = 0;
     uint16_t dosDate = 0;
@@ -403,7 +430,7 @@ static BOOL SPKWriteStoredZipFromDirectory(NSString *root, NSString *zipPath, NS
             if (error) {
                 *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                              code:2005
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Export is too large for this zip writer."}];
+                                         userInfo:@{NSLocalizedDescriptionKey : @"Export is too large for this zip writer."}];
             }
             [zip closeFile];
             return NO;
@@ -431,7 +458,7 @@ static BOOL SPKWriteStoredZipFromDirectory(NSString *root, NSString *zipPath, NS
             if (error) {
                 *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                              code:2006
-                                         userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Could not read %@.", entry.relativePath]}];
+                                         userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Could not read %@.", entry.relativePath]}];
             }
             [zip closeFile];
             return NO;
@@ -440,7 +467,8 @@ static BOOL SPKWriteStoredZipFromDirectory(NSString *root, NSString *zipPath, NS
         @autoreleasepool {
             while (true) {
                 NSData *chunk = [input readDataOfLength:1024 * 1024];
-                if (chunk.length == 0) break;
+                if (chunk.length == 0)
+                    break;
                 crc = SPKZipCRC32ForBytes(crc, chunk.bytes, chunk.length);
                 [zip writeData:chunk];
             }
@@ -462,7 +490,7 @@ static BOOL SPKWriteStoredZipFromDirectory(NSString *root, NSString *zipPath, NS
         if (error) {
             *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                          code:2005
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Export is too large for this zip writer."}];
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Export is too large for this zip writer."}];
         }
         [zip closeFile];
         return NO;
@@ -508,9 +536,11 @@ static BOOL SPKWriteStoredZipFromDirectory(NSString *root, NSString *zipPath, NS
 }
 
 static BOOL SPKIsSafeZipEntryName(NSString *name) {
-    if (name.length == 0 || [name hasPrefix:@"/"] || [name containsString:@"\\"]) return NO;
+    if (name.length == 0 || [name hasPrefix:@"/"] || [name containsString:@"\\"])
+        return NO;
     for (NSString *part in [name componentsSeparatedByString:@"/"]) {
-        if ([part isEqualToString:@".."]) return NO;
+        if ([part isEqualToString:@".."])
+            return NO;
     }
     return YES;
 }
@@ -522,7 +552,8 @@ static BOOL SPKInflateRawDeflateToFile(const uint8_t *src, size_t srcLen, size_t
     NSFileManager *fm = [NSFileManager defaultManager];
     [fm createFileAtPath:outputPath contents:nil attributes:nil];
     NSFileHandle *out = [NSFileHandle fileHandleForWritingAtPath:outputPath];
-    if (!out) return NO;
+    if (!out)
+        return NO;
 
     compression_stream stream;
     if (compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) != COMPRESSION_STATUS_OK) {
@@ -553,14 +584,19 @@ static BOOL SPKInflateRawDeflateToFile(const uint8_t *src, size_t srcLen, size_t
             }
             totalOut += produced;
         }
-        if (status == COMPRESSION_STATUS_END) break;
-        if (status != COMPRESSION_STATUS_OK) { ok = NO; break; }
+        if (status == COMPRESSION_STATUS_END)
+            break;
+        if (status != COMPRESSION_STATUS_OK) {
+            ok = NO;
+            break;
+        }
     }
 
     free(dst);
     compression_stream_destroy(&stream);
     [out closeFile];
-    if (ok && expectedOut > 0 && totalOut != expectedOut) ok = NO;
+    if (ok && expectedOut > 0 && totalOut != expectedOut)
+        ok = NO;
     return ok;
 }
 
@@ -568,7 +604,8 @@ static BOOL SPKInflateRawDeflateToFile(const uint8_t *src, size_t srcLen, size_t
 // re-compressed by Files / iCloud / desktop tools (DEFLATE, method 8).
 static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NSError **error) {
     NSData *zipData = [NSData dataWithContentsOfURL:archiveURL options:NSDataReadingMappedIfSafe error:error];
-    if (zipData.length < 22) return nil;
+    if (zipData.length < 22)
+        return nil;
 
     const uint8_t *bytes = zipData.bytes;
     NSInteger eocdOffset = -1;
@@ -578,12 +615,14 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
             break;
         }
     }
-    if (eocdOffset < 0) return nil;
+    if (eocdOffset < 0)
+        return nil;
 
     uint16_t entryCount = SPKReadUInt16LE(bytes, (NSUInteger)eocdOffset + 10);
     uint32_t centralSize = SPKReadUInt32LE(bytes, (NSUInteger)eocdOffset + 12);
     uint32_t centralOffset = SPKReadUInt32LE(bytes, (NSUInteger)eocdOffset + 16);
-    if ((NSUInteger)centralOffset + centralSize > zipData.length) return nil;
+    if ((NSUInteger)centralOffset + centralSize > zipData.length)
+        return nil;
 
     NSString *tempRoot = SPKTemporaryTransferRoot(@"import");
     NSString *expandedRoot = [tempRoot stringByAppendingPathComponent:@"Expanded"];
@@ -591,7 +630,8 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
     [fm createDirectoryAtPath:expandedRoot withIntermediateDirectories:YES attributes:nil error:nil];
 
     NSFileHandle *archiveHandle = [NSFileHandle fileHandleForReadingFromURL:archiveURL error:error];
-    if (!archiveHandle) return nil;
+    if (!archiveHandle)
+        return nil;
 
     NSUInteger cursor = centralOffset;
     for (uint16_t i = 0; i < entryCount; i++) {
@@ -627,7 +667,7 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
             if (error) {
                 *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                              code:2002
-                                         userInfo:@{NSLocalizedDescriptionKey: @"This zip uses an unsupported compression method."}];
+                                         userInfo:@{NSLocalizedDescriptionKey : @"This zip uses an unsupported compression method."}];
             }
             [archiveHandle closeFile];
             return nil;
@@ -653,7 +693,7 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
                 if (error) {
                     *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                                  code:2007
-                                             userInfo:@{NSLocalizedDescriptionKey: @"Could not decompress the backup archive."}];
+                                             userInfo:@{NSLocalizedDescriptionKey : @"Could not decompress the backup archive."}];
                 }
                 [archiveHandle closeFile];
                 return nil;
@@ -669,7 +709,8 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
         while (remaining > 0) {
             NSUInteger chunkSize = MIN((NSUInteger)remaining, (NSUInteger)(1024 * 1024));
             NSData *chunk = [archiveHandle readDataOfLength:chunkSize];
-            if (chunk.length == 0) break;
+            if (chunk.length == 0)
+                break;
             [output writeData:chunk];
             remaining -= (uint32_t)chunk.length;
         }
@@ -685,7 +726,8 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
 }
 
 static BOOL SPKIsValidSettingsTransferBundleRoot(NSString *bundleRoot) {
-    if (bundleRoot.length == 0) return NO;
+    if (bundleRoot.length == 0)
+        return NO;
     NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
     NSString *galleryPath = [bundleRoot stringByAppendingPathComponent:@"Gallery"];
     NSString *deletedMessagesPath = [bundleRoot stringByAppendingPathComponent:@"DeletedMessages"];
@@ -697,7 +739,8 @@ static BOOL SPKIsValidSettingsTransferBundleRoot(NSString *bundleRoot) {
 }
 
 static NSString *SPKResolvedSettingsTransferBundleRoot(NSURL *pickedURL) {
-    if (!pickedURL.path.length) return nil;
+    if (!pickedURL.path.length)
+        return nil;
 
     NSString *candidate = pickedURL.path;
     for (NSInteger i = 0; i < 5 && candidate.length > 1; i++) {
@@ -711,14 +754,15 @@ static NSString *SPKResolvedSettingsTransferBundleRoot(NSURL *pickedURL) {
 
 static NSString *SPKExpandSerializedSettingsTransferArchive(NSURL *archiveURL, NSError **error) {
     NSData *archiveData = [NSData dataWithContentsOfURL:archiveURL options:NSDataReadingMappedIfSafe error:error];
-    if (archiveData.length == 0) return nil;
+    if (archiveData.length == 0)
+        return nil;
 
     NSFileWrapper *wrapper = [[NSFileWrapper alloc] initWithSerializedRepresentation:archiveData];
     if (!wrapper.isDirectory) {
         if (error && !*error) {
             *error = [NSError errorWithDomain:@"SparkleSettingsTransfer"
                                          code:1001
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Archive contents were invalid."}];
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Archive contents were invalid."}];
         }
         return nil;
     }
@@ -735,14 +779,17 @@ static NSString *SPKExpandSerializedSettingsTransferArchive(NSURL *archiveURL, N
 
 static NSString *SPKResolvedImportBundleRootForPickedURL(NSURL *pickedURL, NSError **error) {
     NSString *bundleRoot = SPKResolvedSettingsTransferBundleRoot(pickedURL);
-    if (bundleRoot.length > 0) return bundleRoot;
+    if (bundleRoot.length > 0)
+        return bundleRoot;
 
     NSNumber *isDirectory = nil;
     [pickedURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
-    if (isDirectory.boolValue) return nil;
+    if (isDirectory.boolValue)
+        return nil;
 
     NSString *zipBundleRoot = SPKExpandStoredZipSettingsTransferArchive(pickedURL, error);
-    if (zipBundleRoot.length > 0) return zipBundleRoot;
+    if (zipBundleRoot.length > 0)
+        return zipBundleRoot;
 
     return SPKExpandSerializedSettingsTransferArchive(pickedURL, error);
 }
@@ -753,25 +800,26 @@ static NSString *SPKTransferScopeString(SPKTransferAccountScope scope) {
 
 static NSDictionary *SPKTransferManifest(BOOL includeSettings, BOOL includeGallery, BOOL includeDeletedMessages, BOOL includeProfileAnalyzer, SPKTransferAccountScope scope, NSString *sourcePK, NSArray<NSString *> *includedKeys) {
     NSMutableDictionary *manifest = [@{
-        @"format_version": @4,
-        @"created_at": [NSDate date],
-        @"includes_settings": @(includeSettings),
-        @"includes_gallery": @(includeGallery),
-        @"includes_deleted_messages": @(includeDeletedMessages),
-        @"includes_profile_analyzer": @(includeProfileAnalyzer),
+        @"format_version" : @4,
+        @"created_at" : [NSDate date],
+        @"includes_settings" : @(includeSettings),
+        @"includes_gallery" : @(includeGallery),
+        @"includes_deleted_messages" : @(includeDeletedMessages),
+        @"includes_profile_analyzer" : @(includeProfileAnalyzer),
         // The account scope of the whole export (settings + gallery). "current" exports
         // are re-homed onto the importing device's active account. `account_scope`
         // replaces the legacy `settings_scope` (still read on import for old archives).
-        @"account_scope": SPKTransferScopeString(scope),
-        @"source_account_pk": sourcePK ?: @"",
-        @"included_keys": (includeSettings && includedKeys) ? [includedKeys sortedArrayUsingSelector:@selector(compare:)] : @[]
+        @"account_scope" : SPKTransferScopeString(scope),
+        @"source_account_pk" : sourcePK ?: @"",
+        @"included_keys" : (includeSettings && includedKeys) ? [includedKeys sortedArrayUsingSelector:@selector(compare:)] : @[]
     } mutableCopy];
     return manifest;
 }
 
 // Sanitize a username/PK so it is safe inside a file name.
 static NSString *SPKSanitizeFilenameComponent(NSString *component) {
-    if (component.length == 0) return @"";
+    if (component.length == 0)
+        return @"";
     NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"];
     NSMutableString *out = [NSMutableString string];
     for (NSUInteger i = 0; i < component.length; i++) {
@@ -785,10 +833,14 @@ static NSString *SPKSanitizeFilenameComponent(NSString *component) {
 // "Sparkle-Settings-AllAccounts-2026-06-26.zip" or "Sparkle-Settings-jane.doe-2026-06-26.zip".
 static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGallery, BOOL includeDeletedMessages, BOOL includeProfileAnalyzer, SPKTransferAccountScope scope, NSString *currentUsername, NSString *currentPK) {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    if (includeSettings) [parts addObject:@"Settings"];
-    if (includeGallery) [parts addObject:@"Gallery"];
-    if (includeDeletedMessages) [parts addObject:@"Messages"];
-    if (includeProfileAnalyzer) [parts addObject:@"Analyzer"];
+    if (includeSettings)
+        [parts addObject:@"Settings"];
+    if (includeGallery)
+        [parts addObject:@"Gallery"];
+    if (includeDeletedMessages)
+        [parts addObject:@"Messages"];
+    if (includeProfileAnalyzer)
+        [parts addObject:@"Analyzer"];
     NSString *content = parts.count == 0 ? @"Backup" : (parts.count > 2 ? @"Backup" : [parts componentsJoinedByString:@"+"]);
 
     NSMutableString *name = [NSMutableString stringWithFormat:@"Sparkle-%@", content];
@@ -797,8 +849,10 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     // actually included per-account-scopable content (settings or gallery).
     if (scope == SPKTransferAccountScopeCurrentAccount) {
         NSString *who = currentUsername;
-        if (who.length == 0) who = [SPKAccountManager usernameForPK:currentPK];
-        if (who.length == 0) who = currentPK.length ? currentPK : @"account";
+        if (who.length == 0)
+            who = [SPKAccountManager usernameForPK:currentPK];
+        if (who.length == 0)
+            who = currentPK.length ? currentPK : @"account";
         [name appendFormat:@"-%@", SPKSanitizeFilenameComponent(who)];
     } else if (includeSettings || includeGallery) {
         [name appendString:@"-AllAccounts"];
@@ -837,25 +891,32 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     NSString *username = [SPKAccountManager currentAccountUsername];
     NSString *thisTitle = username.length ? [NSString stringWithFormat:@"This Account Only (%@)", username] : @"This Account Only";
     NSString *scopeMessage = includeGallery
-        ? @"Per-account settings are on. Back up every account's settings and Gallery, or only the active account's."
-        : @"Per-account settings are on. Back up every account's settings, or only the active account's.";
+                                 ? @"Per-account settings are on. Back up every account's settings and Gallery, or only the active account's."
+                                 : @"Per-account settings are on. Back up every account's settings, or only the active account's.";
     __weak typeof(self) weakSelf = self;
     [SPKIGAlertPresenter presentActionSheetFromViewController:controller
                                                         title:@"Which accounts?"
                                                       message:scopeMessage
                                                       actions:@[
-        [SPKIGAlertAction actionWithTitle:@"All Accounts" style:SPKIGAlertActionStyleDefault handler:^{
-            [weakSelf exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SPKTransferAccountScopeAllAccounts];
-        }],
-        [SPKIGAlertAction actionWithTitle:thisTitle style:SPKIGAlertActionStyleDefault handler:^{
-            [weakSelf exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SPKTransferAccountScopeCurrentAccount];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-    ]];
+                                                          [SPKIGAlertAction actionWithTitle:@"All Accounts"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [weakSelf exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SPKTransferAccountScopeAllAccounts];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:thisTitle
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [weakSelf exportFromController:controller includeSettings:includeSettings includeGallery:includeGallery includeDeletedMessages:includeDeletedMessages includeProfileAnalyzer:includeProfileAnalyzer settingsScope:SPKTransferAccountScopeCurrentAccount];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                      style:SPKIGAlertActionStyleCancel
+                                                                                    handler:nil],
+                                                      ]];
 }
 
 - (void)exportFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer settingsScope:(SPKTransferAccountScope)settingsScope {
-    if (!includeSettings && !includeGallery && !includeDeletedMessages && !includeProfileAnalyzer) return;
+    if (!includeSettings && !includeGallery && !includeDeletedMessages && !includeProfileAnalyzer)
+        return;
     self.presentingController = controller;
     self.isImportMode = NO;
 
@@ -904,12 +965,16 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
             NSString *ownerScope = (settingsScope == SPKTransferAccountScopeCurrentAccount && currentPK.length > 0) ? currentPK : nil;
             NSError *galleryError = nil;
             BOOL ok = [[SPKGalleryCoreDataStack shared] exportGalleryFilesToBundleDirectory:galleryDestination
-                                                                            ownerAccountPK:ownerScope
-                                                                           progressHandler:^(NSInteger done, NSInteger total) {
-                setProgress(0.05f + 0.55f * (total > 0 ? (float)done / total : 1.0f),
-                            [NSString stringWithFormat:@"Gallery %ld/%ld", (long)done, (long)total]);
-            } error:&galleryError];
-            if (!ok) { failExport(galleryError.localizedDescription ?: @"Gallery export failed."); return; }
+                                                                             ownerAccountPK:ownerScope
+                                                                            progressHandler:^(NSInteger done, NSInteger total) {
+                                                                                setProgress(0.05f + 0.55f * (total > 0 ? (float)done / total : 1.0f),
+                                                                                            [NSString stringWithFormat:@"Gallery %ld/%ld", (long)done, (long)total]);
+                                                                            }
+                                                                                      error:&galleryError];
+            if (!ok) {
+                failExport(galleryError.localizedDescription ?: @"Gallery export failed.");
+                return;
+            }
         }
 
         if (includeDeletedMessages) {
@@ -917,10 +982,17 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
             NSError *copyError = nil;
             NSString *source = [SPKDeletedMessagesStorage storageRootPath];
             if ([fm fileExistsAtPath:source]) {
-                if (![fm copyItemAtPath:source toPath:deletedMessagesDestination error:&copyError]) { failExport(copyError.localizedDescription); return; }
-            } else if (![fm createDirectoryAtPath:deletedMessagesDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) { failExport(copyError.localizedDescription); return; }
+                if (![fm copyItemAtPath:source toPath:deletedMessagesDestination error:&copyError]) {
+                    failExport(copyError.localizedDescription);
+                    return;
+                }
+            } else if (![fm createDirectoryAtPath:deletedMessagesDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
+                failExport(copyError.localizedDescription);
+                return;
+            }
             NSString *keepalivePath = [deletedMessagesDestination stringByAppendingPathComponent:@".sparkle_keep"];
-            if (![fm fileExistsAtPath:keepalivePath]) [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
+            if (![fm fileExistsAtPath:keepalivePath])
+                [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
         }
 
         if (includeProfileAnalyzer) {
@@ -928,10 +1000,17 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
             NSError *copyError = nil;
             NSString *source = [SPKProfileAnalyzerStorage storageRootPath];
             if ([fm fileExistsAtPath:source]) {
-                if (![fm copyItemAtPath:source toPath:profileAnalyzerDestination error:&copyError]) { failExport(copyError.localizedDescription); return; }
-            } else if (![fm createDirectoryAtPath:profileAnalyzerDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) { failExport(copyError.localizedDescription); return; }
+                if (![fm copyItemAtPath:source toPath:profileAnalyzerDestination error:&copyError]) {
+                    failExport(copyError.localizedDescription);
+                    return;
+                }
+            } else if (![fm createDirectoryAtPath:profileAnalyzerDestination withIntermediateDirectories:YES attributes:nil error:&copyError]) {
+                failExport(copyError.localizedDescription);
+                return;
+            }
             NSString *keepalivePath = [profileAnalyzerDestination stringByAppendingPathComponent:@".sparkle_keep"];
-            if (![fm fileExistsAtPath:keepalivePath]) [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
+            if (![fm fileExistsAtPath:keepalivePath])
+                [fm createFileAtPath:keepalivePath contents:[NSData data] attributes:nil];
         }
 
         [SPKTransferManifest(includeSettings, includeGallery, includeDeletedMessages, includeProfileAnalyzer, settingsScope, sourcePK, includedKeys) writeToFile:manifestPath atomically:YES];
@@ -949,7 +1028,7 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
         NSURL *archiveURL = [NSURL fileURLWithPath:archivePath isDirectory:NO];
         dispatch_async(dispatch_get_main_queue(), ^{
             [pill dismiss];
-            UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[archiveURL] asCopy:YES];
+            UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[ archiveURL ] asCopy:YES];
             picker.delegate = self;
             self.activeDocumentPicker = picker;
             UIViewController *presenter = SPKDocumentPickerPresenter(controller);
@@ -964,14 +1043,15 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
 }
 
 - (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer {
-    if (!includeSettings && !includeGallery && !includeDeletedMessages && !includeProfileAnalyzer) return;
+    if (!includeSettings && !includeGallery && !includeDeletedMessages && !includeProfileAnalyzer)
+        return;
     self.presentingController = controller;
     self.pendingImportSettings = includeSettings;
     self.pendingImportGallery = includeGallery;
     self.pendingImportDeletedMessages = includeDeletedMessages;
     self.pendingImportProfileAnalyzer = includeProfileAnalyzer;
     self.isImportMode = YES;
-    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeZIP] asCopy:YES];
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeZIP ] asCopy:YES];
     picker.delegate = self;
     self.activeDocumentPicker = picker;
     SPKLog(@"Transfer", @"Presenting import document picker settings=%@ gallery=%@ deletedMessages=%@ profileAnalyzer=%@", includeSettings ? @"yes" : @"no", includeGallery ? @"yes" : @"no", includeDeletedMessages ? @"yes" : @"no", includeProfileAnalyzer ? @"yes" : @"no");
@@ -982,9 +1062,11 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
             self.activeDocumentPicker = nil;
             return;
         }
-        [presenter presentViewController:picker animated:YES completion:^{
-            SPKNotify(kSPKNotificationSettingsImport, @"Choose an export bundle", nil, @"arrow_down", SPKNotificationToneForIconResource(@"arrow_down"));
-        }];
+        [presenter presentViewController:picker
+                                animated:YES
+                              completion:^{
+                                  SPKNotify(kSPKNotificationSettingsImport, @"Choose an export bundle", nil, @"arrow_down", SPKNotificationToneForIconResource(@"arrow_down"));
+                              }];
     });
 }
 
@@ -1002,8 +1084,9 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     NSURL *url = urls.firstObject;
     self.presentingController = nil;
     self.activeDocumentPicker = nil;
-    if (!url) return;
-    
+    if (!url)
+        return;
+
     if (!self.isImportMode) {
         SPKNotify(kSPKNotificationSettingsExport, @"Export complete", @"Sparkle backup saved successfully.", @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
         return;
@@ -1021,198 +1104,227 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
     };
     void (^failImport)(NSString *) = ^(NSString *message) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (scoped) [url stopAccessingSecurityScopedResource];
+            if (scoped)
+                [url stopAccessingSecurityScopedResource];
             [pill showErrorWithTitle:@"Import failed" subtitle:message icon:nil];
         });
     };
 
     dispatch_async(SPKTransferWorkQueue(), ^{
-    setProgress(0.05f, @"Reading backup...");
-    NSError *archiveError = nil;
-    NSString *bundleRoot = SPKResolvedImportBundleRootForPickedURL(url, &archiveError);
-    NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
-    NSString *galleryPath = [bundleRoot stringByAppendingPathComponent:@"Gallery"];
-    NSString *deletedMessagesPath = [bundleRoot stringByAppendingPathComponent:@"DeletedMessages"];
-    NSString *profileAnalyzerPath = [bundleRoot stringByAppendingPathComponent:@"ProfileAnalyzer"];
-    NSString *manifestPath = [bundleRoot stringByAppendingPathComponent:@"manifest.plist"];
-    NSDictionary *manifest = bundleRoot.length > 0 ? [NSDictionary dictionaryWithContentsOfFile:manifestPath] : nil;
-    NSDictionary *prefs = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath] ? [NSDictionary dictionaryWithContentsOfFile:prefsPath] : nil;
-    BOOL archiveHasSettings = [prefs isKindOfClass:[NSDictionary class]];
-    BOOL archiveHasGallery = [[NSFileManager defaultManager] fileExistsAtPath:galleryPath];
-    BOOL archiveHasDeletedMessages = [[NSFileManager defaultManager] fileExistsAtPath:deletedMessagesPath];
-    BOOL archiveHasProfileAnalyzer = [[NSFileManager defaultManager] fileExistsAtPath:profileAnalyzerPath];
-    BOOL importSettings = self.pendingImportSettings;
-    BOOL importGallery = self.pendingImportGallery;
-    BOOL importDeletedMessages = self.pendingImportDeletedMessages;
-    BOOL importProfileAnalyzer = self.pendingImportProfileAnalyzer;
-    self.pendingImportSettings = NO;
-    self.pendingImportGallery = NO;
-    self.pendingImportDeletedMessages = NO;
-    self.pendingImportProfileAnalyzer = NO;
+        setProgress(0.05f, @"Reading backup...");
+        NSError *archiveError = nil;
+        NSString *bundleRoot = SPKResolvedImportBundleRootForPickedURL(url, &archiveError);
+        NSString *prefsPath = [bundleRoot stringByAppendingPathComponent:@"Preferences/settings.plist"];
+        NSString *galleryPath = [bundleRoot stringByAppendingPathComponent:@"Gallery"];
+        NSString *deletedMessagesPath = [bundleRoot stringByAppendingPathComponent:@"DeletedMessages"];
+        NSString *profileAnalyzerPath = [bundleRoot stringByAppendingPathComponent:@"ProfileAnalyzer"];
+        NSString *manifestPath = [bundleRoot stringByAppendingPathComponent:@"manifest.plist"];
+        NSDictionary *manifest = bundleRoot.length > 0 ? [NSDictionary dictionaryWithContentsOfFile:manifestPath] : nil;
+        NSDictionary *prefs = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath] ? [NSDictionary dictionaryWithContentsOfFile:prefsPath] : nil;
+        BOOL archiveHasSettings = [prefs isKindOfClass:[NSDictionary class]];
+        BOOL archiveHasGallery = [[NSFileManager defaultManager] fileExistsAtPath:galleryPath];
+        BOOL archiveHasDeletedMessages = [[NSFileManager defaultManager] fileExistsAtPath:deletedMessagesPath];
+        BOOL archiveHasProfileAnalyzer = [[NSFileManager defaultManager] fileExistsAtPath:profileAnalyzerPath];
+        BOOL importSettings = self.pendingImportSettings;
+        BOOL importGallery = self.pendingImportGallery;
+        BOOL importDeletedMessages = self.pendingImportDeletedMessages;
+        BOOL importProfileAnalyzer = self.pendingImportProfileAnalyzer;
+        self.pendingImportSettings = NO;
+        self.pendingImportGallery = NO;
+        self.pendingImportDeletedMessages = NO;
+        self.pendingImportProfileAnalyzer = NO;
 
-    if (manifest && [manifest isKindOfClass:[NSDictionary class]]) {
-        NSNumber *manifestSettings = manifest[@"includes_settings"];
-        NSNumber *manifestGallery = manifest[@"includes_gallery"];
-        NSNumber *manifestDeletedMessages = manifest[@"includes_deleted_messages"];
-        NSNumber *manifestProfileAnalyzer = manifest[@"includes_profile_analyzer"];
-        if ([manifestSettings respondsToSelector:@selector(boolValue)]) archiveHasSettings = manifestSettings.boolValue && archiveHasSettings;
-        if ([manifestGallery respondsToSelector:@selector(boolValue)]) archiveHasGallery = manifestGallery.boolValue && archiveHasGallery;
-        if ([manifestDeletedMessages respondsToSelector:@selector(boolValue)]) archiveHasDeletedMessages = manifestDeletedMessages.boolValue && archiveHasDeletedMessages;
-        if ([manifestProfileAnalyzer respondsToSelector:@selector(boolValue)]) archiveHasProfileAnalyzer = manifestProfileAnalyzer.boolValue && archiveHasProfileAnalyzer;
-    }
+        if (manifest && [manifest isKindOfClass:[NSDictionary class]]) {
+            NSNumber *manifestSettings = manifest[@"includes_settings"];
+            NSNumber *manifestGallery = manifest[@"includes_gallery"];
+            NSNumber *manifestDeletedMessages = manifest[@"includes_deleted_messages"];
+            NSNumber *manifestProfileAnalyzer = manifest[@"includes_profile_analyzer"];
+            if ([manifestSettings respondsToSelector:@selector(boolValue)])
+                archiveHasSettings = manifestSettings.boolValue && archiveHasSettings;
+            if ([manifestGallery respondsToSelector:@selector(boolValue)])
+                archiveHasGallery = manifestGallery.boolValue && archiveHasGallery;
+            if ([manifestDeletedMessages respondsToSelector:@selector(boolValue)])
+                archiveHasDeletedMessages = manifestDeletedMessages.boolValue && archiveHasDeletedMessages;
+            if ([manifestProfileAnalyzer respondsToSelector:@selector(boolValue)])
+                archiveHasProfileAnalyzer = manifestProfileAnalyzer.boolValue && archiveHasProfileAnalyzer;
+        }
 
-    if ((importSettings && !archiveHasSettings) || (importGallery && !archiveHasGallery) || (importDeletedMessages && !archiveHasDeletedMessages) || (importProfileAnalyzer && !archiveHasProfileAnalyzer) || (!archiveHasSettings && !archiveHasGallery && !archiveHasDeletedMessages && !archiveHasProfileAnalyzer)) {
-        failImport(archiveError.localizedDescription ?: @"Archive contents were invalid.");
-        return;
-    }
-    setProgress(0.15f, nil);
+        if ((importSettings && !archiveHasSettings) || (importGallery && !archiveHasGallery) || (importDeletedMessages && !archiveHasDeletedMessages) || (importProfileAnalyzer && !archiveHasProfileAnalyzer) || (!archiveHasSettings && !archiveHasGallery && !archiveHasDeletedMessages && !archiveHasProfileAnalyzer)) {
+            failImport(archiveError.localizedDescription ?: @"Archive contents were invalid.");
+            return;
+        }
+        setProgress(0.15f, nil);
 
-    // Backup scope (applies to both preferences and Gallery). A "current" backup is
-    // flattened onto this device's active account on import. Read the new `account_scope`
-    // field, falling back to the legacy `settings_scope` for older archives.
-    NSDictionary *scopeManifest = [manifest isKindOfClass:[NSDictionary class]] ? manifest : nil;
-    NSString *scopeString = scopeManifest[@"account_scope"] ?: scopeManifest[@"settings_scope"];
-    BOOL currentScope = [scopeString isEqualToString:@"current"];
-    NSString *currentPK = [SPKAccountManager currentAccountPK];
-    NSString *currentUsername = [SPKAccountManager currentAccountUsername];
+        // Backup scope (applies to both preferences and Gallery). A "current" backup is
+        // flattened onto this device's active account on import. Read the new `account_scope`
+        // field, falling back to the legacy `settings_scope` for older archives.
+        NSDictionary *scopeManifest = [manifest isKindOfClass:[NSDictionary class]] ? manifest : nil;
+        NSString *scopeString = scopeManifest[@"account_scope"] ?: scopeManifest[@"settings_scope"];
+        BOOL currentScope = [scopeString isEqualToString:@"current"];
+        NSString *currentPK = [SPKAccountManager currentAccountPK];
+        NSString *currentUsername = [SPKAccountManager currentAccountUsername];
 
-    if (importSettings) {
-        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if (importSettings) {
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
-        if (currentScope) {
-            // FLATTEN: re-home the backup's (base-key, effective-value) settings into the
-            // importing account's namespace — or global if per-account mode is off — and
-            // touch nothing else, so other accounts are unaffected.
-            NSString *targetPK = SPKPerAccountModeActive() ? currentPK : nil;
-            if (targetPK.length > 0) {
-                for (NSString *key in SPKPerAccountOverrideKeys(SPKTransferAccountScopeCurrentAccount, targetPK)) {
-                    [defaults removeObjectForKey:key];
+            if (currentScope) {
+                // FLATTEN: re-home the backup's (base-key, effective-value) settings into the
+                // importing account's namespace — or global if per-account mode is off — and
+                // touch nothing else, so other accounts are unaffected.
+                NSString *targetPK = SPKPerAccountModeActive() ? currentPK : nil;
+                if (targetPK.length > 0) {
+                    for (NSString *key in SPKPerAccountOverrideKeys(SPKTransferAccountScopeCurrentAccount, targetPK)) {
+                        [defaults removeObjectForKey:key];
+                    }
+                } else {
+                    for (NSString *key in SPKExportedPreferenceKeys()) {
+                        [defaults removeObjectForKey:key];
+                    }
                 }
+                [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
+                    if (SPKPreferenceKeyIsGlobal(key) || !SPKPrefIsAvailable(key))
+                        return; // flatten archives carry only per-account-capable base keys
+                    NSString *applyKey = targetPK.length > 0 ? [NSString stringWithFormat:@"u_%@_%@", targetPK, key] : key;
+                    [defaults setObject:value forKey:applyKey];
+                }];
             } else {
-                for (NSString *key in SPKExportedPreferenceKeys()) {
+                // ALL ACCOUNTS: verbatim restore — clear every scope key, apply as stored.
+                for (NSString *key in SPKExportedPreferenceKeysForScope(SPKTransferAccountScopeAllAccounts, nil)) {
                     [defaults removeObjectForKey:key];
                 }
+                [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
+                    NSString *pk = nil, *baseKey = nil;
+                    BOOL isPerAccount = SPKParsePerAccountKey(key, &pk, &baseKey);
+                    NSString *availabilityKey = isPerAccount ? baseKey : key; // availability keyed by base pref
+                    if (!SPKPrefIsAvailable(availabilityKey))
+                        return;
+                    [defaults setObject:value forKey:key];
+                }];
             }
-            [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
-                if (SPKPreferenceKeyIsGlobal(key) || !SPKPrefIsAvailable(key)) return;  // flatten archives carry only per-account-capable base keys
-                NSString *applyKey = targetPK.length > 0 ? [NSString stringWithFormat:@"u_%@_%@", targetPK, key] : key;
-                [defaults setObject:value forKey:applyKey];
-            }];
-        } else {
-            // ALL ACCOUNTS: verbatim restore — clear every scope key, apply as stored.
-            for (NSString *key in SPKExportedPreferenceKeysForScope(SPKTransferAccountScopeAllAccounts, nil)) {
-                [defaults removeObjectForKey:key];
+            // The app icon is a pref but also live UIApplication state — apply the imported
+            // selection on the main thread so it changes immediately.
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [SPKAppIconCatalog applyStoredIconIfNeeded];
+            });
+        }
+        setProgress(0.25f, nil);
+
+        // The non-gallery remainder (messages, profile analyzer, finalize). Runs on the
+        // work queue; only the final summary/restart touches the main thread.
+        void (^finishImport)(NSInteger) = ^(NSInteger galleryAddedCount) {
+            NSInteger messagesAdded = 0;
+            if (importDeletedMessages) {
+                setProgress(0.85f, @"Messages...");
+                NSError *deletedMessagesError = nil;
+                messagesAdded = [SPKDeletedMessagesStorage mergeFromStorageDirectory:deletedMessagesPath ownerFilterPK:nil error:&deletedMessagesError];
+                if (messagesAdded < 0) {
+                    failImport(deletedMessagesError.localizedDescription ?: @"Messages import failed.");
+                    return;
+                }
             }
-            [prefs enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
-                NSString *pk = nil, *baseKey = nil;
-                BOOL isPerAccount = SPKParsePerAccountKey(key, &pk, &baseKey);
-                NSString *availabilityKey = isPerAccount ? baseKey : key;  // availability keyed by base pref
-                if (!SPKPrefIsAvailable(availabilityKey)) return;
-                [defaults setObject:value forKey:key];
-            }];
-        }
-        // The app icon is a pref but also live UIApplication state — apply the imported
-        // selection on the main thread so it changes immediately.
-        dispatch_async(dispatch_get_main_queue(), ^{ [SPKAppIconCatalog applyStoredIconIfNeeded]; });
-    }
-    setProgress(0.25f, nil);
 
-    // The non-gallery remainder (messages, profile analyzer, finalize). Runs on the
-    // work queue; only the final summary/restart touches the main thread.
-    void (^finishImport)(NSInteger) = ^(NSInteger galleryAddedCount) {
-        NSInteger messagesAdded = 0;
-        if (importDeletedMessages) {
-            setProgress(0.85f, @"Messages...");
-            NSError *deletedMessagesError = nil;
-            messagesAdded = [SPKDeletedMessagesStorage mergeFromStorageDirectory:deletedMessagesPath ownerFilterPK:nil error:&deletedMessagesError];
-            if (messagesAdded < 0) { failImport(deletedMessagesError.localizedDescription ?: @"Messages import failed."); return; }
+            NSInteger visitsAdded = 0;
+            if (importProfileAnalyzer) {
+                setProgress(0.93f, @"Profile Analyzer...");
+                NSError *profileAnalyzerError = nil;
+                visitsAdded = [SPKProfileAnalyzerStorage mergeFromStorageDirectory:profileAnalyzerPath ownerFilterPK:nil error:&profileAnalyzerError];
+                if (visitsAdded < 0) {
+                    failImport(profileAnalyzerError.localizedDescription ?: @"Profile Analyzer import failed.");
+                    return;
+                }
+            }
+            setProgress(1.0f, nil);
+
+            NSMutableArray<NSString *> *restored = [NSMutableArray array];
+            if (importSettings)
+                [restored addObject:@"preferences"];
+            if (importGallery)
+                [restored addObject:[NSString stringWithFormat:@"Gallery (%ld added)", (long)galleryAddedCount]];
+            if (importDeletedMessages)
+                [restored addObject:[NSString stringWithFormat:@"Messages (%ld added)", (long)messagesAdded]];
+            if (importProfileAnalyzer)
+                [restored addObject:[NSString stringWithFormat:@"Profile Analyzer (%ld visits)", (long)visitsAdded]];
+            NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (scoped)
+                    [url stopAccessingSecurityScopedResource];
+                [pill dismiss];
+                SPKNotify(kSPKNotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
+                // Only preferences need a relaunch (read at launch / hook-install time). The
+                // gallery/messages/analyzer merges write live and post change notifications.
+                if (importSettings)
+                    [SPKUtils showRestartConfirmation];
+            });
+        };
+
+        // A "this account" import re-assigns gallery files to the active account.
+        NSString *remapPK = currentScope ? currentPK : nil;
+        NSString *remapUsername = currentScope ? currentUsername : nil;
+
+        void (^mergeGalleryThenFinish)(SPKGalleryImportConflictStrategy) = ^(SPKGalleryImportConflictStrategy strategy) {
+            // Always hop to the work queue so file copies never run on the main thread,
+            // whether we arrive here directly or from the (main-thread) conflict alert.
+            dispatch_async(SPKTransferWorkQueue(), ^{
+                NSInteger galleryAddedCount = 0;
+                if (importGallery) {
+                    NSError *galleryMergeError = nil;
+                    galleryAddedCount = [[SPKGalleryCoreDataStack shared] mergeGalleryFilesFromBundleDirectory:galleryPath
+                                                                                           remapOwnerAccountPK:remapPK
+                                                                                                 ownerUsername:remapUsername
+                                                                                              conflictStrategy:strategy
+                                                                                               progressHandler:^(NSInteger done, NSInteger total) {
+                                                                                                   setProgress(0.25f + 0.55f * (total > 0 ? (float)done / total : 1.0f),
+                                                                                                               [NSString stringWithFormat:@"Gallery %ld/%ld", (long)done, (long)total]);
+                                                                                               }
+                                                                                                         error:&galleryMergeError];
+                    if (galleryAddedCount < 0) {
+                        failImport(galleryMergeError.localizedDescription ?: @"Gallery import failed.");
+                        return;
+                    }
+                }
+                finishImport(galleryAddedCount);
+            });
+        };
+
+        // If a "this account" gallery import collides with items already owned by another
+        // account on this device, ask once how to resolve them all, then proceed. The
+        // conflict count reads Core Data, so run it on the main queue.
+        __block NSInteger conflicts = 0;
+        if (importGallery && remapPK.length > 0) {
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                conflicts = [[SPKGalleryCoreDataStack shared] galleryImportConflictCountForBundleDirectory:galleryPath ownerAccountPK:remapPK];
+            });
         }
 
-        NSInteger visitsAdded = 0;
-        if (importProfileAnalyzer) {
-            setProgress(0.93f, @"Profile Analyzer...");
-            NSError *profileAnalyzerError = nil;
-            visitsAdded = [SPKProfileAnalyzerStorage mergeFromStorageDirectory:profileAnalyzerPath ownerFilterPK:nil error:&profileAnalyzerError];
-            if (visitsAdded < 0) { failImport(profileAnalyzerError.localizedDescription ?: @"Profile Analyzer import failed."); return; }
+        if (conflicts <= 0) {
+            mergeGalleryThenFinish(SPKGalleryImportConflictStrategySkip);
+            return;
         }
-        setProgress(1.0f, nil);
 
-        NSMutableArray<NSString *> *restored = [NSMutableArray array];
-        if (importSettings) [restored addObject:@"preferences"];
-        if (importGallery) [restored addObject:[NSString stringWithFormat:@"Gallery (%ld added)", (long)galleryAddedCount]];
-        if (importDeletedMessages) [restored addObject:[NSString stringWithFormat:@"Messages (%ld added)", (long)messagesAdded]];
-        if (importProfileAnalyzer) [restored addObject:[NSString stringWithFormat:@"Profile Analyzer (%ld visits)", (long)visitsAdded]];
-        NSString *subtitle = [NSString stringWithFormat:@"Restored: %@.", [restored componentsJoinedByString:@", "]];
+        NSString *message = [NSString stringWithFormat:@"%ld imported file%@ already exist%@ on this device under a different account. What should happen to %@?",
+                                                       (long)conflicts, conflicts == 1 ? @"" : @"s", conflicts == 1 ? @"s" : @"", conflicts == 1 ? @"it" : @"them"];
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (scoped) [url stopAccessingSecurityScopedResource];
-            [pill dismiss];
-            SPKNotify(kSPKNotificationSettingsImport, @"Import complete", subtitle, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
-            // Only preferences need a relaunch (read at launch / hook-install time). The
-            // gallery/messages/analyzer merges write live and post change notifications.
-            if (importSettings) [SPKUtils showRestartConfirmation];
+            [SPKIGAlertPresenter presentAlertFromViewController:topMostController()
+                                                          title:@"Files from Another Account"
+                                                        message:message
+                                                        actions:@[
+                                                            [SPKIGAlertAction actionWithTitle:@"Claim for This Account"
+                                                                                        style:SPKIGAlertActionStyleDefault
+                                                                                      handler:^{
+                                                                                          mergeGalleryThenFinish(SPKGalleryImportConflictStrategyClaim);
+                                                                                      }],
+                                                            [SPKIGAlertAction actionWithTitle:@"Keep a Separate Copy"
+                                                                                        style:SPKIGAlertActionStyleDefault
+                                                                                      handler:^{
+                                                                                          mergeGalleryThenFinish(SPKGalleryImportConflictStrategyDuplicate);
+                                                                                      }],
+                                                            [SPKIGAlertAction actionWithTitle:[NSString stringWithFormat:@"Skip %@", conflicts == 1 ? @"It" : @"Them"]
+                                                                                        style:SPKIGAlertActionStyleCancel
+                                                                                      handler:^{
+                                                                                          mergeGalleryThenFinish(SPKGalleryImportConflictStrategySkip);
+                                                                                      }],
+                                                        ]];
         });
-    };
-
-    // A "this account" import re-assigns gallery files to the active account.
-    NSString *remapPK = currentScope ? currentPK : nil;
-    NSString *remapUsername = currentScope ? currentUsername : nil;
-
-    void (^mergeGalleryThenFinish)(SPKGalleryImportConflictStrategy) = ^(SPKGalleryImportConflictStrategy strategy) {
-        // Always hop to the work queue so file copies never run on the main thread,
-        // whether we arrive here directly or from the (main-thread) conflict alert.
-        dispatch_async(SPKTransferWorkQueue(), ^{
-            NSInteger galleryAddedCount = 0;
-            if (importGallery) {
-                NSError *galleryMergeError = nil;
-                galleryAddedCount = [[SPKGalleryCoreDataStack shared] mergeGalleryFilesFromBundleDirectory:galleryPath
-                                                                                      remapOwnerAccountPK:remapPK
-                                                                                            ownerUsername:remapUsername
-                                                                                         conflictStrategy:strategy
-                                                                                          progressHandler:^(NSInteger done, NSInteger total) {
-                    setProgress(0.25f + 0.55f * (total > 0 ? (float)done / total : 1.0f),
-                                [NSString stringWithFormat:@"Gallery %ld/%ld", (long)done, (long)total]);
-                } error:&galleryMergeError];
-                if (galleryAddedCount < 0) { failImport(galleryMergeError.localizedDescription ?: @"Gallery import failed."); return; }
-            }
-            finishImport(galleryAddedCount);
-        });
-    };
-
-    // If a "this account" gallery import collides with items already owned by another
-    // account on this device, ask once how to resolve them all, then proceed. The
-    // conflict count reads Core Data, so run it on the main queue.
-    __block NSInteger conflicts = 0;
-    if (importGallery && remapPK.length > 0) {
-        dispatch_sync(dispatch_get_main_queue(), ^{
-            conflicts = [[SPKGalleryCoreDataStack shared] galleryImportConflictCountForBundleDirectory:galleryPath ownerAccountPK:remapPK];
-        });
-    }
-
-    if (conflicts <= 0) {
-        mergeGalleryThenFinish(SPKGalleryImportConflictStrategySkip);
-        return;
-    }
-
-    NSString *message = [NSString stringWithFormat:@"%ld imported file%@ already exist%@ on this device under a different account. What should happen to %@?",
-                         (long)conflicts, conflicts == 1 ? @"" : @"s", conflicts == 1 ? @"s" : @"", conflicts == 1 ? @"it" : @"them"];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [SPKIGAlertPresenter presentAlertFromViewController:topMostController()
-                                                      title:@"Files from Another Account"
-                                                    message:message
-                                                    actions:@[
-            [SPKIGAlertAction actionWithTitle:@"Claim for This Account" style:SPKIGAlertActionStyleDefault handler:^{
-                mergeGalleryThenFinish(SPKGalleryImportConflictStrategyClaim);
-            }],
-            [SPKIGAlertAction actionWithTitle:@"Keep a Separate Copy" style:SPKIGAlertActionStyleDefault handler:^{
-                mergeGalleryThenFinish(SPKGalleryImportConflictStrategyDuplicate);
-            }],
-            [SPKIGAlertAction actionWithTitle:[NSString stringWithFormat:@"Skip %@", conflicts == 1 ? @"It" : @"Them"]
-                                        style:SPKIGAlertActionStyleCancel
-                                      handler:^{
-                mergeGalleryThenFinish(SPKGalleryImportConflictStrategySkip);
-            }],
-        ]];
-    });
     });
 }
 
@@ -1221,22 +1333,26 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
                                                   title:@"Reset all settings?"
                                                 message:@"This restores every Sparkle preference to its default value. Gallery media is left untouched. This cannot be undone."
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Reset" style:SPKIGAlertActionStyleDestructive handler:^{
-            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            // Clear global keys AND every account's per-account overrides.
-            for (NSString *key in SPKExportedPreferenceKeysForScope(SPKTransferAccountScopeAllAccounts, nil)) {
-                [defaults removeObjectForKey:key];
-            }
-            [[SPKSettingsLockManager sharedManager] removePasscode];
-            SPKNotify(kSPKNotificationSettingsImport,
-                      @"Settings reset",
-                      @"All Sparkle preferences were restored to defaults.",
-                      @"circle_check_filled",
-                      SPKNotificationToneForIconResource(@"circle_check_filled"));
-            [SPKUtils showRestartConfirmation];
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Reset"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+                                                                                  // Clear global keys AND every account's per-account overrides.
+                                                                                  for (NSString *key in SPKExportedPreferenceKeysForScope(SPKTransferAccountScopeAllAccounts, nil)) {
+                                                                                      [defaults removeObjectForKey:key];
+                                                                                  }
+                                                                                  [[SPKSettingsLockManager sharedManager] removePasscode];
+                                                                                  SPKNotify(kSPKNotificationSettingsImport,
+                                                                                            @"Settings reset",
+                                                                                            @"All Sparkle preferences were restored to defaults.",
+                                                                                            @"circle_check_filled",
+                                                                                            SPKNotificationToneForIconResource(@"circle_check_filled"));
+                                                                                  [SPKUtils showRestartConfirmation];
+                                                                              }],
+                                                ]];
 }
 
 @end

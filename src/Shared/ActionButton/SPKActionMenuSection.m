@@ -6,8 +6,7 @@
                                 title:(NSString *)title
                              iconName:(NSString *)iconName
                           collapsible:(BOOL)collapsible
-                              actions:(NSArray<NSString *> *)actions
-{
+                              actions:(NSArray<NSString *> *)actions {
     SPKActionMenuSection *section = [[self alloc] init];
     section.identifier = identifier;
     section.title = title;
@@ -18,7 +17,8 @@
 }
 
 + (nullable instancetype)sectionFromDictionary:(NSDictionary *)dictionary {
-    if (![dictionary isKindOfClass:[NSDictionary class]]) return nil;
+    if (![dictionary isKindOfClass:[NSDictionary class]])
+        return nil;
 
     NSString *identifier = [dictionary[@"identifier"] isKindOfClass:[NSString class]] ? dictionary[@"identifier"] : NSUUID.UUID.UUIDString;
     NSString *title = [dictionary[@"title"] isKindOfClass:[NSString class]] ? dictionary[@"title"] : @"Section";
@@ -34,11 +34,11 @@
 
 - (NSDictionary *)dictionaryRepresentation {
     return @{
-        @"identifier": self.identifier ?: NSUUID.UUID.UUIDString,
-        @"title": self.title ?: @"Section",
-        @"icon_name": self.iconName ?: @"action",
-        @"type": self.collapsible ? @"collapsible" : @"inline",
-        @"actions": [self.actions copy] ?: @[]
+        @"identifier" : self.identifier ?: NSUUID.UUID.UUIDString,
+        @"title" : self.title ?: @"Section",
+        @"icon_name" : self.iconName ?: @"action",
+        @"type" : self.collapsible ? @"collapsible" : @"inline",
+        @"actions" : [self.actions copy] ?: @[]
     };
 }
 

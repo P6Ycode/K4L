@@ -1,6 +1,6 @@
 #import "SPKGalleryPaths.h"
-#import "../SPKStoragePaths.h"
 #import "../../Utils.h"
+#import "../SPKStoragePaths.h"
 
 static NSString *_galleryDirectory;
 static NSString *_galleryMediaDirectory;

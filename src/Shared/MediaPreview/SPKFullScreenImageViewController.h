@@ -22,12 +22,18 @@ NS_ASSUME_NONNULL_BEGIN
 static inline BOOL SPKFullScreenPreviewShouldInsetMediaBetweenBars(void) {
     UIWindow *window = nil;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+        if (![scene isKindOfClass:[UIWindowScene class]])
+            continue;
         for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
-            if (candidate.isKeyWindow) { window = candidate; break; }
-            if (!window) window = candidate;
+            if (candidate.isKeyWindow) {
+                window = candidate;
+                break;
+            }
+            if (!window)
+                window = candidate;
         }
-        if (window.isKeyWindow) break;
+        if (window.isKeyWindow)
+            break;
     }
     // Home indicator => notched/edge-to-edge device: keep full-bleed.
     return window.safeAreaInsets.bottom <= 0.0;

@@ -7,12 +7,12 @@
 #import "../../Utils.h"
 #import "../Gallery/SPKGalleryFile.h"
 #import "../Gallery/SPKGalleryPickerViewController.h"
-#import "../UI/SPKIGAlertPresenter.h"
-#import "../UI/SPKNotificationCenter.h"
 #import "../MediaTrim/SPKTrimConfiguration.h"
 #import "../MediaTrim/SPKTrimEditorViewController.h"
-#import "../MediaTrim/SPKTrimResult.h"
 #import "../MediaTrim/SPKTrimRenderer.h"
+#import "../MediaTrim/SPKTrimResult.h"
+#import "../UI/SPKIGAlertPresenter.h"
+#import "../UI/SPKNotificationCenter.h"
 
 @interface SPKAudioDMUploadCoordinator () <UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @property (nonatomic, strong) id senderTarget;
@@ -43,8 +43,8 @@ static SEL SPKAudioDMVoiceLegacySelector(void) {
 
 static NSURL *SPKAudioDMTemporaryURL(NSString *extension) {
     NSString *name = [NSString stringWithFormat:@"sparkle-dm-audio-%@.%@",
-                      NSUUID.UUID.UUIDString,
-                      extension.length ? extension : @"m4a"];
+                                                NSUUID.UUID.UUIDString,
+                                                extension.length ? extension : @"m4a"];
     return [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:name]];
 }
 
@@ -58,7 +58,8 @@ static id SPKAudioDMCreateWaveform(NSTimeInterval duration) {
 
     Class waveformClass = NSClassFromString(@"IGDirectAudioWaveform");
     SEL initializer = NSSelectorFromString(@"initWithVolumeRecordingInterval:averageVolume:");
-    if (!waveformClass || ![waveformClass instancesRespondToSelector:initializer]) return nil;
+    if (!waveformClass || ![waveformClass instancesRespondToSelector:initializer])
+        return nil;
 
     double interval = (isfinite(duration) && duration > 0.1) ? MAX(duration / (double)sampleCount, 0.02) : 0.1;
     id waveform = ((id (*)(id, SEL, double, id))objc_msgSend)([waveformClass alloc],
@@ -69,13 +70,16 @@ static id SPKAudioDMCreateWaveform(NSTimeInterval duration) {
 }
 
 static id SPKAudioDMIvarValue(id object, const char *name) {
-    if (!object || !name) return nil;
+    if (!object || !name)
+        return nil;
     @try {
         for (Class cls = [object class]; cls && cls != NSObject.class; cls = class_getSuperclass(cls)) {
             Ivar ivar = class_getInstanceVariable(cls, name);
-            if (!ivar) continue;
+            if (!ivar)
+                continue;
             const char *encoding = ivar_getTypeEncoding(ivar);
-            if (encoding && encoding[0] == '@') return object_getIvar(object, ivar);
+            if (encoding && encoding[0] == '@')
+                return object_getIvar(object, ivar);
         }
     } @catch (__unused NSException *exception) {
     }
@@ -84,7 +88,8 @@ static id SPKAudioDMIvarValue(id object, const char *name) {
 
 static id SPKAudioDMCall(id object, NSString *selectorName) {
     SEL selector = NSSelectorFromString(selectorName);
-    if (!object || ![object respondsToSelector:selector]) return nil;
+    if (!object || ![object respondsToSelector:selector])
+        return nil;
     @try {
         return ((id (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -98,15 +103,18 @@ static id SPKAudioDMThreadContextFromTarget(id target) {
 
 static id SPKAudioDMVoiceControllerFromTarget(id target) {
     id voiceController = SPKAudioDMCall(target, @"voiceController") ?: SPKAudioDMIvarValue(target, "_voiceController");
-    if (voiceController) return voiceController;
+    if (voiceController)
+        return voiceController;
 
     id threadContext = SPKAudioDMThreadContextFromTarget(target);
     voiceController = SPKAudioDMCall(threadContext, @"voiceController") ?: SPKAudioDMIvarValue(threadContext, "_voiceController");
-    if (voiceController) return voiceController;
+    if (voiceController)
+        return voiceController;
 
     id featureDelegate = SPKAudioDMCall(target, @"featureDelegate") ?: SPKAudioDMIvarValue(target, "_featureDelegate");
     voiceController = SPKAudioDMCall(featureDelegate, @"voiceController") ?: SPKAudioDMIvarValue(featureDelegate, "_voiceController");
-    if (voiceController) return voiceController;
+    if (voiceController)
+        return voiceController;
 
     id composerTapHandler = SPKAudioDMCall(featureDelegate, @"composerTapHandler") ?: SPKAudioDMIvarValue(featureDelegate, "_composerTapHandler");
     return SPKAudioDMCall(composerTapHandler, @"voiceController") ?: SPKAudioDMIvarValue(composerTapHandler, "_voiceController");
@@ -114,11 +122,13 @@ static id SPKAudioDMVoiceControllerFromTarget(id target) {
 
 static id SPKAudioDMMessageSenderFromTarget(id target) {
     id sender = SPKAudioDMCall(target, @"messageSenderFeatureController") ?: SPKAudioDMIvarValue(target, "_messageSenderFeatureController");
-    if (sender) return sender;
+    if (sender)
+        return sender;
 
     id threadContext = SPKAudioDMThreadContextFromTarget(target);
     sender = SPKAudioDMCall(threadContext, @"messageSenderFeatureController") ?: SPKAudioDMIvarValue(threadContext, "_messageSenderFeatureController");
-    if (sender) return sender;
+    if (sender)
+        return sender;
 
     id featureDelegate = SPKAudioDMCall(target, @"featureDelegate") ?: SPKAudioDMIvarValue(target, "_featureDelegate");
     return SPKAudioDMCall(featureDelegate, @"messageSenderFeatureController") ?: SPKAudioDMIvarValue(featureDelegate, "_messageSenderFeatureController");
@@ -138,7 +148,8 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
     id voiceController = SPKAudioDMVoiceControllerFromTarget(senderTarget);
     SEL voiceSelector = SPKAudioDMVoiceSelector();
     SEL voiceLegacySelector = SPKAudioDMVoiceLegacySelector();
-    if (voiceController && ([voiceController respondsToSelector:voiceSelector] || [voiceController respondsToSelector:voiceLegacySelector])) return YES;
+    if (voiceController && ([voiceController respondsToSelector:voiceSelector] || [voiceController respondsToSelector:voiceLegacySelector]))
+        return YES;
 
     id sender = SPKAudioDMMessageSenderFromTarget(senderTarget) ?: senderTarget;
     return sender && ([sender respondsToSelector:SPKAudioDMSendSelector()] || [sender respondsToSelector:SPKAudioDMSendLegacySelector()]);
@@ -163,23 +174,32 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
                                                         title:@"Send Audio Message"
                                                       message:@"Choose an audio or video file to convert and send as a voice note."
                                                       actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Select from Photos" style:SPKIGAlertActionStyleDefault handler:^{
-            [coordinator presentLibraryPicker];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Select from Gallery" style:SPKIGAlertActionStyleDefault handler:^{
-            [coordinator presentGalleryPicker];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Select from Files" style:SPKIGAlertActionStyleDefault handler:^{
-        [coordinator presentFilesPicker];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
-            if (sSPKAudioActiveDMUploadCoordinator == coordinator) sSPKAudioActiveDMUploadCoordinator = nil;
-        }]
-    ]];
+                                                          [SPKIGAlertAction actionWithTitle:@"Select from Photos"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [coordinator presentLibraryPicker];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Select from Gallery"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [coordinator presentGalleryPicker];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Select from Files"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [coordinator presentFilesPicker];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                      style:SPKIGAlertActionStyleCancel
+                                                                                    handler:^{
+                                                                                        if (sSPKAudioActiveDMUploadCoordinator == coordinator)
+                                                                                            sSPKAudioActiveDMUploadCoordinator = nil;
+                                                                                    }]
+                                                      ]];
 }
 
 - (void)presentFilesPicker {
-    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.audio", @"public.movie", @"public.mpeg-4"]
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[ @"public.audio", @"public.movie", @"public.mpeg-4" ]
                                                                                                     inMode:UIDocumentPickerModeImport];
     picker.delegate = self;
     picker.allowsMultipleSelection = NO;
@@ -192,12 +212,13 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 - (void)presentLibraryPicker {
     if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary]) {
         SPKAudioDMNotify(@"Library unavailable", @"Photo Library is not available on this device.", NO);
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
     UIImagePickerController *picker = [[UIImagePickerController alloc] init];
     picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
-    picker.mediaTypes = @[@"public.movie"];
+    picker.mediaTypes = @[ @"public.movie" ];
     picker.delegate = self;
     picker.modalPresentationStyle = UIModalPresentationFormSheet;
     picker.popoverPresentationController.sourceView = self.sourceView ?: self.presenter.view;
@@ -207,10 +228,11 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 
 - (void)presentGalleryPicker {
     __weak typeof(self) weakSelf = self;
-    NSSet<NSNumber *> *mediaTypes = [NSSet setWithArray:@[@(SPKGalleryMediaTypeAudio), @(SPKGalleryMediaTypeVideo)]];
+    NSSet<NSNumber *> *mediaTypes = [NSSet setWithArray:@[ @(SPKGalleryMediaTypeAudio), @(SPKGalleryMediaTypeVideo) ]];
     if (![SPKGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:mediaTypes]) {
         SPKAudioDMNotify(@"No Gallery audio", @"Save audio or video to Gallery first.", NO);
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -219,19 +241,21 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
                                             allowedMediaTypes:mediaTypes
                                       allowsMultipleSelection:NO
                                                    completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
-        SPKGalleryFile *file = selectedFiles.firstObject;
-        NSURL *fileURL = [file fileURL];
-        if (!file || ![file fileExists] || !fileURL) {
-            SPKAudioDMNotify(@"No Gallery audio", @"Save audio or video to Gallery first.", NO);
-            if (sSPKAudioActiveDMUploadCoordinator == weakSelf) sSPKAudioActiveDMUploadCoordinator = nil;
-            return;
-        }
-        [weakSelf convertAndSendURL:fileURL];
-    }];
+                                                       SPKGalleryFile *file = selectedFiles.firstObject;
+                                                       NSURL *fileURL = [file fileURL];
+                                                       if (!file || ![file fileExists] || !fileURL) {
+                                                           SPKAudioDMNotify(@"No Gallery audio", @"Save audio or video to Gallery first.", NO);
+                                                           if (sSPKAudioActiveDMUploadCoordinator == weakSelf)
+                                                               sSPKAudioActiveDMUploadCoordinator = nil;
+                                                           return;
+                                                       }
+                                                       [weakSelf convertAndSendURL:fileURL];
+                                                   }];
 }
 
 - (void)beginUploadProgressWithTitle:(NSString *)title subtitle:(NSString *)subtitle {
-    if (!SPKNotificationIsEnabled(kSPKNotificationDownloadShare)) return;
+    if (!SPKNotificationIsEnabled(kSPKNotificationDownloadShare))
+        return;
     if (!self.progressView) {
         self.progressView = SPKNotifyProgress(kSPKNotificationDownloadShare, title ?: @"Preparing audio", nil);
     }
@@ -240,7 +264,8 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 }
 
 - (void)updateUploadProgress:(float)progress title:(NSString *)title subtitle:(NSString *)subtitle {
-    if (!self.progressView) return;
+    if (!self.progressView)
+        return;
     [self.progressView updateProgressTitle:title subtitle:subtitle];
     [self.progressView setProgress:progress animated:YES];
 }
@@ -279,13 +304,15 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 }
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
-    if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+    if (sSPKAudioActiveDMUploadCoordinator == self)
+        sSPKAudioActiveDMUploadCoordinator = nil;
 }
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     if (!url) {
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -294,18 +321,20 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
     [picker dismissViewControllerAnimated:YES completion:nil];
-    if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+    if (sSPKAudioActiveDMUploadCoordinator == self)
+        sSPKAudioActiveDMUploadCoordinator = nil;
 }
 
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info {
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey, id> *)info {
     NSURL *url = info[UIImagePickerControllerMediaURL];
-    [picker dismissViewControllerAnimated:YES completion:^{
-        if (url) {
-            [self convertAndSendURL:url];
-        } else if (sSPKAudioActiveDMUploadCoordinator == self) {
-            sSPKAudioActiveDMUploadCoordinator = nil;
-        }
-    }];
+    [picker dismissViewControllerAnimated:YES
+                               completion:^{
+                                   if (url) {
+                                       [self convertAndSendURL:url];
+                                   } else if (sSPKAudioActiveDMUploadCoordinator == self) {
+                                       sSPKAudioActiveDMUploadCoordinator = nil;
+                                   }
+                               }];
 }
 
 - (void)convertAndSendURL:(NSURL *)url {
@@ -317,11 +346,13 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
     if ([[NSFileManager defaultManager] copyItemAtURL:url toURL:copiedURL error:&copyError]) {
         inputURL = copiedURL;
     }
-    if (securityScoped) [url stopAccessingSecurityScopedResource];
+    if (securityScoped)
+        [url stopAccessingSecurityScopedResource];
 
     if (copyError && ![inputURL isFileURL]) {
         SPKAudioDMNotify(@"Audio upload failed", copyError.localizedDescription ?: @"Could not import the selected file.", NO);
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -333,7 +364,8 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
     AVAssetExportSession *session = [[AVAssetExportSession alloc] initWithAsset:asset presetName:preset];
     if (!session) {
         [self finishUploadProgressWithErrorTitle:@"Audio upload failed" subtitle:@"Could not create an audio conversion session."];
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -348,7 +380,8 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
             if (session.status != AVAssetExportSessionStatusCompleted || ![[NSFileManager defaultManager] fileExistsAtPath:outputURL.path]) {
                 NSString *message = session.error.localizedDescription ?: @"Instagram may not support this media format.";
                 [self finishUploadProgressWithErrorTitle:@"Audio conversion failed" subtitle:message];
-                if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+                if (sSPKAudioActiveDMUploadCoordinator == self)
+                    sSPKAudioActiveDMUploadCoordinator = nil;
                 return;
             }
 
@@ -384,39 +417,49 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
                                                         title:@"Send Voice Note"
                                                       message:@"Send now, or trim the audio first."
                                                       actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Send" style:SPKIGAlertActionStyleDefault handler:^{
-            [weakSelf beginUploadProgressWithTitle:@"Sending audio" subtitle:nil];
-            [weakSelf sendConvertedURL:url duration:duration];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Trim & Send…" style:SPKIGAlertActionStyleDefault handler:^{
-            [weakSelf presentAudioTrimForURL:url];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
-            if (sSPKAudioActiveDMUploadCoordinator == weakSelf) sSPKAudioActiveDMUploadCoordinator = nil;
-        }]
-    ]];
+                                                          [SPKIGAlertAction actionWithTitle:@"Send"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [weakSelf beginUploadProgressWithTitle:@"Sending audio" subtitle:nil];
+                                                                                        [weakSelf sendConvertedURL:url duration:duration];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Trim & Send…"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [weakSelf presentAudioTrimForURL:url];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                      style:SPKIGAlertActionStyleCancel
+                                                                                    handler:^{
+                                                                                        if (sSPKAudioActiveDMUploadCoordinator == weakSelf)
+                                                                                            sSPKAudioActiveDMUploadCoordinator = nil;
+                                                                                    }]
+                                                      ]];
 }
 
 - (void)presentAudioTrimForURL:(NSURL *)url {
     UIViewController *presenter = self.presenter;
     if (!presenter) {
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
     SPKTrimConfiguration *config = [SPKTrimConfiguration configurationWithAudioURL:url];
     __weak typeof(self) weakSelf = self;
     [SPKTrimEditorViewController presentWithConfiguration:config
-                                                    from:presenter
-                                              completion:^(SPKTrimResult *result) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        if (!result) {
-            // Cancelled the editor → abort the whole send.
-            if (sSPKAudioActiveDMUploadCoordinator == strongSelf) sSPKAudioActiveDMUploadCoordinator = nil;
-            return;
-        }
-        [strongSelf renderTrimResultThenSend:result];
-    }];
+                                                     from:presenter
+                                               completion:^(SPKTrimResult *result) {
+                                                   __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                   if (!strongSelf)
+                                                       return;
+                                                   if (!result) {
+                                                       // Cancelled the editor → abort the whole send.
+                                                       if (sSPKAudioActiveDMUploadCoordinator == strongSelf)
+                                                           sSPKAudioActiveDMUploadCoordinator = nil;
+                                                       return;
+                                                   }
+                                                   [strongSelf renderTrimResultThenSend:result];
+                                               }];
 }
 
 - (void)renderTrimResultThenSend:(SPKTrimResult *)result {
@@ -429,23 +472,26 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
                                  durationSeconds:result.durationSeconds
                                         basename:basename
                                       completion:^(NSURL *outputURL, NSError *error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        if (!outputURL) {
-            [strongSelf finishUploadProgressWithErrorTitle:@"Audio trim failed"
-                                                  subtitle:error.localizedDescription ?: @"Could not trim the audio."];
-            if (sSPKAudioActiveDMUploadCoordinator == strongSelf) sSPKAudioActiveDMUploadCoordinator = nil;
-            return;
-        }
-        [strongSelf updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
-        [strongSelf sendConvertedURL:outputURL duration:result.durationSeconds];
-    }];
+                                          __strong typeof(weakSelf) strongSelf = weakSelf;
+                                          if (!strongSelf)
+                                              return;
+                                          if (!outputURL) {
+                                              [strongSelf finishUploadProgressWithErrorTitle:@"Audio trim failed"
+                                                                                    subtitle:error.localizedDescription ?: @"Could not trim the audio."];
+                                              if (sSPKAudioActiveDMUploadCoordinator == strongSelf)
+                                                  sSPKAudioActiveDMUploadCoordinator = nil;
+                                              return;
+                                          }
+                                          [strongSelf updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
+                                          [strongSelf sendConvertedURL:outputURL duration:result.durationSeconds];
+                                      }];
 }
 
 - (void)sendConvertedURL:(NSURL *)url duration:(NSTimeInterval)duration {
     if (![SPKAudioDMUploadCoordinator senderTargetSupportsAudioUpload:self.senderTarget]) {
         [self finishUploadProgressWithErrorTitle:@"Audio upload unavailable" subtitle:@"The direct audio sender disappeared before sending."];
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -453,7 +499,8 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
     id waveform = SPKAudioDMCreateWaveform(safeDuration);
     if (!waveform) {
         [self finishUploadProgressWithErrorTitle:@"Audio upload unavailable" subtitle:@"Could not create an Instagram audio waveform."];
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -471,18 +518,22 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
             }
             [self updateUploadProgress:1.0f title:@"Audio sent" subtitle:nil];
             [self finishUploadProgressWithSuccess];
-            if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
-        }, ^{
-            [self finishUploadProgressWithCancel];
-            if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
-        });
+            if (sSPKAudioActiveDMUploadCoordinator == self)
+                sSPKAudioActiveDMUploadCoordinator = nil;
+        },
+                                         ^{
+                                             [self finishUploadProgressWithCancel];
+                                             if (sSPKAudioActiveDMUploadCoordinator == self)
+                                                 sSPKAudioActiveDMUploadCoordinator = nil;
+                                         });
         return;
     }
 
     id sender = SPKAudioDMMessageSenderFromTarget(self.senderTarget) ?: self.senderTarget;
     if (![sender respondsToSelector:SPKAudioDMSendSelector()] && ![sender respondsToSelector:SPKAudioDMSendLegacySelector()]) {
         [self finishUploadProgressWithErrorTitle:@"Audio upload unavailable" subtitle:@"The direct audio sender disappeared before sending."];
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
         return;
     }
 
@@ -513,11 +564,14 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
         }
         [self updateUploadProgress:1.0f title:@"Audio sent" subtitle:nil];
         [self finishUploadProgressWithSuccess];
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
-    }, ^{
-        [self finishUploadProgressWithCancel];
-        if (sSPKAudioActiveDMUploadCoordinator == self) sSPKAudioActiveDMUploadCoordinator = nil;
-    });
+        if (sSPKAudioActiveDMUploadCoordinator == self)
+            sSPKAudioActiveDMUploadCoordinator = nil;
+    },
+                                     ^{
+                                         [self finishUploadProgressWithCancel];
+                                         if (sSPKAudioActiveDMUploadCoordinator == self)
+                                             sSPKAudioActiveDMUploadCoordinator = nil;
+                                     });
 }
 
 @end

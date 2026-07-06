@@ -1,9 +1,9 @@
 #import "SPKAboutSettingsProvider.h"
 
-#import "../SPKTopicSettingsSupport.h"
+#import "../../AssetUtils.h"
 #import "../../Tweak.h"
 #import "../../Utils.h"
-#import "../../AssetUtils.h"
+#import "../SPKTopicSettingsSupport.h"
 
 @implementation SPKAboutSettingsProvider
 
@@ -14,12 +14,13 @@
                                                                           icon:[SPKAssetUtils instagramIconNamed:@"donate" pointSize:44.0]
                                                                            url:@"https://ko-fi.com/sparkle_ig"],
                                                  [SPKUtils SPKColor_InstagramFavorite]);
-    donate.userInfo = @{ @"titleFont": [UIFont systemFontOfSize:20.0 weight:UIFontWeightSemibold] };
+    donate.userInfo = @{@"titleFont" : [UIFont systemFontOfSize:20.0 weight:UIFontWeightSemibold]};
 
     return SPKTopicNavigationSetting(@"About", @"info", 24.0, @[
         SPKTopicSection(@"Support", @[
             donate
-        ], @"Consider donating to support the tweak's development."),
+        ],
+                        @"Consider donating to support the tweak's development."),
         SPKTopicSection(@"Information", @[
             [SPKSetting staticCellWithTitle:@"Sparkle"
                                    subtitle:SPKVersionString
@@ -30,7 +31,8 @@
             [SPKSetting staticCellWithTitle:@"Bundle ID"
                                    subtitle:[[NSBundle mainBundle] bundleIdentifier]
                                        icon:SPKSettingsIcon(@"key")]
-        ], nil),
+        ],
+                        nil),
         SPKTopicSection(@"", @[
             [SPKSetting linkCellWithTitle:@"waffle"
                                  subtitle:@"Sparkle developer"
@@ -40,7 +42,8 @@
                                  subtitle:@"Tap to open on GitHub"
                                  imageUrl:@"https://i.imgur.com/BBUNzeP.png"
                                       url:@"https://github.com/efibalogh/sparkle-ig"]
-        ], nil),        
+        ],
+                        nil),
         SPKTopicSection(@"Credits", @[
             [SPKSetting linkCellWithTitle:@"SoCuul • SCInsta"
                                  subtitle:@"Base project Sparkle is built on"
@@ -58,7 +61,8 @@
                                  subtitle:@"Fixes for sideloaded installs"
                                  imageUrl:@"https://avatars.githubusercontent.com/u/109937991?v=4"
                                       url:@"https://github.com/asdfzxcvbn/zxPluginsInject"]
-        ], nil),
+        ],
+                        nil),
     ]);
 }
 

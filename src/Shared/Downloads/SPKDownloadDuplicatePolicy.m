@@ -9,7 +9,7 @@
 #import "../UI/SPKIGAlertPresenter.h"
 
 // Constants
-static NSString * const kSPKPhotosSaveLedgerKey = @"general_detect_duplicate_photos_ledger_v2";
+static NSString *const kSPKPhotosSaveLedgerKey = @"general_detect_duplicate_photos_ledger_v2";
 static NSUInteger const kSPKPhotosSaveLedgerLimit = 2000;
 
 // Internal decision enums for alerts
@@ -28,14 +28,16 @@ typedef NS_ENUM(NSInteger, SPKDownloadBulkDuplicateDecision) {
 // Helper functions
 static NSString *SPKNormalizedMediaURLString(NSString *string) {
     NSURLComponents *components = [NSURLComponents componentsWithString:string];
-    if (!components) return string;
+    if (!components)
+        return string;
     components.query = nil;
     components.fragment = nil;
     return components.string ?: string;
 }
 
 static NSString *SPKDuplicateKey(SPKGallerySaveMetadata *metadata, NSInteger mediaType) {
-    if (!metadata) return nil;
+    if (!metadata)
+        return nil;
     NSString *identity = nil;
     if (metadata.sourceMediaPK.length > 0) {
         identity = [@"pk:" stringByAppendingString:metadata.sourceMediaPK];
@@ -52,17 +54,20 @@ static NSString *SPKDuplicateKey(SPKGallerySaveMetadata *metadata, NSInteger med
     } else if (metadata.sourceMediaURLString.length > 0) {
         identity = [@"url:" stringByAppendingString:SPKNormalizedMediaURLString(metadata.sourceMediaURLString)];
     }
-    if (identity.length == 0) return nil;
+    if (identity.length == 0)
+        return nil;
     return [NSString stringWithFormat:@"%ld|%@", (long)mediaType, identity];
 }
 
 static NSString *SPKMediaTypeLabel(NSInteger mediaType) {
     switch (mediaType) {
-        case SPKGalleryMediaTypeVideo: return @"video";
-        case SPKGalleryMediaTypeAudio: return @"audio";
-        case SPKGalleryMediaTypeImage:
-        default:
-            return @"photo";
+    case SPKGalleryMediaTypeVideo:
+        return @"video";
+    case SPKGalleryMediaTypeAudio:
+        return @"audio";
+    case SPKGalleryMediaTypeImage:
+    default:
+        return @"photo";
     }
 }
 
@@ -72,7 +77,8 @@ static NSString *SPKDestinationLabel(SPKDownloadDuplicateDestination destination
 
 static SPKGalleryFile *SPKExistingGalleryFile(SPKGallerySaveMetadata *metadata, NSInteger mediaType) {
     NSString *key = SPKDuplicateKey(metadata, mediaType);
-    if (key.length == 0) return nil;
+    if (key.length == 0)
+        return nil;
     __block SPKGalleryFile *match = nil;
     NSManagedObjectContext *context = [SPKGalleryCoreDataStack shared].viewContext;
     [context performBlockAndWait:^{
@@ -99,7 +105,8 @@ static NSMutableDictionary<NSString *, NSString *> *SPKPhotosSaveLedger(void) {
 
 static BOOL SPKHasDuplicate(SPKDownloadDuplicateDestination destination, SPKGallerySaveMetadata *metadata, NSInteger mediaType) {
     NSString *key = SPKDuplicateKey(metadata, mediaType);
-    if (key.length == 0) return NO;
+    if (key.length == 0)
+        return NO;
     if (destination == SPKDownloadDuplicateDestinationPhotos) {
         return SPKPhotosSaveLedger()[key].length > 0;
     }
@@ -107,28 +114,38 @@ static BOOL SPKHasDuplicate(SPKDownloadDuplicateDestination destination, SPKGall
 }
 
 static BOOL SPKPresentSingleDuplicateAlert(SPKDownloadDuplicateDestination destination,
-                                            SPKGallerySaveMetadata *metadata,
-                                            NSInteger mediaType,
-                                            UIViewController *presenter,
-                                            void (^continuation)(SPKDownloadDuplicateDecision)) {
-    if (!SPKHasDuplicate(destination, metadata, mediaType)) return NO;
+                                           SPKGallerySaveMetadata *metadata,
+                                           NSInteger mediaType,
+                                           UIViewController *presenter,
+                                           void (^continuation)(SPKDownloadDuplicateDecision)) {
+    if (!SPKHasDuplicate(destination, metadata, mediaType))
+        return NO;
     NSString *message = [NSString stringWithFormat:@"This %@ has previously been downloaded to %@.",
-                         SPKMediaTypeLabel(mediaType),
-                         SPKDestinationLabel(destination)];
+                                                   SPKMediaTypeLabel(mediaType),
+                                                   SPKDestinationLabel(destination)];
     [SPKIGAlertPresenter presentAlertFromViewController:presenter
-                                                 title:@"Duplicate Download Detected"
-                                               message:message
-                                               actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Download Anyway" style:SPKIGAlertActionStyleDefault handler:^{
-            if (continuation) continuation(SPKDownloadDuplicateDecisionDownloadAgain);
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Delete Existing and Download" style:SPKIGAlertActionStyleDestructive handler:^{
-            if (continuation) continuation(SPKDownloadDuplicateDecisionDeleteExistingAndDownloadAgain);
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
-            if (continuation) continuation(SPKDownloadDuplicateDecisionCancel);
-        }],
-    ]];
+                                                  title:@"Duplicate Download Detected"
+                                                message:message
+                                                actions:@[
+                                                    [SPKIGAlertAction actionWithTitle:@"Download Anyway"
+                                                                                style:SPKIGAlertActionStyleDefault
+                                                                              handler:^{
+                                                                                  if (continuation)
+                                                                                      continuation(SPKDownloadDuplicateDecisionDownloadAgain);
+                                                                              }],
+                                                    [SPKIGAlertAction actionWithTitle:@"Delete Existing and Download"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  if (continuation)
+                                                                                      continuation(SPKDownloadDuplicateDecisionDeleteExistingAndDownloadAgain);
+                                                                              }],
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:^{
+                                                                                  if (continuation)
+                                                                                      continuation(SPKDownloadDuplicateDecisionCancel);
+                                                                              }],
+                                                ]];
     return YES;
 }
 
@@ -136,23 +153,30 @@ static BOOL SPKPresentBulkDuplicateAlert(NSUInteger duplicateCount,
                                          NSUInteger totalCount,
                                          UIViewController *presenter,
                                          void (^continuation)(SPKDownloadBulkDuplicateDecision)) {
-    if (duplicateCount == 0 || !continuation) return NO;
+    if (duplicateCount == 0 || !continuation)
+        return NO;
     NSString *message = [NSString stringWithFormat:@"%lu of %lu items were already downloaded.",
-                         (unsigned long)duplicateCount, (unsigned long)totalCount];
+                                                   (unsigned long)duplicateCount, (unsigned long)totalCount];
     [SPKIGAlertPresenter presentAlertFromViewController:presenter ?: topMostController()
-                                                 title:@"Duplicate Downloads"
-                                               message:message
-                                               actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Skip Existing" style:SPKIGAlertActionStyleDefault handler:^{
-            continuation(SPKDownloadBulkDuplicateDecisionSkipExisting);
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Download All Anyway" style:SPKIGAlertActionStyleDefault handler:^{
-            continuation(SPKDownloadBulkDuplicateDecisionDownloadAllAnyway);
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
-            continuation(SPKDownloadBulkDuplicateDecisionCancel);
-        }],
-    ]];
+                                                  title:@"Duplicate Downloads"
+                                                message:message
+                                                actions:@[
+                                                    [SPKIGAlertAction actionWithTitle:@"Skip Existing"
+                                                                                style:SPKIGAlertActionStyleDefault
+                                                                              handler:^{
+                                                                                  continuation(SPKDownloadBulkDuplicateDecisionSkipExisting);
+                                                                              }],
+                                                    [SPKIGAlertAction actionWithTitle:@"Download All Anyway"
+                                                                                style:SPKIGAlertActionStyleDefault
+                                                                              handler:^{
+                                                                                  continuation(SPKDownloadBulkDuplicateDecisionDownloadAllAnyway);
+                                                                              }],
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:^{
+                                                                                  continuation(SPKDownloadBulkDuplicateDecisionCancel);
+                                                                              }],
+                                                ]];
     return YES;
 }
 
@@ -164,60 +188,72 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
         SPKGalleryFile *file = SPKExistingGalleryFile(metadata, mediaType);
         NSError *error = nil;
         BOOL success = !file || [file removeWithError:&error];
-        if (completion) completion(success, error);
+        if (completion)
+            completion(success, error);
         return;
     }
     NSString *key = SPKDuplicateKey(metadata, mediaType);
     NSMutableDictionary<NSString *, NSString *> *ledger = SPKPhotosSaveLedger();
     NSString *localIdentifier = ledger[key];
     PHFetchResult<PHAsset *> *assets = localIdentifier.length > 0
-        ? [PHAsset fetchAssetsWithLocalIdentifiers:@[localIdentifier] options:nil]
-        : nil;
+                                           ? [PHAsset fetchAssetsWithLocalIdentifiers:@[ localIdentifier ] options:nil]
+                                           : nil;
     if (assets.count == 0) {
         [ledger removeObjectForKey:key];
         [[NSUserDefaults standardUserDefaults] setObject:ledger forKey:kSPKPhotosSaveLedgerKey];
-        if (completion) completion(YES, nil);
+        if (completion)
+            completion(YES, nil);
         return;
     }
-    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
-        [PHAssetChangeRequest deleteAssets:assets];
-    } completionHandler:^(BOOL success, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (success) {
-                NSMutableDictionary<NSString *, NSString *> *updatedLedger = SPKPhotosSaveLedger();
-                [updatedLedger removeObjectForKey:key];
-                [[NSUserDefaults standardUserDefaults] setObject:updatedLedger forKey:kSPKPhotosSaveLedgerKey];
-            }
-            if (completion) completion(success, error);
-        });
-    }];
+    [[PHPhotoLibrary sharedPhotoLibrary]
+        performChanges:^{
+            [PHAssetChangeRequest deleteAssets:assets];
+        }
+        completionHandler:^(BOOL success, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (success) {
+                    NSMutableDictionary<NSString *, NSString *> *updatedLedger = SPKPhotosSaveLedger();
+                    [updatedLedger removeObjectForKey:key];
+                    [[NSUserDefaults standardUserDefaults] setObject:updatedLedger forKey:kSPKPhotosSaveLedgerKey];
+                }
+                if (completion)
+                    completion(success, error);
+            });
+        }];
 }
 @implementation SPKDownloadDuplicatePolicy
 
 - (BOOL)duplicateDetectionEnabled {
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:kSPKDownloadDetectDuplicatesKey]) return NO;
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:kSPKDownloadDetectDuplicatesKey])
+        return NO;
     return YES;
 }
 
 - (BOOL)duplicateDestinationFor:(SPKDownloadDestination)destination outValue:(SPKDownloadDuplicateDestination *)outValue {
     switch (destination) {
-        case SPKDownloadDestinationPhotos:
-            if (outValue) *outValue = SPKDownloadDuplicateDestinationPhotos;
-            return YES;
-        case SPKDownloadDestinationGallery:
-            if (outValue) *outValue = SPKDownloadDuplicateDestinationGallery;
-            return YES;
-        default:
-            return NO;
+    case SPKDownloadDestinationPhotos:
+        if (outValue)
+            *outValue = SPKDownloadDuplicateDestinationPhotos;
+        return YES;
+    case SPKDownloadDestinationGallery:
+        if (outValue)
+            *outValue = SPKDownloadDuplicateDestinationGallery;
+        return YES;
+    default:
+        return NO;
     }
 }
 
 - (NSInteger)mediaTypeForKind:(SPKDownloadMediaKind)kind {
     switch (kind) {
-        case SPKDownloadMediaKindVideo: return SPKGalleryMediaTypeVideo;
-        case SPKDownloadMediaKindAudio: return SPKGalleryMediaTypeAudio;
-        case SPKDownloadMediaKindImage: return SPKGalleryMediaTypeImage;
-        default: return SPKGalleryMediaTypeImage;
+    case SPKDownloadMediaKindVideo:
+        return SPKGalleryMediaTypeVideo;
+    case SPKDownloadMediaKindAudio:
+        return SPKGalleryMediaTypeAudio;
+    case SPKDownloadMediaKindImage:
+        return SPKGalleryMediaTypeImage;
+    default:
+        return SPKGalleryMediaTypeImage;
     }
 }
 
@@ -233,8 +269,8 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
 }
 
 - (void)runPreflightForRequest:(SPKDownloadRequest *)request
-                      presenter:(UIViewController *)presenter
-                     completion:(SPKDownloadPreflightCompletion)completion {
+                     presenter:(UIViewController *)presenter
+                    completion:(SPKDownloadPreflightCompletion)completion {
     if (![self duplicateDetectionEnabled]) {
         completion(SPKDownloadPreflightContinue);
         return;
@@ -263,22 +299,25 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
         BOOL presented = SPKPresentSingleDuplicateAlert(dest, metadata, [self mediaTypeForKind:item.mediaKind],
                                                         presenter ?: topMostController(),
                                                         ^(SPKDownloadDuplicateDecision decision) {
-            if (decision == SPKDownloadDuplicateDecisionCancel) {
-                completion(SPKDownloadPreflightCancelled);
-                return;
-            }
-            if (decision == SPKDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
-                SPKDeleteExistingDuplicate(dest, metadata, [self mediaTypeForKind:item.mediaKind],
-                                          ^(BOOL success, NSError *error) {
-                    (void)error;
-                    if (success) completion(SPKDownloadPreflightContinue);
-                    else completion(SPKDownloadPreflightCancelled);
-                });
-            } else {
-                completion(SPKDownloadPreflightContinue);
-            }
-        });
-        if (!presented) completion(SPKDownloadPreflightContinue);
+                                                            if (decision == SPKDownloadDuplicateDecisionCancel) {
+                                                                completion(SPKDownloadPreflightCancelled);
+                                                                return;
+                                                            }
+                                                            if (decision == SPKDownloadDuplicateDecisionDeleteExistingAndDownloadAgain) {
+                                                                SPKDeleteExistingDuplicate(dest, metadata, [self mediaTypeForKind:item.mediaKind],
+                                                                                           ^(BOOL success, NSError *error) {
+                                                                                               (void)error;
+                                                                                               if (success)
+                                                                                                   completion(SPKDownloadPreflightContinue);
+                                                                                               else
+                                                                                                   completion(SPKDownloadPreflightCancelled);
+                                                                                           });
+                                                            } else {
+                                                                completion(SPKDownloadPreflightContinue);
+                                                            }
+                                                        });
+        if (!presented)
+            completion(SPKDownloadPreflightContinue);
         return;
     }
 
@@ -291,20 +330,21 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
     BOOL presented = SPKPresentBulkDuplicateAlert(duplicateCount, request.items.count,
                                                   presenter ?: topMostController(),
                                                   ^(SPKDownloadBulkDuplicateDecision decision) {
-        switch (decision) {
-            case SPKDownloadBulkDuplicateDecisionSkipExisting:
-                completion(SPKDownloadPreflightSkipSucceeded);
-                break;
-            case SPKDownloadBulkDuplicateDecisionDownloadAllAnyway:
-                completion(SPKDownloadPreflightContinue);
-                break;
-            case SPKDownloadBulkDuplicateDecisionCancel:
-            default:
-                completion(SPKDownloadPreflightCancelled);
-                break;
-        }
-    });
-    if (!presented) completion(SPKDownloadPreflightContinue);
+                                                      switch (decision) {
+                                                      case SPKDownloadBulkDuplicateDecisionSkipExisting:
+                                                          completion(SPKDownloadPreflightSkipSucceeded);
+                                                          break;
+                                                      case SPKDownloadBulkDuplicateDecisionDownloadAllAnyway:
+                                                          completion(SPKDownloadPreflightContinue);
+                                                          break;
+                                                      case SPKDownloadBulkDuplicateDecisionCancel:
+                                                      default:
+                                                          completion(SPKDownloadPreflightCancelled);
+                                                          break;
+                                                      }
+                                                  });
+    if (!presented)
+        completion(SPKDownloadPreflightContinue);
 }
 
 #pragma mark - Public Utilities
@@ -312,7 +352,8 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
 + (BOOL)hasDuplicateForDestination:(SPKDownloadDuplicateDestination)destination
                           metadata:(SPKGallerySaveMetadata *)metadata
                          mediaType:(NSInteger)mediaType {
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:kSPKDownloadDetectDuplicatesKey]) return NO;
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:kSPKDownloadDetectDuplicatesKey])
+        return NO;
     return SPKHasDuplicate(destination, metadata, mediaType);
 }
 
@@ -320,8 +361,9 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
                            mediaType:(NSInteger)mediaType
                 assetLocalIdentifier:(NSString *)assetLocalIdentifier {
     NSString *key = SPKDuplicateKey(metadata, mediaType);
-    if (key.length == 0 || assetLocalIdentifier.length == 0) return;
-    @synchronized (self) {
+    if (key.length == 0 || assetLocalIdentifier.length == 0)
+        return;
+    @synchronized(self) {
         NSMutableDictionary<NSString *, NSString *> *ledger = SPKPhotosSaveLedger();
         ledger[key] = assetLocalIdentifier;
         if (ledger.count > kSPKPhotosSaveLedgerLimit) {

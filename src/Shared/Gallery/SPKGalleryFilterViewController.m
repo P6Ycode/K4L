@@ -88,7 +88,7 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 + (NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
                            sources:(NSSet<NSNumber *> *)sources
                      favoritesOnly:(BOOL)favoritesOnly
-                           usernames:(NSSet<NSString *> *)usernames
+                         usernames:(NSSet<NSString *> *)usernames
                         folderPath:(NSString *)folderPath {
     return [self predicateForTypes:types sources:sources favoritesOnly:favoritesOnly usernames:usernames folderPath:folderPath scopeToFolder:YES];
 }
@@ -96,16 +96,16 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 + (NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
                            sources:(NSSet<NSNumber *> *)sources
                      favoritesOnly:(BOOL)favoritesOnly
-                           usernames:(NSSet<NSString *> *)usernames
+                         usernames:(NSSet<NSString *> *)usernames
                         folderPath:(NSString *)folderPath
                      scopeToFolder:(BOOL)scopeToFolder {
     NSMutableArray<NSPredicate *> *parts = [NSMutableArray new];
     if (types.count > 0) {
-        NSArray *typeList = [types.allObjects sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES]]];
+        NSArray *typeList = [types.allObjects sortedArrayUsingDescriptors:@[ [NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES] ]];
         [parts addObject:[NSPredicate predicateWithFormat:@"mediaType IN %@", typeList]];
     }
     if (sources.count > 0) {
-        NSArray *sourceList = [sources.allObjects sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES]]];
+        NSArray *sourceList = [sources.allObjects sortedArrayUsingDescriptors:@[ [NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES] ]];
         [parts addObject:[NSPredicate predicateWithFormat:@"source IN %@", sourceList]];
     }
     if (favoritesOnly) {
@@ -114,7 +114,8 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     if (usernames.count > 0) {
         NSMutableArray<NSPredicate *> *usernameParts = [NSMutableArray array];
         for (NSString *username in usernames) {
-            if (username.length == 0) continue;
+            if (username.length == 0)
+                continue;
             [usernameParts addObject:[NSPredicate predicateWithFormat:@"sourceUsername ==[c] %@", username]];
         }
         if (usernameParts.count > 0) {
@@ -129,7 +130,8 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
             [parts addObject:[NSPredicate predicateWithFormat:@"(folderPath == nil) OR (folderPath == %@)", @""]];
         }
     }
-    if (parts.count == 0) return nil;
+    if (parts.count == 0)
+        return nil;
     return [NSCompoundPredicate andPredicateWithSubpredicates:parts];
 }
 
@@ -165,8 +167,9 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     [self loadViewIfNeeded];
     CGFloat innerWidth = MAX(0.0, width - 32.0); // 16pt leading + 16pt trailing
     CGFloat stackHeight = [self.contentStack systemLayoutSizeFittingSize:CGSizeMake(innerWidth, 0.0)
-                                          withHorizontalFittingPriority:UILayoutPriorityRequired
-                                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
+                                           withHorizontalFittingPriority:UILayoutPriorityRequired
+                                                 verticalFittingPriority:UILayoutPriorityFittingSizeLevel]
+                              .height;
     return 12.0 + stackHeight + 12.0;
 }
 
@@ -197,11 +200,16 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor],
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor constant:12],
-        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor constant:16],
-        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor constant:-16],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor constant:-12],
-        [self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-32],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor
+                                                    constant:12],
+        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor
+                                                        constant:16],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor
+                                                         constant:-16],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor
+                                                       constant:-12],
+        [self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor
+                                                      constant:-32],
     ]];
 
     [self.contentStack addArrangedSubview:[self sectionTitle:@"Type"]];
@@ -221,11 +229,13 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 - (BOOL)isPresentedAtFullscreenHeight {
     UIView *presentedView = self.navigationController.view ?: self.view;
     UIView *containerView = self.presentationController.containerView ?: presentedView.superview;
-    if (!containerView) return NO;
+    if (!containerView)
+        return NO;
 
     CGFloat presentedHeight = CGRectGetHeight(presentedView.bounds);
     CGFloat containerHeight = CGRectGetHeight(containerView.bounds);
-    if (presentedHeight <= 0.0 || containerHeight <= 0.0) return NO;
+    if (presentedHeight <= 0.0 || containerHeight <= 0.0)
+        return NO;
     return presentedHeight >= floor(containerHeight * 0.92);
 }
 
@@ -255,9 +265,9 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     row.distribution = UIStackViewDistributionFillEqually;
 
     NSArray *defs = @[
-        @{@"label": @"Images", @"resource": @"photo", @"tag": @(SPKGalleryMediaTypeImage)},
-        @{@"label": @"Videos", @"resource": @"video", @"tag": @(SPKGalleryMediaTypeVideo)},
-        @{@"label": @"Audio", @"resource": @"audio", @"tag": @(SPKGalleryMediaTypeAudio)},
+        @{@"label" : @"Images", @"resource" : @"photo", @"tag" : @(SPKGalleryMediaTypeImage)},
+        @{@"label" : @"Videos", @"resource" : @"video", @"tag" : @(SPKGalleryMediaTypeVideo)},
+        @{@"label" : @"Audio", @"resource" : @"audio", @"tag" : @(SPKGalleryMediaTypeAudio)},
     ];
     for (NSDictionary *d in defs) {
         NSInteger tag = [d[@"tag"] integerValue];
@@ -280,16 +290,23 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     grid.spacing = 8;
 
     NSArray *sources = @[
-        @(SPKGallerySourceFeed), @(SPKGallerySourceStories), @(SPKGallerySourceReels),
-        @(SPKGallerySourceProfile), @(SPKGallerySourceDMs), @(SPKGallerySourceThumbnail),
-        @(SPKGallerySourceInstants), @(SPKGallerySourceAudioPage), @(SPKGallerySourceComments),
+        @(SPKGallerySourceFeed),
+        @(SPKGallerySourceStories),
+        @(SPKGallerySourceReels),
+        @(SPKGallerySourceProfile),
+        @(SPKGallerySourceDMs),
+        @(SPKGallerySourceThumbnail),
+        @(SPKGallerySourceInstants),
+        @(SPKGallerySourceAudioPage),
+        @(SPKGallerySourceComments),
     ];
 
     NSInteger columns = 3;
     NSInteger visibleIndex = 0;
     UIStackView *currentRow = nil;
     for (NSInteger i = 0; i < sources.count; i++) {
-        if (SPKGallerySourceIsHidden([sources[i] integerValue])) continue;
+        if (SPKGallerySourceIsHidden([sources[i] integerValue]))
+            continue;
         if (visibleIndex % columns == 0) {
             currentRow = [[UIStackView alloc] init];
             currentRow.axis = UILayoutConstraintAxisHorizontal;
@@ -349,14 +366,18 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     [row addSubview:chevron];
 
     [NSLayoutConstraint activateConstraints:@[
-        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12],
+        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor
+                                           constant:12],
         [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [icon.widthAnchor constraintEqualToConstant:18],
         [icon.heightAnchor constraintEqualToConstant:18],
-        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10],
+        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor
+                                            constant:10],
         [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [chevron.leadingAnchor constraintGreaterThanOrEqualToAnchor:label.trailingAnchor constant:8],
-        [chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
+        [chevron.leadingAnchor constraintGreaterThanOrEqualToAnchor:label.trailingAnchor
+                                                           constant:8],
+        [chevron.trailingAnchor constraintEqualToAnchor:row.trailingAnchor
+                                               constant:-12],
         [chevron.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [chevron.widthAnchor constraintEqualToConstant:14],
         [chevron.heightAnchor constraintEqualToConstant:14],
@@ -368,16 +389,17 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 - (void)updateUsernameRowLabel {
     NSUInteger count = self.filterUsernames.count;
     self.usernameRowLabel.text = count > 0
-        ? [NSString stringWithFormat:@"%lu user%@ selected", (unsigned long)count, count == 1 ? @"" : @"s"]
-        : @"All users";
+                                     ? [NSString stringWithFormat:@"%lu user%@ selected", (unsigned long)count, count == 1 ? @"" : @"s"]
+                                     : @"All users";
     self.usernameRowLabel.textColor = count > 0
-        ? [SPKUtils SPKColor_InstagramPrimaryText]
-        : [SPKUtils SPKColor_InstagramSecondaryText];
+                                          ? [SPKUtils SPKColor_InstagramPrimaryText]
+                                          : [SPKUtils SPKColor_InstagramSecondaryText];
 }
 
 - (void)usernameRowTapped {
     SPKGalleryUserPickerViewController *picker = [[SPKGalleryUserPickerViewController alloc]
-        initWithUsernames:self.availableUsernames selected:self.filterUsernames];
+        initWithUsernames:self.availableUsernames
+                 selected:self.filterUsernames];
     __weak typeof(self) weakSelf = self;
     picker.selectionChanged = ^(NSSet<NSString *> *selected) {
         weakSelf.filterUsernames = [selected mutableCopy];
@@ -391,7 +413,7 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:picker];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     if (@available(iOS 16.0, *)) {
-        nav.sheetPresentationController.detents = @[UISheetPresentationControllerDetent.largeDetent];
+        nav.sheetPresentationController.detents = @[ UISheetPresentationControllerDetent.largeDetent ];
         nav.sheetPresentationController.prefersGrabberVisible = YES;
     }
     [self presentViewController:nav animated:YES completion:nil];
@@ -425,13 +447,16 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     [self updateFavoritesRowAppearance];
 
     [NSLayoutConstraint activateConstraints:@[
-        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12],
+        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor
+                                           constant:12],
         [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [icon.widthAnchor constraintEqualToConstant:18],
         [icon.heightAnchor constraintEqualToConstant:18],
-        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10],
+        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor
+                                            constant:10],
         [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [label.trailingAnchor constraintLessThanOrEqualToAnchor:row.trailingAnchor constant:-12],
+        [label.trailingAnchor constraintLessThanOrEqualToAnchor:row.trailingAnchor
+                                                       constant:-12],
     ]];
     return row;
 }
@@ -471,13 +496,16 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
     self.clearLabel = label;
 
     [NSLayoutConstraint activateConstraints:@[
-        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12],
+        [icon.leadingAnchor constraintEqualToAnchor:row.leadingAnchor
+                                           constant:12],
         [icon.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
         [icon.widthAnchor constraintEqualToConstant:18],
         [icon.heightAnchor constraintEqualToConstant:18],
-        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10],
+        [label.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor
+                                            constant:10],
         [label.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [label.trailingAnchor constraintLessThanOrEqualToAnchor:row.trailingAnchor constant:-12],
+        [label.trailingAnchor constraintLessThanOrEqualToAnchor:row.trailingAnchor
+                                                       constant:-12],
     ]];
 
     return row;
@@ -512,7 +540,8 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 - (void)updateUsernameSectionTitle {
     // Static header like the other sections; the selection count lives on the row
     // itself, so don't duplicate it here.
-    if (!self.usernameSectionTitle) return;
+    if (!self.usernameSectionTitle)
+        return;
     self.usernameSectionTitle.text = @"Username";
 }
 
@@ -523,7 +552,8 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 }
 
 - (void)updateFavoritesRowAppearance {
-    if (!self.favoritesRow || !self.favoritesLeadingIcon || !self.favoritesLabel) return;
+    if (!self.favoritesRow || !self.favoritesLeadingIcon || !self.favoritesLabel)
+        return;
 
     if (self.filterFavoritesOnly) {
         UIColor *accent = [SPKUtils SPKColor_InstagramFavorite];
@@ -540,13 +570,14 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 }
 
 - (void)updateClearRowState {
-    if (!self.clearRow || !self.clearLeadingIcon || !self.clearLabel) return;
+    if (!self.clearRow || !self.clearLeadingIcon || !self.clearLabel)
+        return;
 
     BOOL active = [self hasActiveFilters];
     self.clearRow.userInteractionEnabled = active;
     self.clearRow.backgroundColor = active
-        ? [[SPKUtils SPKColor_InstagramDestructive] colorWithAlphaComponent:0.16]
-        : [SPKUtils SPKColor_InstagramSecondaryBackground];
+                                        ? [[SPKUtils SPKColor_InstagramDestructive] colorWithAlphaComponent:0.16]
+                                        : [SPKUtils SPKColor_InstagramSecondaryBackground];
     self.clearLeadingIcon.tintColor = active ? [SPKUtils SPKColor_InstagramDestructive] : [SPKUtils SPKColor_InstagramTertiaryText];
     self.clearLabel.textColor = active ? [SPKUtils SPKColor_InstagramDestructive] : [SPKUtils SPKColor_InstagramTertiaryText];
 }
@@ -567,14 +598,17 @@ static CGFloat const kSPKGalleryFilterChipIconPointSize = 14.0;
 }
 
 - (void)clearFilters {
-    if (![self hasActiveFilters]) return;
+    if (![self hasActiveFilters])
+        return;
     [self.filterTypes removeAllObjects];
     [self.filterSources removeAllObjects];
     self.filterFavoritesOnly = NO;
     [self.filterUsernames removeAllObjects];
     [self updateFavoritesRowAppearance];
-    for (SPKGalleryFilterChip *c in self.typeChips) c.selectedChip = NO;
-    for (SPKGalleryFilterChip *c in self.sourceChips) c.selectedChip = NO;
+    for (SPKGalleryFilterChip *c in self.typeChips)
+        c.selectedChip = NO;
+    for (SPKGalleryFilterChip *c in self.sourceChips)
+        c.selectedChip = NO;
     [self updateUsernameSectionTitle];
     [self updateUsernameRowLabel];
     if ([self.delegate respondsToSelector:@selector(filterControllerDidClear:)]) {

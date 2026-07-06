@@ -1,17 +1,17 @@
 #import "SPKTrimEntry.h"
 #import "SPKTrimConfiguration.h"
-#import "SPKTrimResult.h"
-#import "SPKTrimSourcePlan.h"
 #import "SPKTrimEditorViewController.h"
+#import "SPKTrimResult.h"
 #import "SPKTrimSaveCoordinator.h"
+#import "SPKTrimSourcePlan.h"
 
-#import "../Gallery/SPKGalleryFile.h"
-#import "../Gallery/SPKGalleryViewController.h"
-#import "../Gallery/SPKGallerySaveMetadata.h"
+#import "../../Utils.h"
 #import "../Downloads/SPKDownloadDestinationWriter.h"
+#import "../Gallery/SPKGalleryFile.h"
+#import "../Gallery/SPKGallerySaveMetadata.h"
+#import "../Gallery/SPKGalleryViewController.h"
 #import "../MediaDownload/SPKMediaQualityManager.h"
 #import "../UI/SPKNotificationCenter.h"
-#import "../../Utils.h"
 
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
@@ -53,7 +53,7 @@
     entry.photoURL = photoURL;
     entry.videoURL = videoURL;
     entry.tempPaths = [NSMutableArray array];
-    entry.selfRetain = entry;  // keep alive across the async flow
+    entry.selfRetain = entry; // keep alive across the async flow
 
     NSString *quality = [SPKUtils getStringPref:@"downloads_video_quality"];
     if ([quality isEqualToString:@"always_ask"]) {
@@ -63,10 +63,13 @@
                                                               videoURL:videoURL
                                                                   from:presenter
                                                             completion:^(SPKTrimSourcePlan *plan) {
-            if (!plan) { [entry finish]; return; }  // dismissed
-            entry.plan = plan;
-            [entry startWithPlan];
-        }];
+                                                                if (!plan) {
+                                                                    [entry finish];
+                                                                    return;
+                                                                } // dismissed
+                                                                entry.plan = plan;
+                                                                [entry startWithPlan];
+                                                            }];
         return;
     }
 
@@ -95,11 +98,14 @@
         return;
     }
     __weak typeof(self) weakSelf = self;
-    [self downloadURLs:@[ editURL ] title:@"Preparing video..." pill:nil completion:^(NSArray<NSURL *> *locals) {
-        if (locals.count > 0) {
-            [weakSelf presentEditorForLocalURL:locals[0]];
-        }
-    }];
+    [self downloadURLs:@[ editURL ]
+                 title:@"Preparing video..."
+                  pill:nil
+            completion:^(NSArray<NSURL *> *locals) {
+                if (locals.count > 0) {
+                    [weakSelf presentEditorForLocalURL:locals[0]];
+                }
+            }];
 }
 
 #pragma mark - Download queue
@@ -149,7 +155,8 @@
 }
 
 - (void)startNextDownload {
-    if (self.cancelled) return;
+    if (self.cancelled)
+        return;
     if (self.pendingURLs.count == 0) {
         // Only dismiss a pill we own; a handed-off pill continues into the next
         // stage (which finalizes it).
@@ -159,7 +166,8 @@
         self.prepPill = nil;
         void (^completion)(NSArray<NSURL *> *) = self.queueCompletion;
         self.queueCompletion = nil;
-        if (completion) completion([self.downloadedURLs copy]);
+        if (completion)
+            completion([self.downloadedURLs copy]);
         return;
     }
     NSURL *next = self.pendingURLs.firstObject;
@@ -169,11 +177,12 @@
 }
 
 - (void)URLSession:(NSURLSession *)session
-              downloadTask:(NSURLSessionDownloadTask *)downloadTask
-              didWriteData:(int64_t)bytesWritten
-         totalBytesWritten:(int64_t)totalBytesWritten
- totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
-    if (totalBytesExpectedToWrite <= 0) return;
+                 downloadTask:(NSURLSessionDownloadTask *)downloadTask
+                 didWriteData:(int64_t)bytesWritten
+            totalBytesWritten:(int64_t)totalBytesWritten
+    totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
+    if (totalBytesExpectedToWrite <= 0)
+        return;
     float p = (float)totalBytesWritten / (float)totalBytesExpectedToWrite;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.prepPill setProgress:MAX(0.0f, MIN(1.0f, p)) animated:YES];
@@ -181,13 +190,13 @@
 }
 
 - (void)URLSession:(NSURLSession *)session
-      downloadTask:(NSURLSessionDownloadTask *)downloadTask
-didFinishDownloadingToURL:(NSURL *)location {
+                 downloadTask:(NSURLSessionDownloadTask *)downloadTask
+    didFinishDownloadingToURL:(NSURL *)location {
     NSString *dest = [NSTemporaryDirectory() stringByAppendingPathComponent:
-                      [NSString stringWithFormat:@"SPKTrimSrc-%@.mp4", NSUUID.UUID.UUIDString]];
+                                                 [NSString stringWithFormat:@"SPKTrimSrc-%@.mp4", NSUUID.UUID.UUIDString]];
     [[NSFileManager defaultManager] removeItemAtPath:dest error:nil];
     if ([[NSFileManager defaultManager] moveItemAtPath:location.path toPath:dest error:nil]) {
-        @synchronized (self) {
+        @synchronized(self) {
             [self.downloadedURLs addObject:[NSURL fileURLWithPath:dest]];
             [self.tempPaths addObject:dest];
         }
@@ -195,10 +204,11 @@ didFinishDownloadingToURL:(NSURL *)location {
 }
 
 - (void)URLSession:(NSURLSession *)session
-              task:(NSURLSessionTask *)task
-didCompleteWithError:(NSError *)error {
+                    task:(NSURLSessionTask *)task
+    didCompleteWithError:(NSError *)error {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.cancelled) return;
+        if (self.cancelled)
+            return;
         BOOL gotFile = self.downloadedURLs.count > 0 &&
                        [[NSFileManager defaultManager] fileExistsAtPath:self.downloadedURLs.lastObject.path];
         if (error || !gotFile) {
@@ -227,23 +237,32 @@ didCompleteWithError:(NSError *)error {
     }
     // Done becomes a menu of destinations (chosen without dismissing first).
     config.doneOptions = @[
-        [SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"],
-        [SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"],
-        [SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"],
-        [SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"],
+        [SPKTrimDoneOption optionWithTitle:@"Save to Photos"
+                                identifier:@"photos"
+                                  iconName:@"download"],
+        [SPKTrimDoneOption optionWithTitle:@"Share"
+                                identifier:@"share"
+                                  iconName:@"share"],
+        [SPKTrimDoneOption optionWithTitle:@"Copy"
+                                identifier:@"clipboard"
+                                  iconName:@"copy"],
+        [SPKTrimDoneOption optionWithTitle:@"Save to Gallery"
+                                identifier:@"gallery"
+                                  iconName:@"sparkle_gallery"],
     ];
     __weak typeof(self) weakSelf = self;
     [SPKTrimEditorViewController presentWithConfiguration:config
-                                                    from:presenter
-                                              completion:^(SPKTrimResult *result) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-        if (!result) {
-            [self cleanupAndFinish];  // cancelled
-            return;
-        }
-        [self renderResult:result toDestination:(result.destinationTag ?: @"gallery")];
-    }];
+                                                     from:presenter
+                                               completion:^(SPKTrimResult *result) {
+                                                   __strong typeof(weakSelf) self = weakSelf;
+                                                   if (!self)
+                                                       return;
+                                                   if (!result) {
+                                                       [self cleanupAndFinish]; // cancelled
+                                                       return;
+                                                   }
+                                                   [self renderResult:result toDestination:(result.destinationTag ?: @"gallery")];
+                                               }];
 }
 
 #pragma mark - Render
@@ -264,20 +283,24 @@ didCompleteWithError:(NSError *)error {
         // One continuous pill spans the high-quality download and the render —
         // hand it off rather than stacking a second notification.
         SPKNotificationPillView *pill =
-            [[SPKNotificationCenter shared] beginUnmanagedProgressWithTitle:@"Downloading..." onCancel:nil];
+            [[SPKNotificationCenter shared] beginUnmanagedProgressWithTitle:@"Downloading..."
+                                                                   onCancel:nil];
         __weak typeof(self) weakSelf = self;
         [self downloadURLs:sources
                      title:@"Downloading high quality..."
                       pill:pill
                 completion:^(NSArray<NSURL *> *locals) {
-            __strong typeof(weakSelf) self = weakSelf;
-            if (locals.count < sources.count) { [self cleanupAndFinish]; return; }
-            result.renderVideoURL = locals[0];
-            result.renderAudioURL = (locals.count > 1) ? locals[1] : nil;
-            result.width = self.plan.width;
-            result.height = self.plan.height;
-            [self performRenderResult:result toDestination:destination pill:pill];
-        }];
+                    __strong typeof(weakSelf) self = weakSelf;
+                    if (locals.count < sources.count) {
+                        [self cleanupAndFinish];
+                        return;
+                    }
+                    result.renderVideoURL = locals[0];
+                    result.renderAudioURL = (locals.count > 1) ? locals[1] : nil;
+                    result.width = self.plan.width;
+                    result.height = self.plan.height;
+                    [self performRenderResult:result toDestination:destination pill:pill];
+                }];
         return;
     }
     [self performRenderResult:result toDestination:destination pill:nil];
@@ -291,8 +314,8 @@ didCompleteWithError:(NSError *)error {
                               presenter:self.presenter
                            existingPill:pill
                              completion:^(BOOL ok) {
-        [weakSelf cleanupAndFinish];
-    }];
+                                 [weakSelf cleanupAndFinish];
+                             }];
 }
 
 #pragma mark - Lifecycle
@@ -308,7 +331,7 @@ didCompleteWithError:(NSError *)error {
 - (void)finish {
     [self.session finishTasksAndInvalidate];
     self.session = nil;
-    self.selfRetain = nil;  // allow deallocation
+    self.selfRetain = nil; // allow deallocation
 }
 
 @end

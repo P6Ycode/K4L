@@ -4,7 +4,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^SPKMediaFFmpegProgressBlock)(double progress, NSString *stage);
-typedef void (^SPKMediaFFmpegCompletionBlock)(NSURL * _Nullable outputURL, NSError * _Nullable error);
+typedef void (^SPKMediaFFmpegCompletionBlock)(NSURL *_Nullable outputURL, NSError *_Nullable error);
 typedef void (^SPKMediaFFmpegCancelBlockPublisher)(dispatch_block_t cancelBlock);
 
 @interface SPKMediaFFmpeg : NSObject
@@ -15,14 +15,14 @@ typedef void (^SPKMediaFFmpegCancelBlockPublisher)(dispatch_block_t cancelBlock)
 
 + (void)mergeVideoFileURL:(NSURL *)videoFileURL
              audioFileURL:(nullable NSURL *)audioFileURL
-          preferredBasename:(NSString *)preferredBasename
-           estimatedDuration:(NSTimeInterval)estimatedDuration
-                     width:(NSInteger)width
-                    height:(NSInteger)height
-             sourceBitrate:(NSInteger)sourceBitrate
-                  progress:(nullable SPKMediaFFmpegProgressBlock)progress
-                completion:(SPKMediaFFmpegCompletionBlock)completion
-                 cancelOut:(nullable SPKMediaFFmpegCancelBlockPublisher)cancelOut;
+        preferredBasename:(NSString *)preferredBasename
+        estimatedDuration:(NSTimeInterval)estimatedDuration
+                    width:(NSInteger)width
+                   height:(NSInteger)height
+            sourceBitrate:(NSInteger)sourceBitrate
+                 progress:(nullable SPKMediaFFmpegProgressBlock)progress
+               completion:(SPKMediaFFmpegCompletionBlock)completion
+                cancelOut:(nullable SPKMediaFFmpegCancelBlockPublisher)cancelOut;
 
 + (void)extractAudioFileURL:(NSURL *)audioFileURL
           preferredBasename:(NSString *)preferredBasename

@@ -1,9 +1,9 @@
 #import "SPKActionSectionIconPickerViewController.h"
 
-#import "SPKIconPickerViewController.h"
-#import "SPKInstagramIconCatalog.h"
 #import "../AssetUtils.h"
 #import "../Shared/ActionButton/SPKActionDescriptor.h"
+#import "SPKIconPickerViewController.h"
+#import "SPKInstagramIconCatalog.h"
 
 @interface SPKActionSectionIconPickerViewController ()
 @property (nonatomic, copy) NSString *selectedIconName;
@@ -30,15 +30,20 @@
 // so a selection made via the old shorthand "Shortcuts" list still highlights the
 // matching real icon in the unified Instagram list.
 + (NSString *)canonicalNameForIconName:(NSString *)iconName {
-    if (iconName.length == 0) return @"";
+    if (iconName.length == 0)
+        return @"";
     NSString *resolved = [SPKAssetUtils resolvedInstagramIconNameForName:iconName];
     return resolved.length > 0 ? resolved : iconName;
 }
 
 #pragma mark - SPKIconPickerViewController
 
-- (SPKIconPickerCellStyle)cellStyle { return SPKIconPickerCellStyleGlyph; }
-- (NSString *)searchPlaceholder { return @"Search Icons"; }
+- (SPKIconPickerCellStyle)cellStyle {
+    return SPKIconPickerCellStyleGlyph;
+}
+- (NSString *)searchPlaceholder {
+    return @"Search Icons";
+}
 
 - (NSArray<SPKIconPickerSection *> *)buildSections {
     NSMutableArray<SPKIconPickerItem *> *items = [NSMutableArray array];
@@ -47,7 +52,7 @@
         NSString *search = [NSString stringWithFormat:@"%@ %@", [SPKInstagramIconCatalog searchTextForIconName:iconName], [title lowercaseString]];
         [items addObject:[SPKIconPickerItem itemWithIdentifier:iconName title:title searchText:search]];
     }
-    return @[[SPKIconPickerSection sectionWithTitle:nil items:items]];
+    return @[ [SPKIconPickerSection sectionWithTitle:nil items:items] ];
 }
 
 - (UIImage *)imageForItem:(SPKIconPickerItem *)item {
@@ -58,15 +63,18 @@
 }
 
 - (BOOL)isSelectedItem:(SPKIconPickerItem *)item {
-    if (self.selectedCanonicalName.length == 0) return NO;
-    if ([item.identifier isEqualToString:self.selectedIconName]) return YES;
+    if (self.selectedCanonicalName.length == 0)
+        return NO;
+    if ([item.identifier isEqualToString:self.selectedIconName])
+        return YES;
     return [[[self class] canonicalNameForIconName:item.identifier] isEqualToString:self.selectedCanonicalName];
 }
 
 - (void)didSelectItem:(SPKIconPickerItem *)item {
     self.selectedIconName = item.identifier;
     self.selectedCanonicalName = [[self class] canonicalNameForIconName:item.identifier];
-    if (self.onSelect) self.onSelect(item.identifier);
+    if (self.onSelect)
+        self.onSelect(item.identifier);
     [self refreshSelectionHighlight];
     [self.navigationController popViewControllerAnimated:YES];
 }

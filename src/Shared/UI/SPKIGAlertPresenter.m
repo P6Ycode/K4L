@@ -1,10 +1,10 @@
 #import "SPKIGAlertPresenter.h"
+#import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 #include <CoreGraphics/CGGeometry.h>
 #include <UIKit/UIKit.h>
-#import "../../InstagramHeaders.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
-#import "../../Utils.h"
 
 static const void *kSPKIGAlertInputViewKey = &kSPKIGAlertInputViewKey;
 static const void *kSPKIGAlertInputFieldKey = &kSPKIGAlertInputFieldKey;
@@ -39,9 +39,11 @@ static UIViewController *SPKIGResolvedPresenter(UIViewController *presenter) {
 }
 
 static id SPKIGGetIvarObject(id object, const char *name) {
-    if (!object || !name) return nil;
+    if (!object || !name)
+        return nil;
     Ivar ivar = class_getInstanceVariable([object class], name);
-    if (!ivar) return nil;
+    if (!ivar)
+        return nil;
     return object_getIvar(object, ivar);
 }
 
@@ -53,26 +55,26 @@ static void SPKIGCallActionHandler(SPKIGAlertAction *action) {
 
 static UIAlertActionStyle SPKUIKitActionStyle(SPKIGAlertActionStyle style) {
     switch (style) {
-        case SPKIGAlertActionStyleCancel:
-            return UIAlertActionStyleCancel;
-        case SPKIGAlertActionStyleDestructive:
-            /// TODO: investigate whether UIKit fallback alert destructive tint can be customized. UIAlertAction exposes no supported per-action color API.
-            return UIAlertActionStyleDestructive;
-        case SPKIGAlertActionStyleDefault:
-        default:
-            return UIAlertActionStyleDefault;
+    case SPKIGAlertActionStyleCancel:
+        return UIAlertActionStyleCancel;
+    case SPKIGAlertActionStyleDestructive:
+        /// TODO: investigate whether UIKit fallback alert destructive tint can be customized. UIAlertAction exposes no supported per-action color API.
+        return UIAlertActionStyleDestructive;
+    case SPKIGAlertActionStyleDefault:
+    default:
+        return UIAlertActionStyleDefault;
     }
 }
 
 static long long SPKIGNativeAlertActionStyle(SPKIGAlertActionStyle style) {
     switch (style) {
-        case SPKIGAlertActionStyleCancel:
-            return 2;
-        case SPKIGAlertActionStyleDestructive:
-            return 1;
-        case SPKIGAlertActionStyleDefault:
-        default:
-            return 0;
+    case SPKIGAlertActionStyleCancel:
+        return 2;
+    case SPKIGAlertActionStyleDestructive:
+        return 1;
+    case SPKIGAlertActionStyleDefault:
+    default:
+        return 0;
     }
 }
 
@@ -111,7 +113,8 @@ static void SPKIGPresentUIKitAlert(UIViewController *presenter,
                                    NSArray<SPKIGAlertAction *> *actions,
                                    UIAlertControllerStyle style) {
     UIViewController *resolvedPresenter = SPKIGResolvedPresenter(presenter);
-    if (!resolvedPresenter) return;
+    if (!resolvedPresenter)
+        return;
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
                                                                    message:message
@@ -120,8 +123,8 @@ static void SPKIGPresentUIKitAlert(UIViewController *presenter,
         [alert addAction:[UIAlertAction actionWithTitle:action.title
                                                   style:SPKUIKitActionStyle(action.style)
                                                 handler:^(__unused UIAlertAction *uiAction) {
-            SPKIGCallActionHandler(action);
-        }]];
+                                                    SPKIGCallActionHandler(action);
+                                                }]];
     }
 
     if (style == UIAlertControllerStyleActionSheet && alert.popoverPresentationController) {
@@ -146,7 +149,8 @@ static void SPKIGPresentUIKitTextInputAlert(UIViewController *presenter,
                                             SPKIGAlertTextHandler confirmBlock,
                                             SPKIGAlertActionHandler cancelBlock) {
     UIViewController *resolvedPresenter = SPKIGResolvedPresenter(presenter);
-    if (!resolvedPresenter) return;
+    if (!resolvedPresenter)
+        return;
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
                                                                    message:message
@@ -159,13 +163,15 @@ static void SPKIGPresentUIKitTextInputAlert(UIViewController *presenter,
     [alert addAction:[UIAlertAction actionWithTitle:cancelTitle
                                               style:UIAlertActionStyleCancel
                                             handler:^(__unused UIAlertAction *action) {
-        if (cancelBlock) cancelBlock();
-    }]];
+                                                if (cancelBlock)
+                                                    cancelBlock();
+                                            }]];
     [alert addAction:[UIAlertAction actionWithTitle:confirmTitle
                                               style:SPKUIKitActionStyle(confirmStyle)
                                             handler:^(__unused UIAlertAction *action) {
-        if (confirmBlock) confirmBlock(alert.textFields.firstObject.text);
-    }]];
+                                                if (confirmBlock)
+                                                    confirmBlock(alert.textFields.firstObject.text);
+                                            }]];
     [resolvedPresenter presentViewController:alert animated:YES completion:nil];
 }
 
@@ -212,8 +218,8 @@ static UIView *SPKIGCreateInputView(NSString *placeholder, NSString *initialText
     textField.textColor = UIColor.labelColor;
     textField.tintColor = [UIColor systemBlueColor];
     textField.attributedPlaceholder = placeholder.length > 0
-        ? [[NSAttributedString alloc] initWithString:placeholder attributes:@{ NSForegroundColorAttributeName: placeholderColor }]
-        : nil;
+                                          ? [[NSAttributedString alloc] initWithString:placeholder attributes:@{NSForegroundColorAttributeName : placeholderColor}]
+                                          : nil;
     textField.text = initialText;
     textField.clearButtonMode = UITextFieldViewModeWhileEditing;
     textField.autocapitalizationType = autocapitalized ? UITextAutocapitalizationTypeWords : UITextAutocapitalizationTypeNone;
@@ -229,14 +235,18 @@ static UIView *SPKIGCreateInputView(NSString *placeholder, NSString *initialText
 }
 
 static CGRect SPKIGFrameInView(UIView *source, UIView *target) {
-    if (!source || !target) return CGRectNull;
+    if (!source || !target)
+        return CGRectNull;
     return [source.superview convertRect:source.frame toView:target];
 }
 
 static CGFloat SPKIGMeasuredBottomForLabelInView(UIView *labelView, UIView *target) {
-    if (!labelView || !target) return CGFLOAT_MIN;
-    if (labelView.hidden) return CGFLOAT_MIN;
-    if (labelView.alpha <= 0.01) return CGFLOAT_MIN;
+    if (!labelView || !target)
+        return CGFLOAT_MIN;
+    if (labelView.hidden)
+        return CGFLOAT_MIN;
+    if (labelView.alpha <= 0.01)
+        return CGFLOAT_MIN;
 
     // Check if UILabel is empty
     if ([labelView isKindOfClass:[UILabel class]]) {
@@ -250,12 +260,15 @@ static CGFloat SPKIGMeasuredBottomForLabelInView(UIView *labelView, UIView *targ
             if ([text isKindOfClass:[NSString class]] && text.length == 0) {
                 return CGFLOAT_MIN;
             }
-        } @catch (__unused NSException *e) {}
+        } @catch (__unused NSException *e) {
+        }
     }
 
     CGRect frame = SPKIGFrameInView(labelView, target);
-    if (CGRectIsNull(frame)) return CGFLOAT_MIN;
-    if (frame.size.height <= 0.0) return CGFLOAT_MIN;
+    if (CGRectIsNull(frame))
+        return CGFLOAT_MIN;
+    if (frame.size.height <= 0.0)
+        return CGFLOAT_MIN;
 
     CGFloat measuredHeight = CGRectGetHeight(frame);
     if ([labelView respondsToSelector:@selector(sizeThatFits:)]) {
@@ -269,7 +282,8 @@ static CGFloat SPKIGMeasuredBottomForLabelInView(UIView *labelView, UIView *targ
 }
 
 static CGFloat SPKIGMinimumButtonY(NSArray<UIView *> *buttons, UIView *coordinateView) {
-    if (!coordinateView || ![buttons isKindOfClass:[NSArray class]] || buttons.count == 0) return CGFLOAT_MAX;
+    if (!coordinateView || ![buttons isKindOfClass:[NSArray class]] || buttons.count == 0)
+        return CGFLOAT_MAX;
 
     CGFloat minY = CGFLOAT_MAX;
     for (UIView *button in buttons) {
@@ -282,7 +296,8 @@ static CGFloat SPKIGMinimumButtonY(NSArray<UIView *> *buttons, UIView *coordinat
 }
 
 static UIView *SPKIGDirectChildAncestor(UIView *view, UIView *root) {
-    if (!view || !root) return nil;
+    if (!view || !root)
+        return nil;
     UIView *current = view;
     while (current && current.superview != root) {
         current = current.superview;
@@ -291,7 +306,8 @@ static UIView *SPKIGDirectChildAncestor(UIView *view, UIView *root) {
 }
 
 static void SPKIGShiftButtonRegionToStartAtY(UIView *root, UIView *coordinateView, NSArray<UIView *> *buttons, CGFloat minimumY) {
-    if (!root || !coordinateView || ![buttons isKindOfClass:[NSArray class]] || buttons.count == 0) return;
+    if (!root || !coordinateView || ![buttons isKindOfClass:[NSArray class]] || buttons.count == 0)
+        return;
 
     UIView *inputView = objc_getAssociatedObject(coordinateView, kSPKIGAlertInputViewKey);
     if (!inputView) {
@@ -299,18 +315,22 @@ static void SPKIGShiftButtonRegionToStartAtY(UIView *root, UIView *coordinateVie
     }
 
     CGFloat minButtonY = SPKIGMinimumButtonY(buttons, coordinateView);
-    if (minButtonY == CGFLOAT_MAX) return;
+    if (minButtonY == CGFLOAT_MAX)
+        return;
 
     CGFloat delta = ceil(minimumY - minButtonY);
-    if (delta <= 0.0) return;
+    if (delta <= 0.0)
+        return;
 
     // Collect unique direct-child ancestors of each button within root.
     NSMutableSet<NSValue *> *shifted = [NSMutableSet set];
     for (UIView *button in buttons) {
         UIView *ancestor = SPKIGDirectChildAncestor(button, root);
-        if (!ancestor || ancestor == inputView) continue;
+        if (!ancestor || ancestor == inputView)
+            continue;
         NSValue *key = [NSValue valueWithNonretainedObject:ancestor];
-        if ([shifted containsObject:key]) continue;
+        if ([shifted containsObject:key])
+            continue;
         [shifted addObject:key];
 
         CGRect frame = ancestor.frame;
@@ -320,13 +340,17 @@ static void SPKIGShiftButtonRegionToStartAtY(UIView *root, UIView *coordinateVie
 
     // Also shift any other direct subviews of root that sit in the button region.
     for (UIView *subview in root.subviews) {
-        if (subview == inputView) continue;
+        if (subview == inputView)
+            continue;
         NSValue *key = [NSValue valueWithNonretainedObject:subview];
-        if ([shifted containsObject:key]) continue;
+        if ([shifted containsObject:key])
+            continue;
 
         CGRect subviewFrame = SPKIGFrameInView(subview, coordinateView);
-        if (CGRectIsNull(subviewFrame)) continue;
-        if (CGRectGetMinY(subviewFrame) < minButtonY - 10.0) continue;
+        if (CGRectIsNull(subviewFrame))
+            continue;
+        if (CGRectGetMinY(subviewFrame) < minButtonY - 10.0)
+            continue;
 
         [shifted addObject:key];
         CGRect frame = subview.frame;
@@ -339,7 +363,8 @@ static void SPKIGShiftButtonRegionToStartAtY(UIView *root, UIView *coordinateVie
     for (NSValue *val in shifted) {
         UIView *v = [val nonretainedObjectValue];
         CGFloat bottom = CGRectGetMaxY(v.frame);
-        if (bottom > maxBottom) maxBottom = bottom;
+        if (bottom > maxBottom)
+            maxBottom = bottom;
     }
     if (maxBottom > CGRectGetHeight(root.bounds)) {
         CGRect rootFrame = root.frame;
@@ -360,14 +385,16 @@ static NSNumber *SPKIGNativeStyleForButton(id alertView, UIView *button, NSUInte
     }
 
     NSNumber *mappedStyle = nativeAction ? objc_getAssociatedObject(nativeAction, kSPKIGAlertNativeActionStyleKey) : nil;
-    if (mappedStyle) return mappedStyle;
+    if (mappedStyle)
+        return mappedStyle;
 
     NSArray<NSNumber *> *styles = objc_getAssociatedObject(alertView, kSPKIGAlertNativeActionStylesKey);
     return index < styles.count ? styles[index] : nil;
 }
 
 static NSArray<UIView *> *SPKIGFindAlertButtons(id alertView) {
-    if (!alertView) return @[];
+    if (!alertView)
+        return @[];
     NSMutableArray<UIView *> *buttons = [NSMutableArray array];
 
     // 1. Try _buttons ivar
@@ -378,7 +405,8 @@ static NSArray<UIView *> *SPKIGFindAlertButtons(id alertView) {
                 [buttons addObject:btn];
             }
         }
-        if (buttons.count > 0) return buttons.copy;
+        if (buttons.count > 0)
+            return buttons.copy;
     }
 
     // 2. Try keyEnumerator on _buttonToActionMap
@@ -389,7 +417,8 @@ static NSArray<UIView *> *SPKIGFindAlertButtons(id alertView) {
                 [buttons addObject:key];
             }
         }
-        if (buttons.count > 0) return buttons.copy;
+        if (buttons.count > 0)
+            return buttons.copy;
     }
 
     // 3. Recursive subview search
@@ -401,8 +430,12 @@ static NSArray<UIView *> *SPKIGFindAlertButtons(id alertView) {
 
             NSString *className = NSStringFromClass([current class]);
             if ([current isKindOfClass:[UIButton class]] ||
-                [className rangeOfString:@"Button" options:NSCaseInsensitiveSearch].location != NSNotFound ||
-                [className rangeOfString:@"ActionView" options:NSCaseInsensitiveSearch].location != NSNotFound) {
+                [className rangeOfString:@"Button"
+                                 options:NSCaseInsensitiveSearch]
+                        .location != NSNotFound ||
+                [className rangeOfString:@"ActionView"
+                                 options:NSCaseInsensitiveSearch]
+                        .location != NSNotFound) {
                 [buttons addObject:current];
             } else {
                 [queue addObjectsFromArray:current.subviews];
@@ -415,12 +448,14 @@ static NSArray<UIView *> *SPKIGFindAlertButtons(id alertView) {
 
 static void SPKIGStyleAlertButtons(id alertView) {
     NSArray<UIView *> *buttons = SPKIGFindAlertButtons(alertView);
-    if (buttons.count == 0) return;
+    if (buttons.count == 0)
+        return;
 
     UIColor *dangerColor = SPKIGDangerActionColor();
     [buttons enumerateObjectsUsingBlock:^(UIView *button, NSUInteger index, __unused BOOL *stop) {
         NSNumber *styleNumber = SPKIGNativeStyleForButton(alertView, button, index);
-        if (styleNumber.integerValue != SPKIGAlertActionStyleDestructive) return;
+        if (styleNumber.integerValue != SPKIGAlertActionStyleDestructive)
+            return;
 
         button.tintColor = dangerColor;
         if ([button respondsToSelector:@selector(setTitleColor:forState:)]) {
@@ -450,7 +485,8 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
     SPKIGStyleAlertButtons(self);
 
     UIView *inputView = objc_getAssociatedObject(self, kSPKIGAlertInputViewKey);
-    if (!inputView) return;
+    if (!inputView)
+        return;
 
     UIView *scrollView = SPKIGGetIvarObject(self, "_scrollView");
     UIView *container = scrollView ?: alertView;
@@ -477,8 +513,8 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
     }
 
     CGFloat y = labelBottom != CGFLOAT_MIN
-        ? labelBottom + kSPKIGAlertInputVerticalPadding
-        : kSPKIGAlertInputVerticalPadding;
+                    ? labelBottom + kSPKIGAlertInputVerticalPadding
+                    : kSPKIGAlertInputVerticalPadding;
     y = MAX(y, kSPKIGAlertInputVerticalPadding);
 
     CGFloat x = floor((CGRectGetWidth(container.bounds) - width) / 2.0);
@@ -494,8 +530,12 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
             BOOL insideScroll = NO;
             UIView *walk = button.superview;
             while (walk) {
-                if (walk == scrollView) { insideScroll = YES; break; }
-                if (walk == alertView) break;
+                if (walk == scrollView) {
+                    insideScroll = YES;
+                    break;
+                }
+                if (walk == alertView)
+                    break;
                 walk = walk.superview;
             }
             if (insideScroll) {
@@ -513,7 +553,8 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
                 CGFloat maxBottom = 0.0;
                 for (UIView *sub in scrollView.subviews) {
                     CGFloat bottom = CGRectGetMaxY(sub.frame);
-                    if (bottom > maxBottom) maxBottom = bottom;
+                    if (bottom > maxBottom)
+                        maxBottom = bottom;
                 }
                 ((UIScrollView *)scrollView).contentSize = CGSizeMake(CGRectGetWidth(scrollView.bounds), maxBottom);
             }
@@ -523,8 +564,8 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
         if (buttonsOutsideScroll.count > 0) {
             CGRect inputFrameInAlert = SPKIGFrameInView(inputView, alertView);
             CGFloat minimumButtonYInAlert = CGRectIsNull(inputFrameInAlert)
-                ? minimumButtonY
-                : CGRectGetMaxY(inputFrameInAlert) + kSPKIGAlertInputBottomPadding;
+                                                ? minimumButtonY
+                                                : CGRectGetMaxY(inputFrameInAlert) + kSPKIGAlertInputBottomPadding;
             SPKIGShiftButtonRegionToStartAtY(alertView, alertView, buttonsOutsideScroll, minimumButtonYInAlert);
         }
     } else {
@@ -538,7 +579,8 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
             CGRect buttonFrameInAlert = SPKIGFrameInView(button, alertView);
             if (!CGRectIsNull(buttonFrameInAlert)) {
                 CGFloat bottom = CGRectGetMaxY(buttonFrameInAlert);
-                if (bottom > maxButtonBottom) maxButtonBottom = bottom;
+                if (bottom > maxButtonBottom)
+                    maxButtonBottom = bottom;
             }
         }
         if (maxButtonBottom > 0.0) {
@@ -565,23 +607,28 @@ static void SPKIGAlertHookLayoutSubviews(id self, SEL _cmd) {
 }
 
 static void SPKIGSwizzleInstanceMethod(Class cls, SEL origSel, IMP newImp, IMP *outOrigImp) {
-    if (!cls || !origSel || !newImp) return;
+    if (!cls || !origSel || !newImp)
+        return;
     Method origMethod = class_getInstanceMethod(cls, origSel);
-    if (!origMethod) return;
+    if (!origMethod)
+        return;
 
     const char *types = method_getTypeEncoding(origMethod);
     IMP origImp = method_getImplementation(origMethod);
 
     if (class_addMethod(cls, origSel, newImp, types)) {
-        if (outOrigImp) *outOrigImp = origImp;
+        if (outOrigImp)
+            *outOrigImp = origImp;
     } else {
         IMP prevImp = method_setImplementation(origMethod, newImp);
-        if (outOrigImp) *outOrigImp = prevImp;
+        if (outOrigImp)
+            *outOrigImp = prevImp;
     }
 }
 
 static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
-    if (sSPKIGAlertHooksInstalled || !alertClass) return;
+    if (sSPKIGAlertHooksInstalled || !alertClass)
+        return;
 
     SPKIGSwizzleInstanceMethod(alertClass, @selector(sizeThatFits:), (IMP)SPKIGAlertHookSizeThatFits, (IMP *)&sSPKIGAlertOriginalSizeThatFits);
     SPKIGSwizzleInstanceMethod(alertClass, @selector(layoutSubviews), (IMP)SPKIGAlertHookLayoutSubviews, (IMP *)&sSPKIGAlertOriginalLayoutSubviews);
@@ -613,12 +660,12 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
     NSMutableArray<NSNumber *> *nativeActionStyles = [NSMutableArray arrayWithCapacity:actions.count];
     for (SPKIGAlertAction *action in actions) {
         id nativeAction = ((id (*)(id, SEL, id, long long, id))objc_msgSend)(actionClass,
-                                                                            actionSelector,
-                                                                            action.title,
-                                                                            SPKIGNativeAlertActionStyleForAction(action, containsDestructiveAction),
-                                                                            ^{
-            SPKIGCallActionHandler(action);
-        });
+                                                                             actionSelector,
+                                                                             action.title,
+                                                                             SPKIGNativeAlertActionStyleForAction(action, containsDestructiveAction),
+                                                                             ^{
+                                                                                 SPKIGCallActionHandler(action);
+                                                                             });
         if (!nativeAction) {
             SPKIGPresentUIKitAlert(presenter, title, message, actions, UIAlertControllerStyleAlert);
             return NO;
@@ -630,12 +677,12 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
 
     id style = styleClass ? [[styleClass alloc] init] : nil;
     id alertView = ((id (*)(id, SEL, id, id, id, id, BOOL))objc_msgSend)([alertClass alloc],
-                                                                        alertSelector,
-                                                                        style,
-                                                                        title,
-                                                                        message,
-                                                                        nativeActions,
-                                                                        actions.count <= 2);
+                                                                         alertSelector,
+                                                                         style,
+                                                                         title,
+                                                                         message,
+                                                                         nativeActions,
+                                                                         actions.count <= 2);
     if (![alertView respondsToSelector:@selector(show)]) {
         SPKIGPresentUIKitAlert(presenter, title, message, actions, UIAlertControllerStyleAlert);
         return NO;
@@ -664,9 +711,9 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
                                   forceSheet:(BOOL)forceSheet {
     if (!forceSheet && SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"26.0")) {
         return [self presentAlertFromViewController:presenter
-                                             title:title
-                                           message:message
-                                           actions:actions];
+                                              title:title
+                                            message:message
+                                            actions:actions];
     }
 
     Class actionClass = NSClassFromString(@"IGActionSheetControllerAction");
@@ -684,16 +731,10 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
         // Include caller-provided cancel actions: the native IGActionSheetController
         // does not render a built-in Cancel on iOS 18 and lower, so skipping them
         // left the sheet with no way to dismiss. (iOS 26 takes the alert path above.)
-        id nativeAction = ((id (*)(id, SEL, id, id, long long, id, id, id))objc_msgSend)([actionClass alloc],
-                                                                                        actionSelector,
-                                                                                        action.title,
-                                                                                        nil,
-                                                                                        SPKIGNativeActionSheetStyle(action.style),
-                                                                                        ^{
+        id nativeAction = ((id (*)(id, SEL, id, id, long long, id, id, id))objc_msgSend)([actionClass alloc], actionSelector, action.title, nil, SPKIGNativeActionSheetStyle(action.style), ^{
             SPKIGCallActionHandler(action);
         },
-                                                                                        nil,
-                                                                                        action.title);
+                                                                                         nil, action.title);
         if (!nativeAction) {
             SPKIGPresentUIKitAlert(presenter, title, message, actions, UIAlertControllerStyleActionSheet);
             return NO;
@@ -731,12 +772,12 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
                                         message:(NSString *)message
                                     placeholder:(NSString *)placeholder
                                     initialText:(NSString *)initialText
-                               autocapitalized:(BOOL)autocapitalized
-                                  confirmTitle:(NSString *)confirmTitle
-                                   cancelTitle:(NSString *)cancelTitle
-                                  confirmStyle:(SPKIGAlertActionStyle)confirmStyle
-                                  confirmBlock:(SPKIGAlertTextHandler)confirmBlock
-                                   cancelBlock:(SPKIGAlertActionHandler)cancelBlock {
+                                autocapitalized:(BOOL)autocapitalized
+                                   confirmTitle:(NSString *)confirmTitle
+                                    cancelTitle:(NSString *)cancelTitle
+                                   confirmStyle:(SPKIGAlertActionStyle)confirmStyle
+                                   confirmBlock:(SPKIGAlertTextHandler)confirmBlock
+                                    cancelBlock:(SPKIGAlertActionHandler)cancelBlock {
     __block UITextField *textField = nil;
     UIView *inputView = SPKIGCreateInputView(placeholder, initialText, autocapitalized, &textField);
 
@@ -758,15 +799,17 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
                                                                          cancelTitle,
                                                                          SPKIGNativeAlertActionStyle(SPKIGAlertActionStyleCancel),
                                                                          ^{
-        if (cancelBlock) cancelBlock();
-    });
+                                                                             if (cancelBlock)
+                                                                                 cancelBlock();
+                                                                         });
     id confirmAction = ((id (*)(id, SEL, id, long long, id))objc_msgSend)(actionClass,
                                                                           actionSelector,
                                                                           confirmTitle,
                                                                           SPKIGNativeAlertActionStyle(confirmStyle),
                                                                           ^{
-        if (confirmBlock) confirmBlock(textField.text);
-    });
+                                                                              if (confirmBlock)
+                                                                                  confirmBlock(textField.text);
+                                                                          });
     if (!cancelAction || !confirmAction) {
         SPKIGPresentUIKitTextInputAlert(presenter, title, message, placeholder, initialText, autocapitalized, confirmTitle, cancelTitle, confirmStyle, confirmBlock, cancelBlock);
         return NO;
@@ -777,12 +820,12 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
     id style = styleClass ? [[styleClass alloc] init] : nil;
     NSString *descriptionText = SPKIGDescriptionTextForInputAlert(message);
     id alertView = ((id (*)(id, SEL, id, id, id, id, BOOL))objc_msgSend)([alertClass alloc],
-                                                                        alertSelector,
-                                                                        style,
-                                                                        title,
-                                                                        descriptionText,
-                                                                        @[cancelAction, confirmAction],
-                                                                        YES);
+                                                                         alertSelector,
+                                                                         style,
+                                                                         title,
+                                                                         descriptionText,
+                                                                         @[ cancelAction, confirmAction ],
+                                                                         YES);
     if (![alertView respondsToSelector:@selector(show)]) {
         SPKIGPresentUIKitTextInputAlert(presenter, title, message, placeholder, initialText, autocapitalized, confirmTitle, cancelTitle, confirmStyle, confirmBlock, cancelBlock);
         return NO;
@@ -791,7 +834,7 @@ static void SPKIGInstallAlertHooksIfNeeded(Class alertClass) {
     objc_setAssociatedObject(alertView, kSPKIGAlertInputViewKey, inputView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(alertView, kSPKIGAlertInputFieldKey, textField, OBJC_ASSOCIATION_ASSIGN);
     objc_setAssociatedObject(alertView, kSPKIGAlertInputHasMessageKey, @(message.length > 0), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(alertView, kSPKIGAlertNativeActionStylesKey, @[@(SPKIGAlertActionStyleCancel), @(confirmStyle)], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(alertView, kSPKIGAlertNativeActionStylesKey, @[ @(SPKIGAlertActionStyleCancel), @(confirmStyle) ], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     ((void (*)(id, SEL))objc_msgSend)(alertView, @selector(show));
     dispatch_async(dispatch_get_main_queue(), ^{
         [textField becomeFirstResponder];

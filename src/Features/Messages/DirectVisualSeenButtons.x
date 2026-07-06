@@ -2,13 +2,13 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-#import "../../InstagramHeaders.h"
 #import "../../AssetUtils.h"
-#import "../../Tweak.h"
-#import "../../Utils.h"
+#import "../../InstagramHeaders.h"
 #import "../../Shared/Messages/SPKDirectSeenContext.h"
 #import "../../Shared/Stories/SPKStoryContext.h"
 #import "../../Shared/UI/SPKChrome.h"
+#import "../../Tweak.h"
+#import "../../Utils.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,7 +17,7 @@ void SPKApplyButtonStyle(UIButton *button, NSInteger source);
 }
 #endif
 
-static NSString * const kSPKSeenMessagesBarIconResource = @"eye";
+static NSString *const kSPKSeenMessagesBarIconResource = @"eye";
 static NSInteger const kSPKActionButtonSourceDirect = 4;
 static NSInteger const kSPKDirectActionButtonTag = 921344;
 static NSInteger const kSPKDirectSeenButtonTag = 921345;
@@ -75,7 +75,8 @@ static NSArray *SPKArrayFromCollection(id collection) {
 }
 
 static id SPKKVCObject(id target, NSString *key) {
-    if (!target || key.length == 0) return nil;
+    if (!target || key.length == 0)
+        return nil;
 
     @try {
         return [target valueForKey:key];
@@ -85,10 +86,12 @@ static id SPKKVCObject(id target, NSString *key) {
 }
 
 static id SPKObjectForSelector(id target, NSString *selectorName) {
-    if (!target || selectorName.length == 0) return nil;
+    if (!target || selectorName.length == 0)
+        return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
-    if (![target respondsToSelector:selector]) return nil;
+    if (![target respondsToSelector:selector])
+        return nil;
 
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
@@ -137,45 +140,55 @@ static void SPKSetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
 }
 
 static void SPKApplyStorySeenButtonStyle(UIButton *button) {
-    if (!button) return;
+    if (!button)
+        return;
     SPKApplyButtonStyle(button, kSPKActionButtonSourceDirect);
 }
 
 static UIView *SPKDirectOverlayViewFromController(UIViewController *controller) {
-    if (!controller) return nil;
+    if (!controller)
+        return nil;
 
     id viewerContainer = [SPKUtils getIvarForObj:controller name:"_viewerContainerView"];
-    if (!viewerContainer) viewerContainer = SPKKVCObject(controller, @"viewerContainerView");
+    if (!viewerContainer)
+        viewerContainer = SPKKVCObject(controller, @"viewerContainerView");
 
     SEL overlaySelector = NSSelectorFromString(@"overlayView");
-    if (![viewerContainer respondsToSelector:overlaySelector]) return nil;
+    if (![viewerContainer respondsToSelector:overlaySelector])
+        return nil;
     id overlay = ((id (*)(id, SEL))objc_msgSend)(viewerContainer, overlaySelector);
     return [overlay isKindOfClass:[UIView class]] ? (UIView *)overlay : nil;
 }
 
 static id SPKDirectCurrentMessageFromController(UIViewController *controller) {
-    if (!controller) return nil;
+    if (!controller)
+        return nil;
 
     id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
-    if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
+    if (!dataSource)
+        dataSource = SPKKVCObject(controller, @"dataSource");
 
     id message = [SPKUtils getIvarForObj:dataSource name:"_currentMessage"];
-    if (!message) message = SPKKVCObject(dataSource, @"currentMessage");
+    if (!message)
+        message = SPKKVCObject(dataSource, @"currentMessage");
     return message;
 }
 
 static NSInteger SPKDirectCurrentIndexFromController(UIViewController *controller) {
-    if (!controller) return 0;
+    if (!controller)
+        return 0;
 
     id dataSource = [SPKUtils getIvarForObj:controller name:"_dataSource"];
-    if (!dataSource) dataSource = SPKKVCObject(controller, @"dataSource");
+    if (!dataSource)
+        dataSource = SPKKVCObject(controller, @"dataSource");
 
-    for (NSString *selectorName in @[@"currentItemIndex", @"currentIndex", @"itemIndex"]) {
+    for (NSString *selectorName in @[ @"currentItemIndex", @"currentIndex", @"itemIndex" ]) {
         NSNumber *index = [SPKUtils numericValueForObj:dataSource selectorName:selectorName];
-        if (index && index.integerValue >= 0) return index.integerValue;
+        if (index && index.integerValue >= 0)
+            return index.integerValue;
     }
 
-    for (NSString *key in @[@"currentItemIndex", @"currentIndex", @"itemIndex"]) {
+    for (NSString *key in @[ @"currentItemIndex", @"currentIndex", @"itemIndex" ]) {
         id value = SPKKVCObject(dataSource, key);
         if ([value respondsToSelector:@selector(integerValue)] && [value integerValue] >= 0) {
             return [value integerValue];
@@ -186,7 +199,8 @@ static NSInteger SPKDirectCurrentIndexFromController(UIViewController *controlle
 }
 
 static CGFloat SPKHeightFromFrameLikeObject(id object) {
-    if (!object) return 0.0;
+    if (!object)
+        return 0.0;
 
     if ([object isKindOfClass:[UIView class]]) {
         return ((UIView *)object).frame.size.height;
@@ -204,7 +218,8 @@ static CGFloat SPKHeightFromFrameLikeObject(id object) {
 }
 
 static CGFloat SPKDirectBottomOffset(UIViewController *controller) {
-    if (!controller) return 12.0;
+    if (!controller)
+        return 12.0;
 
     id inputView = [SPKUtils getIvarForObj:controller name:"_inputView"];
     CGFloat offset = controller.view.safeAreaInsets.bottom + 12.0;
@@ -216,7 +231,8 @@ static CGFloat SPKDirectBottomOffset(UIViewController *controller) {
 }
 
 static UIView *SPKDirectInputViewFromController(UIViewController *controller) {
-    if (!controller) return nil;
+    if (!controller)
+        return nil;
 
     id inputView = [SPKUtils getIvarForObj:controller name:"_inputView"];
     if (![inputView isKindOfClass:[UIView class]]) {
@@ -226,9 +242,11 @@ static UIView *SPKDirectInputViewFromController(UIViewController *controller) {
 }
 
 static void SPKUpdateDirectVisualButtonsAlpha(UIViewController *controller, CGFloat alpha) {
-    if (!controller) return;
+    if (!controller)
+        return;
     UIView *overlay = SPKDirectOverlayViewFromController(controller);
-    if (!overlay) return;
+    if (!overlay)
+        return;
 
     UIButton *actionButton = (UIButton *)[overlay viewWithTag:kSPKDirectActionButtonTag];
     if ([actionButton isKindOfClass:[UIButton class]]) {
@@ -253,7 +271,8 @@ static void SPKRemoveDirectVisualInputAlphaObserverIfNeeded(UIViewController *co
 }
 
 static void SPKEnsureDirectVisualInputAlphaObserver(UIViewController *controller) {
-    if (!controller) return;
+    if (!controller)
+        return;
 
     UIView *inputView = SPKDirectInputViewFromController(controller);
     UIView *observedInputView = objc_getAssociatedObject(controller, kSPKDirectVisualObservedInputViewAssocKey);
@@ -282,32 +301,37 @@ static inline BOOL SPKShouldShowDirectVisualSeenButton(void) {
 }
 
 static BOOL SPKDirectInvokeNoArgSelector(id object, SEL selector) {
-    if (!object || !selector || ![object respondsToSelector:selector]) return NO;
+    if (!object || !selector || ![object respondsToSelector:selector])
+        return NO;
     ((void (*)(id, SEL))objc_msgSend)(object, selector);
     return YES;
 }
 
 static BOOL SPKDirectInvokeObjectArgSelector(id object, SEL selector, id argument) {
-    if (!object || !selector || ![object respondsToSelector:selector]) return NO;
+    if (!object || !selector || ![object respondsToSelector:selector])
+        return NO;
     ((void (*)(id, SEL, id))objc_msgSend)(object, selector, argument);
     return YES;
 }
 
 static BOOL SPKDirectInvokeIntegerArgSelector(id object, SEL selector, NSInteger argument) {
-    if (!object || !selector || ![object respondsToSelector:selector]) return NO;
+    if (!object || !selector || ![object respondsToSelector:selector])
+        return NO;
     ((void (*)(id, SEL, NSInteger))objc_msgSend)(object, selector, argument);
     return YES;
 }
 
 static BOOL SPKDirectInvokeDismissShowNextSelector(id object) {
     SEL selector = NSSelectorFromString(@"dismissWithShowNext:completion:");
-    if (!object || ![object respondsToSelector:selector]) return NO;
+    if (!object || ![object respondsToSelector:selector])
+        return NO;
     ((void (*)(id, SEL, BOOL, id))objc_msgSend)(object, selector, YES, nil);
     return YES;
 }
 
 static NSArray *SPKDirectVisualAdvanceTargets(UIViewController *controller) {
-    if (!controller) return @[];
+    if (!controller)
+        return @[];
 
     NSMutableArray *targets = [NSMutableArray array];
     NSArray<NSString *> *keys = @[
@@ -342,7 +366,8 @@ static NSArray *SPKDirectVisualAdvanceTargets(UIViewController *controller) {
 }
 
 static BOOL SPKDirectAdvanceVisualViewer(UIViewController *controller) {
-    if (!controller) return NO;
+    if (!controller)
+        return NO;
 
     SEL overlayTapSelector = NSSelectorFromString(@"fullscreenOverlay:didTapInRegion:");
     if ([controller respondsToSelector:overlayTapSelector]) {
@@ -353,7 +378,8 @@ static BOOL SPKDirectAdvanceVisualViewer(UIViewController *controller) {
     NSArray *targets = SPKDirectVisualAdvanceTargets(controller);
 
     for (id target in targets) {
-        if (SPKDirectInvokeDismissShowNextSelector(target)) return YES;
+        if (SPKDirectInvokeDismissShowNextSelector(target))
+            return YES;
     }
 
     NSArray<NSString *> *integerSelectors = @[
@@ -365,7 +391,8 @@ static BOOL SPKDirectAdvanceVisualViewer(UIViewController *controller) {
     ];
     for (id target in targets) {
         for (NSString *selectorName in integerSelectors) {
-            if (SPKDirectInvokeIntegerArgSelector(target, NSSelectorFromString(selectorName), 1)) return YES;
+            if (SPKDirectInvokeIntegerArgSelector(target, NSSelectorFromString(selectorName), 1))
+                return YES;
         }
     }
 
@@ -380,7 +407,8 @@ static BOOL SPKDirectAdvanceVisualViewer(UIViewController *controller) {
     ];
     for (id target in targets) {
         for (NSString *selectorName in noArgSelectors) {
-            if (SPKDirectInvokeNoArgSelector(target, NSSelectorFromString(selectorName))) return YES;
+            if (SPKDirectInvokeNoArgSelector(target, NSSelectorFromString(selectorName)))
+                return YES;
         }
     }
 
@@ -394,7 +422,8 @@ static BOOL SPKDirectAdvanceVisualViewer(UIViewController *controller) {
 }
 
 static void SPKMarkDirectVisualMessageAsSeen(UIViewController *controller) {
-    if (!controller) return;
+    if (!controller)
+        return;
 
     id message = SPKDirectCurrentMessageFromController(controller);
     if (!message) {
@@ -403,18 +432,19 @@ static void SPKMarkDirectVisualMessageAsSeen(UIViewController *controller) {
     }
 
     id responders = [SPKUtils getIvarForObj:controller name:"_eventResponders"];
-    if (!responders) responders = SPKKVCObject(controller, @"eventResponders");
+    if (!responders)
+        responders = SPKKVCObject(controller, @"eventResponders");
 
     SEL beginPlaybackSelector = NSSelectorFromString(@"visualMessageViewerController:didBeginPlaybackForVisualMessage:atIndex:");
     Class eventHandlerClass = NSClassFromString(@"IGDirectVisualMessageViewerEventHandler");
     NSArray *responderCollection = SPKArrayFromCollection(responders);
     NSMutableArray *orderedResponders = [NSMutableArray array];
-    for (id responder in responderCollection ?: (responders ? @[responders] : @[])) {
+    for (id responder in responderCollection ?: (responders ? @[ responders ] : @[])) {
         if (eventHandlerClass && [responder isKindOfClass:eventHandlerClass]) {
             [orderedResponders addObject:responder];
         }
     }
-    for (id responder in responderCollection ?: (responders ? @[responders] : @[])) {
+    for (id responder in responderCollection ?: (responders ? @[ responders ] : @[])) {
         if (![orderedResponders containsObject:responder]) {
             [orderedResponders addObject:responder];
         }
@@ -450,7 +480,8 @@ static void SPKMarkDirectVisualMessageAsSeen(UIViewController *controller) {
 
 static void SPKInstallDirectSeenButton(UIViewController *controller) {
     UIView *overlay = SPKDirectOverlayViewFromController(controller);
-    if (!overlay) return;
+    if (!overlay)
+        return;
 
     UIButton *seenButton = (UIButton *)[overlay viewWithTag:kSPKDirectSeenButtonTag];
     if (!SPKShouldShowDirectVisualSeenButton()) {
@@ -474,11 +505,7 @@ static void SPKInstallDirectSeenButton(UIViewController *controller) {
     CGFloat size = 44.0;
     CGFloat bottomOffset = SPKDirectBottomOffset(controller);
     UIButton *actionButton = (UIButton *)[overlay viewWithTag:kSPKDirectActionButtonTag];
-    BOOL actionVisible = [actionButton isKindOfClass:[UIButton class]]
-        && !actionButton.hidden
-        && actionButton.superview == overlay
-        && CGRectGetWidth(actionButton.bounds) > 0.0
-        && CGRectGetHeight(actionButton.bounds) > 0.0;
+    BOOL actionVisible = [actionButton isKindOfClass:[UIButton class]] && !actionButton.hidden && actionButton.superview == overlay && CGRectGetWidth(actionButton.bounds) > 0.0 && CGRectGetHeight(actionButton.bounds) > 0.0;
 
     NSLayoutConstraint *bottomConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenBottomConstraintAssocKey);
     NSLayoutConstraint *trailingOverlayConstraint = objc_getAssociatedObject(seenButton, kSPKDirectSeenTrailingOverlayConstraintAssocKey);
@@ -532,10 +559,13 @@ static void SPKInstallDirectSeenButton(UIViewController *controller) {
         bottomConstraint.active = NO;
         trailingOverlayConstraint.active = NO;
         trailingActionConstraint.active = YES;
-        if (centerYActionConstraint) centerYActionConstraint.active = YES;
+        if (centerYActionConstraint)
+            centerYActionConstraint.active = YES;
     } else {
-        if (centerYActionConstraint) centerYActionConstraint.active = NO;
-        if (trailingActionConstraint) trailingActionConstraint.active = NO;
+        if (centerYActionConstraint)
+            centerYActionConstraint.active = NO;
+        if (trailingActionConstraint)
+            trailingActionConstraint.active = NO;
         trailingOverlayConstraint.active = YES;
         bottomConstraint.active = YES;
     }
@@ -548,7 +578,8 @@ static void SPKInstallDirectSeenButton(UIViewController *controller) {
 %hook IGDirectVisualMessageViewerController
 - (void)viewDidLayoutSubviews {
     %orig;
-    if (!SPKDirectSeenHooksNeeded()) return;
+    if (!SPKDirectSeenHooksNeeded())
+        return;
     UIView *inputView = SPKDirectInputViewFromController((UIViewController *)self);
     SPKEnsureDirectVisualInputAlphaObserver((UIViewController *)self);
     SPKInstallDirectSeenButton((UIViewController *)self);
@@ -556,7 +587,8 @@ static void SPKInstallDirectSeenButton(UIViewController *controller) {
     __weak UIViewController *weakController = (UIViewController *)self;
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *strongController = weakController;
-        if (!strongController) return;
+        if (!strongController)
+            return;
         UIView *strongInputView = SPKDirectInputViewFromController(strongController);
         SPKInstallDirectSeenButton(strongController);
         SPKUpdateDirectVisualButtonsAlpha(strongController, strongInputView ? strongInputView.alpha : 1.0);
@@ -589,16 +621,17 @@ static void SPKInstallDirectSeenButton(UIViewController *controller) {
 }
 
 %new - (void)spk_didTapDirectSeenButton:(UIButton *)sender {
-    (void)sender;
-    SPKPlayButtonTappedHaptic();
-    SPKMarkDirectVisualMessageAsSeen((UIViewController *)self);
+(void)sender;
+SPKPlayButtonTappedHaptic();
+SPKMarkDirectVisualMessageAsSeen((UIViewController *)self);
 }
 %end
 
 %end
 
 void SPKInstallDirectVisualSeenButtonHooksIfNeeded(void) {
-    if (!SPKDirectSeenHooksNeeded()) return;
+    if (!SPKDirectSeenHooksNeeded())
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 %group SPKHideExploreGridHooks
 
@@ -12,7 +12,7 @@
 
         return;
     }
-    
+
     return %orig;
 }
 %end
@@ -35,7 +35,8 @@
 %end
 
 extern "C" void SPKInstallHideExploreGridHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"interface_hide_explore_grid"]) return;
+    if (![SPKUtils getBoolPref:@"interface_hide_explore_grid"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

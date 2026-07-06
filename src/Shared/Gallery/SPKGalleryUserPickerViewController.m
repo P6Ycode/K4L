@@ -1,7 +1,7 @@
 #import "SPKGalleryUserPickerViewController.h"
-#include <UIKit/UIKit.h>
-#import "../../Utils.h"
 #import "../../AssetUtils.h"
+#import "../../Utils.h"
+#include <UIKit/UIKit.h>
 
 @interface SPKGalleryUserPickerViewController () <UISearchResultsUpdating, UISearchBarDelegate>
 // All usernames, sorted alphabetically.
@@ -95,8 +95,10 @@
     }
     // "#" (non-letter) sorts after the alphabet.
     [titles sortUsingComparator:^NSComparisonResult(NSString *a, NSString *b) {
-        if ([a isEqualToString:@"#"]) return NSOrderedDescending;
-        if ([b isEqualToString:@"#"]) return NSOrderedAscending;
+        if ([a isEqualToString:@"#"])
+            return NSOrderedDescending;
+        if ([b isEqualToString:@"#"])
+            return NSOrderedAscending;
         return [a compare:b];
     }];
     self.sectionTitles = titles;
@@ -104,10 +106,12 @@
 }
 
 - (NSString *)sectionKeyForUsername:(NSString *)username {
-    if (username.length == 0) return @"#";
+    if (username.length == 0)
+        return @"#";
     NSString *first = [[username substringToIndex:1] uppercaseString];
     unichar c = [first characterAtIndex:0];
-    if (c >= 'A' && c <= 'Z') return first;
+    if (c >= 'A' && c <= 'Z')
+        return first;
     return @"#";
 }
 
@@ -125,15 +129,18 @@
 }
 
 - (BOOL)isUsernameSelected:(NSString *)username {
-    if (username.length == 0) return NO;
+    if (username.length == 0)
+        return NO;
     for (NSString *selected in self.selected) {
-        if ([selected caseInsensitiveCompare:username] == NSOrderedSame) return YES;
+        if ([selected caseInsensitiveCompare:username] == NSOrderedSame)
+            return YES;
     }
     return NO;
 }
 
 - (void)toggleUsername:(NSString *)username {
-    if (username.length == 0) return;
+    if (username.length == 0)
+        return;
     NSString *existing = nil;
     for (NSString *selected in self.selected) {
         if ([selected caseInsensitiveCompare:username] == NSOrderedSame) {
@@ -165,7 +172,8 @@
 }
 
 - (void)clearSelection {
-    if (self.selected.count == 0) return;
+    if (self.selected.count == 0)
+        return;
     [self.selected removeAllObjects];
     [self notifySelectionChanged];
     [self.tableView reloadData];
@@ -186,7 +194,8 @@
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if ([self isSearching]) return nil;
+    if ([self isSearching])
+        return nil;
     return self.sectionTitles[section];
 }
 
@@ -209,8 +218,8 @@
 // selection iconography.
 - (void)applySelectionAccessoryToCell:(UITableViewCell *)cell selected:(BOOL)selected {
     UIImageView *iconView = [cell.accessoryView isKindOfClass:[UIImageView class]]
-        ? (UIImageView *)cell.accessoryView
-        : nil;
+                                ? (UIImageView *)cell.accessoryView
+                                : nil;
     if (!iconView) {
         iconView = [[UIImageView alloc] initWithFrame:CGRectMake(0.0, 0.0, 24.0, 24.0)];
         iconView.contentMode = UIViewContentModeScaleAspectFit;
@@ -238,7 +247,7 @@
     self.searchQuery = query;
     if (query.length > 0) {
         self.filteredUsernames = [self.allUsernames filteredArrayUsingPredicate:
-            [NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] %@", query]];
+                                                        [NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] %@", query]];
     } else {
         self.filteredUsernames = @[];
     }

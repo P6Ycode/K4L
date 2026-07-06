@@ -8,9 +8,12 @@
     if ([SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) {
         SPKLog(@"General", @"[Sparkle] Confirm change direct theme triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Change Chat Theme"
-                               message:@"Are you sure you want to apply this theme to the chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Change Chat Theme"
+                     message:@"Are you sure you want to apply this theme to the chat?"];
     } else {
         return %orig;
     }
@@ -19,9 +22,12 @@
     if ([SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) {
         SPKLog(@"General", @"[Sparkle] Confirm change direct theme triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Change Chat Theme"
-                               message:@"Are you sure you want to apply this theme to the chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Change Chat Theme"
+                     message:@"Are you sure you want to apply this theme to the chat?"];
     } else {
         return %orig;
     }
@@ -33,9 +39,12 @@
     if ([SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) {
         SPKLog(@"General", @"[Sparkle] Confirm change direct theme triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Change Chat Theme"
-                               message:@"Are you sure you want to apply this theme to the chat?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Change Chat Theme"
+                     message:@"Are you sure you want to apply this theme to the chat?"];
     } else {
         return %orig;
     }
@@ -45,7 +54,8 @@
 %end
 
 void SPKInstallChangeThemeConfirmHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"msgs_confirm_theme_change"]) return;
+    if (![SPKUtils getBoolPref:@"msgs_confirm_theme_change"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

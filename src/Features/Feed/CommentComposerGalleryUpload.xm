@@ -2,10 +2,10 @@
 #import <objc/runtime.h>
 
 #import "../../InstagramHeaders.h"
-#import "../../Utils.h"
-#import "../../Shared/Gallery/SPKGalleryPickerViewController.h"
 #import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/Gallery/SPKGalleryPickerViewController.h"
 #import "../../Shared/UI/SPKNotificationCenter.h"
+#import "../../Utils.h"
 
 // Long-press the comment composer's photo entry button to attach an image from the
 // in-app Sparkle Gallery (Vault). A normal tap still opens Instagram's own photo
@@ -13,7 +13,7 @@
 // the chosen image into the composer via the same entry point IG uses internally
 // (-setupImageBeforeCommentComposingBeginWithSelectedPhoto:, which takes a UIImage).
 
-static NSString * const kSPKCommentGalleryUploadPref = @"general_comments_gallery_upload";
+static NSString *const kSPKCommentGalleryUploadPref = @"general_comments_gallery_upload";
 static const void *kSPKCommentGalleryGestureKey = &kSPKCommentGalleryGestureKey;
 
 static inline BOOL SPKCommentGalleryUploadEnabled(void) {
@@ -23,15 +23,17 @@ static inline BOOL SPKCommentGalleryUploadEnabled(void) {
 // _lazyPhotoEntryButton / _lazyPhotoCommentButton are IGLazyView wrappers (NOT UIViews).
 // The real button view is created lazily and retrieved via -viewIfLoaded.
 static UIView *SPKCommentComposerLoadedView(id lazyView) {
-    if (![lazyView respondsToSelector:@selector(viewIfLoaded)]) return nil;
+    if (![lazyView respondsToSelector:@selector(viewIfLoaded)])
+        return nil;
     id view = ((id (*)(id, SEL))objc_msgSend)(lazyView, @selector(viewIfLoaded));
     return [view isKindOfClass:[UIView class]] ? (UIView *)view : nil;
 }
 
 static UIView *SPKCommentComposerPhotoEntryButton(UIView *composerView) {
-    for (NSString *ivar in @[@"_lazyPhotoEntryButton", @"_lazyPhotoCommentButton"]) {
+    for (NSString *ivar in @[ @"_lazyPhotoEntryButton", @"_lazyPhotoCommentButton" ]) {
         id lazyView = [SPKUtils getIvarForObj:composerView name:ivar.UTF8String];
-        if (!lazyView) continue;
+        if (!lazyView)
+            continue;
         UIView *button = SPKCommentComposerLoadedView(lazyView);
         if (button && button.window) {
             return button;
@@ -51,7 +53,8 @@ static UIView *SPKCommentComposerViewForView(UIView *view) {
 }
 
 static void SPKCommentComposerAttachImage(UIView *composerView, UIImage *image) {
-    if (!composerView || !image) return;
+    if (!composerView || !image)
+        return;
     id controller = nil;
     if ([composerView respondsToSelector:@selector(delegate)]) {
         controller = ((id (*)(id, SEL))objc_msgSend)(composerView, @selector(delegate));
@@ -69,7 +72,8 @@ static void SPKCommentComposerAttachImage(UIView *composerView, UIImage *image) 
 }
 
 static void SPKCommentComposerPresentGalleryPicker(UIView *composerView) {
-    if (!composerView) return;
+    if (!composerView)
+        return;
 
     NSSet<NSNumber *> *imageTypes = [NSSet setWithObject:@(SPKGalleryMediaTypeImage)];
     if (![SPKGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:imageTypes]) {
@@ -82,14 +86,15 @@ static void SPKCommentComposerPresentGalleryPicker(UIView *composerView) {
 
     __weak UIView *weakComposer = composerView;
     [SPKGalleryPickerViewController presentFromViewController:topMostController()
-                                                       title:@"Choose Photo"
-                                           allowedMediaTypes:imageTypes
-                                     allowsMultipleSelection:NO
-                                                  completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
-        SPKGalleryFile *file = selectedFiles.firstObject;
-        UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
-        if (image) SPKCommentComposerAttachImage(weakComposer, image);
-    }];
+                                                        title:@"Choose Photo"
+                                            allowedMediaTypes:imageTypes
+                                      allowsMultipleSelection:NO
+                                                   completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
+                                                       SPKGalleryFile *file = selectedFiles.firstObject;
+                                                       UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
+                                                       if (image)
+                                                           SPKCommentComposerAttachImage(weakComposer, image);
+                                                   }];
 }
 
 @interface SPKCommentGalleryUploadTarget : NSObject
@@ -108,18 +113,23 @@ static void SPKCommentComposerPresentGalleryPicker(UIView *composerView) {
 }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state != UIGestureRecognizerStateBegan) return;
-    if (!SPKCommentGalleryUploadEnabled()) return;
+    if (gesture.state != UIGestureRecognizerStateBegan)
+        return;
+    if (!SPKCommentGalleryUploadEnabled())
+        return;
     SPKCommentComposerPresentGalleryPicker(SPKCommentComposerViewForView(gesture.view));
 }
 @end
 
 static void SPKCommentComposerInstallLongPress(UIView *composerView) {
-    if (!SPKCommentGalleryUploadEnabled()) return;
+    if (!SPKCommentGalleryUploadEnabled())
+        return;
 
     UIView *photoButton = SPKCommentComposerPhotoEntryButton(composerView);
-    if (!photoButton) return;
-    if (objc_getAssociatedObject(photoButton, kSPKCommentGalleryGestureKey)) return;
+    if (!photoButton)
+        return;
+    if (objc_getAssociatedObject(photoButton, kSPKCommentGalleryGestureKey))
+        return;
 
     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc]
         initWithTarget:[SPKCommentGalleryUploadTarget shared]

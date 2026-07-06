@@ -1,9 +1,9 @@
 #import "SPKFullScreenVideoViewController.h"
-#import "SPKMediaItem.h"
-#import "SPKMediaCacheManager.h"
-#import <AVFoundation/AVFoundation.h>
-#import "../Gallery/SPKGalleryFile.h"
 #import "../../Utils.h"
+#import "../Gallery/SPKGalleryFile.h"
+#import "SPKMediaCacheManager.h"
+#import "SPKMediaItem.h"
+#import <AVFoundation/AVFoundation.h>
 
 // Tag on the audio artwork overlay so we never install it twice.
 static NSInteger const kSPKAudioArtworkOverlayTag = 0x5A0D;
@@ -83,9 +83,11 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 // look. Added to the player's contentOverlayView (above the content, below the
 // transport controls, which stay tappable).
 - (void)installAudioArtworkOverlayIfNeeded {
-    if (self.mediaItem.mediaType != SPKMediaItemTypeAudio) return;
+    if (self.mediaItem.mediaType != SPKMediaItemTypeAudio)
+        return;
     UIView *overlay = self.playerViewController.contentOverlayView;
-    if (!overlay || [overlay viewWithTag:kSPKAudioArtworkOverlayTag]) return;
+    if (!overlay || [overlay viewWithTag:kSPKAudioArtworkOverlayTag])
+        return;
 
     UIView *backing = [[UIView alloc] init];
     backing.tag = kSPKAudioArtworkOverlayTag;
@@ -123,7 +125,8 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 #pragma mark - Setup
 
 - (void)ensurePlayerViewControllerIfNeeded {
-    if (_playerViewController) return;
+    if (_playerViewController)
+        return;
 
     _playerViewController = [[AVPlayerViewController alloc] init];
     _playerViewController.showsPlaybackControls = YES;
@@ -291,26 +294,31 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
         _thumbnailView.image = self.mediaItem.thumbnail;
         return;
     }
-    if (self.isLoadingThumbnail) return;
+    if (self.isLoadingThumbnail)
+        return;
 
     self.isLoadingThumbnail = YES;
     __weak typeof(self) weakSelf = self;
-    [[SPKMediaCacheManager sharedManager] loadThumbnailForVideoItem:self.mediaItem completion:^(UIImage * _Nullable thumb) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+    [[SPKMediaCacheManager sharedManager] loadThumbnailForVideoItem:self.mediaItem
+                                                         completion:^(UIImage *_Nullable thumb) {
+                                                             __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                             if (!strongSelf)
+                                                                 return;
 
-        strongSelf.isLoadingThumbnail = NO;
-        if (thumb && !strongSelf.hasStartedPlayback) {
-            strongSelf.thumbnailView.image = thumb;
-        }
-    }];
+                                                             strongSelf.isLoadingThumbnail = NO;
+                                                             if (thumb && !strongSelf.hasStartedPlayback) {
+                                                                 strongSelf.thumbnailView.image = thumb;
+                                                             }
+                                                         }];
 }
 
 #pragma mark - Player Preparation
 
 - (void)preparePlayerWithURL:(NSURL *)url {
-    if (!url) return;
-    if (_hasPreparedPlayer && [self.preparedPlaybackURL isEqual:url]) return;
+    if (!url)
+        return;
+    if (_hasPreparedPlayer && [self.preparedPlaybackURL isEqual:url])
+        return;
 
     [self tearDownPlayer];
     _hasPreparedPlayer = YES;
@@ -361,44 +369,47 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     self.loadGeneration = generation;
 
     __weak typeof(self) weakSelf = self;
-    [[SPKMediaCacheManager sharedManager] fetchLocalFileURLForItem:self.mediaItem completion:^(NSURL * _Nullable localURL, NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf || strongSelf.loadGeneration != generation) return;
+    [[SPKMediaCacheManager sharedManager] fetchLocalFileURLForItem:self.mediaItem
+                                                        completion:^(NSURL *_Nullable localURL, NSError *_Nullable error) {
+                                                            __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                            if (!strongSelf || strongSelf.loadGeneration != generation)
+                                                                return;
 
-        if (!localURL || error) {
-            [strongSelf.loadingIndicator stopAnimating];
-            if ([strongSelf.delegate respondsToSelector:@selector(mediaContent:didFailWithError:)]) {
-                NSError *resolvedError = error ?: [NSError errorWithDomain:@"SPKFullScreenVideoViewController"
-                                                                      code:-2
-                                                                  userInfo:@{NSLocalizedDescriptionKey: @"Playback failed"}];
-                [strongSelf.delegate mediaContent:strongSelf didFailWithError:resolvedError];
-            }
-            return;
-        }
+                                                            if (!localURL || error) {
+                                                                [strongSelf.loadingIndicator stopAnimating];
+                                                                if ([strongSelf.delegate respondsToSelector:@selector(mediaContent:didFailWithError:)]) {
+                                                                    NSError *resolvedError = error ?: [NSError errorWithDomain:@"SPKFullScreenVideoViewController"
+                                                                                                                          code:-2
+                                                                                                                      userInfo:@{NSLocalizedDescriptionKey : @"Playback failed"}];
+                                                                    [strongSelf.delegate mediaContent:strongSelf didFailWithError:resolvedError];
+                                                                }
+                                                                return;
+                                                            }
 
-        if (strongSelf->_player && strongSelf->_hasPreparedPlayer && [strongSelf.preparedPlaybackURL isEqual:localURL]) {
-            [strongSelf.loadingIndicator stopAnimating];
-            if (strongSelf->_playerItem.status == AVPlayerItemStatusReadyToPlay) {
-                strongSelf->_thumbnailView.hidden = YES;
-                strongSelf->_thumbnailView.alpha = 0.0;
-            }
-            if (!strongSelf->_isPlaying) {
-                [strongSelf play];
-            }
-            return;
-        }
+                                                            if (strongSelf->_player && strongSelf->_hasPreparedPlayer && [strongSelf.preparedPlaybackURL isEqual:localURL]) {
+                                                                [strongSelf.loadingIndicator stopAnimating];
+                                                                if (strongSelf->_playerItem.status == AVPlayerItemStatusReadyToPlay) {
+                                                                    strongSelf->_thumbnailView.hidden = YES;
+                                                                    strongSelf->_thumbnailView.alpha = 0.0;
+                                                                }
+                                                                if (!strongSelf->_isPlaying) {
+                                                                    [strongSelf play];
+                                                                }
+                                                                return;
+                                                            }
 
-        [strongSelf preparePlayerWithURL:localURL];
-        if (strongSelf->_playerItem && !strongSelf->_hasStartedPlayback) {
-            [strongSelf startPlayback];
-        } else if (strongSelf->_player && !strongSelf->_isPlaying) {
-            [strongSelf play];
-        }
-    }];
+                                                            [strongSelf preparePlayerWithURL:localURL];
+                                                            if (strongSelf->_playerItem && !strongSelf->_hasStartedPlayback) {
+                                                                [strongSelf startPlayback];
+                                                            } else if (strongSelf->_player && !strongSelf->_isPlaying) {
+                                                                [strongSelf play];
+                                                            }
+                                                        }];
 }
 
 - (void)startPlayback {
-    if (_hasStartedPlayback) return;
+    if (_hasStartedPlayback)
+        return;
     _hasStartedPlayback = YES;
 
     NSError *audioErr = nil;
@@ -422,13 +433,16 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 - (void)doHideThumbnail {
     [_loadingIndicator stopAnimating];
 
-    if (_thumbnailView.hidden) return;
+    if (_thumbnailView.hidden)
+        return;
 
-    [UIView animateWithDuration:0.2 animations:^{
-        self->_thumbnailView.alpha = 0;
-    } completion:^(__unused BOOL finished) {
-        self->_thumbnailView.hidden = YES;
-    }];
+    [UIView animateWithDuration:0.2
+        animations:^{
+            self->_thumbnailView.alpha = 0;
+        }
+        completion:^(__unused BOOL finished) {
+            self->_thumbnailView.hidden = YES;
+        }];
 }
 
 #pragma mark - KVO
@@ -443,7 +457,7 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
                 if ([self.delegate respondsToSelector:@selector(mediaContent:didFailWithError:)]) {
                     NSError *err = self->_playerItem.error ?: [NSError errorWithDomain:@"SPKFullScreenVideoViewController"
                                                                                   code:-1
-                                                                              userInfo:@{NSLocalizedDescriptionKey: @"Playback failed"}];
+                                                                              userInfo:@{NSLocalizedDescriptionKey : @"Playback failed"}];
                     [self.delegate mediaContent:self didFailWithError:err];
                 }
             }
@@ -460,7 +474,8 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 #pragma mark - Controls
 
 - (void)handleSingleTap:(UITapGestureRecognizer *)recognizer {
-    if (recognizer.state != UIGestureRecognizerStateEnded) return;
+    if (recognizer.state != UIGestureRecognizerStateEnded)
+        return;
     if ([self.delegate respondsToSelector:@selector(mediaContentDidTap:)]) {
         [self.delegate mediaContentDidTap:self];
     }
@@ -504,7 +519,8 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 }
 
 - (void)reloadWithFileURL:(NSURL *)url {
-    if (!url) return;
+    if (!url)
+        return;
     // Bump the load generation first so any in-flight fetch from a prior
     // prepareForDisplay is discarded, then rebuild the player from the new file.
     self.loadGeneration++;

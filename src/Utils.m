@@ -1,28 +1,30 @@
 #import "Utils.h"
-#import "AssetUtils.h"
 #import "App/SPKCore.h"
-#import <objc/runtime.h>
-#import <objc/message.h>
-#import "Shared/MediaPreview/SPKMediaCacheManager.h"
-#import "Shared/Gallery/SPKGalleryPaths.h"
+#import "App/SPKStabilityGuard.h"
+#import "AssetUtils.h"
+#import "Settings/SPKPreferenceAvailability.h"
+#import "Settings/SPKPreferences.h"
+#import "Shared/Account/SPKAccountManager.h"
 #import "Shared/Gallery/SPKGalleryLockViewController.h"
+#import "Shared/Gallery/SPKGalleryPaths.h"
+#import "Shared/MediaPreview/SPKMediaCacheManager.h"
 #import "Shared/Settings/SPKSettingsLockManager.h"
 #import "Shared/UI/SPKIGAlertPresenter.h"
 #import "Shared/UI/SPKMediaChrome.h"
-#import "Settings/SPKPreferenceAvailability.h"
-#import "Settings/SPKPreferences.h"
-#import "App/SPKStabilityGuard.h"
-#import "Shared/Account/SPKAccountManager.h"
+#import <objc/message.h>
+#import <objc/runtime.h>
 
-NSString * const kSPKPrefPerAccountSettings = @"general_per_account_settings";
+NSString *const kSPKPrefPerAccountSettings = @"general_per_account_settings";
 
 Class SPKReelsVerticalUFIClass(void) {
     // IG 436+ : Swift-mangled name (module + class both "IGSundialViewerVerticalUFI").
     Class cls = objc_getClass("_TtC26IGSundialViewerVerticalUFI26IGSundialViewerVerticalUFI");
     // IG <=435 : class exposed to ObjC under its plain name.
-    if (!cls) cls = objc_getClass("IGSundialViewerVerticalUFI");
+    if (!cls)
+        cls = objc_getClass("IGSundialViewerVerticalUFI");
     // Defensive: demangled "Module.Class" form some runtimes report.
-    if (!cls) cls = objc_getClass("IGSundialViewerVerticalUFI.IGSundialViewerVerticalUFI");
+    if (!cls)
+        cls = objc_getClass("IGSundialViewerVerticalUFI.IGSundialViewerVerticalUFI");
     return cls;
 }
 
@@ -37,16 +39,16 @@ Class SPKResolveIGClass(NSString *qualified, NSString *legacy) {
             if (p.count == 2) {
                 NSString *m = p[0], *n = p[1];
                 NSString *mangled = [NSString stringWithFormat:@"_TtC%lu%@%lu%@",
-                                     (unsigned long)m.length, m, (unsigned long)n.length, n];
+                                                               (unsigned long)m.length, m, (unsigned long)n.length, n];
                 c = objc_getClass(mangled.UTF8String);
             }
         }
     }
     // IG <=435 : plain ObjC name.
-    if (!c && legacy.length) c = NSClassFromString(legacy);
+    if (!c && legacy.length)
+        c = NSClassFromString(legacy);
     return c;
 }
-
 
 static NSString *SPKTrimmedLogBody(NSString *body) {
     return [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -56,10 +58,10 @@ static NSString *SPKNormalizedLogBody(NSString *category, NSString *body, NSStri
     NSString *resolvedCategory = category.length ? category : @"General";
     NSString *resolvedBody = body ?: @"";
     NSArray<NSDictionary<NSString *, NSString *> *> *legacyPrefixes = @[
-        @{@"prefix": @"[Sparkle][startup]", @"category": @"Startup"},
-        @{@"prefix": @"[Sparkle Gallery]", @"category": @"Gallery"},
-        @{@"prefix": @"[Sparkle BulkDownload]", @"category": @"BulkDownload"},
-        @{@"prefix": @"[Sparkle]", @"category": resolvedCategory},
+        @{@"prefix" : @"[Sparkle][startup]", @"category" : @"Startup"},
+        @{@"prefix" : @"[Sparkle Gallery]", @"category" : @"Gallery"},
+        @{@"prefix" : @"[Sparkle BulkDownload]", @"category" : @"BulkDownload"},
+        @{@"prefix" : @"[Sparkle]", @"category" : resolvedCategory},
     ];
 
     for (NSDictionary<NSString *, NSString *> *entry in legacyPrefixes) {
@@ -93,68 +95,74 @@ void SPKLogMessage(NSString *category, os_log_type_t type, NSString *format, ...
 }
 
 static NSNumber *SPKNumericValueForSelector(id target, NSString *selectorName) {
-    if (!target || !selectorName.length) return nil;
+    if (!target || !selectorName.length)
+        return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
-    if (![target respondsToSelector:selector]) return nil;
+    if (![target respondsToSelector:selector])
+        return nil;
 
     NSMethodSignature *signature = [target methodSignatureForSelector:selector];
     const char *returnType = signature.methodReturnType;
-    if (!returnType || !returnType[0]) return nil;
+    if (!returnType || !returnType[0])
+        return nil;
 
     switch (returnType[0]) {
-        case '@': {
-            id value = ((id (*)(id, SEL))objc_msgSend)(target, selector);
-            if ([value respondsToSelector:@selector(doubleValue)]) {
-                return @([value doubleValue]);
-            }
-            if ([value respondsToSelector:@selector(integerValue)]) {
-                return @(((NSInteger (*)(id, SEL))objc_msgSend)(value, @selector(integerValue)));
-            }
-            return nil;
+    case '@': {
+        id value = ((id (*)(id, SEL))objc_msgSend)(target, selector);
+        if ([value respondsToSelector:@selector(doubleValue)]) {
+            return @([value doubleValue]);
         }
-        case 'd':
-            return @(((double (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'f':
-            return @((double)((float (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'q':
-            return @((double)((long long (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'Q':
-            return @((double)((unsigned long long (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'i':
-            return @((double)((int (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'I':
-            return @((double)((unsigned int (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'l':
-            return @((double)((long (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'L':
-            return @((double)((unsigned long (*)(id, SEL))objc_msgSend)(target, selector));
-        case 's':
-            return @((double)((short (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'S':
-            return @((double)((unsigned short (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'c':
-            return @((double)((char (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'C':
-            return @((double)((unsigned char (*)(id, SEL))objc_msgSend)(target, selector));
-        case 'B':
-            return @((double)((BOOL (*)(id, SEL))objc_msgSend)(target, selector));
-        default:
-            return nil;
+        if ([value respondsToSelector:@selector(integerValue)]) {
+            return @(((NSInteger (*)(id, SEL))objc_msgSend)(value, @selector(integerValue)));
+        }
+        return nil;
+    }
+    case 'd':
+        return @(((double (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'f':
+        return @((double)((float (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'q':
+        return @((double)((long long (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'Q':
+        return @((double)((unsigned long long (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'i':
+        return @((double)((int (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'I':
+        return @((double)((unsigned int (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'l':
+        return @((double)((long (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'L':
+        return @((double)((unsigned long (*)(id, SEL))objc_msgSend)(target, selector));
+    case 's':
+        return @((double)((short (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'S':
+        return @((double)((unsigned short (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'c':
+        return @((double)((char (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'C':
+        return @((double)((unsigned char (*)(id, SEL))objc_msgSend)(target, selector));
+    case 'B':
+        return @((double)((BOOL (*)(id, SEL))objc_msgSend)(target, selector));
+    default:
+        return nil;
     }
 }
 
 static id SPKObjectForSelector(id target, NSString *selectorName) {
-    if (!target || !selectorName.length) return nil;
+    if (!target || !selectorName.length)
+        return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
-    if (![target respondsToSelector:selector]) return nil;
+    if (![target respondsToSelector:selector])
+        return nil;
 
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
 static id SPKKVCObject(id target, NSString *key) {
-    if (!target || !key.length) return nil;
+    if (!target || !key.length)
+        return nil;
 
     @try {
         return [target valueForKey:key];
@@ -164,7 +172,8 @@ static id SPKKVCObject(id target, NSString *key) {
 }
 
 static NSURL *SPKURLFromStringOrURL(id value) {
-    if (!value) return nil;
+    if (!value)
+        return nil;
 
     if ([value isKindOfClass:[NSURL class]]) {
         return value;
@@ -178,7 +187,8 @@ static NSURL *SPKURLFromStringOrURL(id value) {
 }
 
 static double SPKDoubleValue(id value) {
-    if (!value) return 0.0;
+    if (!value)
+        return 0.0;
 
     if ([value respondsToSelector:@selector(doubleValue)]) {
         return [value doubleValue];
@@ -188,7 +198,8 @@ static double SPKDoubleValue(id value) {
 }
 
 static NSInteger SPKIntegerValue(id value) {
-    if (!value) return 0;
+    if (!value)
+        return 0;
 
     if ([value respondsToSelector:@selector(integerValue)]) {
         return [value integerValue];
@@ -228,8 +239,8 @@ static NSArray *SPKArrayFromCollection(id collection) {
     return nil;
 }
 
-static NSString * const kSPKCacheAutoClearModeKey = @"general_cache_auto_clear";
-static NSString * const kSPKCacheLastClearedAtKey = @"general_cache_last_cleared_at";
+static NSString *const kSPKCacheAutoClearModeKey = @"general_cache_auto_clear";
+static NSString *const kSPKCacheLastClearedAtKey = @"general_cache_last_cleared_at";
 
 static UIColor *SPKDynamicInstagramColor(CGFloat lightRed,
                                          CGFloat lightGreen,
@@ -237,7 +248,7 @@ static UIColor *SPKDynamicInstagramColor(CGFloat lightRed,
                                          CGFloat darkRed,
                                          CGFloat darkGreen,
                                          CGFloat darkBlue) {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+    return [UIColor colorWithDynamicProvider:^UIColor *_Nonnull(UITraitCollection *_Nonnull traitCollection) {
         BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
         CGFloat red = dark ? darkRed : lightRed;
         CGFloat green = dark ? darkGreen : lightGreen;
@@ -248,14 +259,15 @@ static UIColor *SPKDynamicInstagramColor(CGFloat lightRed,
 
 static UIColor *SPKInstagramColorFromClassSelector(NSString *className, SEL selector) {
     Class colorClass = NSClassFromString(className);
-    if (!colorClass || ![colorClass respondsToSelector:selector]) return nil;
+    if (!colorClass || ![colorClass respondsToSelector:selector])
+        return nil;
 
     id color = ((id (*)(id, SEL))objc_msgSend)(colorClass, selector);
     return [color isKindOfClass:[UIColor class]] ? color : nil;
 }
 
 static UIColor *SPKInstagramPrimaryAccentColor(void) {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+    return [UIColor colorWithDynamicProvider:^UIColor *_Nonnull(UITraitCollection *_Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
             return [UIColor colorWithRed:0.408 green:0.557 blue:1.032 alpha:1.0];
         } else {
@@ -265,7 +277,7 @@ static UIColor *SPKInstagramPrimaryAccentColor(void) {
 }
 
 static UIColor *SPKInstagramDestructiveColor(void) {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+    return [UIColor colorWithDynamicProvider:^UIColor *_Nonnull(UITraitCollection *_Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
             return [UIColor colorWithRed:0.957 green:0.357 blue:0.420 alpha:1.0];
         } else {
@@ -275,35 +287,44 @@ static UIColor *SPKInstagramDestructiveColor(void) {
 }
 
 static NSArray *SPKImageVersionsFromPhoto(IGPhoto *photo) {
-    if (!photo) return nil;
+    if (!photo)
+        return nil;
 
     NSArray *versions = SPKArrayFromCollection(SPKObjectForSelector(photo, @"imageVersions"));
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection([SPKUtils getIvarForObj:photo name:"_originalImageVersions"]);
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection(SPKObjectForSelector(photo, @"imageVersionDictionaries"));
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection([SPKUtils getIvarForObj:photo name:"_imageVersions"]);
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection([SPKUtils getIvarForObj:photo name:"_imageVersionDictionaries"]);
     return versions.count > 0 ? versions : nil;
 }
 
 static NSArray *SPKVideoVersionsFromVideo(IGVideo *video) {
-    if (!video) return nil;
+    if (!video)
+        return nil;
 
     NSArray *versions = SPKArrayFromCollection(SPKObjectForSelector(video, @"videoVersions"));
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection(SPKObjectForSelector(video, @"videoVersionDictionaries"));
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection([SPKUtils getIvarForObj:video name:"_videoVersions"]);
-    if (versions.count > 0) return versions;
+    if (versions.count > 0)
+        return versions;
 
     versions = SPKArrayFromCollection([SPKUtils getIvarForObj:video name:"_videoVersionDictionaries"]);
     return versions.count > 0 ? versions : nil;
@@ -340,7 +361,8 @@ static NSArray<NSDictionary *> *SPKSortedMediaVariantsFromVersions(NSArray *vers
         }
 
         NSURL *url = SPKURLFromStringOrURL(rawURL);
-        if (!url) continue;
+        if (!url)
+            continue;
 
         NSString *absolute = url.absoluteString;
         if (absolute.length == 0 || [seenURLs containsObject:absolute]) {
@@ -349,10 +371,10 @@ static NSArray<NSDictionary *> *SPKSortedMediaVariantsFromVersions(NSArray *vers
         [seenURLs addObject:absolute];
 
         [variants addObject:@{
-            @"url": url,
-            @"width": @(SPKDoubleValue(widthValue)),
-            @"height": @(SPKDoubleValue(heightValue)),
-            @"bandwidth": @(SPKIntegerValue(bandwidthValue))
+            @"url" : url,
+            @"width" : @(SPKDoubleValue(widthValue)),
+            @"height" : @(SPKDoubleValue(heightValue)),
+            @"bandwidth" : @(SPKIntegerValue(bandwidthValue))
         }];
     }
 
@@ -360,13 +382,17 @@ static NSArray<NSDictionary *> *SPKSortedMediaVariantsFromVersions(NSArray *vers
         double lhsArea = [lhs[@"width"] doubleValue] * [lhs[@"height"] doubleValue];
         double rhsArea = [rhs[@"width"] doubleValue] * [rhs[@"height"] doubleValue];
 
-        if (lhsArea > rhsArea) return NSOrderedAscending;
-        if (lhsArea < rhsArea) return NSOrderedDescending;
+        if (lhsArea > rhsArea)
+            return NSOrderedAscending;
+        if (lhsArea < rhsArea)
+            return NSOrderedDescending;
 
         NSInteger lhsBandwidth = [lhs[@"bandwidth"] integerValue];
         NSInteger rhsBandwidth = [rhs[@"bandwidth"] integerValue];
-        if (lhsBandwidth > rhsBandwidth) return NSOrderedAscending;
-        if (lhsBandwidth < rhsBandwidth) return NSOrderedDescending;
+        if (lhsBandwidth > rhsBandwidth)
+            return NSOrderedAscending;
+        if (lhsBandwidth < rhsBandwidth)
+            return NSOrderedDescending;
 
         return NSOrderedSame;
     }];
@@ -376,14 +402,16 @@ static NSArray<NSDictionary *> *SPKSortedMediaVariantsFromVersions(NSArray *vers
 
 static NSURL *SPKHighestQualityURLFromVersions(NSArray *versions) {
     NSArray<NSDictionary *> *variants = SPKSortedMediaVariantsFromVersions(versions);
-    if (variants.count == 0) return nil;
+    if (variants.count == 0)
+        return nil;
 
     id value = variants.firstObject[@"url"];
     return [value isKindOfClass:[NSURL class]] ? value : nil;
 }
 
 static NSURL *SPKURLFromVideoURLCollection(id collection) {
-    if (!collection) return nil;
+    if (!collection)
+        return nil;
 
     NSArray *items = SPKArrayFromCollection(collection);
 
@@ -401,91 +429,105 @@ static NSURL *SPKURLFromVideoURLCollection(id collection) {
             url = SPKURLFromStringOrURL(item);
         }
 
-        if (url) return url;
+        if (url)
+            return url;
     }
 
     return nil;
 }
 
 static NSURL *SPKProfilePictureURLFromInfo(id info) {
-    if (!info) return nil;
+    if (!info)
+        return nil;
 
     NSURL *url = SPKURLFromStringOrURL(SPKObjectForSelector(info, @"url"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(info, @"urlString"));
-    if (url) return url;
+    if (url)
+        return url;
 
     if ([info isKindOfClass:[NSDictionary class]]) {
         NSDictionary *infoDictionary = (NSDictionary *)info;
         url = SPKURLFromStringOrURL(infoDictionary[@"url"] ?: infoDictionary[@"urlString"]);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
     return nil;
 }
 
 static NSURL *SPKHDProfilePicURL(id user) {
-    if (!user) return nil;
+    if (!user)
+        return nil;
 
     NSURL *url = SPKProfilePictureURLFromInfo(SPKObjectForSelector(user, @"hdProfilePicUrlInfo"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"HDProfilePicURL"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKProfilePictureURLFromInfo(SPKObjectForSelector(user, @"_private_hdProfilePicUrlInfo"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKProfilePictureURLFromInfo(SPKObjectForSelector(user, @"HDProfilePicURLInfo"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profile_pic_url_hd"));
-    if (url) return url;
+    if (url)
+        return url;
 
     return SPKURLFromStringOrURL(SPKKVCObject(user, @"profile_pic_url_hd"));
 }
 
 static NSURL *SPKThumbProfilePicURL(id user) {
-    if (!user) return nil;
+    if (!user)
+        return nil;
 
     NSURL *url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"derivedProfilePicURL"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profilePicURLString"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profilePicURL"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"_private_profilePicURLString"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"_private_profilePicUrl"));
-    if (url) return url;
+    if (url)
+        return url;
 
     url = SPKURLFromStringOrURL(SPKObjectForSelector(user, @"profile_pic_url"));
-    if (url) return url;
+    if (url)
+        return url;
 
     return SPKURLFromStringOrURL(SPKKVCObject(user, @"profile_pic_url"));
 }
 
 static BOOL SPKInstagramHostMatchesCanonical(NSString *host) {
-    if (host.length == 0) return NO;
+    if (host.length == 0)
+        return NO;
     NSString *lower = host.lowercaseString;
-    return [lower isEqualToString:@"instagram.com"]
-        || [lower isEqualToString:@"www.instagram.com"]
-        || [lower isEqualToString:@"instagr.am"]
-        || [lower hasSuffix:@".instagram.com"];
+    return [lower isEqualToString:@"instagram.com"] || [lower isEqualToString:@"www.instagram.com"] || [lower isEqualToString:@"instagr.am"] || [lower hasSuffix:@".instagram.com"];
 }
 
 static BOOL SPKInstagramPathUsesSharePrefix(NSArray<NSString *> *segments) {
-    if (segments.count < 2) return NO;
+    if (segments.count < 2)
+        return NO;
     NSString *candidate = segments[1].lowercaseString;
-    return [candidate isEqualToString:@"p"]
-        || [candidate isEqualToString:@"reel"]
-        || [candidate isEqualToString:@"reels"]
-        || [candidate isEqualToString:@"tv"];
+    return [candidate isEqualToString:@"p"] || [candidate isEqualToString:@"reel"] || [candidate isEqualToString:@"reels"] || [candidate isEqualToString:@"tv"];
 }
 
 static NSArray<NSString *> *SPKSanitizedInstagramPathSegments(NSArray<NSString *> *segments) {
@@ -496,7 +538,8 @@ static NSArray<NSString *> *SPKSanitizedInstagramPathSegments(NSArray<NSString *
 }
 
 static NSArray<NSURLQueryItem *> *SPKSanitizedInstagramQueryItems(NSArray<NSURLQueryItem *> *items) {
-    if (items.count == 0) return nil;
+    if (items.count == 0)
+        return nil;
 
     static NSSet<NSString *> *blockedKeys;
     static dispatch_once_t onceToken;
@@ -537,11 +580,13 @@ static void SPKPresentSettingsAfterUnlock(UIViewController *presenter, dispatch_
         [SPKGalleryLockViewController presentUnlockForManager:manager
                                            fromViewController:presenter
                                                    completion:^(BOOL success) {
-            if (success && presentation) presentation();
-        }];
+                                                       if (success && presentation)
+                                                           presentation();
+                                                   }];
         return;
     }
-    if (presentation) presentation();
+    if (presentation)
+        presentation();
 }
 
 @implementation SPKUtils
@@ -616,11 +661,15 @@ static BOOL SPKPrefIsGlobalKey(NSString *key) {
             @"feed_disable_autoplay",
         ]];
     });
-    if ([globalExact containsObject:key]) return YES;
-    if ([key hasPrefix:@"downloads_encoding_"]) return YES;
-    if ([key hasPrefix:@"gallery_"]) return YES;
+    if ([globalExact containsObject:key])
+        return YES;
+    if ([key hasPrefix:@"downloads_encoding_"])
+        return YES;
+    if ([key hasPrefix:@"gallery_"])
+        return YES;
     // interface_hide_*_tab (tab layout) + interface_hide_ui_on_capture.
-    if ([key hasPrefix:@"interface_hide_"]) return YES;
+    if ([key hasPrefix:@"interface_hide_"])
+        return YES;
     return NO;
 }
 
@@ -633,16 +682,20 @@ BOOL SPKPreferenceKeyIsGlobal(NSString *key) {
 }
 
 NSString *SPKEffectivePreferenceKey(NSString *key) {
-    if (key.length == 0) return key;
-    if (!SPKPrefPerAccountEnabled()) return key;
-    if (SPKPrefIsGlobalKey(key)) return key;
+    if (key.length == 0)
+        return key;
+    if (!SPKPrefPerAccountEnabled())
+        return key;
+    if (SPKPrefIsGlobalKey(key))
+        return key;
     // Use the best-effort namespace PK: during the early-launch window the live
     // session isn't resolved yet (currentAccountPK == nil), so this falls back
     // to the last-active account from the roster. Without it, hooks that fire
     // early (e.g. feed autoplay strategy creation) read the global default
     // instead of the per-account value the user actually set.
     NSString *pk = [SPKAccountManager preferenceNamespacePK];
-    if (pk.length == 0) return key;  // no known account → use global
+    if (pk.length == 0)
+        return key; // no known account → use global
     return [NSString stringWithFormat:@"u_%@_%@", pk, key];
 }
 
@@ -650,23 +703,27 @@ NSString *SPKEffectivePreferenceKey(NSString *key) {
 // outside the SPKUtils getXPref accessors (action-button config, manual-seen
 // list, etc.). Mirrors the accessor's per-account → global inheritance.
 id SPKPreferenceObjectForKey(NSString *key) {
-    if (key.length == 0) return nil;
+    if (key.length == 0)
+        return nil;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSString *effectiveKey = SPKEffectivePreferenceKey(key);
     if (![effectiveKey isEqualToString:key]) {
         id perAccountValue = [defaults objectForKey:effectiveKey];
-        if (perAccountValue != nil) return perAccountValue;
+        if (perAccountValue != nil)
+            return perAccountValue;
     }
     return [defaults objectForKey:key];
 }
 
 void SPKPreferenceSetObject(id value, NSString *key) {
-    if (key.length == 0) return;
+    if (key.length == 0)
+        return;
     [[NSUserDefaults standardUserDefaults] setObject:value forKey:SPKEffectivePreferenceKey(key)];
 }
 
 static id SPKPrefValueWithMasterOverlay(NSString *key) {
-    if (key.length == 0) return nil;
+    if (key.length == 0)
+        return nil;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (SPKMasterDisableActive() && ![SPKMasterDisableBypassKeys() containsObject:key]) {
         return SPKCoreRegisteredDefaults()[key];
@@ -676,26 +733,33 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
         id perAccountValue = [defaults objectForKey:effectiveKey];
         // Inherit the global value (and its registered default) until this
         // account overrides the key.
-        if (perAccountValue != nil) return perAccountValue;
+        if (perAccountValue != nil)
+            return perAccountValue;
     }
     return [defaults objectForKey:key];
 }
 
 + (BOOL)getBoolPref:(NSString *)key {
-    if (![key length]) return NO;
-    if (!SPKPrefIsAvailable(key)) return NO;
+    if (![key length])
+        return NO;
+    if (!SPKPrefIsAvailable(key))
+        return NO;
     id value = SPKPrefValueWithMasterOverlay(key);
-    if ([value respondsToSelector:@selector(boolValue)]) return [value boolValue];
+    if ([value respondsToSelector:@selector(boolValue)])
+        return [value boolValue];
     return NO;
 }
 + (double)getDoublePref:(NSString *)key {
-    if (![key length]) return 0;
+    if (![key length])
+        return 0;
     id value = SPKPrefValueWithMasterOverlay(key);
-    if ([value respondsToSelector:@selector(doubleValue)]) return [value doubleValue];
+    if ([value respondsToSelector:@selector(doubleValue)])
+        return [value doubleValue];
     return 0;
 }
 + (NSString *)getStringPref:(NSString *)key {
-    if (![key length]) return @"";
+    if (![key length])
+        return @"";
     id value = SPKPrefValueWithMasterOverlay(key);
     return [value isKindOfClass:[NSString class]] ? value : @"";
 }
@@ -715,65 +779,79 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 
 + (BOOL)spk_isLiquidGlassEffectivelyEnabled {
     return [SPKUtils getBoolPref:kSPKPrefInterfaceLiquidGlass] &&
-        !SPKStabilityGuardIsSafeStartupMode();
+           !SPKStabilityGuardIsSafeStartupMode();
 }
 
 // MARK: Session / user
 + (id)activeUserSession {
     @try {
         for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
-            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            if (![scene isKindOfClass:[UIWindowScene class]])
+                continue;
             for (UIWindow *window in ((UIWindowScene *)scene).windows) {
                 id session = nil;
                 @try {
                     if ([window respondsToSelector:@selector(userSession)]) {
                         session = [window valueForKey:@"userSession"];
                     }
-                } @catch (__unused NSException *e) {}
-                if (session) return session;
+                } @catch (__unused NSException *e) {
+                }
+                if (session)
+                    return session;
             }
         }
-    } @catch (__unused NSException *e) {}
+    } @catch (__unused NSException *e) {
+    }
     return nil;
 }
 
 + (NSString *)pkFromIGUser:(id)user {
-    if (!user) return nil;
+    if (!user)
+        return nil;
     // Prefer the public accessor — robust even when the backing ivar is renamed
     // or absent (Swift-bridged classes). IGUser exposes `pk` as a readonly
     // property; the raw `_pk` ivar isn't reliable across IG versions.
     @try {
         if ([user respondsToSelector:@selector(pk)]) {
             id pk = ((id (*)(id, SEL))objc_msgSend)(user, @selector(pk));
-            if ([pk isKindOfClass:[NSString class]] && [(NSString *)pk length]) return pk;
+            if ([pk isKindOfClass:[NSString class]] && [(NSString *)pk length])
+                return pk;
             if ([pk respondsToSelector:@selector(stringValue)]) {
                 NSString *s = [pk stringValue];
-                if (s.length) return s;
+                if (s.length)
+                    return s;
             }
             if (pk) {
                 NSString *d = [pk description];
-                if (d.length) return d;
+                if (d.length)
+                    return d;
             }
         }
-    } @catch (__unused NSException *e) {}
+    } @catch (__unused NSException *e) {
+    }
 
     // Fallback: read the _pk ivar directly.
     Ivar pkIvar = NULL;
     for (Class cls = [user class]; cls && !pkIvar; cls = class_getSuperclass(cls)) {
         pkIvar = class_getInstanceVariable(cls, "_pk");
     }
-    if (!pkIvar) return nil;
+    if (!pkIvar)
+        return nil;
     @try {
         id pk = object_getIvar(user, pkIvar);
-        if ([pk isKindOfClass:[NSString class]] && [(NSString *)pk length]) return pk;
-        if (pk) return [pk description];
-    } @catch (__unused NSException *e) {}
+        if ([pk isKindOfClass:[NSString class]] && [(NSString *)pk length])
+            return pk;
+        if (pk)
+            return [pk description];
+    } @catch (__unused NSException *e) {
+    }
     return nil;
 }
 
 + (NSString *)currentUserPK {
     id session = [self activeUserSession];
-    if (!session) return nil;
+    if (!session)
+        return nil;
     @try {
         id user = [session valueForKey:@"user"];
         return [self pkFromIGUser:user];
@@ -795,7 +873,8 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
         NSError *cacheItemDeletionError;
         [fileManager removeItemAtURL:fileURL error:&cacheItemDeletionError];
 
-        if (cacheItemDeletionError) [deletionErrors addObject:cacheItemDeletionError];
+        if (cacheItemDeletionError)
+            [deletionErrors addObject:cacheItemDeletionError];
     }
 
     // Analytics folder
@@ -806,25 +885,28 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
         NSError *cacheItemDeletionError;
         [fileManager removeItemAtURL:fileURL error:&cacheItemDeletionError];
 
-        if (cacheItemDeletionError) [deletionErrors addObject:cacheItemDeletionError];
+        if (cacheItemDeletionError)
+            [deletionErrors addObject:cacheItemDeletionError];
     }
-    
+
     // Caches folder
     NSString *cachesFolder = [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"Caches"];
     NSArray *cachesFolderContents = [fileManager contentsOfDirectoryAtURL:[[NSURL alloc] initFileURLWithPath:cachesFolder] includingPropertiesForKeys:nil options:NSDirectoryEnumerationSkipsHiddenFiles error:nil];
-    
+
     for (NSURL *fileURL in cachesFolderContents) {
         NSError *cacheItemDeletionError;
         [fileManager removeItemAtURL:fileURL error:&cacheItemDeletionError];
 
-        if (cacheItemDeletionError) [deletionErrors addObject:cacheItemDeletionError];
+        if (cacheItemDeletionError)
+            [deletionErrors addObject:cacheItemDeletionError];
     }
 
     NSURL *previewCacheURL = [[[SPKMediaCacheManager sharedManager] valueForKey:@"cacheRootURL"] copy];
     if (previewCacheURL) {
         NSError *previewCacheDeletionError = nil;
         [fileManager removeItemAtURL:previewCacheURL error:&previewCacheDeletionError];
-        if (previewCacheDeletionError) [deletionErrors addObject:previewCacheDeletionError];
+        if (previewCacheDeletionError)
+            [deletionErrors addObject:previewCacheDeletionError];
     }
 
     // Log errors
@@ -833,7 +915,6 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
         for (NSError *error in deletionErrors) {
             SPKLog(@"General", @"[Sparkle] File Deletion Error: %@", error);
         }
-
     }
 
     [SPKUtils markCacheClearedNow];
@@ -850,11 +931,14 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *libraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) firstObject];
     NSArray<NSURL *> *folders = @[
-        [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES],
-        [NSURL fileURLWithPath:[libraryFolder stringByAppendingPathComponent:@"Application Support/com.burbn.instagram/analytics"] isDirectory:YES],
-        [NSURL fileURLWithPath:[libraryFolder stringByAppendingPathComponent:@"Caches"] isDirectory:YES]
+        [NSURL fileURLWithPath:NSTemporaryDirectory()
+                   isDirectory:YES],
+        [NSURL fileURLWithPath:[libraryFolder stringByAppendingPathComponent:@"Application Support/com.burbn.instagram/analytics"]
+                   isDirectory:YES],
+        [NSURL fileURLWithPath:[libraryFolder stringByAppendingPathComponent:@"Caches"]
+                   isDirectory:YES]
     ];
-    NSArray<NSURLResourceKey> *resourceKeys = @[NSURLIsRegularFileKey, NSURLFileSizeKey];
+    NSArray<NSURLResourceKey> *resourceKeys = @[ NSURLIsRegularFileKey, NSURLFileSizeKey ];
     unsigned long long totalBytes = 0;
 
     for (NSURL *folderURL in folders) {
@@ -896,17 +980,24 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 
 + (BOOL)shouldAutomaticallyClearCacheNow {
     NSString *mode = [self cacheAutoClearMode];
-    if ([mode isEqualToString:@"never"]) return NO;
-    if ([mode isEqualToString:@"always"]) return YES;
+    if ([mode isEqualToString:@"never"])
+        return NO;
+    if ([mode isEqualToString:@"always"])
+        return YES;
 
     NSDate *lastClearedAt = [[NSUserDefaults standardUserDefaults] objectForKey:kSPKCacheLastClearedAtKey];
-    if (![lastClearedAt isKindOfClass:[NSDate class]]) return YES;
+    if (![lastClearedAt isKindOfClass:[NSDate class]])
+        return YES;
 
     NSTimeInterval interval = 0.0;
-    if ([mode isEqualToString:@"daily"]) interval = 24.0 * 60.0 * 60.0;
-    else if ([mode isEqualToString:@"weekly"]) interval = 7.0 * 24.0 * 60.0 * 60.0;
-    else if ([mode isEqualToString:@"monthly"]) interval = 30.0 * 24.0 * 60.0 * 60.0;
-    else return NO;
+    if ([mode isEqualToString:@"daily"])
+        interval = 24.0 * 60.0 * 60.0;
+    else if ([mode isEqualToString:@"weekly"])
+        interval = 7.0 * 24.0 * 60.0 * 60.0;
+    else if ([mode isEqualToString:@"monthly"])
+        interval = 30.0 * 24.0 * 60.0 * 60.0;
+    else
+        return NO;
 
     return [[NSDate date] timeIntervalSinceDate:lastClearedAt] >= interval;
 }
@@ -916,14 +1007,15 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (void)evaluateAutomaticCacheClearIfNeeded {
-    if (![self shouldAutomaticallyClearCacheNow]) return;
+    if (![self shouldAutomaticallyClearCacheNow])
+        return;
     SPKLog(@"General", @"[Sparkle] Automatically clearing cache...");
     [self cleanCache];
 }
 
 // MARK: Display View Controllers
 + (void)showShareVC:(id)item {
-    UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[item] applicationActivities:nil];
+    UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ item ] applicationActivities:nil];
     if (is_iPad()) {
         acVC.popoverPresentationController.sourceView = topMostController().view;
         acVC.popoverPresentationController.sourceRect = CGRectMake(topMostController().view.bounds.size.width / 2.0, topMostController().view.bounds.size.height / 2.0, 1.0, 1.0);
@@ -946,13 +1038,15 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     for (NSDictionary *section in rootSections) {
         NSArray *rows = section[@"rows"];
         for (SPKSetting *row in rows) {
-            if (![row isKindOfClass:[SPKSetting class]]) continue;
+            if (![row isKindOfClass:[SPKSetting class]])
+                continue;
             if ([row.title isEqualToString:title]) {
                 matchedRow = row;
                 break;
             }
         }
-        if (matchedRow) break;
+        if (matchedRow)
+            break;
     }
 
     UIViewController *settingsViewController = nil;
@@ -968,7 +1062,6 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     if (!settingsViewController) {
         settingsViewController = [SPKSettingsViewController new];
     }
-
 
     UIViewController *presenter = topMostController();
     SPKPresentSettingsAfterUnlock(presenter, ^{
@@ -994,7 +1087,8 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (void)presentViewControllerInSheet:(UIViewController *)vc {
-    if (!vc) return;
+    if (!vc)
+        return;
     UIViewController *presenter = topMostController();
     SPKPresentSettingsAfterUnlock(presenter, ^{
         UINavigationController *navigationController = [[SPKSettingsNavigationController alloc] initWithRootViewController:vc];
@@ -1090,17 +1184,19 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     return [self errorWithDescription:errorDesc code:1];
 }
 + (NSError *)errorWithDescription:(NSString *)errorDesc code:(NSInteger)errorCode {
-    NSError *error = [ NSError errorWithDomain:@"com.sparkle.sparkle" code:errorCode userInfo:@{ NSLocalizedDescriptionKey: errorDesc } ];
+    NSError *error = [NSError errorWithDomain:@"com.sparkle.sparkle" code:errorCode userInfo:@{NSLocalizedDescriptionKey : errorDesc}];
     return error;
 }
 + (BOOL)openURL:(NSURL *)url {
-    if (!url) return NO;
+    if (!url)
+        return NO;
     [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
     return YES;
 }
 
 + (BOOL)openURLThroughApplicationDelegate:(NSURL *)url {
-    if (!url) return NO;
+    if (!url)
+        return NO;
     UIApplication *application = [UIApplication sharedApplication];
     id<UIApplicationDelegate> delegate = application.delegate;
     if ([delegate respondsToSelector:@selector(application:openURL:options:)]) {
@@ -1121,29 +1217,32 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
                 }
             }
         }
-        if (rootVC) break;
+        if (rootVC)
+            break;
     }
     if (!rootVC) {
         rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
     }
-    if (!rootVC) return;
+    if (!rootVC)
+        return;
 
     Class galleryManagerClass = NSClassFromString(@"SPKGalleryManager");
     if (galleryManagerClass) {
-        #pragma clang diagnostic push
-        #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
         id manager = [galleryManagerClass performSelector:@selector(sharedManager)];
-        #pragma clang diagnostic pop
+#pragma clang diagnostic pop
         if (manager) {
             BOOL isLockEnabled = NO;
             @try {
                 isLockEnabled = [[manager valueForKey:@"isLockEnabled"] boolValue];
-            } @catch (NSException *exception) {}
+            } @catch (NSException *exception) {
+            }
             if (isLockEnabled) {
-                #pragma clang diagnostic push
-                #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
                 [manager performSelector:@selector(lockGallery)];
-                #pragma clang diagnostic pop
+#pragma clang diagnostic pop
             }
         }
     }
@@ -1155,13 +1254,15 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 
 + (BOOL)openInstagramProfileForUsername:(NSString *)username {
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
-    if (encodedUsername.length == 0) return NO;
+    if (encodedUsername.length == 0)
+        return NO;
 
     [self dismissPresentedViewControllers];
 
     NSURL *appURL = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://user?username=%@", encodedUsername]];
     if (appURL && [[UIApplication sharedApplication] canOpenURL:appURL]) {
-        if ([self openURLThroughApplicationDelegate:appURL]) return YES;
+        if ([self openURLThroughApplicationDelegate:appURL])
+            return YES;
         return [self openURL:appURL];
     }
 
@@ -1170,7 +1271,8 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (BOOL)openInstagramMediaURL:(NSURL *)url {
-    if (!url) return NO;
+    if (!url)
+        return NO;
     NSString *scheme = url.scheme.lowercaseString ?: @"";
     UIApplication *application = [UIApplication sharedApplication];
     id<UIApplicationDelegate> delegate = application.delegate;
@@ -1184,20 +1286,26 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
         if ([delegate respondsToSelector:continueSelector]) {
             BOOL handled = [delegate application:application
                             continueUserActivity:activity
-                               restorationHandler:^(__unused NSArray<id<UIUserActivityRestoring>> *restorableObjects) {}];
-            if (handled) return YES;
+                              restorationHandler:^(__unused NSArray<id<UIUserActivityRestoring>> *restorableObjects){
+                              }];
+            if (handled)
+                return YES;
         }
-        if ([self openURLThroughApplicationDelegate:url]) return YES;
+        if ([self openURLThroughApplicationDelegate:url])
+            return YES;
     } else if ([scheme isEqualToString:@"instagram"]) {
-        if ([self openURLThroughApplicationDelegate:url]) return YES;
+        if ([self openURLThroughApplicationDelegate:url])
+            return YES;
     }
 
     return [self openURL:url];
 }
 
 + (NSURL *)sanitizedInstagramShareURL:(NSURL *)url {
-    if (!url) return nil;
-    if (![url isKindOfClass:[NSURL class]]) return nil;
+    if (!url)
+        return nil;
+    if (![url isKindOfClass:[NSURL class]])
+        return nil;
 
     if (![url.scheme.lowercaseString isEqualToString:@"http"] && ![url.scheme.lowercaseString isEqualToString:@"https"]) {
         return url;
@@ -1235,13 +1343,16 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (NSString *)appendImgIndex:(NSInteger)imgIndex toURLString:(NSString *)urlString {
-    if (urlString.length == 0 || imgIndex <= 0) return urlString;
+    if (urlString.length == 0 || imgIndex <= 0)
+        return urlString;
     NSURL *url = [NSURL URLWithString:urlString];
-    if (!url) return urlString;
-    
+    if (!url)
+        return urlString;
+
     NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
-    if (!components) return urlString;
-    
+    if (!components)
+        return urlString;
+
     NSMutableArray<NSURLQueryItem *> *queryItems = [components.queryItems mutableCopy] ?: [NSMutableArray array];
     for (NSURLQueryItem *item in [queryItems copy]) {
         if ([item.name isEqualToString:@"img_index"]) {
@@ -1254,16 +1365,20 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (NSString *)instagramShortcodeForMediaPK:(NSString *)mediaPK {
-    if (mediaPK.length == 0) return nil;
+    if (mediaPK.length == 0)
+        return nil;
 
     // Media pk may arrive as "<pk>" or "<pk>_<userpk>"; only the leading id matters.
     NSString *identifier = [mediaPK componentsSeparatedByString:@"_"].firstObject ?: mediaPK;
-    if (identifier.length == 0) return nil;
-    if ([identifier rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+    if (identifier.length == 0)
+        return nil;
+    if ([identifier rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound)
+        return nil;
 
     unsigned long long value = 0;
     NSScanner *scanner = [NSScanner scannerWithString:identifier];
-    if (![scanner scanUnsignedLongLong:&value] || !scanner.isAtEnd || value == 0) return nil;
+    if (![scanner scanUnsignedLongLong:&value] || !scanner.isAtEnd || value == 0)
+        return nil;
 
     static NSString *alphabet = @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     NSMutableString *shortcode = [NSMutableString string];
@@ -1286,14 +1401,17 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 
 // MARK: Media
 + (NSURL *)getPhotoUrl:(IGPhoto *)photo {
-    if (!photo) return nil;
+    if (!photo)
+        return nil;
 
     NSURL *photoUrl = SPKHighestQualityURLFromVersions(SPKImageVersionsFromPhoto(photo));
-    if (photoUrl) return photoUrl;
+    if (photoUrl)
+        return photoUrl;
 
     if ([photo respondsToSelector:@selector(imageURLForWidth:)]) {
         photoUrl = [photo imageURLForWidth:100000.00];
-        if (photoUrl) return photoUrl;
+        if (photoUrl)
+            return photoUrl;
     }
 
     photoUrl = SPKURLFromStringOrURL(SPKObjectForSelector(photo, @"thumbnailURL"));
@@ -1301,10 +1419,12 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     return photoUrl;
 }
 + (NSURL *)getPhotoUrlForMedia:(IGMedia *)media {
-    if (!media) return nil;
+    if (!media)
+        return nil;
 
     IGPhoto *photo = SPKObjectForSelector(media, @"photo");
-    if (!photo) return nil;
+    if (!photo)
+        return nil;
 
     return [SPKUtils getPhotoUrl:photo];
 }
@@ -1312,31 +1432,37 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     return SPKHDProfilePicURL(user) ?: SPKThumbProfilePicURL(user);
 }
 + (NSURL *)getVideoUrl:(IGVideo *)video {
-    if (!video) return nil;
+    if (!video)
+        return nil;
 
     NSURL *videoURL = SPKHighestQualityURLFromVersions(SPKVideoVersionsFromVideo(video));
-    if (videoURL) return videoURL;
+    if (videoURL)
+        return videoURL;
 
     // The past (pre v398)
     if ([video respondsToSelector:@selector(sortedVideoURLsBySize)]) {
         id sorted = [video sortedVideoURLsBySize];
         videoURL = SPKURLFromVideoURLCollection(sorted);
-        if (videoURL) return videoURL;
+        if (videoURL)
+            return videoURL;
     }
 
     // The present (post v398)
     if ([video respondsToSelector:@selector(allVideoURLs)]) {
         videoURL = SPKURLFromVideoURLCollection([video allVideoURLs]);
-        if (videoURL) return videoURL;
+        if (videoURL)
+            return videoURL;
     }
 
     return nil;
 }
 + (NSURL *)getVideoUrlForMedia:(IGMedia *)media {
-    if (!media) return nil;
+    if (!media)
+        return nil;
 
     IGVideo *video = SPKObjectForSelector(media, @"video");
-    if (!video) return nil;
+    if (!video)
+        return nil;
 
     return [SPKUtils getVideoUrl:video];
 }
@@ -1366,35 +1492,40 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 
 // Functions
 
-
 // MARK: Alerts
-+ (BOOL)showConfirmation:(void(^)(void))okHandler title:(NSString *)title {
++ (BOOL)showConfirmation:(void (^)(void))okHandler title:(NSString *)title {
     return [self showConfirmation:okHandler cancelHandler:nil title:title message:nil];
 };
-+ (BOOL)showConfirmation:(void(^)(void))okHandler title:(NSString *)title message:(NSString *)message {
++ (BOOL)showConfirmation:(void (^)(void))okHandler title:(NSString *)title message:(NSString *)message {
     return [self showConfirmation:okHandler cancelHandler:nil title:title message:message];
 };
-+ (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title {
++ (BOOL)showConfirmation:(void (^)(void))okHandler cancelHandler:(void (^)(void))cancelHandler title:(NSString *)title {
     return [self showConfirmation:okHandler cancelHandler:cancelHandler title:title message:nil];
 };
-+ (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title message:(NSString *)message {
++ (BOOL)showConfirmation:(void (^)(void))okHandler cancelHandler:(void (^)(void))cancelHandler title:(NSString *)title message:(NSString *)message {
     [SPKIGAlertPresenter presentAlertFromViewController:topMostController()
                                                   title:title ?: @"Confirm Action"
                                                 message:message ?: @"Are you sure you want to continue?"
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:^{
-            if (cancelHandler) cancelHandler();
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Confirm" style:SPKIGAlertActionStyleDefault handler:^{
-            if (okHandler) okHandler();
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:^{
+                                                                                  if (cancelHandler)
+                                                                                      cancelHandler();
+                                                                              }],
+                                                    [SPKIGAlertAction actionWithTitle:@"Confirm"
+                                                                                style:SPKIGAlertActionStyleDefault
+                                                                              handler:^{
+                                                                                  if (okHandler)
+                                                                                      okHandler();
+                                                                              }],
+                                                ]];
     return YES;
 };
-+ (BOOL)showConfirmation:(void(^)(void))okHandler {
++ (BOOL)showConfirmation:(void (^)(void))okHandler {
     return [self showConfirmation:okHandler title:nil];
 };
-+ (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler {
++ (BOOL)showConfirmation:(void (^)(void))okHandler cancelHandler:(void (^)(void))cancelHandler {
     return [self showConfirmation:okHandler cancelHandler:cancelHandler title:nil];
 }
 + (void)showRestartConfirmation {
@@ -1402,11 +1533,15 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
                                                   title:@"Restart Required"
                                                 message:@"You must restart the app to apply this change"
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Later" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Restart" style:SPKIGAlertActionStyleDefault handler:^{
-            exit(0);
-        }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Later"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Restart"
+                                                                                style:SPKIGAlertActionStyleDefault
+                                                                              handler:^{
+                                                                                  exit(0);
+                                                                              }],
+                                                ]];
 };
 
 // MARK: Math
@@ -1436,22 +1571,26 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 
 + (id)getIvarForObj:(id)obj name:(const char *)name {
     Ivar ivar = class_getInstanceVariable(object_getClass(obj), name);
-    if (!ivar) return nil;
+    if (!ivar)
+        return nil;
 
     return object_getIvar(obj, ivar);
 }
 + (void)setIvarForObj:(id)obj name:(const char *)name value:(id)value {
     Ivar ivar = class_getInstanceVariable(object_getClass(obj), name);
-    if (!ivar) return;
+    if (!ivar)
+        return;
 
     object_setIvarWithStrongDefault(obj, ivar, value);
 }
 
 + (NSString *)igImageNameForImage:(UIImage *)image {
-    if (![image isKindOfClass:UIImage.class]) return nil;
+    if (![image isKindOfClass:UIImage.class])
+        return nil;
     // IG tags loaded images with their asset name on the ig_imageName property.
     SEL sel = NSSelectorFromString(@"ig_imageName");
-    if (![image respondsToSelector:sel]) return nil;
+    if (![image respondsToSelector:sel])
+        return nil;
     @try {
         id name = [image valueForKey:@"ig_imageName"];
         return [name isKindOfClass:NSString.class] ? name : nil;
@@ -1462,7 +1601,8 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
 }
 
 + (BOOL)control:(UIControl *)control hasTapActionContaining:(NSString *)needle {
-    if (![control isKindOfClass:UIControl.class] || needle.length == 0) return NO;
+    if (![control isKindOfClass:UIControl.class] || needle.length == 0)
+        return NO;
     @try {
         for (id target in [control allTargets]) {
             id realTarget = (target == [NSNull null]) ? nil : target;
@@ -1475,9 +1615,9 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
             }
         }
     }
-    @catch (NSException *exception) {}
+    @catch (NSException *exception) {
+    }
     return NO;
 }
-
 
 @end

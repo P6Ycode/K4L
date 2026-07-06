@@ -106,9 +106,9 @@ typedef NS_ENUM(NSInteger, SPKPAChangeType) {
 @interface SPKProfileAnalyzerChangeEvent : NSObject
 
 @property (nonatomic, assign) SPKPAChangeType type;
-@property (nonatomic, strong) SPKProfileAnalyzerUser *user;              // subject (state at detection)
+@property (nonatomic, strong) SPKProfileAnalyzerUser *user;                   // subject (state at detection)
 @property (nonatomic, strong, nullable) SPKProfileAnalyzerUser *previousUser; // ProfileUpdate: prior state
-@property (nonatomic, strong) NSDate *date;                             // scan date it was detected
+@property (nonatomic, strong) NSDate *date;                                   // scan date it was detected
 @property (nonatomic, assign) BOOL seen;
 
 // Stable identity (type + subject pk + date) used to de-dup on import/merge.
@@ -121,7 +121,7 @@ typedef NS_ENUM(NSInteger, SPKPAChangeType) {
 
 // Mints the (unseen) events implied by a run's delta report, dated `date`.
 + (NSArray<SPKProfileAnalyzerChangeEvent *> *)eventsFromReport:(SPKProfileAnalyzerReport *)report
-                                                         date:(NSDate *)date;
+                                                          date:(NSDate *)date;
 
 @end
 

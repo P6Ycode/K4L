@@ -3,14 +3,16 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 
-#import "SPKGalleryFile.h"
-#import "SPKGallerySaveMetadata.h"
 #import "../../Utils.h"
 #import "../ActionButton/ActionButtonLookupUtils.h"
+#import "SPKGalleryFile.h"
+#import "SPKGallerySaveMetadata.h"
 
 static NSString *SPKGalleryStringValue(id value) {
-    if (!value) return nil;
-    if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] > 0 ? value : nil;
+    if (!value)
+        return nil;
+    if ([value isKindOfClass:[NSString class]])
+        return [(NSString *)value length] > 0 ? value : nil;
     if ([value respondsToSelector:@selector(stringValue)]) {
         NSString *string = [value stringValue];
         return string.length > 0 ? string : nil;
@@ -23,7 +25,8 @@ static NSString *SPKGalleryStringValue(id value) {
 }
 
 static id SPKGalleryFieldCacheValue(id target, NSString *key) {
-    if (!target || key.length == 0) return nil;
+    if (!target || key.length == 0)
+        return nil;
     if ([target isKindOfClass:[NSDictionary class]]) {
         id value = ((NSDictionary *)target)[key];
         return [value isKindOfClass:[NSNull class]] ? nil : value;
@@ -37,7 +40,8 @@ static id SPKGalleryFieldCacheValue(id target, NSString *key) {
     } @catch (__unused NSException *exception) {
         return nil;
     }
-    if (!fieldCacheIvar) return nil;
+    if (!fieldCacheIvar)
+        return nil;
 
     id fieldCache = nil;
     @try {
@@ -45,44 +49,56 @@ static id SPKGalleryFieldCacheValue(id target, NSString *key) {
     } @catch (__unused NSException *exception) {
         return nil;
     }
-    if (![fieldCache isKindOfClass:[NSDictionary class]]) return nil;
+    if (![fieldCache isKindOfClass:[NSDictionary class]])
+        return nil;
 
     id value = ((NSDictionary *)fieldCache)[key];
     return [value isKindOfClass:[NSNull class]] ? nil : value;
 }
 
 static NSTimeInterval SPKGalleryTimestampFromValue(id value) {
-    if (!value || [value isKindOfClass:[NSNull class]]) return 0.0;
-    if ([value isKindOfClass:[NSDate class]]) return [(NSDate *)value timeIntervalSince1970];
+    if (!value || [value isKindOfClass:[NSNull class]])
+        return 0.0;
+    if ([value isKindOfClass:[NSDate class]])
+        return [(NSDate *)value timeIntervalSince1970];
 
     double raw = 0.0;
     if ([value respondsToSelector:@selector(doubleValue)]) {
         raw = [value doubleValue];
     }
-    if (raw <= 0.0) return 0.0;
-    if (raw > 1e15) raw /= 1000000.0;
-    else if (raw > 1e12) raw /= 1000.0;
+    if (raw <= 0.0)
+        return 0.0;
+    if (raw > 1e15)
+        raw /= 1000000.0;
+    else if (raw > 1e12)
+        raw /= 1000.0;
     return raw;
 }
 
 static NSDate *SPKGalleryDateFromTimestampValue(id value) {
     NSTimeInterval timestamp = SPKGalleryTimestampFromValue(value);
-    if (timestamp <= 0.0) return nil;
+    if (timestamp <= 0.0)
+        return nil;
     return [NSDate dateWithTimeIntervalSince1970:timestamp];
 }
 
 static NSString *SPKGalleryStringForSelector(id target, NSString *selectorName) {
-    if (!target || selectorName.length == 0) return nil;
+    if (!target || selectorName.length == 0)
+        return nil;
     id value = SPKObjectForSelector(target, selectorName);
-    if (!value) value = SPKKVCObject(target, selectorName);
+    if (!value)
+        value = SPKKVCObject(target, selectorName);
     return SPKGalleryStringValue(value);
 }
 
 static NSURL *SPKGalleryURLForSelector(id target, NSString *selectorName) {
-    if (!target || selectorName.length == 0) return nil;
+    if (!target || selectorName.length == 0)
+        return nil;
     id value = SPKObjectForSelector(target, selectorName);
-    if (!value) value = SPKKVCObject(target, selectorName);
-    if ([value isKindOfClass:[NSURL class]]) return value;
+    if (!value)
+        value = SPKKVCObject(target, selectorName);
+    if ([value isKindOfClass:[NSURL class]])
+        return value;
     if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] > 0) {
         return [NSURL URLWithString:(NSString *)value];
     }
@@ -90,9 +106,11 @@ static NSURL *SPKGalleryURLForSelector(id target, NSString *selectorName) {
 }
 
 static id SPKGalleryNestedObjectForSelector(id target, NSString *selectorName) {
-    if (!target || selectorName.length == 0) return nil;
+    if (!target || selectorName.length == 0)
+        return nil;
     id value = SPKObjectForSelector(target, selectorName);
-    if (!value) value = SPKKVCObject(target, selectorName);
+    if (!value)
+        value = SPKKVCObject(target, selectorName);
     if ([value isKindOfClass:[NSArray class]]) {
         return ((NSArray *)value).firstObject;
     }
@@ -100,77 +118,96 @@ static id SPKGalleryNestedObjectForSelector(id target, NSString *selectorName) {
 }
 
 static NSString *SPKGalleryRecursiveStringForSelectors(id target, NSArray<NSString *> *selectorNames, NSInteger depth) {
-    if (!target || depth > 3) return nil;
+    if (!target || depth > 3)
+        return nil;
 
     for (NSString *selectorName in selectorNames) {
         NSString *value = SPKGalleryStringForSelector(target, selectorName);
-        if (value.length > 0) return value;
+        if (value.length > 0)
+            return value;
     }
 
-    for (NSString *selectorName in @[@"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post"]) {
+    for (NSString *selectorName in @[ @"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post" ]) {
         id nested = SPKGalleryNestedObjectForSelector(target, selectorName);
-        if (!nested || nested == target) continue;
+        if (!nested || nested == target)
+            continue;
         NSString *value = SPKGalleryRecursiveStringForSelectors(nested, selectorNames, depth + 1);
-        if (value.length > 0) return value;
+        if (value.length > 0)
+            return value;
     }
 
     return nil;
 }
 
 static NSDate *SPKGalleryRecursiveDateForKeys(id target, NSArray<NSString *> *keys, NSInteger depth) {
-    if (!target || depth > 3) return nil;
+    if (!target || depth > 3)
+        return nil;
 
     for (NSString *key in keys) {
         id value = SPKObjectForSelector(target, key);
-        if (!value) value = SPKKVCObject(target, key);
-        if (!value) value = SPKGalleryFieldCacheValue(target, key);
+        if (!value)
+            value = SPKKVCObject(target, key);
+        if (!value)
+            value = SPKGalleryFieldCacheValue(target, key);
         NSDate *date = SPKGalleryDateFromTimestampValue(value);
-        if (date) return date;
+        if (date)
+            return date;
     }
 
-    for (NSString *selectorName in @[@"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post"]) {
+    for (NSString *selectorName in @[ @"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post" ]) {
         id nested = SPKGalleryNestedObjectForSelector(target, selectorName);
-        if (!nested || nested == target) continue;
+        if (!nested || nested == target)
+            continue;
         NSDate *date = SPKGalleryRecursiveDateForKeys(nested, keys, depth + 1);
-        if (date) return date;
+        if (date)
+            return date;
     }
 
     return nil;
 }
 
 static NSURL *SPKGalleryRecursiveURLForSelectors(id target, NSArray<NSString *> *selectorNames, NSInteger depth) {
-    if (!target || depth > 3) return nil;
+    if (!target || depth > 3)
+        return nil;
 
     for (NSString *selectorName in selectorNames) {
         NSURL *value = SPKGalleryURLForSelector(target, selectorName);
-        if (value) return value;
+        if (value)
+            return value;
     }
 
-    for (NSString *selectorName in @[@"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post"]) {
+    for (NSString *selectorName in @[ @"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post" ]) {
         id nested = SPKGalleryNestedObjectForSelector(target, selectorName);
-        if (!nested || nested == target) continue;
+        if (!nested || nested == target)
+            continue;
         NSURL *value = SPKGalleryRecursiveURLForSelectors(nested, selectorNames, depth + 1);
-        if (value) return value;
+        if (value)
+            return value;
     }
 
     return nil;
 }
 
 static id SPKGalleryUserFromMedia(id media) {
-    if (!media) return nil;
+    if (!media)
+        return nil;
 
-    for (NSString *selectorName in @[@"user", @"owner", @"author", @"creator", @"actor", @"profileUser"]) {
+    for (NSString *selectorName in @[ @"user", @"owner", @"author", @"creator", @"actor", @"profileUser" ]) {
         id user = SPKObjectForSelector(media, selectorName);
-        if (!user) user = SPKKVCObject(media, selectorName);
-        if (user) return user;
+        if (!user)
+            user = SPKKVCObject(media, selectorName);
+        if (user)
+            return user;
     }
 
-    for (NSString *nestedSelector in @[@"media", @"item", @"storyItem", @"visualMessage"]) {
+    for (NSString *nestedSelector in @[ @"media", @"item", @"storyItem", @"visualMessage" ]) {
         id nested = SPKObjectForSelector(media, nestedSelector);
-        if (!nested) nested = SPKKVCObject(media, nestedSelector);
+        if (!nested)
+            nested = SPKKVCObject(media, nestedSelector);
         if (nested && nested != media) {
             id user = SPKGalleryUserFromMedia(nested);
-            if (user) return user;
+            if (user)
+                return user;
         }
     }
 
@@ -239,7 +276,8 @@ static BOOL SPKGalleryURLIsPostOrReel(NSURL *url) {
 @implementation SPKGalleryOriginController
 
 + (void)populateProfileMetadata:(SPKGallerySaveMetadata *)metadata username:(NSString *)username user:(id)user {
-    if (!metadata) return;
+    if (!metadata)
+        return;
 
     if (username.length > 0) {
         metadata.sourceUsername = username;
@@ -249,22 +287,27 @@ static BOOL SPKGalleryURLIsPostOrReel(NSURL *url) {
     }
 
     NSString *userPK = SPKGalleryStringForSelector(user, @"pk");
-    if (userPK.length == 0) userPK = SPKGalleryStringForSelector(user, @"id");
-    if (userPK.length > 0) metadata.sourceUserPK = userPK;
+    if (userPK.length == 0)
+        userPK = SPKGalleryStringForSelector(user, @"id");
+    if (userPK.length > 0)
+        metadata.sourceUserPK = userPK;
 
     NSURL *profileURL = nil;
-    for (NSString *selectorName in @[@"profileURL", @"profileUrl", @"url"]) {
+    for (NSString *selectorName in @[ @"profileURL", @"profileUrl", @"url" ]) {
         profileURL = SPKGalleryURLForSelector(user, selectorName);
-        if (profileURL) break;
+        if (profileURL)
+            break;
     }
     if (!profileURL && username.length > 0) {
         profileURL = [NSURL URLWithString:SPKGalleryProfileURLStringForUsername(username)];
     }
-    if (profileURL) metadata.sourceProfileURLString = profileURL.absoluteString;
+    if (profileURL)
+        metadata.sourceProfileURLString = profileURL.absoluteString;
 }
 
 + (void)populateMetadata:(SPKGallerySaveMetadata *)metadata fromMedia:(id)media {
-    if (!metadata || !media) return;
+    if (!metadata || !media)
+        return;
 
     NSString *explicitUsername = SPKGalleryStringForSelector(media, @"sourceUsername");
     if (explicitUsername.length > 0) {
@@ -275,38 +318,47 @@ static BOOL SPKGalleryURLIsPostOrReel(NSURL *url) {
     }
 
     NSString *explicitUserPK = SPKGalleryStringForSelector(media, @"sourceUserPK");
-    if (explicitUserPK.length > 0) metadata.sourceUserPK = explicitUserPK;
+    if (explicitUserPK.length > 0)
+        metadata.sourceUserPK = explicitUserPK;
 
     NSString *explicitMediaPK = SPKGalleryStringForSelector(media, @"sourceMediaPK");
-    if (explicitMediaPK.length > 0) metadata.sourceMediaPK = explicitMediaPK;
+    if (explicitMediaPK.length > 0)
+        metadata.sourceMediaPK = explicitMediaPK;
 
     NSString *explicitMediaURL = SPKGalleryStringForSelector(media, @"sourceMediaURLString");
-    if (explicitMediaURL.length > 0) metadata.sourceMediaURLString = explicitMediaURL;
+    if (explicitMediaURL.length > 0)
+        metadata.sourceMediaURLString = explicitMediaURL;
 
     id explicitPostedDate = SPKObjectForSelector(media, @"importPostedDate") ?: SPKKVCObject(media, @"importPostedDate");
     NSDate *postedDateOverride = [explicitPostedDate isKindOfClass:NSDate.class] ? (NSDate *)explicitPostedDate : SPKGalleryDateFromTimestampValue(explicitPostedDate);
-    if (postedDateOverride) metadata.importPostedDate = postedDateOverride;
+    if (postedDateOverride)
+        metadata.importPostedDate = postedDateOverride;
 
     id backingMedia = SPKObjectForSelector(media, @"backingMedia") ?: SPKKVCObject(media, @"backingMedia");
-    if (backingMedia) media = backingMedia;
+    if (backingMedia)
+        media = backingMedia;
 
     NSString *username = SPKUsernameFromMediaObject(media);
-    if (username.length == 0) username = explicitUsername;
+    if (username.length == 0)
+        username = explicitUsername;
     id user = SPKGalleryUserFromMedia(media);
     [self populateProfileMetadata:metadata username:username user:user];
 
-    NSString *mediaPK = SPKGalleryRecursiveStringForSelectors(media, @[@"pk", @"id", @"mediaID", @"mediaId"], 0);
-    if (mediaPK.length > 0) metadata.sourceMediaPK = mediaPK;
+    NSString *mediaPK = SPKGalleryRecursiveStringForSelectors(media, @[ @"pk", @"id", @"mediaID", @"mediaId" ], 0);
+    if (mediaPK.length > 0)
+        metadata.sourceMediaPK = mediaPK;
 
-    NSString *mediaCode = SPKGalleryRecursiveStringForSelectors(media, @[@"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken"], 0);
-    if (mediaCode.length > 0) metadata.sourceMediaCode = mediaCode;
+    NSString *mediaCode = SPKGalleryRecursiveStringForSelectors(media, @[ @"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken" ], 0);
+    if (mediaCode.length > 0)
+        metadata.sourceMediaCode = mediaCode;
 
     if (!metadata.importPostedDate) {
-        NSDate *postedDate = SPKGalleryRecursiveDateForKeys(media, @[@"taken_at", @"takenAt", @"takenAtDate", @"device_timestamp", @"deviceTimestamp", @"created_at", @"createdAt", @"upload_time", @"uploadTime", @"published_time", @"publishedTime"], 0);
-        if (postedDate) metadata.importPostedDate = postedDate;
+        NSDate *postedDate = SPKGalleryRecursiveDateForKeys(media, @[ @"taken_at", @"takenAt", @"takenAtDate", @"device_timestamp", @"deviceTimestamp", @"created_at", @"createdAt", @"upload_time", @"uploadTime", @"published_time", @"publishedTime" ], 0);
+        if (postedDate)
+            metadata.importPostedDate = postedDate;
     }
 
-    NSURL *mediaURL = SPKGalleryRecursiveURLForSelectors(media, @[@"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl"], 0);
+    NSURL *mediaURL = SPKGalleryRecursiveURLForSelectors(media, @[ @"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl" ], 0);
 
     // A story's media object often exposes a generic post/reel permalink that routes
     // to the feed viewer, not the story tray. Reject it so we build a proper
@@ -325,7 +377,8 @@ static BOOL SPKGalleryURLIsPostOrReel(NSURL *url) {
             mediaURL = [NSURL URLWithString:generatedURLString];
         }
     }
-    if (mediaURL) metadata.sourceMediaURLString = mediaURL.absoluteString;
+    if (mediaURL)
+        metadata.sourceMediaURLString = mediaURL.absoluteString;
 }
 
 + (BOOL)openOriginalPostForGalleryFile:(SPKGalleryFile *)file {

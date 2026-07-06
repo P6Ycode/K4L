@@ -84,7 +84,8 @@ void SPKApplyMediaChromeNavigationBar(UINavigationBar *bar) {
 // from the previous controller's navigation item, so applying it to every
 // controller in the stack covers every transition, including back to the root.
 static void SPKApplyMediaChromeBackButtonDisplayMode(UIViewController *viewController) {
-    if (@available(iOS 26.0, *)) return;
+    if (@available(iOS 26.0, *))
+        return;
     viewController.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeMinimal;
 }
 
@@ -142,7 +143,7 @@ static UIImage *SPKMediaChromeNormalizedTopIcon(NSString *resourceName) {
                                  drawSize.height);
 
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:canvasSize];
-    UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+    UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext *_Nonnull context) {
         (void)context;
         [source drawInRect:CGRectIntegral(drawRect)];
     }];
@@ -155,11 +156,11 @@ UIImage *SPKMediaChromeTopBarIcon(NSString *resourceName) {
 
 UIBarButtonItem *SPKMediaChromeTopBarButtonItem(NSString *resourceName, id target, SEL action) {
     return SPKMediaChromeTopBarButtonItemWithStyle(resourceName,
-                                                  target,
-                                                  action,
-                                                  UIBarButtonItemStylePlain,
-                                                  [SPKUtils SPKColor_InstagramPrimaryText],
-                                                  nil);
+                                                   target,
+                                                   action,
+                                                   UIBarButtonItemStylePlain,
+                                                   [SPKUtils SPKColor_InstagramPrimaryText],
+                                                   nil);
 }
 
 UIBarButtonItem *SPKMediaChromeTopBarButtonItemWithTint(NSString *resourceName, id target, SEL action, UIColor *tintColor, NSString *accessibilityLabel) {
@@ -209,8 +210,8 @@ void SPKMediaChromeSetLeadingTopBarItems(UINavigationItem *navigationItem, NSArr
         navigationItem.leftBarButtonItems = nil;
         navigationItem.leftBarButtonItem = nil;
         navigationItem.leadingItemGroups = items.count > 0
-            ? @[ [UIBarButtonItemGroup fixedGroupWithRepresentativeItem:nil items:items] ]
-            : @[];
+                                               ? @[ [UIBarButtonItemGroup fixedGroupWithRepresentativeItem:nil items:items] ]
+                                               : @[];
         return;
     }
     navigationItem.leftBarButtonItems = items.count > 0 ? items : nil;
@@ -225,8 +226,8 @@ void SPKMediaChromeSetTrailingTopBarItems(UINavigationItem *navigationItem, NSAr
         navigationItem.rightBarButtonItems = nil;
         navigationItem.rightBarButtonItem = nil;
         navigationItem.trailingItemGroups = items.count > 0
-            ? @[ [UIBarButtonItemGroup fixedGroupWithRepresentativeItem:nil items:items] ]
-            : @[];
+                                                ? @[ [UIBarButtonItemGroup fixedGroupWithRepresentativeItem:nil items:items] ]
+                                                : @[];
         return;
     }
     navigationItem.rightBarButtonItems = items.count > 0 ? items : nil;

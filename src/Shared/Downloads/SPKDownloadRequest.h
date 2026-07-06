@@ -55,7 +55,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL finalizeAsBatchClipboard;
 
 + (instancetype)requestWithItems:(NSArray<SPKDownloadItemRequest *> *)items
-                      destination:(SPKDownloadDestination)destination;
+                     destination:(SPKDownloadDestination)destination;
 - (NSDictionary *)dictionaryRepresentation;
 + (nullable instancetype)fromDictionary:(NSDictionary *)dict;
 @end

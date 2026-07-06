@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
 
-#import "SPKDownloadTypes.h"
-#import "SPKDownloadRequest.h"
 #import "SPKDownloadItem.h"
+#import "SPKDownloadRequest.h"
+#import "SPKDownloadTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

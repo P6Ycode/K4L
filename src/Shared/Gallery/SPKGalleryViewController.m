@@ -1,43 +1,43 @@
 #import "SPKGalleryViewController.h"
-#import "SPKGalleryFile.h"
-#import "SPKGalleryFileDetailsViewController.h"
-#import "SPKGalleryGridCell.h"
-#import "SPKGalleryGridDensity.h"
-#import "SPKGalleryFolderChipBar.h"
-#import "SPKGalleryListCollectionCell.h"
-#import "SPKGalleryFolderCell.h"
-#import "SPKGalleryCoreDataStack.h"
-#import "SPKGalleryManager.h"
-#import "SPKGalleryLockViewController.h"
-#import "SPKGallerySortViewController.h"
-#import "SPKGalleryFilterViewController.h"
-#import "SPKGallerySettingsViewController.h"
-#import "SPKGalleryDeleteViewController.h"
-#import "SPKGalleryOriginController.h"
-#import "SPKGalleryHiddenSources.h"
+#import "../../AssetUtils.h"
+#import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 #import "../Account/SPKAccountManager.h"
 #import "../MediaPreview/SPKFullScreenMediaPlayer.h"
 #import "../MediaTrim/SPKTrimConfiguration.h"
-#import "../MediaTrim/SPKTrimResult.h"
 #import "../MediaTrim/SPKTrimEditorViewController.h"
+#import "../MediaTrim/SPKTrimResult.h"
 #import "../MediaTrim/SPKTrimSaveCoordinator.h"
 #import "../PhotoEdit/SPKPhotoEditorViewController.h"
-#import "../UI/SPKMediaChrome.h"
 #import "../UI/SPKIGAlertPresenter.h"
-#import "../../InstagramHeaders.h"
-#import "../../AssetUtils.h"
-#import "../../Utils.h"
+#import "../UI/SPKMediaChrome.h"
+#import "SPKGalleryCoreDataStack.h"
+#import "SPKGalleryDeleteViewController.h"
+#import "SPKGalleryFile.h"
+#import "SPKGalleryFileDetailsViewController.h"
+#import "SPKGalleryFilterViewController.h"
+#import "SPKGalleryFolderCell.h"
+#import "SPKGalleryFolderChipBar.h"
+#import "SPKGalleryGridCell.h"
+#import "SPKGalleryGridDensity.h"
+#import "SPKGalleryHiddenSources.h"
+#import "SPKGalleryListCollectionCell.h"
+#import "SPKGalleryLockViewController.h"
+#import "SPKGalleryManager.h"
+#import "SPKGalleryOriginController.h"
+#import "SPKGallerySettingsViewController.h"
+#import "SPKGallerySortViewController.h"
 #import <CoreData/CoreData.h>
 
-static NSString * const kGridCellID = @"SPKGalleryGridCell";
-static NSString * const kListCellID = @"SPKGalleryListCell";
-static NSString * const kFolderCellID = @"SPKGalleryFolderCell";
-static NSString * const kFolderChipHeaderID = @"SPKGalleryFolderChipHeader";
+static NSString *const kGridCellID = @"SPKGalleryGridCell";
+static NSString *const kListCellID = @"SPKGalleryListCell";
+static NSString *const kFolderCellID = @"SPKGalleryFolderCell";
+static NSString *const kFolderChipHeaderID = @"SPKGalleryFolderChipHeader";
 
-static NSString * const kSortModeKey    = @"gallery_sort_mode";
-static NSString * const kSortGroupByTypeKey = @"gallery_sort_group_by_type";
-static NSString * const kViewModeKey    = @"gallery_view_mode"; // 0 = grid, 1 = list
-static NSString * const kFavoritesAtTopKey = @"gallery_show_favorites_top";
+static NSString *const kSortModeKey = @"gallery_sort_mode";
+static NSString *const kSortGroupByTypeKey = @"gallery_sort_group_by_type";
+static NSString *const kViewModeKey = @"gallery_view_mode"; // 0 = grid, 1 = list
+static NSString *const kFavoritesAtTopKey = @"gallery_show_favorites_top";
 
 static CGFloat const kGridSpacing = 2.0;
 static CGFloat const kGalleryMenuIconPointSize = 22.0;
@@ -53,14 +53,17 @@ static UIImage *SPKGalleryMenuActionIcon(NSString *resourceName) {
 // in so the count reflects what the folder actually shows under the current
 // filter rather than its raw total.
 static NSInteger SPKGalleryItemCountForFolderPath(NSManagedObjectContext *context, NSString *folderPath, NSPredicate *extraFilter) {
-    if (folderPath.length == 0) return 0;
+    if (folderPath.length == 0)
+        return 0;
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     NSPredicate *folder = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
-                           folderPath, [folderPath stringByAppendingString:@"/"]];
+                                                           folderPath, [folderPath stringByAppendingString:@"/"]];
     NSMutableArray<NSPredicate *> *parts = [NSMutableArray arrayWithObject:folder];
     NSPredicate *visible = SPKGalleryVisibleSourcesPredicate();
-    if (visible) [parts addObject:visible];
-    if (extraFilter) [parts addObject:extraFilter];
+    if (visible)
+        [parts addObject:visible];
+    if (extraFilter)
+        [parts addObject:extraFilter];
     request.predicate = parts.count == 1 ? folder : [NSCompoundPredicate andPredicateWithSubpredicates:parts];
     return [context countForFetchRequest:request error:nil];
 }
@@ -71,15 +74,15 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 };
 
 @interface SPKGalleryViewController () <UICollectionViewDataSource,
-                                       UICollectionViewDelegate,
-                                       UICollectionViewDelegateFlowLayout,
-                                       NSFetchedResultsControllerDelegate,
-                                       SPKGallerySortViewControllerDelegate,
-                                       SPKGalleryFilterViewControllerDelegate,
-                                       UIAdaptivePresentationControllerDelegate,
-                                       UISearchResultsUpdating,
-                                       UISearchControllerDelegate,
-                                       UISearchBarDelegate>
+                                        UICollectionViewDelegate,
+                                        UICollectionViewDelegateFlowLayout,
+                                        NSFetchedResultsControllerDelegate,
+                                        SPKGallerySortViewControllerDelegate,
+                                        SPKGalleryFilterViewControllerDelegate,
+                                        UIAdaptivePresentationControllerDelegate,
+                                        UISearchResultsUpdating,
+                                        UISearchControllerDelegate,
+                                        UISearchBarDelegate>
 
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) NSFetchedResultsController *fetchedResultsController;
@@ -155,9 +158,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     if (mgr.isLockEnabled && !mgr.isUnlocked) {
         [SPKGalleryLockViewController presentUnlockFromViewController:presenter
                                                            completion:^(BOOL success) {
-            if (!success) return;
-            presentGalleryNav();
-        }];
+                                                               if (!success)
+                                                                   return;
+                                                               presentGalleryNav();
+                                                           }];
     } else {
         presentGalleryNav();
     }
@@ -264,8 +268,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     if (incoming && incoming != self && ![incoming isKindOfClass:[SPKGalleryViewController class]]) {
         [self.navigationController setToolbarHidden:YES animated:animated];
     }
-    if (self.navigationController.viewControllers.firstObject != self) return;
-    if (self.isMovingFromParentViewController) return;
+    if (self.navigationController.viewControllers.firstObject != self)
+        return;
+    if (self.isMovingFromParentViewController)
+        return;
     if (self.isBeingDismissed || self.navigationController.isBeingDismissed) {
         if ([SPKGalleryManager sharedManager].isLockEnabled) {
             [[SPKGalleryManager sharedManager] lockGallery];
@@ -299,8 +305,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     NSString *text = nil;
     if (self.selectionMode) {
         text = self.selectedFileIDs.count > 0
-            ? [NSString stringWithFormat:@"%lu Selected", (unsigned long)self.selectedFileIDs.count]
-            : @"Select Files";
+                   ? [NSString stringWithFormat:@"%lu Selected", (unsigned long)self.selectedFileIDs.count]
+                   : @"Select Files";
     } else {
         text = self.currentFolderPath.length > 0 ? [self.currentFolderPath lastPathComponent] : @"Gallery";
     }
@@ -319,13 +325,13 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     controller.searchResultsUpdater = self;
     controller.delegate = self;
     controller.searchBar.delegate = self;
-    [controller.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0] 
-                         forSearchBarIcon:UISearchBarIconSearch 
-                                    state:UIControlStateNormal];
+    [controller.searchBar setImage:[SPKAssetUtils instagramIconNamed:@"search" pointSize:18.0]
+                  forSearchBarIcon:UISearchBarIconSearch
+                             state:UIControlStateNormal];
     controller.searchBar.placeholder = @"Search Gallery";
     // Scope toggle: search the current folder, or across all folders. Let the
     // search controller manage the scope bar's visibility (shown while searching).
-    controller.searchBar.scopeButtonTitles = @[@"This Folder", @"All Folders"];
+    controller.searchBar.scopeButtonTitles = @[ @"This Folder", @"All Folders" ];
     controller.automaticallyShowsScopeBar = YES;
     self.searchController = controller;
     self.navigationItem.searchController = controller;
@@ -373,7 +379,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     // Leading group changes as you browse (close ⇄ back) or enter selection
     // (Cancel). Apply only when it actually changes.
     NSString *leadingSignature = self.selectionMode ? @"cancel"
-        : ([self canNavigateBackInFolders] ? @"back" : @"close");
+                                                    : ([self canNavigateBackInFolders] ? @"back" : @"close");
     if (![leadingSignature isEqualToString:self.lastLeadingNavSignature]) {
         self.lastLeadingNavSignature = leadingSignature;
         UIBarButtonItem *leadingItem;
@@ -392,8 +398,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     // (Select-all, whose icon tracks the count) — never on folder navigation. Apply
     // only on change so the Liquid Glass pill doesn't re-lay-out (a visible jump).
     NSString *trailingSignature = self.selectionMode
-        ? [@"selectAll:" stringByAppendingString:selectionIcon]
-        : @"browse";
+                                      ? [@"selectAll:" stringByAppendingString:selectionIcon]
+                                      : @"browse";
     if (![trailingSignature isEqualToString:self.lastTrailingNavSignature]) {
         self.lastTrailingNavSignature = trailingSignature;
         if (self.selectionMode) {
@@ -430,7 +436,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
         UIBarButtonItem *deleteItem = [self galleryBottomBarItemWithResource:@"trash" accessibility:@"Delete selected" action:@selector(deleteSelectedFiles)];
         deleteItem.tintColor = [SPKUtils SPKColor_InstagramDestructive];
 
-        primary = @[shareItem, moveItem, favoriteItem, deleteItem];
+        primary = @[ shareItem, moveItem, favoriteItem, deleteItem ];
     } else {
         UIBarButtonItem *filterItem = [self galleryBottomBarItemWithResource:@"filter" accessibility:@"Filter" action:@selector(presentFilter)];
         UIBarButtonItem *sortItem = [self galleryBottomBarItemWithResource:@"sort" accessibility:@"Sort" action:@selector(presentSort)];
@@ -441,7 +447,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
         UIBarButtonItem *folderItem = [self galleryBottomBarItemWithResource:@"folder" accessibility:@"New folder" action:@selector(presentCreateFolder)];
 
-        primary = @[toggleItem, sortItem, filterItem, folderItem];
+        primary = @[ toggleItem, sortItem, filterItem, folderItem ];
     }
 
     // Search lives in its own trailing capsule in both browse and selection modes
@@ -488,8 +494,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     [_collectionView registerClass:[SPKGalleryListCollectionCell class] forCellWithReuseIdentifier:kListCellID];
     [_collectionView registerClass:[SPKGalleryFolderCell class] forCellWithReuseIdentifier:kFolderCellID];
     [_collectionView registerClass:[SPKGalleryFolderChipBar class]
-         forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
-                withReuseIdentifier:kFolderChipHeaderID];
+        forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+               withReuseIdentifier:kFolderChipHeaderID];
     [self.view addSubview:_collectionView];
 
     UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handleGridPinch:)];
@@ -554,30 +560,34 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
 - (void)setGridColumns:(NSInteger)gridColumns {
     NSInteger clamped = MAX(kSPKGalleryGridColumnsMin, MIN(kSPKGalleryGridColumnsMax, gridColumns));
-    if (clamped == _gridColumns) return;
+    if (clamped == _gridColumns)
+        return;
     _gridColumns = clamped;
     SPKGalleryGridSetColumns(clamped);
 }
 
 /// Applies a new column count with a smooth relayout. No-op outside grid mode.
 - (void)applyGridColumns:(NSInteger)columns animated:(BOOL)animated {
-    if (self.viewMode != SPKGalleryViewModeGrid) return;
+    if (self.viewMode != SPKGalleryViewModeGrid)
+        return;
     NSInteger clamped = MAX(kSPKGalleryGridColumnsMin, MIN(kSPKGalleryGridColumnsMax, columns));
-    if (clamped == self.gridColumns) return;
+    if (clamped == self.gridColumns)
+        return;
 
     self.gridColumns = clamped;
 
     if (animated) {
         [UIView animateWithDuration:0.25
-                              delay:0.0
-                            options:UIViewAnimationOptionCurveEaseInOut
-                         animations:^{
-            [self.collectionView.collectionViewLayout invalidateLayout];
-            [self.collectionView layoutIfNeeded];
-        } completion:^(__unused BOOL finished) {
-            // Username overlay visibility depends on density; refresh cells.
-            [self reconfigureVisibleGridCells];
-        }];
+            delay:0.0
+            options:UIViewAnimationOptionCurveEaseInOut
+            animations:^{
+                [self.collectionView.collectionViewLayout invalidateLayout];
+                [self.collectionView layoutIfNeeded];
+            }
+            completion:^(__unused BOOL finished) {
+                // Username overlay visibility depends on density; refresh cells.
+                [self reconfigureVisibleGridCells];
+            }];
     } else {
         [self.collectionView.collectionViewLayout invalidateLayout];
         [self reconfigureVisibleGridCells];
@@ -588,14 +598,17 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 /// Re-runs grid cell configuration for visible items (e.g. after a density
 /// change that toggles the username overlay) without a full reload.
 - (void)reconfigureVisibleGridCells {
-    if (self.viewMode != SPKGalleryViewModeGrid) return;
+    if (self.viewMode != SPKGalleryViewModeGrid)
+        return;
     BOOL showsMeta = ![[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryGridShowSourceUsernameDisabledKey];
     BOOL showsUsername = showsMeta && self.gridColumns <= 3;
     for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
         UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
-        if (![cell isKindOfClass:[SPKGalleryGridCell class]]) continue;
+        if (![cell isKindOfClass:[SPKGalleryGridCell class]])
+            continue;
         SPKGalleryFile *file = [self galleryFileForCollectionIndexPath:indexPath];
-        if (!file) continue;
+        if (!file)
+            continue;
         NSString *folderName = [self searchResultFolderNameForFile:file];
         [(SPKGalleryGridCell *)cell configureWithGalleryFile:file
                                                selectionMode:self.selectionMode
@@ -607,9 +620,12 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 }
 
 - (void)handleGridPinch:(UIPinchGestureRecognizer *)pinch {
-    if (self.viewMode != SPKGalleryViewModeGrid) return;
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryGridPinchDisabledKey]) return;
-    if (pinch.state != UIGestureRecognizerStateChanged) return;
+    if (self.viewMode != SPKGalleryViewModeGrid)
+        return;
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryGridPinchDisabledKey])
+        return;
+    if (pinch.state != UIGestureRecognizerStateChanged)
+        return;
     // Pinch out (scale > 1) -> fewer columns (bigger cells); pinch in -> more.
     CGFloat threshold = 0.30;
     if (pinch.scale > 1.0 + threshold && self.gridColumns > kSPKGalleryGridColumnsMin) {
@@ -657,20 +673,25 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
     [NSLayoutConstraint activateConstraints:@[
         [_emptyStateView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [_emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-40],
-        [_emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:40],
-        [_emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-40],
+        [_emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor
+                                                      constant:-40],
+        [_emptyStateView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor
+                                                                   constant:40],
+        [_emptyStateView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor
+                                                                 constant:-40],
 
         [icon.topAnchor constraintEqualToAnchor:_emptyStateView.topAnchor],
         [icon.centerXAnchor constraintEqualToAnchor:_emptyStateView.centerXAnchor],
         [icon.widthAnchor constraintEqualToConstant:64],
         [icon.heightAnchor constraintEqualToConstant:64],
 
-        [label.topAnchor constraintEqualToAnchor:icon.bottomAnchor constant:20],
+        [label.topAnchor constraintEqualToAnchor:icon.bottomAnchor
+                                        constant:20],
         [label.leadingAnchor constraintEqualToAnchor:_emptyStateView.leadingAnchor],
         [label.trailingAnchor constraintEqualToAnchor:_emptyStateView.trailingAnchor],
 
-        [subtitle.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
+        [subtitle.topAnchor constraintEqualToAnchor:label.bottomAnchor
+                                           constant:8],
         [subtitle.leadingAnchor constraintEqualToAnchor:_emptyStateView.leadingAnchor],
         [subtitle.trailingAnchor constraintEqualToAnchor:_emptyStateView.trailingAnchor],
         [subtitle.bottomAnchor constraintEqualToAnchor:_emptyStateView.bottomAnchor],
@@ -723,16 +744,16 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     // scoped to the current folder.
     BOOL searchingAllFolders = self.searchAllFolders && query.length > 0;
     NSPredicate *basePredicate = [SPKGalleryFilterViewController predicateForTypes:self.filterTypes
-                                                                         sources:self.filterSources
-                                                                   favoritesOnly:self.filterFavoritesOnly
-                                                                       usernames:self.filterUsernames
-                                                                      folderPath:self.currentFolderPath
-                                                                   scopeToFolder:!searchingAllFolders];
+                                                                           sources:self.filterSources
+                                                                     favoritesOnly:self.filterFavoritesOnly
+                                                                         usernames:self.filterUsernames
+                                                                        folderPath:self.currentFolderPath
+                                                                     scopeToFolder:!searchingAllFolders];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
     if (visibleSources) {
         basePredicate = basePredicate
-            ? [NSCompoundPredicate andPredicateWithSubpredicates:@[basePredicate, visibleSources]]
-            : visibleSources;
+                            ? [NSCompoundPredicate andPredicateWithSubpredicates:@[ basePredicate, visibleSources ]]
+                            : visibleSources;
     }
     if (query.length == 0) {
         request.predicate = basePredicate;
@@ -740,12 +761,12 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     }
 
     NSPredicate *searchPredicate = [NSPredicate predicateWithFormat:@"(sourceUsername CONTAINS[cd] %@) OR (customName CONTAINS[cd] %@) OR (relativePath CONTAINS[cd] %@)",
-                                    query, query, query];
+                                                                    query, query, query];
     // basePredicate can be nil when searching all folders with no other filters
     // active (no folder scope, no filters) — don't put nil into the AND array.
     request.predicate = basePredicate
-        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[basePredicate, searchPredicate]]
-        : searchPredicate;
+                            ? [NSCompoundPredicate andPredicateWithSubpredicates:@[ basePredicate, searchPredicate ]]
+                            : searchPredicate;
     return request;
 }
 
@@ -796,7 +817,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.resultType = NSDictionaryResultType;
-    req.propertiesToFetch = @[@"folderPath"];
+    req.propertiesToFetch = @[ @"folderPath" ];
     req.returnsDistinctResults = YES;
 
     NSString *base = self.currentFolderPath ?: @"";
@@ -804,19 +825,21 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
     NSPredicate *folderPredicate = [NSPredicate predicateWithFormat:@"folderPath BEGINSWITH %@", prefix];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
     req.predicate = visibleSources
-        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[folderPredicate, visibleSources]]
-        : folderPredicate;
+                        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[ folderPredicate, visibleSources ]]
+                        : folderPredicate;
 
     NSArray<NSDictionary *> *results = [ctx executeFetchRequest:req error:nil];
     NSMutableSet<NSString *> *immediate = [NSMutableSet set];
 
     for (NSDictionary *row in results) {
         NSString *p = row[@"folderPath"];
-        if (p.length <= prefix.length) continue;
+        if (p.length <= prefix.length)
+            continue;
         NSString *rest = [p substringFromIndex:prefix.length];
         NSRange slash = [rest rangeOfString:@"/"];
         NSString *folderName = slash.location == NSNotFound ? rest : [rest substringToIndex:slash.location];
-        if (folderName.length == 0) continue;
+        if (folderName.length == 0)
+            continue;
         [immediate addObject:[prefix stringByAppendingString:folderName]];
     }
 
@@ -883,14 +906,16 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 }
 
 - (NSInteger)collectionView:(UICollectionView *)cv numberOfItemsInSection:(NSInteger)section {
-    if ([self showsFolderSection] && section == 0) return self.subfolders.count;
+    if ([self showsFolderSection] && section == 0)
+        return self.subfolders.count;
     NSArray *sections = self.fetchedResultsController.sections;
-    if (sections.count == 0) return 0;
+    if (sections.count == 0)
+        return 0;
     return ((id<NSFetchedResultsSectionInfo>)sections[0]).numberOfObjects;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)cv
-                            cellForItemAtIndexPath:(NSIndexPath *)indexPath {
+                           cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     if ([self isFolderIndexPath:indexPath]) {
         SPKGalleryFolderCell *cell = [cv dequeueReusableCellWithReuseIdentifier:kFolderCellID forIndexPath:indexPath];
         NSString *path = self.subfolders[indexPath.item];
@@ -909,18 +934,18 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
         BOOL showsUsername = showsMeta && self.gridColumns <= 3;
         NSString *folderName = [self searchResultFolderNameForFile:file];
         [cell configureWithGalleryFile:file
-                       selectionMode:self.selectionMode
-                            selected:[self.selectedFileIDs containsObject:file.identifier]
-                         showsSource:showsMeta
-                       showsUsername:showsUsername
-                          folderName:folderName];
+                         selectionMode:self.selectionMode
+                              selected:[self.selectedFileIDs containsObject:file.identifier]
+                           showsSource:showsMeta
+                         showsUsername:showsUsername
+                            folderName:folderName];
         return cell;
     }
 
     SPKGalleryListCollectionCell *cell = [cv dequeueReusableCellWithReuseIdentifier:kListCellID forIndexPath:indexPath];
     [cell configureWithGalleryFile:file
-                   selectionMode:self.selectionMode
-                        selected:[self.selectedFileIDs containsObject:file.identifier]];
+                     selectionMode:self.selectionMode
+                          selected:[self.selectedFileIDs containsObject:file.identifier]];
     [cell setFolderContextName:[self searchResultFolderNameForFile:file]];
     [cell setMoreActionsMenu:self.selectionMode ? nil : [self fileActionsMenuForFile:file]];
     return cell;
@@ -970,20 +995,22 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
     __weak typeof(self) weakSelf = self;
     [header configureWithFolderNames:names
-                              counts:counts
-                            onSelect:^(NSInteger index) {
-        [weakSelf openSubfolderAtIndex:index];
-    }
-                        menuProvider:^UIMenu * _Nullable(NSInteger index) {
-        return [weakSelf folderChipMenuForIndex:index];
-    }];
+        counts:counts
+        onSelect:^(NSInteger index) {
+            [weakSelf openSubfolderAtIndex:index];
+        }
+        menuProvider:^UIMenu *_Nullable(NSInteger index) {
+            return [weakSelf folderChipMenuForIndex:index];
+        }];
     return header;
 }
 
 /// Opens the subfolder at `index` in place (no pushed view controller).
 - (void)openSubfolderAtIndex:(NSInteger)index {
-    if (self.selectionMode) return;
-    if (index < 0 || index >= (NSInteger)self.subfolders.count) return;
+    if (self.selectionMode)
+        return;
+    if (index < 0 || index >= (NSInteger)self.subfolders.count)
+        return;
     [self navigateIntoFolder:self.subfolders[index]];
 }
 
@@ -1095,7 +1122,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 /// Context menu (rename/delete/etc.) for the folder chip at `index`, reusing the
 /// same actions as the legacy folder rows.
 - (UIMenu *)folderChipMenuForIndex:(NSInteger)index {
-    if (index < 0 || index >= (NSInteger)self.subfolders.count) return nil;
+    if (index < 0 || index >= (NSInteger)self.subfolders.count)
+        return nil;
     NSString *folderPath = self.subfolders[index];
     return [self folderActionsMenuForFolderPath:folderPath];
 }
@@ -1103,8 +1131,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 #pragma mark - UICollectionViewDelegateFlowLayout
 
 - (CGSize)collectionView:(UICollectionView *)cv
-                  layout:(UICollectionViewLayout *)layout
-  sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+                    layout:(UICollectionViewLayout *)layout
+    sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat width = cv.bounds.size.width;
     if ([self isFolderIndexPath:indexPath]) {
         return CGSizeMake(width, 88);
@@ -1128,8 +1156,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 }
 
 - (CGSize)collectionView:(UICollectionView *)cv
-                  layout:(UICollectionViewLayout *)layout
-referenceSizeForHeaderInSection:(NSInteger)section {
+                             layout:(UICollectionViewLayout *)layout
+    referenceSizeForHeaderInSection:(NSInteger)section {
     if (section == 0 && [self showsFolderChips]) {
         return CGSizeMake(cv.bounds.size.width, [SPKGalleryFolderChipBar preferredHeight]);
     }
@@ -1137,8 +1165,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (CGFloat)collectionView:(UICollectionView *)cv
-                   layout:(UICollectionViewLayout *)layout
- minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
+                                      layout:(UICollectionViewLayout *)layout
+    minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
     if ([self showsFolderSection] && section == 0) {
         return 0;
     }
@@ -1146,8 +1174,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (CGFloat)collectionView:(UICollectionView *)cv
-                   layout:(UICollectionViewLayout *)layout
- minimumLineSpacingForSectionAtIndex:(NSInteger)section {
+                                 layout:(UICollectionViewLayout *)layout
+    minimumLineSpacingForSectionAtIndex:(NSInteger)section {
     if ([self showsFolderSection] && section == 0) {
         return 0;
     }
@@ -1176,10 +1204,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     NSArray *allFiles = self.fetchedResultsController.fetchedObjects;
     NSInteger idx = [allFiles indexOfObject:selectedFile];
-    if (idx == NSNotFound) idx = 0;
+    if (idx == NSNotFound)
+        idx = 0;
     [SPKFullScreenMediaPlayer showGalleryFiles:allFiles
-                             startingAtIndex:idx
-                          fromViewController:self];
+                               startingAtIndex:idx
+                            fromViewController:self];
 }
 
 - (void)showGalleryOpenFailureMessage:(NSString *)title actionIdentifier:(NSString *)actionIdentifier {
@@ -1191,17 +1220,18 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         [[SPKGalleryManager sharedManager] lockGallery];
     }
 
-    [self.navigationController dismissViewControllerAnimated:YES completion:^{
-        if (completion) {
-            completion();
-        }
-    }];
+    [self.navigationController dismissViewControllerAnimated:YES
+                                                  completion:^{
+                                                      if (completion) {
+                                                          completion();
+                                                      }
+                                                  }];
 }
 
 - (void)openOriginalPostForFile:(SPKGalleryFile *)file {
     NSString *noun = [[file openOriginalActionTitle] hasPrefix:@"Open "]
-        ? [[file openOriginalActionTitle] substringFromIndex:5]
-        : @"original post";
+                         ? [[file openOriginalActionTitle] substringFromIndex:5]
+                         : @"original post";
     NSString *lowerNoun = noun.lowercaseString;
     if ([SPKGalleryOriginController openOriginalPostForGalleryFile:file]) {
         [self dismissGalleryForOriginOpenWithCompletion:^{
@@ -1284,7 +1314,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 - (void)exitSelectionMode {
     self.selectionMode = NO;
     [self.selectedFileIDs removeAllObjects];
-    
+
     if (self.searchQuery.length > 0) {
         self.searchQuery = nil;
         self.searchController.searchBar.text = nil;
@@ -1459,25 +1489,29 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                   title:@"Delete Selected Files?"
                                                 message:message
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Delete" style:SPKIGAlertActionStyleDestructive handler:^{
-        NSError *firstError = nil;
-        for (SPKGalleryFile *file in files) {
-            NSError *removeError = nil;
-            [file removeWithError:&removeError];
-            if (!firstError && removeError) {
-                firstError = removeError;
-            }
-        }
-        if (firstError) {
-            SPKNotify(kSPKNotificationGalleryDeleteSelected, @"Failed to delete", firstError.localizedDescription, @"error_filled", SPKNotificationToneError);
-            return;
-        }
-        SPKNotify(kSPKNotificationGalleryDeleteSelected, @"Deleted selected files", nil, @"circle_check_filled", SPKNotificationToneSuccess);
-        [self pruneStaleUsernameFilters];
-        [self exitSelectionMode];
-    }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Delete"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  NSError *firstError = nil;
+                                                                                  for (SPKGalleryFile *file in files) {
+                                                                                      NSError *removeError = nil;
+                                                                                      [file removeWithError:&removeError];
+                                                                                      if (!firstError && removeError) {
+                                                                                          firstError = removeError;
+                                                                                      }
+                                                                                  }
+                                                                                  if (firstError) {
+                                                                                      SPKNotify(kSPKNotificationGalleryDeleteSelected, @"Failed to delete", firstError.localizedDescription, @"error_filled", SPKNotificationToneError);
+                                                                                      return;
+                                                                                  }
+                                                                                  SPKNotify(kSPKNotificationGalleryDeleteSelected, @"Deleted selected files", nil, @"circle_check_filled", SPKNotificationToneSuccess);
+                                                                                  [self pruneStaleUsernameFilters];
+                                                                                  [self exitSelectionMode];
+                                                                              }],
+                                                ]];
 }
 
 - (UIContextMenuConfiguration *)collectionView:(UICollectionView *)cv
@@ -1501,40 +1535,46 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     NSString *favTitle = file.isFavorite ? @"Unfavorite" : @"Favorite";
     UIImage *favImg = file.isFavorite
-        ? SPKGalleryMenuActionIcon(@"heart_filled")
-        : SPKGalleryMenuActionIcon(@"heart");
+                          ? SPKGalleryMenuActionIcon(@"heart_filled")
+                          : SPKGalleryMenuActionIcon(@"heart");
 
     UIAction *favoriteAction = [UIAction actionWithTitle:favTitle
                                                    image:favImg
                                               identifier:nil
                                                  handler:^(UIAction *a) {
-        file.isFavorite = !file.isFavorite;
-        [[SPKGalleryCoreDataStack shared] saveContext];
-        // Re-sort/reload so the item visibly moves (e.g. up to the top when
-        // "favorites at top" is on) and its badge updates — the FRC's implicit
-        // re-sort on an in-place property change isn't reliable. Matches the bulk
-        // favorite path.
-        [weakSelf refetch];
-    }];
+                                                     file.isFavorite = !file.isFavorite;
+                                                     [[SPKGalleryCoreDataStack shared] saveContext];
+                                                     // Re-sort/reload so the item visibly moves (e.g. up to the top when
+                                                     // "favorites at top" is on) and its badge updates — the FRC's implicit
+                                                     // re-sort on an in-place property change isn't reliable. Matches the bulk
+                                                     // favorite path.
+                                                     [weakSelf refetch];
+                                                 }];
 
-     UIImage *editImg = SPKGalleryMenuActionIcon(@"edit");
+    UIImage *editImg = SPKGalleryMenuActionIcon(@"edit");
     UIAction *renameAction = [UIAction actionWithTitle:@"Edit Details"
                                                  image:editImg
                                             identifier:nil
-                                               handler:^(UIAction *a) { [weakSelf editDetailsForFile:file]; }];
+                                               handler:^(UIAction *a) {
+                                                   [weakSelf editDetailsForFile:file];
+                                               }];
 
-     UIImage *moveImg = SPKGalleryMenuActionIcon(@"folder_move");
+    UIImage *moveImg = SPKGalleryMenuActionIcon(@"folder_move");
     UIAction *moveAction = [UIAction actionWithTitle:@"Move to Folder"
                                                image:moveImg
                                           identifier:nil
-                                             handler:^(UIAction *a) { [weakSelf moveFile:file]; }];
+                                             handler:^(UIAction *a) {
+                                                 [weakSelf moveFile:file];
+                                             }];
 
     UIAction *trimAction = nil;
     if (file.mediaType == SPKGalleryMediaTypeVideo || file.mediaType == SPKGalleryMediaTypeAudio) {
         trimAction = [UIAction actionWithTitle:@"Trim"
                                          image:SPKGalleryMenuActionIcon(@"trim")
                                     identifier:nil
-                                       handler:^(__unused UIAction *a) { [weakSelf trimFile:file]; }];
+                                       handler:^(__unused UIAction *a) {
+                                           [weakSelf trimFile:file];
+                                       }];
     }
 
     UIAction *editAction = nil;
@@ -1542,18 +1582,20 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         editAction = [UIAction actionWithTitle:@"Edit"
                                          image:SPKGalleryMenuActionIcon(@"crop")
                                     identifier:nil
-                                       handler:^(__unused UIAction *a) { [weakSelf editFile:file]; }];
+                                       handler:^(__unused UIAction *a) {
+                                           [weakSelf editFile:file];
+                                       }];
     }
 
-     UIImage *shareImg = SPKGalleryMenuActionIcon(@"share");
+    UIImage *shareImg = SPKGalleryMenuActionIcon(@"share");
     UIAction *shareAction = [UIAction actionWithTitle:@"Share"
                                                 image:shareImg
                                            identifier:nil
                                               handler:^(UIAction *a) {
-        NSURL *url = [file fileURL];
-        UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
-        [weakSelf presentViewController:acVC animated:YES completion:nil];
-    }];
+                                                  NSURL *url = [file fileURL];
+                                                  UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ url ] applicationActivities:nil];
+                                                  [weakSelf presentViewController:acVC animated:YES completion:nil];
+                                              }];
 
     UIAction *openOriginalAction = nil;
     if (file.hasOpenableOriginalMedia) {
@@ -1561,8 +1603,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                  image:SPKGalleryMenuActionIcon(@"external_link")
                                             identifier:nil
                                                handler:^(__unused UIAction *a) {
-            [weakSelf openOriginalPostForFile:file];
-        }];
+                                                   [weakSelf openOriginalPostForFile:file];
+                                               }];
     }
 
     UIAction *openProfileAction = nil;
@@ -1571,8 +1613,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                 image:SPKGalleryMenuActionIcon(@"user_circle")
                                            identifier:nil
                                               handler:^(__unused UIAction *a) {
-            [weakSelf openProfileForFile:file];
-        }];
+                                                  [weakSelf openProfileForFile:file];
+                                              }];
     }
 
     UIImage *deleteImg = SPKGalleryMenuActionIcon(@"trash");
@@ -1580,22 +1622,26 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                  image:deleteImg
                                             identifier:nil
                                                handler:^(UIAction *a) {
-        [SPKIGAlertPresenter presentAlertFromViewController:weakSelf
-                                                      title:@"Delete from Gallery"
-                                                    message:@"This will permanently remove this file from the gallery."
-                                                    actions:@[
-            [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-            [SPKIGAlertAction actionWithTitle:@"Delete" style:SPKIGAlertActionStyleDestructive handler:^{
-            NSError *err;
-            [file removeWithError:&err];
-            if (err) {
-                SPKNotify(kSPKNotificationGalleryDeleteFile, @"Failed to delete", err.localizedDescription, @"error_filled", SPKNotificationToneError);
-            } else {
-                SPKNotify(kSPKNotificationGalleryDeleteFile, @"Deleted from Gallery", nil, @"circle_check_filled", SPKNotificationToneSuccess);
-            }
-        }],
-        ]];
-    }];
+                                                   [SPKIGAlertPresenter presentAlertFromViewController:weakSelf
+                                                                                                 title:@"Delete from Gallery"
+                                                                                               message:@"This will permanently remove this file from the gallery."
+                                                                                               actions:@[
+                                                                                                   [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                                                               style:SPKIGAlertActionStyleCancel
+                                                                                                                             handler:nil],
+                                                                                                   [SPKIGAlertAction actionWithTitle:@"Delete"
+                                                                                                                               style:SPKIGAlertActionStyleDestructive
+                                                                                                                             handler:^{
+                                                                                                                                 NSError *err;
+                                                                                                                                 [file removeWithError:&err];
+                                                                                                                                 if (err) {
+                                                                                                                                     SPKNotify(kSPKNotificationGalleryDeleteFile, @"Failed to delete", err.localizedDescription, @"error_filled", SPKNotificationToneError);
+                                                                                                                                 } else {
+                                                                                                                                     SPKNotify(kSPKNotificationGalleryDeleteFile, @"Deleted from Gallery", nil, @"circle_check_filled", SPKNotificationToneSuccess);
+                                                                                                                                 }
+                                                                                                                             }],
+                                                                                               ]];
+                                               }];
     /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     deleteAction.attributes = UIMenuElementAttributesDestructive;
 
@@ -1607,31 +1653,36 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                              image:SPKGalleryMenuActionIcon(@"mention")
                                         identifier:nil
                                            handler:^(__unused UIAction *a) {
-            [weakSelf toggleUsernameFilter:username];
-        }];
+                                               [weakSelf toggleUsernameFilter:username];
+                                           }];
     }
 
     // Grouped into inline sections so related actions read together and the
     // destructive delete is isolated at the bottom: open/navigate • edit • share •
     // delete.
     NSMutableArray<UIMenuElement *> *openSection = [NSMutableArray array];
-    if (openOriginalAction) [openSection addObject:openOriginalAction];
-    if (openProfileAction) [openSection addObject:openProfileAction];
-    if (usernameAction) [openSection addObject:usernameAction];
+    if (openOriginalAction)
+        [openSection addObject:openOriginalAction];
+    if (openProfileAction)
+        [openSection addObject:openProfileAction];
+    if (usernameAction)
+        [openSection addObject:usernameAction];
 
     NSMutableArray<UIMenuElement *> *editSection = [NSMutableArray arrayWithObject:favoriteAction];
     [editSection addObject:renameAction];
     [editSection addObject:moveAction];
-    if (trimAction) [editSection addObject:trimAction];
-    if (editAction) [editSection addObject:editAction];
+    if (trimAction)
+        [editSection addObject:trimAction];
+    if (editAction)
+        [editSection addObject:editAction];
 
     NSMutableArray<UIMenu *> *sections = [NSMutableArray array];
     if (openSection.count > 0) {
         [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:openSection]];
     }
     [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:editSection]];
-    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[shareAction]]];
-    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[deleteAction]]];
+    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[ shareAction ]]];
+    [sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[ deleteAction ]]];
     return [UIMenu menuWithTitle:@"" children:sections];
 }
 
@@ -1640,9 +1691,9 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggested) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        return strongSelf ? [strongSelf fileActionsMenuForFile:file] : nil;
-    }];
+                                                        __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                        return strongSelf ? [strongSelf fileActionsMenuForFile:file] : nil;
+                                                    }];
 }
 
 - (UIContextMenuConfiguration *)contextMenuForFolder:(NSString *)folderPath {
@@ -1650,8 +1701,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggested) {
-        return [weakSelf folderActionsMenuForFolderPath:folderPath];
-    }];
+                                                        return [weakSelf folderActionsMenuForFolderPath:folderPath];
+                                                    }];
 }
 
 - (UIMenu *)folderActionsMenuForFolderPath:(NSString *)folderPath {
@@ -1660,17 +1711,21 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     UIAction *renameAction = [UIAction actionWithTitle:@"Rename Folder"
                                                  image:folderRenameImg
                                             identifier:nil
-                                               handler:^(UIAction *a) { [weakSelf renameFolder:folderPath]; }];
+                                               handler:^(UIAction *a) {
+                                                   [weakSelf renameFolder:folderPath];
+                                               }];
 
     UIImage *folderDeleteImg = SPKGalleryMenuActionIcon(@"trash");
     UIAction *deleteAction = [UIAction actionWithTitle:@"Delete Folder"
                                                  image:folderDeleteImg
                                             identifier:nil
-                                               handler:^(UIAction *a) { [weakSelf deleteFolder:folderPath]; }];
+                                               handler:^(UIAction *a) {
+                                                   [weakSelf deleteFolder:folderPath];
+                                               }];
     /// TODO: investigate whether native UIMenu destructive tint can be customized. UIMenuElement exposes no supported color API.
     deleteAction.attributes = UIMenuElementAttributesDestructive;
 
-    return [UIMenu menuWithTitle:@"" children:@[renameAction, deleteAction]];
+    return [UIMenu menuWithTitle:@"" children:@[ renameAction, deleteAction ]];
 }
 
 #pragma mark - Folder CRUD
@@ -1686,8 +1741,9 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                      cancelTitle:@"Cancel"
                                                     confirmStyle:SPKIGAlertActionStyleDefault
                                                     confirmBlock:^(NSString *text) {
-                                                        NSString *name = [text stringByTrimmingCharactersInSet: [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-                                                        if (name.length == 0) return;
+                                                        NSString *name = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                                                        if (name.length == 0)
+                                                            return;
                                                         [self createFolderNamed:name];
                                                     }
                                                      cancelBlock:nil];
@@ -1711,7 +1767,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 - (NSString *)folderPathByAppendingComponent:(NSString *)component toBase:(NSString *)base {
     NSString *sanitized = [component stringByReplacingOccurrencesOfString:@"/" withString:@"-"];
-    if (base.length == 0) return [@"/" stringByAppendingString:sanitized];
+    if (base.length == 0)
+        return [@"/" stringByAppendingString:sanitized];
     return [base stringByAppendingFormat:@"/%@", sanitized];
 }
 
@@ -1722,9 +1779,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     NSMutableSet<NSString *> *merged = [NSMutableSet setWithArray:self.subfolders];
     for (NSString *p in placeholders) {
-        if (![p hasPrefix:prefix]) continue;
+        if (![p hasPrefix:prefix])
+            continue;
         NSString *rest = [p substringFromIndex:prefix.length];
-        if (rest.length == 0) continue;
+        if (rest.length == 0)
+            continue;
         NSRange slash = [rest rangeOfString:@"/"];
         NSString *folderName = slash.location == NSNotFound ? rest : [rest substringToIndex:slash.location];
         [merged addObject:[prefix stringByAppendingString:folderName]];
@@ -1738,30 +1797,32 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                                          message:@"Enter a new name for this folder."
                                                      placeholder:nil
                                                      initialText:[folderPath lastPathComponent]
-                                                autocapitalized:YES
+                                                 autocapitalized:YES
                                                     confirmTitle:@"Rename"
                                                      cancelTitle:@"Cancel"
                                                     confirmStyle:SPKIGAlertActionStyleDefault
                                                     confirmBlock:^(NSString *text) {
-        NSString *newName = [text stringByTrimmingCharactersInSet:
-                             [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (newName.length == 0) return;
-        [self performRenameOfFolder:folderPath toName:newName];
-    }
+                                                        NSString *newName = [text stringByTrimmingCharactersInSet:
+                                                                                      [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                                                        if (newName.length == 0)
+                                                            return;
+                                                        [self performRenameOfFolder:folderPath toName:newName];
+                                                    }
                                                      cancelBlock:nil];
 }
 
 - (void)performRenameOfFolder:(NSString *)oldPath toName:(NSString *)newName {
     NSString *parent = [oldPath stringByDeletingLastPathComponent];
-    if (![parent hasPrefix:@"/"]) parent = [@"/" stringByAppendingString:parent];
+    if (![parent hasPrefix:@"/"])
+        parent = [@"/" stringByAppendingString:parent];
     NSString *newPath = [parent isEqualToString:@"/"]
-        ? [@"/" stringByAppendingString:newName]
-        : [parent stringByAppendingFormat:@"/%@", newName];
+                            ? [@"/" stringByAppendingString:newName]
+                            : [parent stringByAppendingFormat:@"/%@", newName];
 
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.predicate = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
-                     oldPath, [oldPath stringByAppendingString:@"/"]];
+                                                     oldPath, [oldPath stringByAppendingString:@"/"]];
     NSArray<SPKGalleryFile *> *files = [ctx executeFetchRequest:req error:nil];
     for (SPKGalleryFile *f in files) {
         NSString *current = f.folderPath ?: @"";
@@ -1797,32 +1858,37 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.predicate = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
-                     folderPath, [folderPath stringByAppendingString:@"/"]];
+                                                     folderPath, [folderPath stringByAppendingString:@"/"]];
     NSInteger count = [ctx countForFetchRequest:req error:nil];
 
     NSString *msg = count == 0
-        ? @"This folder is empty."
-        : [NSString stringWithFormat:@"This folder contains %ld file(s). They will be moved to the parent folder.", (long)count];
+                        ? @"This folder is empty."
+                        : [NSString stringWithFormat:@"This folder contains %ld file(s). They will be moved to the parent folder.", (long)count];
 
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:@"Delete Folder?"
                                                 message:msg
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Delete" style:SPKIGAlertActionStyleDestructive handler:^{
-        [self performDeleteFolder:folderPath];
-    }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Delete"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  [self performDeleteFolder:folderPath];
+                                                                              }],
+                                                ]];
 }
 
 - (void)performDeleteFolder:(NSString *)folderPath {
     NSString *parent = [folderPath stringByDeletingLastPathComponent];
-    if (parent.length == 0 || [parent isEqualToString:@"/"]) parent = nil; // move to root
+    if (parent.length == 0 || [parent isEqualToString:@"/"])
+        parent = nil; // move to root
 
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.predicate = [NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
-                     folderPath, [folderPath stringByAppendingString:@"/"]];
+                                                     folderPath, [folderPath stringByAppendingString:@"/"]];
     NSArray<SPKGalleryFile *> *files = [ctx executeFetchRequest:req error:nil];
     for (SPKGalleryFile *f in files) {
         f.folderPath = parent;
@@ -1834,8 +1900,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSMutableArray<NSString *> *placeholders = [[[NSUserDefaults standardUserDefaults] arrayForKey:key] mutableCopy] ?: [NSMutableArray array];
     NSString *prefix = [folderPath stringByAppendingString:@"/"];
     [placeholders filterUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSString *p, NSDictionary *b) {
-        return ![p isEqualToString:folderPath] && ![p hasPrefix:prefix];
-    }]];
+                      return ![p isEqualToString:folderPath] && ![p hasPrefix:prefix];
+                  }]];
     [[NSUserDefaults standardUserDefaults] setObject:placeholders forKey:key];
 
     [self reloadSubfolders];
@@ -1848,7 +1914,9 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 - (void)editDetailsForFile:(SPKGalleryFile *)file {
     SPKGalleryFileDetailsViewController *vc = [[SPKGalleryFileDetailsViewController alloc] initWithFile:file];
     __weak typeof(self) weakSelf = self;
-    vc.onSaved = ^{ [weakSelf refetch]; };
+    vc.onSaved = ^{
+        [weakSelf refetch];
+    };
     UINavigationController *nav = [[SPKChromeNavigationController alloc] initWithRootViewController:vc];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     if (@available(iOS 16.0, *)) {
@@ -1868,34 +1936,36 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         return;
     }
     SPKTrimConfiguration *config = (file.mediaType == SPKGalleryMediaTypeAudio)
-        ? [SPKTrimConfiguration configurationWithAudioURL:url]
-        : [SPKTrimConfiguration configurationWithVideoURL:url];
+                                       ? [SPKTrimConfiguration configurationWithAudioURL:url]
+                                       : [SPKTrimConfiguration configurationWithVideoURL:url];
     __weak typeof(self) weakSelf = self;
     [SPKTrimEditorViewController presentWithConfiguration:config
-                                                    from:self
-                                              completion:^(SPKTrimResult *result) {
-        if (!result) return; // Cancelled.
-        [weakSelf saveTrimResult:result fromFile:file];
-    }];
+                                                     from:self
+                                               completion:^(SPKTrimResult *result) {
+                                                   if (!result)
+                                                       return; // Cancelled.
+                                                   [weakSelf saveTrimResult:result fromFile:file];
+                                               }];
 }
 
 - (void)editFile:(SPKGalleryFile *)file {
     NSURL *url = [file fileURL];
     UIImage *source = (url && [[NSFileManager defaultManager] fileExistsAtPath:url.path])
-        ? [UIImage imageWithContentsOfFile:url.path]
-        : nil;
+                          ? [UIImage imageWithContentsOfFile:url.path]
+                          : nil;
     if (!source) {
         SPKNotify(@"spk.photoedit.gallery", @"Cannot Edit", @"The original file is missing.", @"error_filled", SPKNotificationToneError);
         return;
     }
     __weak typeof(self) weakSelf = self;
     [SPKPhotoEditorViewController presentWithSourceImage:source
-                                          configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
-                                                   from:self
-                                             completion:^(UIImage *edited) {
-        if (!edited) return; // Cancelled.
-        [weakSelf saveEditedImage:edited fromFile:file];
-    }];
+                                           configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
+                                                    from:self
+                                              completion:^(UIImage *edited) {
+                                                  if (!edited)
+                                                      return; // Cancelled.
+                                                  [weakSelf saveEditedImage:edited fromFile:file];
+                                              }];
 }
 
 - (void)saveEditedImage:(UIImage *)image fromFile:(SPKGalleryFile *)sourceFile {
@@ -1906,10 +1976,10 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                  folderPath:sourceFile.folderPath
                                   presenter:self
                                  completion:^(BOOL didChange) {
-        if (didChange) {
-            [weakSelf refetch];
-        }
-    }];
+                                     if (didChange) {
+                                         [weakSelf refetch];
+                                     }
+                                 }];
 }
 
 - (void)saveTrimResult:(SPKTrimResult *)result fromFile:(SPKGalleryFile *)sourceFile {
@@ -1920,10 +1990,10 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                             folderPath:sourceFile.folderPath
                              presenter:self
                             completion:^(BOOL didChange) {
-        if (didChange) {
-            [weakSelf refetch];
-        }
-    }];
+                                if (didChange) {
+                                    [weakSelf refetch];
+                                }
+                            }];
 }
 
 - (void)assignFolderPath:(nullable NSString *)folderPath toFiles:(NSArray<SPKGalleryFile *> *)files {
@@ -1959,8 +2029,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         [actions addObject:[SPKIGAlertAction actionWithTitle:@"/"
                                                        style:SPKIGAlertActionStyleDefault
                                                      handler:^{
-            [self assignFolderPath:nil toFiles:files];
-        }]];
+                                                         [self assignFolderPath:nil toFiles:files];
+                                                     }]];
     }
 
     for (NSString *folder in allFolders) {
@@ -1970,31 +2040,32 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         [actions addObject:[SPKIGAlertAction actionWithTitle:folder
                                                        style:SPKIGAlertActionStyleDefault
                                                      handler:^{
-            [self assignFolderPath:folder toFiles:files];
-        }]];
+                                                         [self assignFolderPath:folder toFiles:files];
+                                                     }]];
     }
 
     [actions addObject:[SPKIGAlertAction actionWithTitle:@"New folder..."
                                                    style:SPKIGAlertActionStyleDefault
                                                  handler:^{
-        [SPKIGAlertPresenter presentTextInputAlertFromViewController:self
-                                                               title:@"New Folder"
-                                                             message:@"Enter a new folder name, then move the selected files there."
-                                                         placeholder:@"Folder name"
-                                                         initialText:nil
-                                                    autocapitalized:NO
-                                                        confirmTitle:@"Create & Move"
-                                                         cancelTitle:@"Cancel"
-                                                        confirmStyle:SPKIGAlertActionStyleDefault
-                                                        confirmBlock:^(NSString *text) {
-            NSString *name = [text stringByTrimmingCharactersInSet:
-                              [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (name.length == 0) return;
-            NSString *newPath = [self folderPathByAppendingComponent:name toBase:self.currentFolderPath];
-            [self assignFolderPath:newPath toFiles:files];
-        }
-                                                         cancelBlock:nil];
-    }]];
+                                                     [SPKIGAlertPresenter presentTextInputAlertFromViewController:self
+                                                                                                            title:@"New Folder"
+                                                                                                          message:@"Enter a new folder name, then move the selected files there."
+                                                                                                      placeholder:@"Folder name"
+                                                                                                      initialText:nil
+                                                                                                  autocapitalized:NO
+                                                                                                     confirmTitle:@"Create & Move"
+                                                                                                      cancelTitle:@"Cancel"
+                                                                                                     confirmStyle:SPKIGAlertActionStyleDefault
+                                                                                                     confirmBlock:^(NSString *text) {
+                                                                                                         NSString *name = [text stringByTrimmingCharactersInSet:
+                                                                                                                                    [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                                                                                                         if (name.length == 0)
+                                                                                                             return;
+                                                                                                         NSString *newPath = [self folderPathByAppendingComponent:name toBase:self.currentFolderPath];
+                                                                                                         [self assignFolderPath:newPath toFiles:files];
+                                                                                                     }
+                                                                                                      cancelBlock:nil];
+                                                 }]];
 
     [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
 
@@ -2011,20 +2082,21 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 }
 
 - (void)moveFile:(SPKGalleryFile *)file {
-    [self presentMoveSheetForFiles:@[file]];
+    [self presentMoveSheetForFiles:@[ file ]];
 }
 
 - (NSArray<NSString *> *)filteredPlaceholders {
     NSArray<NSString *> *placeholders = [[NSUserDefaults standardUserDefaults] arrayForKey:@"gallery_folders"] ?: @[];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
-    if (!visibleSources) return placeholders;
+    if (!visibleSources)
+        return placeholders;
 
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
 
     // Fetch distinct folder paths for files matching current account / visible filters.
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.resultType = NSDictionaryResultType;
-    req.propertiesToFetch = @[@"folderPath"];
+    req.propertiesToFetch = @[ @"folderPath" ];
     req.returnsDistinctResults = YES;
     req.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[
         [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"],
@@ -2034,25 +2106,28 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSMutableSet<NSString *> *currentAccountFolders = [NSMutableSet set];
     for (NSDictionary *d in results) {
         NSString *p = d[@"folderPath"];
-        if (p.length > 0) [currentAccountFolders addObject:p];
+        if (p.length > 0)
+            [currentAccountFolders addObject:p];
     }
 
     // Fetch all distinct folder paths in the database (regardless of account filter).
     NSFetchRequest *allReq = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     allReq.resultType = NSDictionaryResultType;
-    allReq.propertiesToFetch = @[@"folderPath"];
+    allReq.propertiesToFetch = @[ @"folderPath" ];
     allReq.returnsDistinctResults = YES;
     allReq.predicate = [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"];
     NSArray<NSDictionary *> *allResults = [ctx executeFetchRequest:allReq error:nil];
     NSMutableSet<NSString *> *allFileFolders = [NSMutableSet set];
     for (NSDictionary *d in allResults) {
         NSString *p = d[@"folderPath"];
-        if (p.length > 0) [allFileFolders addObject:p];
+        if (p.length > 0)
+            [allFileFolders addObject:p];
     }
 
     NSMutableArray<NSString *> *filtered = [NSMutableArray array];
     for (NSString *p in placeholders) {
-        if (p.length == 0) continue;
+        if (p.length == 0)
+            continue;
         // Skip placeholders that are associated with other accounts, but not the current account.
         if ([allFileFolders containsObject:p] && ![currentAccountFolders containsObject:p]) {
             continue;
@@ -2066,21 +2141,22 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.resultType = NSDictionaryResultType;
-    req.propertiesToFetch = @[@"folderPath"];
+    req.propertiesToFetch = @[ @"folderPath" ];
     req.returnsDistinctResults = YES;
 
     NSPredicate *nonEmptyFolder = [NSPredicate predicateWithFormat:@"folderPath != nil AND folderPath != ''"];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
     req.predicate = visibleSources
-        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[nonEmptyFolder, visibleSources]]
-        : nonEmptyFolder;
+                        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[ nonEmptyFolder, visibleSources ]]
+                        : nonEmptyFolder;
 
     NSArray<NSDictionary *> *results = [ctx executeFetchRequest:req error:nil];
 
     NSMutableSet<NSString *> *set = [NSMutableSet set];
     for (NSDictionary *d in results) {
         NSString *p = d[@"folderPath"];
-        if (p.length > 0) [set addObject:p];
+        if (p.length > 0)
+            [set addObject:p];
     }
     [set addObjectsFromArray:[self filteredPlaceholders]];
 
@@ -2091,22 +2167,24 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.resultType = NSDictionaryResultType;
-    req.propertiesToFetch = @[@"sourceUsername"];
+    req.propertiesToFetch = @[ @"sourceUsername" ];
     req.returnsDistinctResults = YES;
 
     NSMutableArray<NSPredicate *> *predicates = [NSMutableArray array];
     NSPredicate *contextPredicate = [SPKGalleryFilterViewController predicateForTypes:self.filterTypes
-                                                                             sources:self.filterSources
-                                                                       favoritesOnly:self.filterFavoritesOnly
-                                                                           usernames:[NSSet set]
-                                                                          folderPath:self.currentFolderPath];
-    if (contextPredicate) [predicates addObject:contextPredicate];
+                                                                              sources:self.filterSources
+                                                                        favoritesOnly:self.filterFavoritesOnly
+                                                                            usernames:[NSSet set]
+                                                                           folderPath:self.currentFolderPath];
+    if (contextPredicate)
+        [predicates addObject:contextPredicate];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
-    if (visibleSources) [predicates addObject:visibleSources];
+    if (visibleSources)
+        [predicates addObject:visibleSources];
     NSString *query = [self.searchQuery stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (query.length > 0) {
         [predicates addObject:[NSPredicate predicateWithFormat:@"(sourceUsername CONTAINS[cd] %@) OR (customName CONTAINS[cd] %@) OR (relativePath CONTAINS[cd] %@)",
-                               query, query, query]];
+                                                               query, query, query]];
     }
     [predicates addObject:[NSPredicate predicateWithFormat:@"sourceUsername != nil AND sourceUsername != ''"]];
     req.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
@@ -2116,7 +2194,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     NSMutableSet<NSString *> *set = [NSMutableSet set];
     for (NSDictionary *row in results) {
         NSString *username = [row[@"sourceUsername"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        if (username.length > 0) [set addObject:username];
+        if (username.length > 0)
+            [set addObject:username];
     }
     return [[set allObjects] sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
 }
@@ -2125,16 +2204,20 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     return [usernames sortedArrayUsingComparator:^NSComparisonResult(NSString *a, NSString *b) {
         BOOL aSelected = [self usernameFilterContainsUsername:a];
         BOOL bSelected = [self usernameFilterContainsUsername:b];
-        if (aSelected && !bSelected) return NSOrderedAscending;
-        if (!aSelected && bSelected) return NSOrderedDescending;
+        if (aSelected && !bSelected)
+            return NSOrderedAscending;
+        if (!aSelected && bSelected)
+            return NSOrderedDescending;
         return [a localizedCaseInsensitiveCompare:b];
     }];
 }
 
 - (NSString *)matchingSelectedUsernameForUsername:(NSString *)username {
-    if (username.length == 0) return nil;
+    if (username.length == 0)
+        return nil;
     for (NSString *selectedUsername in self.filterUsernames) {
-        if ([selectedUsername caseInsensitiveCompare:username] == NSOrderedSame) return selectedUsername;
+        if ([selectedUsername caseInsensitiveCompare:username] == NSOrderedSame)
+            return selectedUsername;
     }
     return nil;
 }
@@ -2162,7 +2245,8 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 /// *before* the deletes are flushed to SQLite — a store-only (NSDictionaryResultType) fetch
 /// would still see the just-deleted rows and never prune the filter.
 - (BOOL)pruneStaleUsernameFilters {
-    if (self.filterUsernames.count == 0) return NO;
+    if (self.filterUsernames.count == 0)
+        return NO;
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSMutableArray<NSString *> *stale = [NSMutableArray array];
     for (NSString *selected in self.filterUsernames) {
@@ -2170,34 +2254,38 @@ referenceSizeForHeaderInSection:(NSInteger)section {
             [stale addObject:selected];
         }
     }
-    if (stale.count == 0) return NO;
-    for (NSString *username in stale) [self.filterUsernames removeObject:username];
+    if (stale.count == 0)
+        return NO;
+    for (NSString *username in stale)
+        [self.filterUsernames removeObject:username];
     return YES;
 }
 
 /// Counts media for a username within the current (non-username) filter context, honoring
 /// unsaved in-memory deletions so prune works mid-save from the FRC delegate.
 - (NSUInteger)countOfMediaForUsername:(NSString *)username inContext:(NSManagedObjectContext *)ctx {
-    if (username.length == 0) return 0;
+    if (username.length == 0)
+        return 0;
     NSFetchRequest *req = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     req.includesPendingChanges = YES;
 
     NSMutableArray<NSPredicate *> *predicates = [NSMutableArray array];
     [predicates addObject:[NSPredicate predicateWithFormat:@"sourceUsername ==[c] %@", username]];
     NSPredicate *contextPredicate = [SPKGalleryFilterViewController predicateForTypes:self.filterTypes
-                                                                             sources:self.filterSources
-                                                                       favoritesOnly:self.filterFavoritesOnly
-                                                                           usernames:[NSSet set]
-                                                                          folderPath:self.currentFolderPath];
-    if (contextPredicate) [predicates addObject:contextPredicate];
+                                                                              sources:self.filterSources
+                                                                        favoritesOnly:self.filterFavoritesOnly
+                                                                            usernames:[NSSet set]
+                                                                           folderPath:self.currentFolderPath];
+    if (contextPredicate)
+        [predicates addObject:contextPredicate];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
-    if (visibleSources) [predicates addObject:visibleSources];
+    if (visibleSources)
+        [predicates addObject:visibleSources];
     req.predicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
 
     NSUInteger count = [ctx countForFetchRequest:req error:nil];
     return count == NSNotFound ? 0 : count;
 }
-
 
 #pragma mark - Sort / Filter
 
@@ -2227,13 +2315,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
             CGFloat fitHeight = [self sheetFitHeightForContentHeight:[vc spkContentHeightForWidth:[self sheetContentWidth]]];
             UISheetPresentationControllerDetent *fit = [UISheetPresentationControllerDetent
                 customDetentWithIdentifier:@"sparkle.gallery.sort.fit"
-                                   resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                return MIN(context.maximumDetentValue, fitHeight);
-            }];
-            sheet.detents = @[fit];
+                                  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                                      return MIN(context.maximumDetentValue, fitHeight);
+                                  }];
+            sheet.detents = @[ fit ];
             sheet.selectedDetentIdentifier = fit.identifier;
         } else {
-            sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent];
+            sheet.detents = @[ UISheetPresentationControllerDetent.mediumDetent ];
         }
         sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
     }
@@ -2274,13 +2362,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
             CGFloat fitHeight = [self sheetFitHeightForContentHeight:[vc spkContentHeightForWidth:[self sheetContentWidth]]];
             UISheetPresentationControllerDetent *fit = [UISheetPresentationControllerDetent
                 customDetentWithIdentifier:@"sparkle.gallery.filter.fit"
-                                   resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                return MIN(context.maximumDetentValue, fitHeight);
-            }];
-            sheet.detents = @[fit];
+                                  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                                      return MIN(context.maximumDetentValue, fitHeight);
+                                  }];
+            sheet.detents = @[ fit ];
             sheet.selectedDetentIdentifier = fit.identifier;
         } else {
-            sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent];
+            sheet.detents = @[ UISheetPresentationControllerDetent.mediumDetent ];
         }
         sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
     }

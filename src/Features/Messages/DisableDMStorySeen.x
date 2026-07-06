@@ -1,6 +1,6 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 #import "../../Tweak.h"
+#import "../../Utils.h"
 
 static inline BOOL SPKUnlimitedReplayEnabled(void) {
     return [SPKUtils getBoolPref:@"msgs_manual_visual_seen"];

@@ -1,13 +1,13 @@
-#import <substrate.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
+#import <substrate.h>
 
 @import UIKit;
 @import QuartzCore;
 
 #import "../../Utils.h"
 
-static NSString * const kSPKHDRLogCategory = @"HDR";
+static NSString *const kSPKHDRLogCategory = @"HDR";
 
 // Surfaces whose EDR "glow" we want to remove. Matched as substrings against the
 // class name of the layer's owning view and its ancestors.
@@ -54,7 +54,8 @@ static BOOL SPKChainMatchesAnyNeedle(UIView *view, NSArray<NSString *> *needles,
     while (cursor && depth < maxDepth) {
         NSString *className = NSStringFromClass([cursor class]);
         for (NSString *needle in needles) {
-            if ([className rangeOfString:needle].location != NSNotFound) return YES;
+            if ([className rangeOfString:needle].location != NSNotFound)
+                return YES;
         }
         cursor = cursor.superview;
         depth++;
@@ -144,12 +145,14 @@ static void hooked_swiftFollowButton_setEdr(id self, SEL _cmd, BOOL edr) {
 #pragma mark - Install
 
 static void SPKHookSelector(Class cls, SEL selector, IMP replacement, IMP *original) {
-    if (!cls || ![cls instancesRespondToSelector:selector]) return;
+    if (!cls || ![cls instancesRespondToSelector:selector])
+        return;
     MSHookMessageEx(cls, selector, replacement, original);
 }
 
 extern "C" void SPKInstallDisableRandomHDRHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"interface_disable_random_hdr"]) return;
+    if (![SPKUtils getBoolPref:@"interface_disable_random_hdr"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

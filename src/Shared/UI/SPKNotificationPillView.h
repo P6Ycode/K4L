@@ -10,18 +10,18 @@ typedef NS_ENUM(NSUInteger, SPKNotificationTone) {
 
 + (instancetype)progressPill;
 + (instancetype)toastPillWithTitle:(NSString *)title
-                           subtitle:(nullable NSString *)subtitle
-                               icon:(nullable UIImage *)icon
-                               tone:(SPKNotificationTone)tone;
+                          subtitle:(nullable NSString *)subtitle
+                              icon:(nullable UIImage *)icon
+                              tone:(SPKNotificationTone)tone;
 
 - (void)setPresentationTopConstraint:(NSLayoutConstraint *)constraint;
 
 /// Updates progress (0.0 – 1.0) for progress-style pills.
 - (void)setProgress:(float)progress animated:(BOOL)animated;
 - (void)setProgress:(float)progress
-       bytesWritten:(int64_t)bytesWritten
- totalBytesExpected:(int64_t)totalBytesExpected
-           animated:(BOOL)animated;
+          bytesWritten:(int64_t)bytesWritten
+    totalBytesExpected:(int64_t)totalBytesExpected
+              animated:(BOOL)animated;
 - (void)updateProgressTitle:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 
 /// Transitions the pill to a success state.
@@ -45,22 +45,22 @@ typedef NS_ENUM(NSUInteger, SPKNotificationTone) {
 - (void)dismiss;
 
 /// Called when user taps the close button while a progress operation is running.
-@property (nonatomic, copy) void(^onCancel)(void);
+@property (nonatomic, copy) void (^onCancel)(void);
 
 /// Called when user taps the pill body to retry while in error state.
-@property (nonatomic, copy) void(^onRetry)(void);
+@property (nonatomic, copy) void (^onRetry)(void);
 
 /// Called when user taps the pill body after success state is shown.
-@property (nonatomic, copy) void(^onTapWhenCompleted)(void);
+@property (nonatomic, copy) void (^onTapWhenCompleted)(void);
 
 /// Called when user taps the pill body while a progress operation is still
 /// running. Does not dismiss the pill (unlike the completed/toast taps).
-@property (nonatomic, copy) void(^onTapWhenProgress)(void);
+@property (nonatomic, copy) void (^onTapWhenProgress)(void);
 
 /// Called when a progress pill transitions to a visible terminal tone.
-@property (nonatomic, copy) void(^onTonePresented)(SPKNotificationTone tone);
+@property (nonatomic, copy) void (^onTonePresented)(SPKNotificationTone tone);
 
 /// Called after the pill has been fully removed from its superview.
-@property (nonatomic, copy) void(^onDidDismiss)(void);
+@property (nonatomic, copy) void (^onDidDismiss)(void);
 
 @end

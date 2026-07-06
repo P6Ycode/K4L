@@ -60,10 +60,10 @@ extern "C" {
 // Bar button item whose customView is an SPKChromeButton. `outButton` yields
 // the inner button for menu/tint/etc.
 UIBarButtonItem *SPKChromeBarButtonItem(NSString *symbol,
-                                         CGFloat pointSize,
-                                         id _Nullable target,
-                                         SEL _Nullable action,
-                                         SPKChromeButton * _Nullable * _Nullable outButton);
+                                        CGFloat pointSize,
+                                        id _Nullable target,
+                                        SEL _Nullable action,
+                                        SPKChromeButton *_Nullable *_Nullable outButton);
 
 #ifdef __cplusplus
 }

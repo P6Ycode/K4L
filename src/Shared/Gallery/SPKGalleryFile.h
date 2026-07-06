@@ -11,18 +11,18 @@ typedef NS_ENUM(int16_t, SPKGalleryMediaType) {
     SPKGalleryMediaTypeAudio = 2
 };
 
-FOUNDATION_EXPORT NSString *SPKFileNameForMedia(NSURL *originalURL, SPKGalleryMediaType mediaType, SPKGallerySaveMetadata * _Nullable metadata);
+FOUNDATION_EXPORT NSString *SPKFileNameForMedia(NSURL *originalURL, SPKGalleryMediaType mediaType, SPKGallerySaveMetadata *_Nullable metadata);
 
 /// Best-effort parse of tweak/Sparkle-style basenames, e.g. \c 1778088045602_username_story_20260210001603 — fills save-time epoch, posted-time compact date, user pk, username, and source slug when \a metadata fields are still empty (or source is Other).
 FOUNDATION_EXPORT void SPKGalleryApplyImportHeuristicsFromFilename(NSString *fileName, SPKGallerySaveMetadata *metadata);
 
 typedef NS_ENUM(int16_t, SPKGallerySource) {
-    SPKGallerySourceOther   = 0,
-    SPKGallerySourceFeed    = 1,
+    SPKGallerySourceOther = 0,
+    SPKGallerySourceFeed = 1,
     SPKGallerySourceStories = 2,
-    SPKGallerySourceReels   = 3,
+    SPKGallerySourceReels = 3,
     SPKGallerySourceProfile = 4,
-    SPKGallerySourceDMs     = 5,
+    SPKGallerySourceDMs = 5,
     SPKGallerySourceThumbnail = 6,
     SPKGallerySourceInstants = 7,
     SPKGallerySourceAudioPage = 8,
@@ -142,7 +142,7 @@ typedef NS_ENUM(int16_t, SPKGallerySource) {
 + (NSString *)shortLabelForSource:(SPKGallerySource)source;
 
 + (void)generateThumbnailForFile:(SPKGalleryFile *)file
-                      completion:(void(^_Nullable)(BOOL success))completion;
+                      completion:(void (^_Nullable)(BOOL success))completion;
 
 + (nullable UIImage *)loadThumbnailForFile:(SPKGalleryFile *)file;
 

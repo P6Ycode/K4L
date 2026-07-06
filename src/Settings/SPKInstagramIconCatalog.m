@@ -104,7 +104,7 @@ static NSArray<NSString *> *SPKInstagramIconCatalogRuntimeNames(void) {
         return @[];
     }
 
-    for (NSString *selectorName in @[@"allImageNames", @"_allImageNames", @"imageNames", @"allAssetNames", @"allRenditionNames", @"renditionNames"]) {
+    for (NSString *selectorName in @[ @"allImageNames", @"_allImageNames", @"imageNames", @"allAssetNames", @"allRenditionNames", @"renditionNames" ]) {
         NSArray<NSString *> *names = SPKInstagramIconCatalogNamesFromSelector(catalog, NSSelectorFromString(selectorName));
         if (names.count > 0) {
             return names;

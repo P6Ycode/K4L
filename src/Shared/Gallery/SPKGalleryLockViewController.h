@@ -5,9 +5,9 @@ NS_ASSUME_NONNULL_BEGIN
 @class SPKGalleryManager;
 
 typedef NS_ENUM(NSInteger, SPKGalleryLockMode) {
-    SPKGalleryLockModeUnlock = 0,          // Verify the existing passcode.
-    SPKGalleryLockModeSetPasscode,         // Enter + confirm a new passcode.
-    SPKGalleryLockModeChangePasscode,      // Verify old + enter + confirm a new passcode.
+    SPKGalleryLockModeUnlock = 0,     // Verify the existing passcode.
+    SPKGalleryLockModeSetPasscode,    // Enter + confirm a new passcode.
+    SPKGalleryLockModeChangePasscode, // Verify old + enter + confirm a new passcode.
 };
 
 /// Modal 4-6 digit passcode keypad used to unlock the gallery or set/change the passcode.
@@ -24,8 +24,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryLockMode) {
 
 /// Presents the passcode keypad for the given mode.
 + (void)presentMode:(SPKGalleryLockMode)mode
-   fromViewController:(UIViewController *)presenter
-           completion:(void (^)(BOOL success))completion;
+    fromViewController:(UIViewController *)presenter
+            completion:(void (^)(BOOL success))completion;
 
 /// Reuses the keypad for another independent passcode manager, such as Settings.
 + (void)presentUnlockForManager:(SPKGalleryManager *)manager
@@ -33,9 +33,9 @@ typedef NS_ENUM(NSInteger, SPKGalleryLockMode) {
                      completion:(void (^)(BOOL success))completion;
 
 + (void)presentMode:(SPKGalleryLockMode)mode
-         forManager:(SPKGalleryManager *)manager
- fromViewController:(UIViewController *)presenter
-         completion:(void (^)(BOOL success))completion;
+            forManager:(SPKGalleryManager *)manager
+    fromViewController:(UIViewController *)presenter
+            completion:(void (^)(BOOL success))completion;
 
 @end
 

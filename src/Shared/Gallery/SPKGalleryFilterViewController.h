@@ -1,5 +1,5 @@
-#import <UIKit/UIKit.h>
 #import "SPKGalleryFile.h"
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -10,7 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
            didApplyTypes:(NSSet<NSNumber *> *)types
                  sources:(NSSet<NSNumber *> *)sources
            favoritesOnly:(BOOL)favoritesOnly
-                usernames:(NSSet<NSString *> *)usernames;
+               usernames:(NSSet<NSString *> *)usernames;
 
 - (void)filterControllerDidClear:(SPKGalleryFilterViewController *)controller;
 @end
@@ -37,7 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
                                     sources:(NSSet<NSNumber *> *)sources
                               favoritesOnly:(BOOL)favoritesOnly
-                                   usernames:(NSSet<NSString *> *)usernames
+                                  usernames:(NSSet<NSString *> *)usernames
                                  folderPath:(nullable NSString *)folderPath;
 
 /// When `scopeToFolder` is NO, no folder constraint is applied (search/browse
@@ -45,7 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSPredicate *)predicateForTypes:(NSSet<NSNumber *> *)types
                                     sources:(NSSet<NSNumber *> *)sources
                               favoritesOnly:(BOOL)favoritesOnly
-                                   usernames:(NSSet<NSString *> *)usernames
+                                  usernames:(NSSet<NSString *> *)usernames
                                  folderPath:(nullable NSString *)folderPath
                               scopeToFolder:(BOOL)scopeToFolder;
 

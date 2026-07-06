@@ -1,46 +1,51 @@
-#import <objc/runtime.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
 #import <substrate.h>
 
-#import "../../Utils.h"
+#import "../../AssetUtils.h"
 #import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
 #import "../../Shared/Audio/SPKAudioDownloadCoordinator.h"
 #import "../../Shared/Audio/SPKAudioItem.h"
+#import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
 #import "../../Shared/MediaDownload/SPKDashParser.h"
 #import "../../Shared/UI/SPKChrome.h"
 #import "../../Shared/UI/SPKNotificationCenter.h"
-#import "../../AssetUtils.h"
+#import "../../Utils.h"
 
 static NSInteger const kSPKAudioPageDownloadButtonTag = 1351;
 static const void *kSPKAudioPageButtonKey = &kSPKAudioPageButtonKey;
-static NSString * const kSPKAudioPageDefaultActionKey = @"downloads_audio_page_default_action";
-static NSString * const kSPKAudioPageActionFiles = @"files";
-static NSString * const kSPKAudioPageActionShare = @"share";
-static NSString * const kSPKAudioPageActionConvertShare = @"convert_share";
-static NSString * const kSPKAudioPageActionGallery = @"gallery";
-static NSString * const kSPKAudioPageActionConvertGallery = @"convert_gallery";
-static NSString * const kSPKAudioPageActionPlay = @"play";
-static NSString * const kSPKAudioPageActionCopyURL = @"copy_url";
+static NSString *const kSPKAudioPageDefaultActionKey = @"downloads_audio_page_default_action";
+static NSString *const kSPKAudioPageActionFiles = @"files";
+static NSString *const kSPKAudioPageActionShare = @"share";
+static NSString *const kSPKAudioPageActionConvertShare = @"convert_share";
+static NSString *const kSPKAudioPageActionGallery = @"gallery";
+static NSString *const kSPKAudioPageActionConvertGallery = @"convert_gallery";
+static NSString *const kSPKAudioPageActionPlay = @"play";
+static NSString *const kSPKAudioPageActionCopyURL = @"copy_url";
 
 static id SPKAudioPageReadIvar(id object, const char *name) {
-    if (!object || !name) return nil;
+    if (!object || !name)
+        return nil;
     for (Class cls = [object class]; cls && cls != NSObject.class; cls = class_getSuperclass(cls)) {
         Ivar ivar = class_getInstanceVariable(cls, name);
-        if (ivar) return object_getIvar(object, ivar);
+        if (ivar)
+            return object_getIvar(object, ivar);
     }
     return nil;
 }
 
 static NSString *SPKAudioPageString(id value) {
-    if ([value isKindOfClass:NSString.class]) return [(NSString *)value length] > 0 ? value : nil;
-    if ([value respondsToSelector:@selector(stringValue)]) return [value stringValue];
+    if ([value isKindOfClass:NSString.class])
+        return [(NSString *)value length] > 0 ? value : nil;
+    if ([value respondsToSelector:@selector(stringValue)])
+        return [value stringValue];
     return nil;
 }
 
 static id SPKAudioPageCall(id object, NSString *selectorName) {
     SEL selector = NSSelectorFromString(selectorName);
-    if (!object || ![object respondsToSelector:selector]) return nil;
+    if (!object || ![object respondsToSelector:selector])
+        return nil;
     return ((id (*)(id, SEL))objc_msgSend)(object, selector);
 }
 
@@ -48,29 +53,37 @@ static NSURL *SPKAudioPageURL(id object, NSArray<NSString *> *names) {
     for (NSString *name in names) {
         id value = SPKAudioPageCall(object, name);
         if (!value) {
-            @try { value = [object valueForKey:name]; } @catch (__unused NSException *exception) {}
+            @try {
+                value = [object valueForKey:name];
+            } @catch (__unused NSException *exception) {
+            }
         }
-        if ([value isKindOfClass:NSURL.class]) return value;
+        if ([value isKindOfClass:NSURL.class])
+            return value;
         NSString *string = SPKAudioPageString(value);
         if (string.length > 0) {
             NSURL *url = [NSURL URLWithString:string];
-            if (url) return url;
+            if (url)
+                return url;
         }
     }
     return nil;
 }
 
 static NSURL *SPKAudioPageResolveAudioURL(id asset) {
-    NSURL *url = SPKAudioPageURL(asset, @[@"audioFileUrl", @"audioFileURL", @"progressiveDownloadURL", @"playableAudioURL", @"audioURL"]);
-    if (url) return url;
+    NSURL *url = SPKAudioPageURL(asset, @[ @"audioFileUrl", @"audioFileURL", @"progressiveDownloadURL", @"playableAudioURL", @"audioURL" ]);
+    if (url)
+        return url;
     NSData *manifestData = SPKAudioPageReadIvar(asset, "_dashManifestData");
     if ([manifestData isKindOfClass:NSData.class] && manifestData.length > 0) {
         NSString *xml = [[NSString alloc] initWithData:manifestData encoding:NSUTF8StringEncoding];
         NSArray<SPKDashRepresentation *> *reps = [SPKDashParser parseManifest:xml ?: @""];
         SPKDashRepresentation *best = nil;
         for (SPKDashRepresentation *rep in reps) {
-            if (![rep.contentType.lowercaseString containsString:@"audio"]) continue;
-            if (!best || rep.bandwidth > best.bandwidth) best = rep;
+            if (![rep.contentType.lowercaseString containsString:@"audio"])
+                continue;
+            if (!best || rep.bandwidth > best.bandwidth)
+                best = rep;
         }
         return best.url;
     }
@@ -80,10 +93,12 @@ static NSURL *SPKAudioPageResolveAudioURL(id asset) {
 static NSString *SPKAudioPageStringForAsset(id asset, NSArray<NSString *> *names) {
     for (NSString *name in names) {
         NSString *string = SPKAudioPageString(SPKAudioPageCall(asset, name));
-        if (string.length > 0) return string;
+        if (string.length > 0)
+            return string;
         @try {
             string = SPKAudioPageString([asset valueForKey:name]);
-            if (string.length > 0) return string;
+            if (string.length > 0)
+                return string;
         } @catch (__unused NSException *exception) {
         }
     }
@@ -92,10 +107,12 @@ static NSString *SPKAudioPageStringForAsset(id asset, NSArray<NSString *> *names
 
 static UIViewController *SPKAudioPageControllerForView(UIView *view) {
     Class cls = NSClassFromString(@"IGAudioPageViewController");
-    if (!cls) return nil;
+    if (!cls)
+        return nil;
     UIResponder *responder = view;
     while (responder) {
-        if ([responder isKindOfClass:cls]) return (UIViewController *)responder;
+        if ([responder isKindOfClass:cls])
+            return (UIViewController *)responder;
         responder = responder.nextResponder;
     }
     return nil;
@@ -134,12 +151,18 @@ static void SPKAudioPageRunAction(NSString *action, NSURL *url, UIView *sourceVi
 }
 
 static NSString *SPKAudioPageIconForAction(NSString *action) {
-    if ([action isEqualToString:kSPKAudioPageActionFiles]) return @"audio_download";
-    if ([action isEqualToString:kSPKAudioPageActionGallery]) return @"sparkle_gallery";
-    if ([action isEqualToString:kSPKAudioPageActionConvertGallery]) return @"sparkle_gallery";
-    if ([action isEqualToString:kSPKAudioPageActionConvertShare]) return @"share";
-    if ([action isEqualToString:kSPKAudioPageActionPlay]) return @"play";
-    if ([action isEqualToString:kSPKAudioPageActionCopyURL]) return @"link";
+    if ([action isEqualToString:kSPKAudioPageActionFiles])
+        return @"audio_download";
+    if ([action isEqualToString:kSPKAudioPageActionGallery])
+        return @"sparkle_gallery";
+    if ([action isEqualToString:kSPKAudioPageActionConvertGallery])
+        return @"sparkle_gallery";
+    if ([action isEqualToString:kSPKAudioPageActionConvertShare])
+        return @"share";
+    if ([action isEqualToString:kSPKAudioPageActionPlay])
+        return @"play";
+    if ([action isEqualToString:kSPKAudioPageActionCopyURL])
+        return @"link";
     return @"action";
 }
 
@@ -149,13 +172,15 @@ static UIImage *SPKAudioPageMenuIcon(NSString *iconName) {
 
 static UIImage *SPKAudioPageActionIcon(NSString *identifier, NSString *fallbackIconName) {
     UIImage *actionButtonIcon = SPKActionButtonMenuIconForIdentifier(identifier, 22.0);
-    if (actionButtonIcon) return actionButtonIcon;
+    if (actionButtonIcon)
+        return actionButtonIcon;
     return SPKAudioPageMenuIcon(fallbackIconName);
 }
 
 static NSDictionary *SPKAudioPageResolvedPayload(UIView *sourceView) {
     UIViewController *vc = SPKAudioPageControllerForView(sourceView);
-    id asset = SPKAudioPageReadIvar(vc, "_audioAsset") ?: SPKAudioPageReadIvar(vc, "_music") ?: SPKAudioPageReadIvar(vc, "_originalAudio");
+    id asset = SPKAudioPageReadIvar(vc, "_audioAsset") ?: SPKAudioPageReadIvar(vc, "_music") ?
+                                                                                             : SPKAudioPageReadIvar(vc, "_originalAudio");
     NSURL *url = SPKAudioPageResolveAudioURL(asset);
     if (!url) {
         SPKNotify(kSPKNotificationDownloadShare, @"Could not find audio URL", nil, @"error_filled", SPKNotificationToneError);
@@ -164,9 +189,9 @@ static NSDictionary *SPKAudioPageResolvedPayload(UIView *sourceView) {
 
     SPKGallerySaveMetadata *metadata = [[SPKGallerySaveMetadata alloc] init];
     metadata.source = (int16_t)SPKGallerySourceAudioPage;
-    metadata.sourceUsername = SPKAudioPageStringForAsset(asset, @[@"artistDisplayName", @"username", @"displayArtist", @"artist"]) ?: @"audio";
-    metadata.sourceMediaPK = SPKAudioPageStringForAsset(asset, @[@"audioAssetId", @"pk", @"id"]);
-    return @{@"url": url, @"metadata": metadata};
+    metadata.sourceUsername = SPKAudioPageStringForAsset(asset, @[ @"artistDisplayName", @"username", @"displayArtist", @"artist" ]) ?: @"audio";
+    metadata.sourceMediaPK = SPKAudioPageStringForAsset(asset, @[ @"audioAssetId", @"pk", @"id" ]);
+    return @{@"url" : url, @"metadata" : metadata};
 }
 
 static UIAction *SPKAudioPageMenuAction(NSString *title, NSString *action, NSString *iconIdentifier, NSString *fallbackIconName, UIView *sourceView) {
@@ -174,12 +199,13 @@ static UIAction *SPKAudioPageMenuAction(NSString *title, NSString *action, NSStr
                                image:SPKAudioPageActionIcon(iconIdentifier, fallbackIconName)
                           identifier:nil
                              handler:^(__unused UIAction *menuAction) {
-        NSDictionary *payload = SPKAudioPageResolvedPayload(sourceView);
-        NSURL *url = payload[@"url"];
-        SPKGallerySaveMetadata *metadata = payload[@"metadata"];
-        if (!url || !metadata) return;
-        SPKAudioPageRunAction(action, url, sourceView, metadata);
-    }];
+                                 NSDictionary *payload = SPKAudioPageResolvedPayload(sourceView);
+                                 NSURL *url = payload[@"url"];
+                                 SPKGallerySaveMetadata *metadata = payload[@"metadata"];
+                                 if (!url || !metadata)
+                                     return;
+                                 SPKAudioPageRunAction(action, url, sourceView, metadata);
+                             }];
 }
 
 static UIMenu *SPKAudioPageMenuForButton(UIButton *button) {
@@ -188,22 +214,24 @@ static UIMenu *SPKAudioPageMenuForButton(UIButton *button) {
                       identifier:nil
                          options:0
                         children:@[
-        SPKAudioPageMenuAction(@"Save to Files", kSPKAudioPageActionFiles, kSPKActionDownloadAudio, @"audio_download", button),
-        SPKAudioPageMenuAction(@"Share", kSPKAudioPageActionShare, kSPKActionDownloadAudioShare, @"share", button),
-        SPKAudioPageMenuAction(@"Save to Gallery", kSPKAudioPageActionGallery, kSPKActionDownloadAudioGallery, @"sparkle_gallery", button),
-        SPKAudioPageMenuAction(@"Play", kSPKAudioPageActionPlay, kSPKActionPlayAudio, @"play", button),
-        SPKAudioPageMenuAction(@"Copy Download URL", kSPKAudioPageActionCopyURL, kSPKActionCopyAudioURL, @"link", button)
-    ]];
+                            SPKAudioPageMenuAction(@"Save to Files", kSPKAudioPageActionFiles, kSPKActionDownloadAudio, @"audio_download", button),
+                            SPKAudioPageMenuAction(@"Share", kSPKAudioPageActionShare, kSPKActionDownloadAudioShare, @"share", button),
+                            SPKAudioPageMenuAction(@"Save to Gallery", kSPKAudioPageActionGallery, kSPKActionDownloadAudioGallery, @"sparkle_gallery", button),
+                            SPKAudioPageMenuAction(@"Play", kSPKAudioPageActionPlay, kSPKActionPlayAudio, @"play", button),
+                            SPKAudioPageMenuAction(@"Copy Download URL", kSPKAudioPageActionCopyURL, kSPKActionCopyAudioURL, @"link", button)
+                        ]];
 }
 
 static void SPKAudioPageRunDefaultAction(UIView *sourceView) {
     NSString *action = [SPKUtils getStringPref:kSPKAudioPageDefaultActionKey];
-    if (action.length == 0) action = kSPKAudioPageActionShare;
+    if (action.length == 0)
+        action = kSPKAudioPageActionShare;
 
     NSDictionary *payload = SPKAudioPageResolvedPayload(sourceView);
     NSURL *url = payload[@"url"];
     SPKGallerySaveMetadata *metadata = payload[@"metadata"];
-    if (!url || !metadata) return;
+    if (!url || !metadata)
+        return;
     SPKAudioPageRunAction(action, url, sourceView, metadata);
 }
 
@@ -220,7 +248,8 @@ static UIView *SPKAudioPageButtonAnchor(UIView *bar) {
 
 static UIColor *SPKAudioPageBackgroundColorFromAnchor(UIView *anchor) {
     UIColor *color = anchor.backgroundColor;
-    if (color && CGColorGetAlpha(color.CGColor) > 0.01) return color;
+    if (color && CGColorGetAlpha(color.CGColor) > 0.01)
+        return color;
     if (anchor.layer.backgroundColor && CGColorGetAlpha(anchor.layer.backgroundColor) > 0.01) {
         return [UIColor colorWithCGColor:anchor.layer.backgroundColor];
     }
@@ -252,7 +281,8 @@ static void SPKAudioPageInstallButton(UIView *bar) {
     UIView *host = [bar viewWithTag:kSPKAudioPageDownloadButtonTag];
     UIButton *button = [host isKindOfClass:UIView.class] ? SPKAudioPageButtonForHost(host) : nil;
     if (![button isKindOfClass:UIButton.class] || [button isKindOfClass:SPKChromeButton.class]) {
-        if (host) [host removeFromSuperview];
+        if (host)
+            [host removeFromSuperview];
         host = [UIView new];
         host.tag = kSPKAudioPageDownloadButtonTag;
         host.translatesAutoresizingMaskIntoConstraints = YES;
@@ -283,7 +313,8 @@ static void SPKAudioPageInstallButton(UIView *bar) {
     }
 
     NSString *defaultAction = [SPKUtils getStringPref:kSPKAudioPageDefaultActionKey];
-    if (defaultAction.length == 0) defaultAction = kSPKAudioPageActionShare;
+    if (defaultAction.length == 0)
+        defaultAction = kSPKAudioPageActionShare;
 
     CGFloat side = MAX(28.0, CGRectGetHeight(anchor.frame));
 
@@ -311,8 +342,9 @@ static void SPKAudioPageInstallButton(UIView *bar) {
 
 %hook UIView
 %new - (void)spk_audioPageDownloadTapped:(UIButton *)sender {
-    if (sender.showsMenuAsPrimaryAction) return;
-    SPKAudioPageRunDefaultAction(sender ?: (UIView *)self);
+if (sender.showsMenuAsPrimaryAction)
+    return;
+SPKAudioPageRunDefaultAction(sender ?: (UIView *)self);
 }
 %end
 
@@ -327,8 +359,8 @@ static void SPKAudioPageInstallButton(UIView *bar) {
         if (anchor) {
             CGFloat side = MAX(28.0, CGRectGetHeight(anchor.frame));
             CGRect expected = CGRectMake(CGRectGetMinX(anchor.frame) - side - 8.0,
-                                        CGRectGetMidY(anchor.frame) - side / 2.0,
-                                        side, side);
+                                         CGRectGetMidY(anchor.frame) - side / 2.0,
+                                         side, side);
             if (CGRectEqualToRect(existing.frame, expected)) {
                 return; // Nothing changed, don't touch the button.
             }
@@ -341,8 +373,10 @@ static void SPKAudioPageInstallButton(UIView *bar) {
 %end
 
 extern "C" void SPKInstallAudioPageDownloadHooksIfNeeded(void) {
-    if (![SPKUtils getBoolPref:@"downloads_audio_enabled"]) return;
-    if (![SPKUtils getBoolPref:@"downloads_audio_page_button"]) return;
+    if (![SPKUtils getBoolPref:@"downloads_audio_enabled"])
+        return;
+    if (![SPKUtils getBoolPref:@"downloads_audio_page_button"])
+        return;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SPKAudioPageDownloadHooks);

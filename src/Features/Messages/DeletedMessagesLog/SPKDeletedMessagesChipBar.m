@@ -1,6 +1,6 @@
 #import "SPKDeletedMessagesChipBar.h"
-#import "../../../Shared/UI/SPKChipGlass.h"
 #import "../../../AssetUtils.h"
+#import "../../../Shared/UI/SPKChipGlass.h"
 #import "../../../Utils.h"
 
 @interface SPKDeletedMessagesChipBar ()
@@ -16,7 +16,8 @@
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (!self) return self;
+    if (!self)
+        return self;
     self.backgroundColor = [UIColor clearColor];
     _selection = [NSMutableSet set];
 
@@ -35,28 +36,33 @@
     [_scroll addSubview:_stack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_scroll.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor],
+        [_scroll.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [_scroll.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [_scroll.topAnchor      constraintEqualToAnchor:self.topAnchor],
-        [_scroll.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor],
-        [_stack.leadingAnchor   constraintEqualToAnchor:_scroll.contentLayoutGuide.leadingAnchor],
-        [_stack.trailingAnchor  constraintEqualToAnchor:_scroll.contentLayoutGuide.trailingAnchor],
-        [_stack.topAnchor       constraintEqualToAnchor:_scroll.contentLayoutGuide.topAnchor   constant:6],
-        [_stack.bottomAnchor    constraintEqualToAnchor:_scroll.contentLayoutGuide.bottomAnchor constant:-6],
-        [_stack.heightAnchor    constraintEqualToAnchor:_scroll.frameLayoutGuide.heightAnchor constant:-12],
+        [_scroll.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [_scroll.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [_stack.leadingAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.leadingAnchor],
+        [_stack.trailingAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.trailingAnchor],
+        [_stack.topAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.topAnchor
+                                         constant:6],
+        [_stack.bottomAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.bottomAnchor
+                                            constant:-6],
+        [_stack.heightAnchor constraintEqualToAnchor:_scroll.frameLayoutGuide.heightAnchor
+                                            constant:-12],
     ]];
     return self;
 }
 
-- (CGSize)intrinsicContentSize { return CGSizeMake(UIViewNoIntrinsicMetric, 50); }
+- (CGSize)intrinsicContentSize {
+    return CGSizeMake(UIViewNoIntrinsicMetric, 50);
+}
 
 - (void)setItems:(NSArray<NSString *> *)titles symbols:(NSArray<NSString *> *)symbols {
     [self setItems:titles symbols:symbols selectedSymbols:nil];
 }
 
 - (void)setItems:(NSArray<NSString *> *)titles
-         symbols:(NSArray<NSString *> *)symbols
- selectedSymbols:(NSArray<NSString *> *)selectedSymbols {
+            symbols:(NSArray<NSString *> *)symbols
+    selectedSymbols:(NSArray<NSString *> *)selectedSymbols {
     self.symbols = symbols;
     self.selectedSymbols = selectedSymbols;
     for (UIView *v in self.stack.arrangedSubviews) {
@@ -94,7 +100,8 @@
 }
 
 - (void)clearSelection {
-    if (self.selection.count == 0) return;
+    if (self.selection.count == 0)
+        return;
     [self.selection removeAllObjects];
     [self refreshSelection];
 }
@@ -123,9 +130,9 @@
 - (void)chipTapped:(UIButton *)c {
     NSNumber *key = @(c.tag);
     if ([self.selection containsObject:key]) {
-        [self.selection removeObject:key];   // retap deselects
+        [self.selection removeObject:key]; // retap deselects
     } else {
-        [self.selection addObject:key];      // multi-select
+        [self.selection addObject:key]; // multi-select
     }
     [self refreshSelection];
     if ([self.delegate respondsToSelector:@selector(chipBar:didChangeSelection:)]) {

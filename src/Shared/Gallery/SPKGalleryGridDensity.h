@@ -8,11 +8,11 @@ NS_ASSUME_NONNULL_BEGIN
 // them stay in sync.
 
 // NSUserDefaults keys.
-FOUNDATION_EXPORT NSString * const kSPKGalleryGridColumnsKey;          // NSInteger, persisted column count
-FOUNDATION_EXPORT NSString * const kSPKGalleryGridPinchDisabledKey;    // BOOL, YES disables pinch-to-zoom
-FOUNDATION_EXPORT NSString * const kSPKGalleryGridShowSourceUsernameDisabledKey; // BOOL, YES hides source icon + username overlays
-FOUNDATION_EXPORT NSString * const kSPKGalleryFolderBarPinDisabledKey; // BOOL, YES unpins the folder bar (lets it scroll away)
-FOUNDATION_EXPORT NSString * const kSPKGalleryGridControlsChangedNotification;
+FOUNDATION_EXPORT NSString *const kSPKGalleryGridColumnsKey;                    // NSInteger, persisted column count
+FOUNDATION_EXPORT NSString *const kSPKGalleryGridPinchDisabledKey;              // BOOL, YES disables pinch-to-zoom
+FOUNDATION_EXPORT NSString *const kSPKGalleryGridShowSourceUsernameDisabledKey; // BOOL, YES hides source icon + username overlays
+FOUNDATION_EXPORT NSString *const kSPKGalleryFolderBarPinDisabledKey;           // BOOL, YES unpins the folder bar (lets it scroll away)
+FOUNDATION_EXPORT NSString *const kSPKGalleryGridControlsChangedNotification;
 
 /// Whether the folder bar (subfolder chips) stays pinned to the top while
 /// scrolling. Defaults to YES; the backing pref stores the disabled state.

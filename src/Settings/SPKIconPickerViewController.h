@@ -5,16 +5,16 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, SPKIconPickerCellStyle) {
-    SPKIconPickerCellStyleGlyph = 0,    // template monochrome glyph (action/section icons)
-    SPKIconPickerCellStyleAppIcon = 1,  // full-colour rounded app-icon artwork
+    SPKIconPickerCellStyleGlyph = 0,   // template monochrome glyph (action/section icons)
+    SPKIconPickerCellStyleAppIcon = 1, // full-colour rounded app-icon artwork
 };
 
 /// One selectable entry in an icon picker.
 @interface SPKIconPickerItem : NSObject
-@property (nonatomic, copy) NSString *identifier;            // value matched for selection / handed back on tap
-@property (nonatomic, copy, nullable) NSString *title;        // display label
-@property (nonatomic, copy, nullable) NSString *searchText;   // lowercased haystack for search
-@property (nonatomic, strong, nullable) id userInfo;          // optional subclass payload
+@property (nonatomic, copy) NSString *identifier;           // value matched for selection / handed back on tap
+@property (nonatomic, copy, nullable) NSString *title;      // display label
+@property (nonatomic, copy, nullable) NSString *searchText; // lowercased haystack for search
+@property (nonatomic, strong, nullable) id userInfo;        // optional subclass payload
 + (instancetype)itemWithIdentifier:(NSString *)identifier
                              title:(nullable NSString *)title
                         searchText:(nullable NSString *)searchText;

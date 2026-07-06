@@ -19,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-FOUNDATION_EXPORT NSString *SPKActionDescriptorDisplayTitle(NSString *identifier, NSString * _Nullable topicTitle);
+FOUNDATION_EXPORT NSString *SPKActionDescriptorDisplayTitle(NSString *identifier, NSString *_Nullable topicTitle);
 FOUNDATION_EXPORT NSString *SPKActionDescriptorIconName(NSString *identifier);
 
 NS_ASSUME_NONNULL_END

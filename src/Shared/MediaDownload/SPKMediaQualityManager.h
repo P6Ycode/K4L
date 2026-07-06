@@ -16,9 +16,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// force a tier (used by the "Trim & Save" quality prompt). Returns nil when
 /// the media isn't a video.
 + (nullable SPKTrimSourcePlan *)trimSourcePlanForMediaObject:(nullable id)mediaObject
-                                                   photoURL:(nullable NSURL *)photoURL
-                                                   videoURL:(nullable NSURL *)videoURL
-                                            qualityOverride:(nullable NSString *)qualityOverride;
+                                                    photoURL:(nullable NSURL *)photoURL
+                                                    videoURL:(nullable NSURL *)videoURL
+                                             qualityOverride:(nullable NSString *)qualityOverride;
 
 /// Presents the same quality picker the download flow uses (audio-only rows
 /// excluded), reporting the chosen option as a trim plan, or nil if dismissed.

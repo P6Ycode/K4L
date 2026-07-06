@@ -2,15 +2,16 @@
 
 #import <UIKit/UIKit.h>
 
-#import "SPKPreferences.h"
 #import "../App/SPKFlexLoader.h"
+#import "SPKPreferences.h"
 
 static BOOL SPKIsIOSVersionAtLeast(NSString *version) {
     return [[[UIDevice currentDevice] systemVersion] compare:version options:NSNumericSearch] != NSOrderedAscending;
 }
 
 BOOL SPKPrefIsAvailable(NSString *key) {
-    if (key.length == 0) return YES;
+    if (key.length == 0)
+        return YES;
 
     if ([key isEqualToString:kSPKPrefInterfaceLiquidGlass] ||
         [key isEqualToString:kSPKPrefInterfaceLiquidGlassTabBarMode] ||

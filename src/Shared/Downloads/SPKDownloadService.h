@@ -1,12 +1,12 @@
 #import <Foundation/Foundation.h>
 
-#import "SPKDownloadTypes.h"
-#import "SPKDownloadRequest.h"
 #import "SPKDownloadJob.h"
+#import "SPKDownloadRequest.h"
+#import "SPKDownloadTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef void (^SPKDownloadSubmissionCompletion)(NSString * _Nullable jobID, NSError * _Nullable error);
+typedef void (^SPKDownloadSubmissionCompletion)(NSString *_Nullable jobID, NSError *_Nullable error);
 
 @interface SPKDownloadService : NSObject
 

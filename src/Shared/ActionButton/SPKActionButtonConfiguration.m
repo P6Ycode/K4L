@@ -1,7 +1,7 @@
 #import "SPKActionButtonConfiguration.h"
-#import "SPKActionDescriptor.h"
 #import "../../Settings/SPKPreferences.h"
 #import "../../Utils.h"
+#import "SPKActionDescriptor.h"
 
 static NSArray<NSString *> *SPKFilteredActionArray(NSArray *values, NSArray<NSString *> *supported) {
     NSMutableOrderedSet<NSString *> *filtered = [NSMutableOrderedSet orderedSet];
@@ -19,159 +19,176 @@ static NSArray<NSString *> *SPKFilteredUniqueActionArray(NSArray *values, NSArra
 
 NSString *SPKActionButtonTopicKeyForSource(SPKActionButtonSource source) {
     switch (source) {
-        case SPKActionButtonSourceFeed: return @"feed";
-        case SPKActionButtonSourceReels: return @"reels";
-        case SPKActionButtonSourceStories: return @"stories";
-        case SPKActionButtonSourceDirect: return @"msgs";
-        case SPKActionButtonSourceProfile: return @"profile";
-        case SPKActionButtonSourceInstants: return @"instants";
+    case SPKActionButtonSourceFeed:
+        return @"feed";
+    case SPKActionButtonSourceReels:
+        return @"reels";
+    case SPKActionButtonSourceStories:
+        return @"stories";
+    case SPKActionButtonSourceDirect:
+        return @"msgs";
+    case SPKActionButtonSourceProfile:
+        return @"profile";
+    case SPKActionButtonSourceInstants:
+        return @"instants";
     }
 }
 
 NSString *SPKActionButtonTopicTitleForSource(SPKActionButtonSource source) {
     switch (source) {
-        case SPKActionButtonSourceFeed: return @"Feed";
-        case SPKActionButtonSourceReels: return @"Reels";
-        case SPKActionButtonSourceStories: return @"Stories";
-        case SPKActionButtonSourceDirect: return @"Messages";
-        case SPKActionButtonSourceProfile: return @"Profile";
-        case SPKActionButtonSourceInstants: return @"Instants";
+    case SPKActionButtonSourceFeed:
+        return @"Feed";
+    case SPKActionButtonSourceReels:
+        return @"Reels";
+    case SPKActionButtonSourceStories:
+        return @"Stories";
+    case SPKActionButtonSourceDirect:
+        return @"Messages";
+    case SPKActionButtonSourceProfile:
+        return @"Profile";
+    case SPKActionButtonSourceInstants:
+        return @"Instants";
     }
 }
 
 NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSource source) {
     switch (source) {
-        case SPKActionButtonSourceFeed:
-        case SPKActionButtonSourceReels:
-            return @[
-                kSPKActionDownloadLibrary,
-                kSPKActionDownloadShare,
-                kSPKActionCopyDownloadLink,
-                kSPKActionCopyMedia,
-                kSPKActionDownloadGallery,
-                kSPKActionTrimSave,
-                kSPKActionEditSave,
-                kSPKActionDownloadAudio,
-                kSPKActionDownloadAudioShare,
-                kSPKActionDownloadAudioGallery,
-                kSPKActionPlayAudio,
-                kSPKActionCopyAudioURL,
-                kSPKActionExpand,
-                kSPKActionViewThumbnail,
-                kSPKActionCopyCaption,
-                kSPKActionOpenTopicSettings,
-                kSPKActionRepost
-            ];
-        case SPKActionButtonSourceStories:
-            return @[
-                kSPKActionDownloadLibrary,
-                kSPKActionDownloadShare,
-                kSPKActionCopyDownloadLink,
-                kSPKActionCopyMedia,
-                kSPKActionDownloadGallery,
-                kSPKActionTrimSave,
-                kSPKActionEditSave,
-                kSPKActionDownloadAudio,
-                kSPKActionDownloadAudioShare,
-                kSPKActionDownloadAudioGallery,
-                kSPKActionPlayAudio,
-                kSPKActionCopyAudioURL,
-                kSPKActionExpand,
-                kSPKActionViewThumbnail,
-                kSPKActionStoryMentionsSheet,
-                kSPKActionToggleStorySeenUserRule,
-                kSPKActionOpenTopicSettings
-            ];
-        case SPKActionButtonSourceDirect:
-            return @[
-                kSPKActionDownloadLibrary,
-                kSPKActionDownloadShare,
-                kSPKActionCopyDownloadLink,
-                kSPKActionCopyMedia,
-                kSPKActionDownloadGallery,
-                kSPKActionTrimSave,
-                kSPKActionEditSave,
-                kSPKActionDownloadAudio,
-                kSPKActionDownloadAudioShare,
-                kSPKActionDownloadAudioGallery,
-                kSPKActionPlayAudio,
-                kSPKActionCopyAudioURL,
-                kSPKActionExpand,
-                kSPKActionViewThumbnail,
-                kSPKActionDeletedMessagesLog,
-                kSPKActionOpenTopicSettings
-            ];
-        case SPKActionButtonSourceInstants:
-            return @[
-                kSPKActionDownloadLibrary,
-                kSPKActionDownloadShare,
-                kSPKActionCopyDownloadLink,
-                kSPKActionCopyMedia,
-                kSPKActionDownloadGallery,
-                kSPKActionTrimSave,
-                kSPKActionEditSave,
-                kSPKActionExpand,
-                kSPKActionViewThumbnail,
-                kSPKActionOpenTopicSettings
-            ];
-        case SPKActionButtonSourceProfile:
-            return @[
-                kSPKActionDownloadLibrary,
-                kSPKActionDownloadShare,
-                kSPKActionCopyDownloadLink,
-                kSPKActionCopyMedia,
-                kSPKActionDownloadGallery,
-                kSPKActionEditSave,
-                kSPKActionExpand,
-                kSPKActionProfileCopyInfo,
-                kSPKActionToggleProfileStorySeenUserRule,
-                kSPKActionToggleProfileMessagesSeenUserRule,
-                kSPKActionOpenTopicSettings
-            ];
+    case SPKActionButtonSourceFeed:
+    case SPKActionButtonSourceReels:
+        return @[
+            kSPKActionDownloadLibrary,
+            kSPKActionDownloadShare,
+            kSPKActionCopyDownloadLink,
+            kSPKActionCopyMedia,
+            kSPKActionDownloadGallery,
+            kSPKActionTrimSave,
+            kSPKActionEditSave,
+            kSPKActionDownloadAudio,
+            kSPKActionDownloadAudioShare,
+            kSPKActionDownloadAudioGallery,
+            kSPKActionPlayAudio,
+            kSPKActionCopyAudioURL,
+            kSPKActionExpand,
+            kSPKActionViewThumbnail,
+            kSPKActionCopyCaption,
+            kSPKActionOpenTopicSettings,
+            kSPKActionRepost
+        ];
+    case SPKActionButtonSourceStories:
+        return @[
+            kSPKActionDownloadLibrary,
+            kSPKActionDownloadShare,
+            kSPKActionCopyDownloadLink,
+            kSPKActionCopyMedia,
+            kSPKActionDownloadGallery,
+            kSPKActionTrimSave,
+            kSPKActionEditSave,
+            kSPKActionDownloadAudio,
+            kSPKActionDownloadAudioShare,
+            kSPKActionDownloadAudioGallery,
+            kSPKActionPlayAudio,
+            kSPKActionCopyAudioURL,
+            kSPKActionExpand,
+            kSPKActionViewThumbnail,
+            kSPKActionStoryMentionsSheet,
+            kSPKActionToggleStorySeenUserRule,
+            kSPKActionOpenTopicSettings
+        ];
+    case SPKActionButtonSourceDirect:
+        return @[
+            kSPKActionDownloadLibrary,
+            kSPKActionDownloadShare,
+            kSPKActionCopyDownloadLink,
+            kSPKActionCopyMedia,
+            kSPKActionDownloadGallery,
+            kSPKActionTrimSave,
+            kSPKActionEditSave,
+            kSPKActionDownloadAudio,
+            kSPKActionDownloadAudioShare,
+            kSPKActionDownloadAudioGallery,
+            kSPKActionPlayAudio,
+            kSPKActionCopyAudioURL,
+            kSPKActionExpand,
+            kSPKActionViewThumbnail,
+            kSPKActionDeletedMessagesLog,
+            kSPKActionOpenTopicSettings
+        ];
+    case SPKActionButtonSourceInstants:
+        return @[
+            kSPKActionDownloadLibrary,
+            kSPKActionDownloadShare,
+            kSPKActionCopyDownloadLink,
+            kSPKActionCopyMedia,
+            kSPKActionDownloadGallery,
+            kSPKActionTrimSave,
+            kSPKActionEditSave,
+            kSPKActionExpand,
+            kSPKActionViewThumbnail,
+            kSPKActionOpenTopicSettings
+        ];
+    case SPKActionButtonSourceProfile:
+        return @[
+            kSPKActionDownloadLibrary,
+            kSPKActionDownloadShare,
+            kSPKActionCopyDownloadLink,
+            kSPKActionCopyMedia,
+            kSPKActionDownloadGallery,
+            kSPKActionEditSave,
+            kSPKActionExpand,
+            kSPKActionProfileCopyInfo,
+            kSPKActionToggleProfileStorySeenUserRule,
+            kSPKActionToggleProfileMessagesSeenUserRule,
+            kSPKActionOpenTopicSettings
+        ];
     }
 }
 
 NSArray<NSString *> *SPKActionButtonBulkDownloadSupportedActionsForSource(SPKActionButtonSource source) {
     switch (source) {
-        case SPKActionButtonSourceFeed:
-        case SPKActionButtonSourceReels:
-        case SPKActionButtonSourceStories:
-        case SPKActionButtonSourceInstants:
-        case SPKActionButtonSourceDirect:
-            return @[
-                kSPKActionDownloadAllLibrary,
-                kSPKActionDownloadAllShare,
-                kSPKActionDownloadAllGallery
-            ];
-        case SPKActionButtonSourceProfile:
-            return @[];
+    case SPKActionButtonSourceFeed:
+    case SPKActionButtonSourceReels:
+    case SPKActionButtonSourceStories:
+    case SPKActionButtonSourceInstants:
+    case SPKActionButtonSourceDirect:
+        return @[
+            kSPKActionDownloadAllLibrary,
+            kSPKActionDownloadAllShare,
+            kSPKActionDownloadAllGallery
+        ];
+    case SPKActionButtonSourceProfile:
+        return @[];
     }
 }
 
 NSArray<NSString *> *SPKActionButtonBulkCopySupportedActionsForSource(SPKActionButtonSource source) {
     switch (source) {
-        case SPKActionButtonSourceFeed:
-        case SPKActionButtonSourceReels:
-        case SPKActionButtonSourceStories:
-        case SPKActionButtonSourceInstants:
-        case SPKActionButtonSourceDirect:
-            return @[
-                kSPKActionDownloadAllClipboard,
-                kSPKActionDownloadAllLinks
-            ];
-        case SPKActionButtonSourceProfile:
-            return @[];
+    case SPKActionButtonSourceFeed:
+    case SPKActionButtonSourceReels:
+    case SPKActionButtonSourceStories:
+    case SPKActionButtonSourceInstants:
+    case SPKActionButtonSourceDirect:
+        return @[
+            kSPKActionDownloadAllClipboard,
+            kSPKActionDownloadAllLinks
+        ];
+    case SPKActionButtonSourceProfile:
+        return @[];
     }
 }
 
 // Maps a single-item action identifier to its bulk "all" counterpart, or nil
 // when the action has no bulk equivalent.
 static NSString *SPKBulkAllIdentifierForBaseAction(NSString *identifier) {
-    if ([identifier isEqualToString:kSPKActionDownloadLibrary]) return kSPKActionDownloadAllLibrary;
-    if ([identifier isEqualToString:kSPKActionDownloadShare]) return kSPKActionDownloadAllShare;
-    if ([identifier isEqualToString:kSPKActionDownloadGallery]) return kSPKActionDownloadAllGallery;
-    if ([identifier isEqualToString:kSPKActionCopyMedia]) return kSPKActionDownloadAllClipboard;
-    if ([identifier isEqualToString:kSPKActionCopyDownloadLink]) return kSPKActionDownloadAllLinks;
+    if ([identifier isEqualToString:kSPKActionDownloadLibrary])
+        return kSPKActionDownloadAllLibrary;
+    if ([identifier isEqualToString:kSPKActionDownloadShare])
+        return kSPKActionDownloadAllShare;
+    if ([identifier isEqualToString:kSPKActionDownloadGallery])
+        return kSPKActionDownloadAllGallery;
+    if ([identifier isEqualToString:kSPKActionCopyMedia])
+        return kSPKActionDownloadAllClipboard;
+    if ([identifier isEqualToString:kSPKActionCopyDownloadLink])
+        return kSPKActionDownloadAllLinks;
     return nil;
 }
 
@@ -180,7 +197,8 @@ static NSString *SPKBulkAllIdentifierForBaseAction(NSString *identifier) {
 // counterpart, in the same order. This keeps the "Bulk" menu in lockstep with
 // the rest of the action button (no separate bulk store / editor).
 static NSArray<NSString *> *SPKDerivedBulkActionsForSource(SPKActionButtonSource source, NSArray<NSString *> *supportedBulk) {
-    if (supportedBulk.count == 0) return @[];
+    if (supportedBulk.count == 0)
+        return @[];
     SPKActionButtonConfiguration *configuration =
         [SPKActionButtonConfiguration configurationForSource:source
                                                   topicTitle:SPKActionButtonTopicTitleForSource(source)
@@ -219,34 +237,34 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
                                          source == SPKActionButtonSourceReels ||
                                          source == SPKActionButtonSourceStories ||
                                          source == SPKActionButtonSourceDirect)
-        ? @[
-            kSPKActionDownloadAudio,
-            kSPKActionDownloadAudioShare,
-            kSPKActionDownloadAudioGallery,
-            kSPKActionPlayAudio,
-            kSPKActionCopyAudioURL
-        ]
-        : @[];
+                                            ? @[
+                                                  kSPKActionDownloadAudio,
+                                                  kSPKActionDownloadAudioShare,
+                                                  kSPKActionDownloadAudioGallery,
+                                                  kSPKActionPlayAudio,
+                                                  kSPKActionCopyAudioURL
+                                              ]
+                                            : @[];
     // Zoom: expand + view thumbnail (profile has no thumbnail).
     NSArray<NSString *> *zoomActions = (source == SPKActionButtonSourceProfile)
-        ? @[kSPKActionExpand]
-        : @[kSPKActionExpand, kSPKActionViewThumbnail];
+                                           ? @[ kSPKActionExpand ]
+                                           : @[ kSPKActionExpand, kSPKActionViewThumbnail ];
     NSArray<NSString *> *copyActions = (source == SPKActionButtonSourceProfile)
-            ? @[kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionProfileCopyInfo]
-        : ((source == SPKActionButtonSourceFeed || source == SPKActionButtonSourceReels)
-            ? @[kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionCopyCaption]
-            : @[kSPKActionCopyDownloadLink, kSPKActionCopyMedia]);
+                                           ? @[ kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionProfileCopyInfo ]
+                                           : ((source == SPKActionButtonSourceFeed || source == SPKActionButtonSourceReels)
+                                                  ? @[ kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionCopyCaption ]
+                                                  : @[ kSPKActionCopyDownloadLink, kSPKActionCopyMedia ]);
     NSArray<NSString *> *moreActions;
     if (source == SPKActionButtonSourceFeed || source == SPKActionButtonSourceReels) {
-        moreActions = @[kSPKActionRepost, kSPKActionOpenTopicSettings];
+        moreActions = @[ kSPKActionRepost, kSPKActionOpenTopicSettings ];
     } else if (source == SPKActionButtonSourceStories) {
-        moreActions = @[kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionOpenTopicSettings];
+        moreActions = @[ kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionOpenTopicSettings ];
     } else if (source == SPKActionButtonSourceDirect) {
-        moreActions = @[kSPKActionDeletedMessagesLog, kSPKActionOpenTopicSettings];
+        moreActions = @[ kSPKActionDeletedMessagesLog, kSPKActionOpenTopicSettings ];
     } else if (source == SPKActionButtonSourceProfile) {
-        moreActions = @[kSPKActionToggleProfileStorySeenUserRule, kSPKActionToggleProfileMessagesSeenUserRule, kSPKActionOpenTopicSettings];
+        moreActions = @[ kSPKActionToggleProfileStorySeenUserRule, kSPKActionToggleProfileMessagesSeenUserRule, kSPKActionOpenTopicSettings ];
     } else {
-        moreActions = @[kSPKActionOpenTopicSettings];
+        moreActions = @[ kSPKActionOpenTopicSettings ];
     }
 
     if (moreActions.count > 0) {
@@ -288,8 +306,7 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
 + (instancetype)configurationForSource:(SPKActionButtonSource)source
                             topicTitle:(NSString *)topicTitle
                       supportedActions:(NSArray<NSString *> *)supportedActions
-                       defaultSections:(NSArray<SPKActionMenuSection *> *)defaultSections
-{
+                       defaultSections:(NSArray<SPKActionMenuSection *> *)defaultSections {
     SPKActionButtonConfiguration *configuration = [[self alloc] init];
     configuration.source = source;
     configuration.topicTitle = topicTitle.length > 0 ? topicTitle : SPKActionButtonTopicTitleForSource(source);
@@ -304,7 +321,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
         NSArray *storedSections = [stored[@"sections"] isKindOfClass:[NSArray class]] ? stored[@"sections"] : @[];
         for (NSDictionary *dictionary in storedSections) {
             SPKActionMenuSection *section = [SPKActionMenuSection sectionFromDictionary:dictionary];
-            if (section) [configuration.sections addObject:section];
+            if (section)
+                [configuration.sections addObject:section];
         }
         [configuration.disabledActions addObjectsFromArray:SPKFilteredActionArray(stored[@"disabled_actions"], configuration.supportedActions)];
         [configuration.unassignedActions addObjectsFromArray:SPKFilteredActionArray(stored[@"unassigned_actions"], configuration.supportedActions)];
@@ -325,14 +343,17 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
         SPKActionButtonBulkCopySupportedActionsForSource(source).count > 0) {
         BOOL hasBulkSection = NO;
         for (SPKActionMenuSection *section in configuration.sections) {
-            if ([section.identifier isEqualToString:@"bulk"]) { hasBulkSection = YES; break; }
+            if ([section.identifier isEqualToString:@"bulk"]) {
+                hasBulkSection = YES;
+                break;
+            }
         }
         if (!hasBulkSection) {
             SPKActionMenuSection *bulkSection = [SPKActionMenuSection sectionWithIdentifier:@"bulk"
-                                                                                     title:@"Bulk"
-                                                                                  iconName:@"carousel"
-                                                                               collapsible:YES
-                                                                                   actions:@[]];
+                                                                                      title:@"Bulk"
+                                                                                   iconName:@"carousel"
+                                                                                collapsible:YES
+                                                                                    actions:@[]];
             // Appended last so the Bulk section is the bottom-most when available.
             [configuration.sections addObject:bulkSection];
         }
@@ -352,9 +373,9 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
         [sectionDictionaries addObject:[section dictionaryRepresentation]];
     }
     return @{
-        @"sections": sectionDictionaries,
-        @"disabled_actions": [self.disabledActions copy] ?: @[],
-        @"unassigned_actions": [self.unassignedActions copy] ?: @[]
+        @"sections" : sectionDictionaries,
+        @"disabled_actions" : [self.disabledActions copy] ?: @[],
+        @"unassigned_actions" : [self.unassignedActions copy] ?: @[]
     };
 }
 
@@ -382,15 +403,20 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
     NSMutableArray<SPKActionMenuSection *> *normalizedSections = [NSMutableArray array];
 
     for (SPKActionMenuSection *section in self.sections ?: @[]) {
-        if (![section isKindOfClass:[SPKActionMenuSection class]]) continue;
-        if (section.identifier.length == 0) section.identifier = NSUUID.UUID.UUIDString;
-        if (section.title.length == 0) section.title = @"Section";
-        if (section.iconName.length == 0) section.iconName = @"more";
+        if (![section isKindOfClass:[SPKActionMenuSection class]])
+            continue;
+        if (section.identifier.length == 0)
+            section.identifier = NSUUID.UUID.UUIDString;
+        if (section.title.length == 0)
+            section.title = @"Section";
+        if (section.iconName.length == 0)
+            section.iconName = @"more";
 
         NSArray<NSString *> *filteredActions = SPKFilteredActionArray(section.actions, supported);
         NSMutableArray<NSString *> *uniqueActions = [NSMutableArray array];
         for (NSString *identifier in filteredActions) {
-            if ([seen containsObject:identifier]) continue;
+            if ([seen containsObject:identifier])
+                continue;
             [seen addObject:identifier];
             [uniqueActions addObject:identifier];
         }
@@ -412,7 +438,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
 
 - (nullable SPKActionMenuSection *)sectionWithIdentifier:(NSString *)identifier {
     for (SPKActionMenuSection *section in self.sections) {
-        if ([section.identifier isEqualToString:identifier]) return section;
+        if ([section.identifier isEqualToString:identifier])
+            return section;
     }
     return nil;
 }
@@ -426,7 +453,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
                 [actions addObject:identifier];
             }
         }
-        if (actions.count == 0) continue;
+        if (actions.count == 0)
+            continue;
         [visible addObject:[SPKActionMenuSection sectionWithIdentifier:section.identifier
                                                                  title:section.title
                                                               iconName:section.iconName
@@ -446,7 +474,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
 }
 
 - (void)setAction:(NSString *)identifier assignedToSectionIdentifier:(NSString *)sectionIdentifier {
-    if (![self.supportedActions containsObject:identifier]) return;
+    if (![self.supportedActions containsObject:identifier])
+        return;
 
     for (SPKActionMenuSection *section in self.sections) {
         [section.actions removeObject:identifier];
@@ -467,7 +496,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
 }
 
 - (void)moveSectionFromIndex:(NSInteger)sourceIndex toIndex:(NSInteger)destinationIndex {
-    if (sourceIndex < 0 || destinationIndex < 0 || sourceIndex >= self.sections.count || destinationIndex >= self.sections.count) return;
+    if (sourceIndex < 0 || destinationIndex < 0 || sourceIndex >= self.sections.count || destinationIndex >= self.sections.count)
+        return;
     SPKActionMenuSection *section = self.sections[sourceIndex];
     [self.sections removeObjectAtIndex:sourceIndex];
     [self.sections insertObject:section atIndex:destinationIndex];
@@ -475,8 +505,10 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
 
 - (void)moveActionInSectionIdentifier:(NSString *)sectionIdentifier fromIndex:(NSInteger)sourceIndex toIndex:(NSInteger)destinationIndex {
     SPKActionMenuSection *section = [self sectionWithIdentifier:sectionIdentifier];
-    if (!section) return;
-    if (sourceIndex < 0 || destinationIndex < 0 || sourceIndex >= section.actions.count || destinationIndex >= section.actions.count) return;
+    if (!section)
+        return;
+    if (sourceIndex < 0 || destinationIndex < 0 || sourceIndex >= section.actions.count || destinationIndex >= section.actions.count)
+        return;
     NSString *identifier = section.actions[sourceIndex];
     [section.actions removeObjectAtIndex:sourceIndex];
     [section.actions insertObject:identifier atIndex:destinationIndex];

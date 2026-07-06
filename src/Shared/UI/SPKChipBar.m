@@ -1,7 +1,7 @@
 #import "SPKChipBar.h"
-#import "SPKChipGlass.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "SPKChipGlass.h"
 
 @interface SPKChipBar ()
 @property (nonatomic, strong) UIScrollView *scroll;
@@ -17,7 +17,8 @@
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (!self) return self;
+    if (!self)
+        return self;
     self.backgroundColor = [UIColor clearColor];
     _selection = [NSMutableSet set];
     _selectedIndex = 0;
@@ -38,23 +39,29 @@
     [_scroll addSubview:_stack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_scroll.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor],
+        [_scroll.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [_scroll.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [_scroll.topAnchor      constraintEqualToAnchor:self.topAnchor],
-        [_scroll.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor],
-        [_stack.leadingAnchor   constraintEqualToAnchor:_scroll.contentLayoutGuide.leadingAnchor],
-        [_stack.trailingAnchor  constraintEqualToAnchor:_scroll.contentLayoutGuide.trailingAnchor],
-        [_stack.topAnchor       constraintEqualToAnchor:_scroll.contentLayoutGuide.topAnchor   constant:6],
-        [_stack.bottomAnchor    constraintEqualToAnchor:_scroll.contentLayoutGuide.bottomAnchor constant:-6],
-        [_stack.heightAnchor    constraintEqualToAnchor:_scroll.frameLayoutGuide.heightAnchor constant:-12],
+        [_scroll.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [_scroll.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [_stack.leadingAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.leadingAnchor],
+        [_stack.trailingAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.trailingAnchor],
+        [_stack.topAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.topAnchor
+                                         constant:6],
+        [_stack.bottomAnchor constraintEqualToAnchor:_scroll.contentLayoutGuide.bottomAnchor
+                                            constant:-6],
+        [_stack.heightAnchor constraintEqualToAnchor:_scroll.frameLayoutGuide.heightAnchor
+                                            constant:-12],
     ]];
     return self;
 }
 
-- (CGSize)intrinsicContentSize { return CGSizeMake(UIViewNoIntrinsicMetric, 50); }
+- (CGSize)intrinsicContentSize {
+    return CGSizeMake(UIViewNoIntrinsicMetric, 50);
+}
 
 - (void)setDistributesToFit:(BOOL)distributesToFit {
-    if (_distributesToFit == distributesToFit && self.fitWidthConstraint) return;
+    if (_distributesToFit == distributesToFit && self.fitWidthConstraint)
+        return;
     _distributesToFit = distributesToFit;
     self.scroll.scrollEnabled = !distributesToFit;
     self.stack.distribution = distributesToFit ? UIStackViewDistributionFillEqually
@@ -72,16 +79,20 @@
 // Full-size font/icons at all times; on narrow screens the fill-mode chips let
 // their titles auto-shrink (adjustsFontSizeToFitWidth) rather than the whole row
 // shrinking regardless of screen size.
-- (CGFloat)chipFontSize { return 13.0; }
-- (CGFloat)chipIconPointSize { return 14.0; }
+- (CGFloat)chipFontSize {
+    return 13.0;
+}
+- (CGFloat)chipIconPointSize {
+    return 14.0;
+}
 
 - (void)setItems:(NSArray<NSString *> *)titles symbols:(NSArray<NSString *> *)symbols {
     [self setItems:titles symbols:symbols selectedSymbols:nil];
 }
 
 - (void)setItems:(NSArray<NSString *> *)titles
-         symbols:(NSArray<NSString *> *)symbols
- selectedSymbols:(NSArray<NSString *> *)selectedSymbols {
+            symbols:(NSArray<NSString *> *)symbols
+    selectedSymbols:(NSArray<NSString *> *)selectedSymbols {
     self.symbols = symbols;
     self.selectedSymbols = selectedSymbols;
     for (UIView *v in self.stack.arrangedSubviews) {
@@ -149,14 +160,16 @@
 }
 
 - (void)setSelectedIndex:(NSInteger)selectedIndex {
-    if (_selectedIndex == selectedIndex) return;
+    if (_selectedIndex == selectedIndex)
+        return;
     _selectedIndex = selectedIndex;
     [self refreshSelection];
 }
 
 - (void)clearSelection {
     if (self.multiSelect) {
-        if (self.selection.count == 0) return;
+        if (self.selection.count == 0)
+            return;
         [self.selection removeAllObjects];
     } else {
         _selectedIndex = 0;

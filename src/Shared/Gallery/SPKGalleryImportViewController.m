@@ -1,11 +1,11 @@
 #import "SPKGalleryImportViewController.h"
 
-#import "SPKGalleryImportMetadataFormViewController.h"
-#import "SPKGalleryFile.h"
-#import "SPKGallerySaveMetadata.h"
-#import "../UI/SPKMediaChrome.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../UI/SPKMediaChrome.h"
+#import "SPKGalleryFile.h"
+#import "SPKGalleryImportMetadataFormViewController.h"
+#import "SPKGallerySaveMetadata.h"
 #import <CoreServices/CoreServices.h>
 
 typedef NS_ENUM(NSInteger, SPKGalleryImportMainSection) {
@@ -113,8 +113,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportMainSection) {
         cell.accessoryType = UITableViewCellAccessoryNone;
         cell.selectionStyle = self.queuedFiles.count ? UITableViewCellSelectionStyleDefault : UITableViewCellSelectionStyleNone;
         cell.textLabel.textColor = self.queuedFiles.count
-            ? [SPKUtils SPKColor_InstagramPrimaryText]
-            : [SPKUtils SPKColor_InstagramSecondaryText];
+                                       ? [SPKUtils SPKColor_InstagramPrimaryText]
+                                       : [SPKUtils SPKColor_InstagramSecondaryText];
     }
     return cell;
 }
@@ -174,32 +174,37 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportMainSection) {
 }
 
 - (void)removeQueuedFileAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section != SPKGalleryImportMainSectionQueue || indexPath.row >= (NSInteger)self.queuedFiles.count) return;
+    if (indexPath.section != SPKGalleryImportMainSectionQueue || indexPath.row >= (NSInteger)self.queuedFiles.count)
+        return;
 
     SPKGalleryImportQueuedFile *item = self.queuedFiles[(NSUInteger)indexPath.row];
     [[NSFileManager defaultManager] removeItemAtURL:item.tempFileURL error:nil];
     [self.queuedFiles removeObjectAtIndex:(NSUInteger)indexPath.row];
-    [self.tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    [self.tableView deleteRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationFade];
     [self updateImportEnabled];
 }
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle != UITableViewCellEditingStyleDelete) return;
+    if (editingStyle != UITableViewCellEditingStyleDelete)
+        return;
     [self removeQueuedFileAtIndexPath:indexPath];
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (![self tableView:tableView canEditRowAtIndexPath:indexPath]) return nil;
+    if (![self tableView:tableView canEditRowAtIndexPath:indexPath])
+        return nil;
 
     __weak typeof(self) weakSelf = self;
-    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [weakSelf removeQueuedFileAtIndexPath:indexPath];
-        completionHandler(YES);
-    }];
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+                                                                               title:nil
+                                                                             handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+                                                                                 [weakSelf removeQueuedFileAtIndexPath:indexPath];
+                                                                                 completionHandler(YES);
+                                                                             }];
     deleteAction.image = [SPKAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     deleteAction.backgroundColor = [SPKUtils SPKColor_InstagramDestructive];
     deleteAction.accessibilityLabel = @"Remove";
-    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
+    return [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -353,11 +358,11 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportMainSection) {
         SPKGalleryMediaType mediaType = [SPKGalleryFile inferMediaTypeFromFileURL:item.tempFileURL];
         NSError *err = nil;
         SPKGalleryFile *saved = [SPKGalleryFile saveFileToGallery:item.tempFileURL
-                                                            source:SPKGallerySourceOther
-                                                         mediaType:mediaType
-                                                        folderPath:self.destinationFolderPath
-                                                          metadata:item.metadata
-                                                             error:&err];
+                                                           source:SPKGallerySourceOther
+                                                        mediaType:mediaType
+                                                       folderPath:self.destinationFolderPath
+                                                         metadata:item.metadata
+                                                            error:&err];
         if (saved) {
             [fm removeItemAtURL:item.tempFileURL error:nil];
             item.tempFileURL = nil;
@@ -375,8 +380,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportMainSection) {
 
     if (failures > 0) {
         NSString *subtitle = lastErr.length
-            ? [NSString stringWithFormat:@"%lu couldn’t be saved • %@", (unsigned long)failures, lastErr]
-            : [NSString stringWithFormat:@"%lu couldn’t be saved", (unsigned long)failures];
+                                 ? [NSString stringWithFormat:@"%lu couldn’t be saved • %@", (unsigned long)failures, lastErr]
+                                 : [NSString stringWithFormat:@"%lu couldn’t be saved", (unsigned long)failures];
         SPKNotify(kSPKNotificationGalleryImport, @"Import incomplete", subtitle, @"error_filled", SPKNotificationToneError);
         return;
     }
@@ -385,7 +390,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportMainSection) {
         NSUInteger imported = succeeded.count;
         NSString *subtitle = imported == 1 ? @"1 file saved to gallery"
                                            : [NSString stringWithFormat:@"%lu files saved to gallery",
-                                              (unsigned long)imported];
+                                                                        (unsigned long)imported];
         SPKNotify(kSPKNotificationGalleryImport, @"Imported", subtitle, @"circle_check_filled", SPKNotificationToneSuccess);
         [self.navigationController popViewControllerAnimated:YES];
     }

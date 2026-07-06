@@ -1,6 +1,6 @@
+#import <UIKit/UIKit.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
-#import <UIKit/UIKit.h>
 
 #import "../../Utils.h"
 
@@ -15,15 +15,18 @@ static const char kSPKOverlayPollViewsAssocKey = 0;
 // common case is a story with no poll at all).
 static void SPKRegisterPollViewWithOverlay(UIView *pollView) {
     Class overlayClass = NSClassFromString(@"IGStoryFullscreenOverlayView");
-    if (!overlayClass) return;
+    if (!overlayClass)
+        return;
     for (UIView *view = pollView.superview; view; view = view.superview) {
-        if (![view isKindOfClass:overlayClass]) continue;
+        if (![view isKindOfClass:overlayClass])
+            continue;
         NSHashTable *pollViews = objc_getAssociatedObject(view, &kSPKOverlayPollViewsAssocKey);
         if (!pollViews) {
             pollViews = [NSHashTable weakObjectsHashTable];
             objc_setAssociatedObject(view, &kSPKOverlayPollViewsAssocKey, pollViews, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }
-        if (![pollViews containsObject:pollView]) [pollViews addObject:pollView];
+        if (![pollViews containsObject:pollView])
+            [pollViews addObject:pollView];
         return;
     }
 }
@@ -39,9 +42,11 @@ static void SPKRegisterPollViewWithOverlay(UIView *pollView) {
 // ─── Utilities ──────────────────────────────────────────────────────
 
 static id SPKCallMaybe(id object, NSString *selectorName) {
-    if (!object || selectorName.length == 0) return nil;
+    if (!object || selectorName.length == 0)
+        return nil;
     SEL selector = NSSelectorFromString(selectorName);
-    if (![object respondsToSelector:selector]) return nil;
+    if (![object respondsToSelector:selector])
+        return nil;
     @try {
         return ((id (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -50,7 +55,8 @@ static id SPKCallMaybe(id object, NSString *selectorName) {
 }
 
 static id SPKKVCMaybe(id object, NSString *key) {
-    if (!object || key.length == 0) return nil;
+    if (!object || key.length == 0)
+        return nil;
     @try {
         return [object valueForKey:key];
     } @catch (__unused NSException *exception) {
@@ -59,10 +65,12 @@ static id SPKKVCMaybe(id object, NSString *key) {
 }
 
 static NSArray *SPKArrayIvar(id object, const char *name) {
-    if (!object || !name) return nil;
+    if (!object || !name)
+        return nil;
     for (Class cls = [object class]; cls && cls != [NSObject class]; cls = class_getSuperclass(cls)) {
         Ivar ivar = class_getInstanceVariable(cls, name);
-        if (!ivar) continue;
+        if (!ivar)
+            continue;
         @try {
             id value = object_getIvar(object, ivar);
             return [value isKindOfClass:[NSArray class]] ? value : nil;
@@ -90,8 +98,9 @@ static BOOL SPKStoryPollStickerIsEditing(UIView *view) {
 // ─── Data Extraction ────────────────────────────────────────────────
 
 static NSInteger SPKStoryPollTallyCount(id tally) {
-    if ([tally respondsToSelector:@selector(integerValue)]) return [tally integerValue];
-    for (NSString *selectorName in @[@"totalCount", @"count", @"countValue", @"voteCount", @"pollVotersCount"]) {
+    if ([tally respondsToSelector:@selector(integerValue)])
+        return [tally integerValue];
+    for (NSString *selectorName in @[ @"totalCount", @"count", @"countValue", @"voteCount", @"pollVotersCount" ]) {
         id value = SPKCallMaybe(tally, selectorName) ?: SPKKVCMaybe(tally, selectorName);
         if ([value respondsToSelector:@selector(integerValue)]) {
             return [value integerValue];
@@ -106,18 +115,22 @@ static id SPKStoryPollAuthoritativeSticker(id media, id viewModel) {
     if (![storyPolls isKindOfClass:[NSArray class]] || storyPolls.count == 0) {
         storyPolls = SPKCallMaybe(media, @"storyPolls") ?: SPKKVCMaybe(media, @"storyPolls");
     }
-    if (![storyPolls isKindOfClass:[NSArray class]] || storyPolls.count == 0) return nil;
+    if (![storyPolls isKindOfClass:[NSArray class]] || storyPolls.count == 0)
+        return nil;
 
     id viewPollValue = SPKCallMaybe(viewModel, @"pollId") ?: SPKKVCMaybe(viewModel, @"pollId");
     NSString *viewPollID = [viewPollValue description];
 
     for (id storyPoll in storyPolls) {
         id sticker = SPKCallMaybe(storyPoll, @"pollSticker") ?: SPKKVCMaybe(storyPoll, @"pollSticker");
-        if (!sticker) continue;
-        if (viewPollID.length == 0) return sticker;
+        if (!sticker)
+            continue;
+        if (viewPollID.length == 0)
+            return sticker;
         id stickerPollValue = SPKCallMaybe(sticker, @"pollId") ?: SPKKVCMaybe(sticker, @"pollId");
         NSString *stickerPollID = [stickerPollValue description];
-        if ([stickerPollID isEqualToString:viewPollID]) return sticker;
+        if ([stickerPollID isEqualToString:viewPollID])
+            return sticker;
     }
 
     id first = storyPolls.firstObject;
@@ -140,15 +153,17 @@ static id SPKFindMediaForPollView(UIView *pollView) {
         id sectionController = objc_getAssociatedObject(parentCell, &kSPKCellSectionControllerAssocKey);
         if (sectionController) {
             id media = SPKCallMaybe(sectionController, @"currentStoryItem") ?: SPKCallMaybe(sectionController, @"model");
-            if (media) return media;
+            if (media)
+                return media;
         }
     }
 
     // 2. Fallback: traverse responder chain
     for (UIResponder *responder = pollView; responder; responder = responder.nextResponder) {
-        for (NSString *selectorName in @[@"media", @"igMedia", @"storyMedia", @"storyItem", @"item", @"feedItem"]) {
+        for (NSString *selectorName in @[ @"media", @"igMedia", @"storyMedia", @"storyItem", @"item", @"feedItem" ]) {
             id media = SPKCallMaybe(responder, selectorName) ?: SPKKVCMaybe(responder, selectorName);
-            if (media && media != responder) return media;
+            if (media && media != responder)
+                return media;
         }
     }
 
@@ -156,24 +171,29 @@ static id SPKFindMediaForPollView(UIView *pollView) {
 }
 
 static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *optionViews) {
-    if (![SPKUtils getBoolPref:@"stories_poll_vote_counts"]) return;
+    if (![SPKUtils getBoolPref:@"stories_poll_vote_counts"])
+        return;
     if (!pollView.window || SPKStoryPollStickerIsEditing(pollView)) {
         for (UIView *subview in pollView.subviews) {
-            if (subview.tag >= 998800 && subview.tag < 998900) subview.hidden = YES;
+            if (subview.tag >= 998800 && subview.tag < 998900)
+                subview.hidden = YES;
         }
         return;
     }
 
     id media = SPKFindMediaForPollView(pollView);
-    if (!media) return;
+    if (!media)
+        return;
 
-    id viewModel = SPKCallMaybe(pollView, @"pollSticker") ?: SPKCallMaybe(pollView, @"igapiStickerModel") ?: SPKCallMaybe(pollView, @"exportModel");
+    id viewModel = SPKCallMaybe(pollView, @"pollSticker") ?: SPKCallMaybe(pollView, @"igapiStickerModel") ?
+                                                                                                          : SPKCallMaybe(pollView, @"exportModel");
     id model = SPKStoryPollAuthoritativeSticker(media, viewModel) ?: viewModel;
 
     NSArray *tallies = SPKCallMaybe(model, @"tallies") ?: SPKKVCMaybe(model, @"tallies");
     if (![tallies isKindOfClass:[NSArray class]] || tallies.count == 0) {
         for (UIView *subview in pollView.subviews) {
-            if (subview.tag >= 998800 && subview.tag < 998900) subview.hidden = YES;
+            if (subview.tag >= 998800 && subview.tag < 998900)
+                subview.hidden = YES;
         }
         return;
     }
@@ -187,7 +207,7 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 
         NSInteger votes = SPKStoryPollTallyCount(tallies[index]);
         NSString *formattedVotes = [formatter stringFromNumber:@(votes)] ?: [NSString stringWithFormat:@"%td", votes];
-        
+
         // Use a unique tag for each option view's badge
         NSInteger badgeTag = 998800 + index;
         UILabel *badge = [pollView viewWithTag:badgeTag];
@@ -205,24 +225,24 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
             badge.layer.masksToBounds = YES;
             [pollView addSubview:badge];
         }
-        
+
         badge.hidden = NO;
         badge.text = formattedVotes;
         [badge sizeToFit];
-        
+
         CGSize badgeSize = badge.frame.size;
         badgeSize.width += kSPKPollBadgePaddingHorizontal;
         badgeSize.height += kSPKPollBadgePaddingVertical;
-        
+
         // Enforce perfect circle if the width is smaller than the height (e.g. for single digits)
         badgeSize.width = MAX(badgeSize.width, badgeSize.height);
-        
+
         // Convert optionView bounds to pollView coordinate space so we aren't clipped by the optionView
         CGRect optionFrame = [optionView convertRect:optionView.bounds toView:pollView];
-        
+
         CGFloat badgeX = CGRectGetMaxX(optionFrame) - badgeSize.width - kSPKPollBadgeMarginRight;
         CGFloat badgeY = CGRectGetMidY(optionFrame) - (badgeSize.height / 2.0) + kSPKPollBadgeCenterYOffset;
-        
+
         badge.frame = CGRectMake(badgeX, badgeY, badgeSize.width, badgeSize.height);
         badge.layer.cornerRadius = badgeSize.height / 2.0;
 
@@ -245,7 +265,7 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 
         [pollView bringSubviewToFront:badge];
     }
-    
+
     // Hide any phantom badges that were created from previous logic or if options count shrank
     for (UIView *subview in pollView.subviews) {
         if (subview.tag >= 998800 + count && subview.tag < 998900) {
@@ -262,7 +282,8 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 %hook IGStoryFullscreenSectionController
 - (id)cellForItemAtIndex:(NSInteger)index {
     UICollectionViewCell *cell = %orig;
-    if (cell) objc_setAssociatedObject(cell, &kSPKCellSectionControllerAssocKey, self, OBJC_ASSOCIATION_ASSIGN);
+    if (cell)
+        objc_setAssociatedObject(cell, &kSPKCellSectionControllerAssocKey, self, OBJC_ASSOCIATION_ASSIGN);
     return cell;
 }
 %end
@@ -270,7 +291,8 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 %hook IGStorySectionController
 - (id)cellForItemAtIndex:(NSInteger)index {
     UICollectionViewCell *cell = %orig;
-    if (cell) objc_setAssociatedObject(cell, &kSPKCellSectionControllerAssocKey, self, OBJC_ASSOCIATION_ASSIGN);
+    if (cell)
+        objc_setAssociatedObject(cell, &kSPKCellSectionControllerAssocKey, self, OBJC_ASSOCIATION_ASSIGN);
     return cell;
 }
 %end
@@ -291,7 +313,8 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 %hook IGPollStickerView
 - (void)layoutSubviews {
     %orig;
-    NSArray *options = SPKArrayIvar(self, "_optionViews") ?: SPKArrayIvar(self, "_voteOptionViews") ?: SPKArrayIvar(self, "_options");
+    NSArray *options = SPKArrayIvar(self, "_optionViews") ?: SPKArrayIvar(self, "_voteOptionViews") ?
+                                                                                                    : SPKArrayIvar(self, "_options");
     if (options.count > 0) {
         SPKApplyStoryPollVoteCounts((UIView *)self, options);
         SPKRegisterPollViewWithOverlay((UIView *)self);
@@ -308,12 +331,16 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 - (void)layoutSubviews {
     %orig;
     NSHashTable *pollViews = objc_getAssociatedObject(self, &kSPKOverlayPollViewsAssocKey);
-    if (pollViews.count == 0) return;
+    if (pollViews.count == 0)
+        return;
 
     for (UIView *pollView in pollViews.allObjects) {
-        if (!pollView.superview) continue;
-        NSArray *options = SPKArrayIvar(pollView, "_optionViews") ?: SPKArrayIvar(pollView, "_voteOptionViews") ?: SPKArrayIvar(pollView, "_options");
-        if (options.count > 0) SPKApplyStoryPollVoteCounts(pollView, options);
+        if (!pollView.superview)
+            continue;
+        NSArray *options = SPKArrayIvar(pollView, "_optionViews") ?: SPKArrayIvar(pollView, "_voteOptionViews") ?
+                                                                                                                : SPKArrayIvar(pollView, "_options");
+        if (options.count > 0)
+            SPKApplyStoryPollVoteCounts(pollView, options);
     }
 }
 %end
@@ -323,7 +350,8 @@ static void SPKApplyStoryPollVoteCounts(UIView *pollView, NSArray<UIView *> *opt
 #pragma mark - Entry Point
 
 extern "C" void SPKInstallStoryPollVoteCountsHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"stories_poll_vote_counts"]) return;
+    if (![SPKUtils getBoolPref:@"stories_poll_vote_counts"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

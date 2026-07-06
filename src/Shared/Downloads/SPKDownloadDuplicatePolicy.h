@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-#import "SPKDownloadTypes.h"
 #import "SPKDownloadRequest.h"
+#import "SPKDownloadTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -28,8 +28,8 @@ typedef void (^SPKDownloadPreflightCompletion)(SPKDownloadPreflightResult result
 - (NSInteger)mediaTypeForKind:(SPKDownloadMediaKind)kind;
 
 - (void)runPreflightForRequest:(SPKDownloadRequest *)request
-                      presenter:(nullable UIViewController *)presenter
-                     completion:(SPKDownloadPreflightCompletion)completion;
+                     presenter:(nullable UIViewController *)presenter
+                    completion:(SPKDownloadPreflightCompletion)completion;
 
 // Low-level duplicate detection and ledger management
 + (BOOL)hasDuplicateForDestination:(SPKDownloadDuplicateDestination)destination

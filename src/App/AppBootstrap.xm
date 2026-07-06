@@ -23,7 +23,8 @@ static void SPKMarkLaunchStableIfReady(void) {
 static void SPKScheduleHookPhase(NSTimeInterval delay, NSString *name, dispatch_block_t block, BOOL finalPhase) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         SPKStartupMark([NSString stringWithFormat:@"%@ hooks begin", name]);
-        if (block) block();
+        if (block)
+            block();
         SPKStartupMark([NSString stringWithFormat:@"%@ hooks installed", name]);
         if (finalPhase) {
             sSPKStagedHooksFinished = YES;
@@ -37,22 +38,28 @@ static void SPKScheduleStagedFeatureHooks(void) {
     dispatch_once(&onceToken, ^{
         SPKScheduleHookPhase(0.25, @"general UI", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceGeneralUI);
-        }, NO);
+        },
+                             NO);
         SPKScheduleHookPhase(0.35, @"feed", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceFeed);
-        }, NO);
+        },
+                             NO);
         SPKScheduleHookPhase(0.45, @"stories", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceStories);
-        }, NO);
+        },
+                             NO);
         SPKScheduleHookPhase(0.55, @"reels", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceReels);
-        }, NO);
+        },
+                             NO);
         SPKScheduleHookPhase(0.65, @"messages", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceMessages);
-        }, NO);
+        },
+                             NO);
         SPKScheduleHookPhase(0.75, @"profile", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceProfile);
-        }, YES);
+        },
+                             YES);
     });
 }
 
@@ -83,9 +90,7 @@ static void SPKScheduleStagedFeatureHooks(void) {
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(openDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (
-            ![[[NSUserDefaults standardUserDefaults] objectForKey:@"app_first_run"] isEqualToString:SPKVersionString]
-            || [SPKUtils getBoolPref:@"tools_open_settings_on_launch"]
-        ) {
+            ![[[NSUserDefaults standardUserDefaults] objectForKey:@"app_first_run"] isEqualToString:SPKVersionString] || [SPKUtils getBoolPref:@"tools_open_settings_on_launch"]) {
             SPKLog(@"Bootstrap", @"First run, initializing");
             SPKLog(@"Bootstrap", @"Displaying Sparkle first-time settings modal");
             SPKCoreShowSettingsIfNeeded([self window]);

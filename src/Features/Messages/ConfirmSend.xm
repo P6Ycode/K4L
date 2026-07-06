@@ -1,15 +1,16 @@
 #import "../../Utils.h"
 #import <objc/runtime.h>
 
-static NSString * const kSPKConfirmSendPref = @"general_confirm_send";
-static NSString * const kSPKBottomButtonsViewRuntimeClassName = @"IGShareSheet.IGSharesheetBottomButtonsView";
+static NSString *const kSPKConfirmSendPref = @"general_confirm_send";
+static NSString *const kSPKBottomButtonsViewRuntimeClassName = @"IGShareSheet.IGSharesheetBottomButtonsView";
 
 @interface IGTextButton : UIButton
 @property (copy, nonatomic) NSString *text;
 @end
 
 static NSString *SPKGetShareTypeFromController(UIViewController *vc) {
-    if (!vc) return nil;
+    if (!vc)
+        return nil;
 
     id recipientListVC = nil;
     id delegate = nil;
@@ -29,16 +30,20 @@ static NSString *SPKGetShareTypeFromController(UIViewController *vc) {
 
     // 1. Check Comment
     id commentIdObj = nil;
-    if (delegate) commentIdObj = [SPKUtils getIvarForObj:delegate name:"_commentId"];
-    if (!commentIdObj && recipientListVC) commentIdObj = [SPKUtils getIvarForObj:recipientListVC name:"_commentId"];
+    if (delegate)
+        commentIdObj = [SPKUtils getIvarForObj:delegate name:"_commentId"];
+    if (!commentIdObj && recipientListVC)
+        commentIdObj = [SPKUtils getIvarForObj:recipientListVC name:"_commentId"];
     if (commentIdObj && [commentIdObj isKindOfClass:[NSString class]] && [(NSString *)commentIdObj length] > 0) {
         return @"comment";
     }
 
     // 2. Check Story
     id storyItem = nil;
-    if (delegate) storyItem = [SPKUtils getIvarForObj:delegate name:"_currentStoryItem"];
-    if (!storyItem && recipientListVC) storyItem = [SPKUtils getIvarForObj:recipientListVC name:"_currentStoryItem"];
+    if (delegate)
+        storyItem = [SPKUtils getIvarForObj:delegate name:"_currentStoryItem"];
+    if (!storyItem && recipientListVC)
+        storyItem = [SPKUtils getIvarForObj:recipientListVC name:"_currentStoryItem"];
     if (storyItem) {
         return @"story";
     }
@@ -70,8 +75,10 @@ static NSString *SPKGetShareTypeFromController(UIViewController *vc) {
 
     // 4. Check SelectedPost (KVC/ivar fallback)
     id selectedPost = nil;
-    if (delegate) selectedPost = [SPKUtils getIvarForObj:delegate name:"_selectedPost"];
-    if (!selectedPost && recipientListVC) selectedPost = [SPKUtils getIvarForObj:recipientListVC name:"_selectedPost"];
+    if (delegate)
+        selectedPost = [SPKUtils getIvarForObj:delegate name:"_selectedPost"];
+    if (!selectedPost && recipientListVC)
+        selectedPost = [SPKUtils getIvarForObj:recipientListVC name:"_selectedPost"];
     if (selectedPost) {
         if ([selectedPost respondsToSelector:@selector(isClipsMedia)] && [selectedPost isClipsMedia]) {
             return @"reel";
@@ -81,29 +88,37 @@ static NSString *SPKGetShareTypeFromController(UIViewController *vc) {
 
     // 5. Check other types
     id collection = nil;
-    if (delegate) collection = [SPKUtils getIvarForObj:delegate name:"_collection"];
-    if (!collection && recipientListVC) collection = [SPKUtils getIvarForObj:recipientListVC name:"_collection"];
+    if (delegate)
+        collection = [SPKUtils getIvarForObj:delegate name:"_collection"];
+    if (!collection && recipientListVC)
+        collection = [SPKUtils getIvarForObj:recipientListVC name:"_collection"];
     if (collection) {
         return @"collection";
     }
 
     id audioTrack = nil;
-    if (delegate) audioTrack = [SPKUtils getIvarForObj:delegate name:"_musicTrack"];
-    if (!audioTrack && recipientListVC) audioTrack = [SPKUtils getIvarForObj:recipientListVC name:"_musicTrack"];
+    if (delegate)
+        audioTrack = [SPKUtils getIvarForObj:delegate name:"_musicTrack"];
+    if (!audioTrack && recipientListVC)
+        audioTrack = [SPKUtils getIvarForObj:recipientListVC name:"_musicTrack"];
     if (audioTrack) {
         return @"audio";
     }
 
     id location = nil;
-    if (delegate) location = [SPKUtils getIvarForObj:delegate name:"_location"];
-    if (!location && recipientListVC) location = [SPKUtils getIvarForObj:recipientListVC name:"_location"];
+    if (delegate)
+        location = [SPKUtils getIvarForObj:delegate name:"_location"];
+    if (!location && recipientListVC)
+        location = [SPKUtils getIvarForObj:recipientListVC name:"_location"];
     if (location) {
         return @"location";
     }
 
     id broadcastOwner = nil;
-    if (delegate) broadcastOwner = [SPKUtils getIvarForObj:delegate name:"_broadcastOwner"];
-    if (!broadcastOwner && recipientListVC) broadcastOwner = [SPKUtils getIvarForObj:recipientListVC name:"_broadcastOwner"];
+    if (delegate)
+        broadcastOwner = [SPKUtils getIvarForObj:delegate name:"_broadcastOwner"];
+    if (!broadcastOwner && recipientListVC)
+        broadcastOwner = [SPKUtils getIvarForObj:recipientListVC name:"_broadcastOwner"];
     if (broadcastOwner) {
         return @"broadcast channel";
     }
@@ -143,11 +158,12 @@ static NSString *SPKGetShareTypeFromController(UIViewController *vc) {
         message = @"Are you sure you want to send this?";
     }
 
-    [SPKUtils showConfirmation:^{
-        %orig;
-    }
-                         title:title
-                       message:message];
+    [SPKUtils
+        showConfirmation:^{
+            %orig;
+        }
+                   title:title
+                 message:message];
 }
 
 %end
@@ -159,7 +175,7 @@ extern "C" void SPKInstallConfirmSendHooksIfEnabled(void) {
     dispatch_once(&onceToken, ^{
         Class bottomButtonsViewClass = objc_getClass(kSPKBottomButtonsViewRuntimeClassName.UTF8String);
         if (bottomButtonsViewClass) {
-            %init(SPKConfirmSendHooks, SPKBottomButtonsViewClass=bottomButtonsViewClass);
+            %init(SPKConfirmSendHooks, SPKBottomButtonsViewClass = bottomButtonsViewClass);
         }
     });
 }

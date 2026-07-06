@@ -30,8 +30,9 @@
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         f = [NSDateFormatter new];
-        f.dateFormat = [NSDateFormatter dateFormatFromTemplate:@"MMMd" options:0
-                                                       locale:[NSLocale currentLocale]];
+        f.dateFormat = [NSDateFormatter dateFormatFromTemplate:@"MMMd"
+                                                       options:0
+                                                        locale:[NSLocale currentLocale]];
     });
     return f;
 }
@@ -52,11 +53,15 @@
 // times are shown as the time-only string so the user can tell which
 // message is most recent at a glance.
 + (NSString *)relativeStringForDate:(NSDate *)d {
-    if (!d) return @"";
+    if (!d)
+        return @"";
     NSTimeInterval delta = -[d timeIntervalSinceNow];
-    if (delta < 0) delta = 0;
-    if (delta < 60)        return @"now";
-    if (delta < 3600)      return [NSString stringWithFormat:@"%dm ago", (int)(delta / 60)];
+    if (delta < 0)
+        delta = 0;
+    if (delta < 60)
+        return @"now";
+    if (delta < 3600)
+        return [NSString stringWithFormat:@"%dm ago", (int)(delta / 60)];
     if (delta < 86400) {
         NSCalendar *cal = [NSCalendar currentCalendar];
         NSDate *startOfToday = [cal startOfDayForDate:[NSDate date]];
@@ -65,19 +70,23 @@
         }
         return [NSString stringWithFormat:@"%dh ago", (int)(delta / 3600)];
     }
-    if (delta < 86400 * 7) return [NSString stringWithFormat:@"%dd ago", (int)(delta / 86400)];
+    if (delta < 86400 * 7)
+        return [NSString stringWithFormat:@"%dd ago", (int)(delta / 86400)];
     return [[self dayMonthFormatter] stringFromDate:d];
 }
 
 + (NSString *)stringForDate:(NSDate *)d {
-    if (!d) return @"";
+    if (!d)
+        return @"";
     NSString *mode = [SPKUtils getStringPref:@"dm_log_date_format"];
-    if (![mode isEqualToString:@"absolute"]) return [self relativeStringForDate:d];
+    if (![mode isEqualToString:@"absolute"])
+        return [self relativeStringForDate:d];
     return [[self shortFormatter] stringFromDate:d];
 }
 
 + (NSString *)verboseStringForDate:(NSDate *)d {
-    if (!d) return @"";
+    if (!d)
+        return @"";
     return [[self mediumFormatter] stringFromDate:d];
 }
 

@@ -41,8 +41,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Configures titles, icons, and specific selected-state icons for each chip.
 - (void)setItems:(NSArray<NSString *> *)titles
-         symbols:(nullable NSArray<NSString *> *)symbols
- selectedSymbols:(nullable NSArray<NSString *> *)selectedSymbols;
+            symbols:(nullable NSArray<NSString *> *)symbols
+    selectedSymbols:(nullable NSArray<NSString *> *)selectedSymbols;
 
 // Clears all selection.
 - (void)clearSelection;

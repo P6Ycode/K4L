@@ -1,5 +1,5 @@
-#import <Foundation/Foundation.h>
 #import "SPKProfileAnalyzerModels.h"
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -19,10 +19,10 @@ extern const NSInteger SPKProfileAnalyzerMaxConnectionCount;
 // Lets observers (e.g. the dashboard) restore progress UI without owning the run.
 extern NSNotificationName const SPKProfileAnalyzerProgressDidChangeNotification;
 
-typedef void(^SPKPAProgress)(NSString *status, double fraction);
-typedef void(^SPKPACompletion)(SPKProfileAnalyzerSnapshot * _Nullable snapshot, NSError * _Nullable error);
+typedef void (^SPKPAProgress)(NSString *status, double fraction);
+typedef void (^SPKPACompletion)(SPKProfileAnalyzerSnapshot *_Nullable snapshot, NSError *_Nullable error);
 // Fires once after the self-user-info call so the header can paint immediately.
-typedef void(^SPKPAHeaderInfo)(NSDictionary *userInfo);
+typedef void (^SPKPAHeaderInfo)(NSDictionary *userInfo);
 
 // Singleton that runs a full followers + following scan for the logged-in
 // account. The run is independent of any view controller's lifetime — starting

@@ -1,11 +1,11 @@
-#import <substrate.h>
-#import <objc/runtime.h>
 #import "../../InstagramHeaders.h"
-#import "../../Utils.h"
-#import "../../Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
 #import "../../Shared/Gallery/SPKGalleryFile.h"
 #import "../../Shared/Gallery/SPKGalleryOriginController.h"
 #import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
+#import "../../Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
+#import "../../Utils.h"
+#import <objc/runtime.h>
+#import <substrate.h>
 
 @interface IGProfileAvatarView : UIView
 @end
@@ -14,44 +14,54 @@
 @end
 
 static id SPKObjectForSelector(id target, NSString *selectorName) {
-    if (!target || !selectorName.length) return nil;
+    if (!target || !selectorName.length)
+        return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
-    if (![target respondsToSelector:selector]) return nil;
+    if (![target respondsToSelector:selector])
+        return nil;
 
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
 static id SPKUserFromViewHierarchy(UIView *view) {
-    if (!view) return nil;
+    if (!view)
+        return nil;
 
     id user = SPKObjectForSelector(view, @"user");
-    if (user && [user respondsToSelector:@selector(username)]) return user;
+    if (user && [user respondsToSelector:@selector(username)])
+        return user;
 
     user = SPKObjectForSelector(view, @"userGQL");
-    if (user && [user respondsToSelector:@selector(username)]) return user;
+    if (user && [user respondsToSelector:@selector(username)])
+        return user;
 
     id profilePicImageView = SPKObjectForSelector(view, @"profilePicImageView");
     if (!profilePicImageView) {
         profilePicImageView = [SPKUtils getIvarForObj:view name:"_profilePicImageView"];
     }
     user = SPKObjectForSelector(profilePicImageView, @"user");
-    if (user && [user respondsToSelector:@selector(username)]) return user;
+    if (user && [user respondsToSelector:@selector(username)])
+        return user;
 
     UIViewController *ancestorController = [SPKUtils viewControllerForAncestralView:view];
     user = SPKObjectForSelector(ancestorController, @"user");
-    if (user && [user respondsToSelector:@selector(username)]) return user;
+    if (user && [user respondsToSelector:@selector(username)])
+        return user;
 
     user = SPKObjectForSelector(ancestorController, @"userGQL");
-    if (user && [user respondsToSelector:@selector(username)]) return user;
+    if (user && [user respondsToSelector:@selector(username)])
+        return user;
 
     UIResponder *responder = view;
     while ((responder = [responder nextResponder])) {
         user = SPKObjectForSelector(responder, @"user");
-        if (user && [user respondsToSelector:@selector(username)]) return user;
+        if (user && [user respondsToSelector:@selector(username)])
+            return user;
 
         user = SPKObjectForSelector(responder, @"userGQL");
-        if (user && [user respondsToSelector:@selector(username)]) return user;
+        if (user && [user respondsToSelector:@selector(username)])
+            return user;
     }
 
     return nil;
@@ -82,7 +92,8 @@ static NSURL *SPKImageURLFromViewHierarchy(UIView *view) {
     }
     for (UIView *sub in view.subviews) {
         NSURL *url = SPKImageURLFromViewHierarchy(sub);
-        if (url) return url;
+        if (url)
+            return url;
     }
     return nil;
 }
@@ -137,7 +148,6 @@ static void SPKHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureReco
     }
 }
 
-
 %group SPKProfilePhotoZoomHooks
 
 %hook IGProfileAvatarView
@@ -163,20 +173,21 @@ static void SPKHookedCoinFlipLongPress(id self, SEL _cmd, UILongPressGestureReco
 %end
 
 void SPKInstallProfilePhotoZoomHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"profile_photo_zoom"]) return;
+    if (![SPKUtils getBoolPref:@"profile_photo_zoom"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    %init(SPKProfilePhotoZoomHooks);
+        %init(SPKProfilePhotoZoomHooks);
 
-    Class coinFlipClass = NSClassFromString(@"IGProfilePhotoCoinFlipUI.IGProfilePhotoCoinFlipView");
-    SEL selector = NSSelectorFromString(@"viewLongPressedWithGesture:");
+        Class coinFlipClass = NSClassFromString(@"IGProfilePhotoCoinFlipUI.IGProfilePhotoCoinFlipView");
+        SEL selector = NSSelectorFromString(@"viewLongPressedWithGesture:");
 
-    if (coinFlipClass && class_getInstanceMethod(coinFlipClass, selector)) {
-        MSHookMessageEx(coinFlipClass,
-                        selector,
-                        (IMP)SPKHookedCoinFlipLongPress,
-                        (IMP *)&orig_coinFlipLongPress);
-    }
+        if (coinFlipClass && class_getInstanceMethod(coinFlipClass, selector)) {
+            MSHookMessageEx(coinFlipClass,
+                            selector,
+                            (IMP)SPKHookedCoinFlipLongPress,
+                            (IMP *)&orig_coinFlipLongPress);
+        }
     });
 }

@@ -1,7 +1,7 @@
 #import "../../Utils.h"
 
-static NSString * const kSPKAudioCallConfirmKey = @"msgs_confirm_audio_call";
-static NSString * const kSPKVideoCallConfirmKey = @"msgs_confirm_video_call";
+static NSString *const kSPKAudioCallConfirmKey = @"msgs_confirm_audio_call";
+static NSString *const kSPKVideoCallConfirmKey = @"msgs_confirm_video_call";
 
 static BOOL SPKShouldConfirmCall(NSString *key) {
     return [SPKUtils getBoolPref:key];
@@ -15,9 +15,12 @@ static BOOL SPKShouldConfirmCall(NSString *key) {
     if (SPKShouldConfirmCall(kSPKAudioCallConfirmKey)) {
         SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Audio Call"
-                               message:@"Are you sure you want to start an audio call?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Audio Call"
+                     message:@"Are you sure you want to start an audio call?"];
     } else {
         return %orig;
     }
@@ -27,9 +30,12 @@ static BOOL SPKShouldConfirmCall(NSString *key) {
     if (SPKShouldConfirmCall(kSPKAudioCallConfirmKey)) {
         SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Audio Call"
-                               message:@"Are you sure you want to start an audio call?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Audio Call"
+                     message:@"Are you sure you want to start an audio call?"];
     } else {
         return %orig;
     }
@@ -40,9 +46,12 @@ static BOOL SPKShouldConfirmCall(NSString *key) {
     if (SPKShouldConfirmCall(kSPKVideoCallConfirmKey)) {
         SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Video Call"
-                               message:@"Are you sure you want to start a video call?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Video Call"
+                     message:@"Are you sure you want to start a video call?"];
     } else {
         return %orig;
     }
@@ -52,9 +61,12 @@ static BOOL SPKShouldConfirmCall(NSString *key) {
     if (SPKShouldConfirmCall(kSPKVideoCallConfirmKey)) {
         SPKLog(@"General", @"[Sparkle] Call confirm triggered");
 
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Video Call"
-                               message:@"Are you sure you want to start a video call?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Video Call"
+                     message:@"Are you sure you want to start a video call?"];
     } else {
         return %orig;
     }
@@ -64,7 +76,8 @@ static BOOL SPKShouldConfirmCall(NSString *key) {
 %end
 
 void SPKInstallCallConfirmHooksIfEnabled(void) {
-    if (!SPKShouldConfirmCall(kSPKAudioCallConfirmKey) && !SPKShouldConfirmCall(kSPKVideoCallConfirmKey)) return;
+    if (!SPKShouldConfirmCall(kSPKAudioCallConfirmKey) && !SPKShouldConfirmCall(kSPKVideoCallConfirmKey))
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

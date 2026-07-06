@@ -1,8 +1,8 @@
 #import "SPKPhotoEditorViewController.h"
-#import "../UI/SPKMediaChrome.h"
-#import "../UI/SPKChipBar.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../UI/SPKChipBar.h"
+#import "../UI/SPKMediaChrome.h"
 
 #pragma mark - Configuration
 
@@ -60,23 +60,33 @@ static const SPKPhotoEditorAspect kSPKAspectOrder[] = {
     SPKPhotoEditorAspectPortrait23, SPKPhotoEditorAspectLandscape32,
     SPKPhotoEditorAspectPortrait34, SPKPhotoEditorAspectLandscape43,
     SPKPhotoEditorAspectPortrait45, SPKPhotoEditorAspectLandscape54,
-    SPKPhotoEditorAspectPortrait916, SPKPhotoEditorAspectLandscape169
-};
+    SPKPhotoEditorAspectPortrait916, SPKPhotoEditorAspectLandscape169};
 static const NSInteger kSPKAspectCount = sizeof(kSPKAspectOrder) / sizeof(kSPKAspectOrder[0]);
 
 static NSString *SPKPhotoEditorAspectTitle(SPKPhotoEditorAspect aspect) {
     switch (aspect) {
-        case SPKPhotoEditorAspectOriginal:    return @"Original";
-        case SPKPhotoEditorAspectFreeform:    return @"Free";
-        case SPKPhotoEditorAspectSquare:      return @"1:1";
-        case SPKPhotoEditorAspectPortrait23:  return @"2:3";
-        case SPKPhotoEditorAspectLandscape32: return @"3:2";
-        case SPKPhotoEditorAspectPortrait34:  return @"3:4";
-        case SPKPhotoEditorAspectLandscape43: return @"4:3";
-        case SPKPhotoEditorAspectPortrait45:  return @"4:5";
-        case SPKPhotoEditorAspectLandscape54: return @"5:4";
-        case SPKPhotoEditorAspectPortrait916: return @"9:16";
-        case SPKPhotoEditorAspectLandscape169:return @"16:9";
+    case SPKPhotoEditorAspectOriginal:
+        return @"Original";
+    case SPKPhotoEditorAspectFreeform:
+        return @"Free";
+    case SPKPhotoEditorAspectSquare:
+        return @"1:1";
+    case SPKPhotoEditorAspectPortrait23:
+        return @"2:3";
+    case SPKPhotoEditorAspectLandscape32:
+        return @"3:2";
+    case SPKPhotoEditorAspectPortrait34:
+        return @"3:4";
+    case SPKPhotoEditorAspectLandscape43:
+        return @"4:3";
+    case SPKPhotoEditorAspectPortrait45:
+        return @"4:5";
+    case SPKPhotoEditorAspectLandscape54:
+        return @"5:4";
+    case SPKPhotoEditorAspectPortrait916:
+        return @"9:16";
+    case SPKPhotoEditorAspectLandscape169:
+        return @"16:9";
     }
     return @"";
 }
@@ -85,23 +95,33 @@ static NSString *SPKPhotoEditorAspectTitle(SPKPhotoEditorAspect aspect) {
 // (which derive their ratio from the working image).
 static CGFloat SPKPhotoEditorAspectRatio(SPKPhotoEditorAspect aspect) {
     switch (aspect) {
-        case SPKPhotoEditorAspectSquare:      return 1.0;
-        case SPKPhotoEditorAspectPortrait23:  return 2.0 / 3.0;
-        case SPKPhotoEditorAspectLandscape32: return 3.0 / 2.0;
-        case SPKPhotoEditorAspectPortrait34:  return 3.0 / 4.0;
-        case SPKPhotoEditorAspectLandscape43: return 4.0 / 3.0;
-        case SPKPhotoEditorAspectPortrait45:  return 4.0 / 5.0;
-        case SPKPhotoEditorAspectLandscape54: return 5.0 / 4.0;
-        case SPKPhotoEditorAspectPortrait916: return 9.0 / 16.0;
-        case SPKPhotoEditorAspectLandscape169:return 16.0 / 9.0;
-        case SPKPhotoEditorAspectFreeform:
-        case SPKPhotoEditorAspectOriginal:    return 0.0;
+    case SPKPhotoEditorAspectSquare:
+        return 1.0;
+    case SPKPhotoEditorAspectPortrait23:
+        return 2.0 / 3.0;
+    case SPKPhotoEditorAspectLandscape32:
+        return 3.0 / 2.0;
+    case SPKPhotoEditorAspectPortrait34:
+        return 3.0 / 4.0;
+    case SPKPhotoEditorAspectLandscape43:
+        return 4.0 / 3.0;
+    case SPKPhotoEditorAspectPortrait45:
+        return 4.0 / 5.0;
+    case SPKPhotoEditorAspectLandscape54:
+        return 5.0 / 4.0;
+    case SPKPhotoEditorAspectPortrait916:
+        return 9.0 / 16.0;
+    case SPKPhotoEditorAspectLandscape169:
+        return 16.0 / 9.0;
+    case SPKPhotoEditorAspectFreeform:
+    case SPKPhotoEditorAspectOriginal:
+        return 0.0;
     }
     return 0.0;
 }
 
-static const CGFloat kSPKEditorCropInsetH  = 24.0;
-static const CGFloat kSPKEditorCropInsetV  = 24.0;
+static const CGFloat kSPKEditorCropInsetH = 24.0;
+static const CGFloat kSPKEditorCropInsetV = 24.0;
 static const CGFloat kSPKEditorHandleTouch = 44.0;
 static const CGFloat kSPKEditorMinCropSide = 64.0;
 static const CGFloat kSPKEditorControlsRow = 56.0;
@@ -111,9 +131,10 @@ static const CGFloat kSPKEditorControlsRow = 56.0;
 // Redraws to a straight (orientation-Up) bitmap so all crop math works in pixel
 // space without worrying about EXIF orientation.
 static UIImage *SPKPhotoEditorNormalized(UIImage *image) {
-    if (!image || image.imageOrientation == UIImageOrientationUp) return image;
+    if (!image || image.imageOrientation == UIImageOrientationUp)
+        return image;
     UIGraphicsBeginImageContextWithOptions(image.size, NO, image.scale);
-    [image drawInRect:(CGRect){ CGPointZero, image.size }];
+    [image drawInRect:(CGRect){CGPointZero, image.size}];
     UIImage *normalized = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return normalized ?: image;
@@ -122,12 +143,16 @@ static UIImage *SPKPhotoEditorNormalized(UIImage *image) {
 // Bakes a 90° rotation (clockwise / counter-clockwise) into a fresh Up-oriented
 // bitmap, keeping the crop pipeline rotation-agnostic.
 static UIImage *SPKPhotoEditorRotated(UIImage *image, BOOL clockwise) {
-    if (!image.CGImage) return image;
+    if (!image.CGImage)
+        return image;
     CGSize size = image.size;
     CGSize rotated = CGSizeMake(size.height, size.width);
     UIGraphicsBeginImageContextWithOptions(rotated, NO, image.scale);
     CGContextRef ctx = UIGraphicsGetCurrentContext();
-    if (!ctx) { UIGraphicsEndImageContext(); return image; }
+    if (!ctx) {
+        UIGraphicsEndImageContext();
+        return image;
+    }
     CGContextTranslateCTM(ctx, rotated.width / 2.0, rotated.height / 2.0);
     CGContextRotateCTM(ctx, clockwise ? (M_PI / 2.0) : (-M_PI / 2.0));
     [image drawInRect:CGRectMake(-size.width / 2.0, -size.height / 2.0, size.width, size.height)];
@@ -137,14 +162,18 @@ static UIImage *SPKPhotoEditorRotated(UIImage *image, BOOL clockwise) {
 }
 
 static UIImage *SPKPhotoEditorFlipped(UIImage *image) {
-    if (!image.CGImage) return image;
+    if (!image.CGImage)
+        return image;
     CGSize size = image.size;
     UIGraphicsBeginImageContextWithOptions(size, NO, image.scale);
     CGContextRef ctx = UIGraphicsGetCurrentContext();
-    if (!ctx) { UIGraphicsEndImageContext(); return image; }
+    if (!ctx) {
+        UIGraphicsEndImageContext();
+        return image;
+    }
     CGContextTranslateCTM(ctx, size.width, 0.0);
     CGContextScaleCTM(ctx, -1.0, 1.0);
-    [image drawInRect:(CGRect){ CGPointZero, size }];
+    [image drawInRect:(CGRect){CGPointZero, size}];
     UIImage *output = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return output ?: image;
@@ -154,7 +183,8 @@ static UIImage *SPKPhotoEditorFlipped(UIImage *image) {
 // mode. The rotate-left/right tool icons share one base asset
 // (arrow_bottom_right_bend), flipped to point the right way.
 static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL vertical) {
-    if (!image || (!horizontal && !vertical)) return image;
+    if (!image || (!horizontal && !vertical))
+        return image;
     UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
     format.scale = image.scale;
     format.opaque = NO;
@@ -174,27 +204,28 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 @end
 
 @implementation SPKPhotoEditorViewController {
-    UIImage      *_workingImage;      // normalized + baked rotations/flips
-    UIView       *_cropContainer;     // the crop pane (like the trim player pane)
+    UIImage *_workingImage; // normalized + baked rotations/flips
+    UIView *_cropContainer; // the crop pane (like the trim player pane)
     UIScrollView *_scrollView;
-    UIImageView  *_imageView;
-    UIView       *_overlayView;
+    UIImageView *_imageView;
+    UIView *_overlayView;
     CAShapeLayer *_dimLayer;
     CAShapeLayer *_borderLayer;
-    UIView       *_bottomControls;    // rotate / flip row
-    SPKChipBar   *_aspectChips;       // freeform only
-    NSArray<UIView *> *_handles;      // freeform corner handles
+    UIView *_bottomControls;     // rotate / flip row
+    SPKChipBar *_aspectChips;    // freeform only
+    NSArray<UIView *> *_handles; // freeform corner handles
 
     SPKPhotoEditorAspect _aspect;
-    CGRect  _cropRect;                // in crop-container coordinates
-    BOOL    _configured;
+    CGRect _cropRect; // in crop-container coordinates
+    BOOL _configured;
 }
 
 + (void)presentWithSourceImage:(UIImage *)image
                  configuration:(SPKPhotoEditorConfiguration *)configuration
                           from:(UIViewController *)presenter
                     completion:(void (^)(UIImage *))completion {
-    if (!image || !presenter) return;
+    if (!image || !presenter)
+        return;
     SPKPhotoEditorViewController *editor = [[self alloc] init];
     editor.configuration = configuration ?: [SPKPhotoEditorConfiguration freeformConfiguration];
     editor.sourceImage = image;
@@ -212,7 +243,8 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
                  configuration:(SPKPhotoEditorConfiguration *)configuration
                           from:(UIViewController *)presenter
          destinationCompletion:(void (^)(UIImage *, NSString *))destinationCompletion {
-    if (!image || !presenter) return;
+    if (!image || !presenter)
+        return;
     SPKPhotoEditorViewController *editor = [[self alloc] init];
     editor.configuration = configuration ?: [SPKPhotoEditorConfiguration freeformConfiguration];
     editor.sourceImage = image;
@@ -237,8 +269,8 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 
     _workingImage = SPKPhotoEditorNormalized(self.sourceImage);
     _aspect = (self.configuration.aspectMode == SPKPhotoEditorAspectModeLockedSquare)
-                ? SPKPhotoEditorAspectSquare
-                : SPKPhotoEditorAspectOriginal;
+                  ? SPKPhotoEditorAspectSquare
+                  : SPKPhotoEditorAspectOriginal;
 
     [self setupChrome];
     [self setupCropContainer];
@@ -309,8 +341,8 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 }
 
 - (UIButton *)toolButtonWithImage:(UIImage *)image
-                     accessibility:(NSString *)accessibility
-                            action:(SEL)action {
+                    accessibility:(NSString *)accessibility
+                           action:(SEL)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     if (image) {
         [button setImage:image forState:UIControlStateNormal];
@@ -345,9 +377,15 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
                                               pointSize:24.0
                                           renderingMode:UIImageRenderingModeAlwaysTemplate];
     NSArray<UIButton *> *buttons = @[
-        [self toolButtonWithImage:rotateLeft  accessibility:@"Rotate Left"  action:@selector(rotateLeftTapped)],
-        [self toolButtonWithImage:mirror      accessibility:@"Flip"         action:@selector(flipTapped)],
-        [self toolButtonWithImage:rotateRight accessibility:@"Rotate Right" action:@selector(rotateRightTapped)],
+        [self toolButtonWithImage:rotateLeft
+                    accessibility:@"Rotate Left"
+                           action:@selector(rotateLeftTapped)],
+        [self toolButtonWithImage:mirror
+                    accessibility:@"Flip"
+                           action:@selector(flipTapped)],
+        [self toolButtonWithImage:rotateRight
+                    accessibility:@"Rotate Right"
+                           action:@selector(rotateRightTapped)],
     ];
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:buttons];
     stack.axis = UILayoutConstraintAxisHorizontal;
@@ -361,9 +399,12 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     [self.view addSubview:_bottomControls];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_bottomControls.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:48.0],
-        [_bottomControls.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-48.0],
-        [_bottomControls.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8.0],
+        [_bottomControls.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor
+                                                      constant:48.0],
+        [_bottomControls.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor
+                                                       constant:-48.0],
+        [_bottomControls.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+                                                     constant:-8.0],
         [_bottomControls.heightAnchor constraintEqualToConstant:kSPKEditorControlsRow],
         [stack.leadingAnchor constraintEqualToAnchor:_bottomControls.leadingAnchor],
         [stack.trailingAnchor constraintEqualToAnchor:_bottomControls.trailingAnchor],
@@ -390,24 +431,27 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
         [titles addObject:SPKPhotoEditorAspectTitle(kSPKAspectOrder[i])];
     }
     [_aspectChips setItems:titles symbols:@[]];
-    _aspectChips.selectedIndex = 0;   // Original (first)
+    _aspectChips.selectedIndex = 0; // Original (first)
     [self.view addSubview:_aspectChips];
 
     [NSLayoutConstraint activateConstraints:@[
         [_aspectChips.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
         [_aspectChips.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
-        [_aspectChips.bottomAnchor constraintEqualToAnchor:_bottomControls.topAnchor constant:-4.0],
-        [_cropContainer.bottomAnchor constraintEqualToAnchor:_aspectChips.topAnchor constant:-4.0],
+        [_aspectChips.bottomAnchor constraintEqualToAnchor:_bottomControls.topAnchor
+                                                  constant:-4.0],
+        [_cropContainer.bottomAnchor constraintEqualToAnchor:_aspectChips.topAnchor
+                                                    constant:-4.0],
     ]];
 }
 
 - (void)setupHandlesIfNeeded {
-    if (self.configuration.aspectMode != SPKPhotoEditorAspectModeFreeform) return;
+    if (self.configuration.aspectMode != SPKPhotoEditorAspectModeFreeform)
+        return;
     NSMutableArray<UIView *> *handles = [NSMutableArray arrayWithCapacity:4];
     for (NSInteger i = 0; i < 4; i++) {
         UIView *handle = [[UIView alloc] init];
         handle.backgroundColor = UIColor.clearColor;
-        handle.tag = i;   // 0=TL 1=TR 2=BL 3=BR
+        handle.tag = i; // 0=TL 1=TR 2=BL 3=BR
         handle.hidden = YES;
         CALayer *knob = [CALayer layer];
         knob.backgroundColor = UIColor.whiteColor.CGColor;
@@ -454,7 +498,8 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     CGRect area = [self cropBounds];
     CGFloat maxW = area.size.width - kSPKEditorCropInsetH * 2.0;
     CGFloat maxH = area.size.height - kSPKEditorCropInsetV * 2.0;
-    if (maxW <= 0 || maxH <= 0) return area;
+    if (maxW <= 0 || maxH <= 0)
+        return area;
 
     CGFloat ratio = SPKPhotoEditorAspectRatio(_aspect);
     if (ratio <= 0.0) {
@@ -462,7 +507,10 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     }
     CGFloat w = maxW;
     CGFloat h = w / ratio;
-    if (h > maxH) { h = maxH; w = h * ratio; }
+    if (h > maxH) {
+        h = maxH;
+        w = h * ratio;
+    }
     return CGRectMake(area.size.width / 2.0 - w / 2.0,
                       area.size.height / 2.0 - h / 2.0, w, h);
 }
@@ -481,7 +529,7 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     _scrollView.maximumZoomScale = 1.0;
     _scrollView.zoomScale = 1.0;
     _imageView.transform = CGAffineTransformIdentity;
-    _imageView.frame = (CGRect){ CGPointZero, _workingImage.size };
+    _imageView.frame = (CGRect){CGPointZero, _workingImage.size};
     _scrollView.contentSize = _workingImage.size;
     CGFloat minZoom = MAX(_cropRect.size.width / _workingImage.size.width,
                           _cropRect.size.height / _workingImage.size.height);
@@ -520,8 +568,9 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 }
 
 - (void)layoutHandles {
-    if (_handles.count != 4) return;
-    CGRect r = _cropRect;   // already in crop-container coordinates
+    if (_handles.count != 4)
+        return;
+    CGRect r = _cropRect; // already in crop-container coordinates
     CGPoint corners[4] = {
         CGPointMake(CGRectGetMinX(r), CGRectGetMinY(r)),
         CGPointMake(CGRectGetMaxX(r), CGRectGetMinY(r)),
@@ -530,7 +579,7 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     };
     for (NSInteger i = 0; i < 4; i++) {
         UIView *handle = _handles[i];
-        handle.hidden = NO;   // grabbers show for every aspect (ratio-locked resize)
+        handle.hidden = NO; // grabbers show for every aspect (ratio-locked resize)
         handle.frame = CGRectMake(corners[i].x - kSPKEditorHandleTouch / 2.0,
                                   corners[i].y - kSPKEditorHandleTouch / 2.0,
                                   kSPKEditorHandleTouch, kSPKEditorHandleTouch);
@@ -541,7 +590,7 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 
 - (void)handlePan:(UIPanGestureRecognizer *)pan {
     CGPoint p = [pan locationInView:_cropContainer];
-    NSInteger corner = pan.view.tag;   // 0=TL 1=TR 2=BL 3=BR
+    NSInteger corner = pan.view.tag; // 0=TL 1=TR 2=BL 3=BR
     if (_aspect == SPKPhotoEditorAspectFreeform) {
         [self freeformResizeToPoint:p corner:corner];
     } else {
@@ -557,18 +606,23 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 - (void)freeformResizeToPoint:(CGPoint)p corner:(NSInteger)corner {
     CGRect imageRect = [_imageView convertRect:_imageView.bounds toView:_cropContainer];
     CGRect area = CGRectIntersection(imageRect, [self cropBounds]);
-    if (CGRectIsNull(area) || CGRectIsEmpty(area)) area = [self cropBounds];
+    if (CGRectIsNull(area) || CGRectIsEmpty(area))
+        area = [self cropBounds];
     p.x = MIN(MAX(p.x, CGRectGetMinX(area)), CGRectGetMaxX(area));
     p.y = MIN(MAX(p.y, CGRectGetMinY(area)), CGRectGetMaxY(area));
 
     CGFloat left = CGRectGetMinX(_cropRect), right = CGRectGetMaxX(_cropRect);
     CGFloat top = CGRectGetMinY(_cropRect), bottom = CGRectGetMaxY(_cropRect);
     BOOL isLeft = (corner == 0 || corner == 2);
-    BOOL isTop  = (corner == 0 || corner == 1);
-    if (isLeft) left = MIN(p.x, right - kSPKEditorMinCropSide);
-    else        right = MAX(p.x, left + kSPKEditorMinCropSide);
-    if (isTop)  top = MIN(p.y, bottom - kSPKEditorMinCropSide);
-    else        bottom = MAX(p.y, top + kSPKEditorMinCropSide);
+    BOOL isTop = (corner == 0 || corner == 1);
+    if (isLeft)
+        left = MIN(p.x, right - kSPKEditorMinCropSide);
+    else
+        right = MAX(p.x, left + kSPKEditorMinCropSide);
+    if (isTop)
+        top = MIN(p.y, bottom - kSPKEditorMinCropSide);
+    else
+        bottom = MAX(p.y, top + kSPKEditorMinCropSide);
     _cropRect = CGRectMake(left, top, right - left, bottom - top);
 }
 
@@ -578,33 +632,44 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 - (void)ratioLockedResizeToPoint:(CGPoint)p corner:(NSInteger)corner {
     CGRect bounds = [self maxCropRectForCurrentAspect];
     CGFloat ratio = SPKPhotoEditorAspectRatio(_aspect);
-    if (ratio <= 0.0) ratio = _cropRect.size.width / MAX(_cropRect.size.height, 1.0);
+    if (ratio <= 0.0)
+        ratio = _cropRect.size.width / MAX(_cropRect.size.height, 1.0);
 
     p.x = MIN(MAX(p.x, CGRectGetMinX(bounds)), CGRectGetMaxX(bounds));
     p.y = MIN(MAX(p.y, CGRectGetMinY(bounds)), CGRectGetMaxY(bounds));
 
     BOOL isLeft = (corner == 0 || corner == 2);
-    BOOL isTop  = (corner == 0 || corner == 1);
+    BOOL isTop = (corner == 0 || corner == 1);
     CGFloat anchorX = isLeft ? CGRectGetMaxX(_cropRect) : CGRectGetMinX(_cropRect);
-    CGFloat anchorY = isTop  ? CGRectGetMaxY(_cropRect) : CGRectGetMinY(_cropRect);
+    CGFloat anchorY = isTop ? CGRectGetMaxY(_cropRect) : CGRectGetMinY(_cropRect);
 
     // Largest ratio-correct box that fits between the anchor and the drag point.
     CGFloat w = fabs(p.x - anchorX);
     CGFloat h = w / ratio;
-    if (h > fabs(p.y - anchorY)) { h = fabs(p.y - anchorY); w = h * ratio; }
+    if (h > fabs(p.y - anchorY)) {
+        h = fabs(p.y - anchorY);
+        w = h * ratio;
+    }
     // Enforce a minimum, keeping the ratio.
-    if (h < kSPKEditorMinCropSide) { h = kSPKEditorMinCropSide; w = h * ratio; }
-    if (w < kSPKEditorMinCropSide) { w = kSPKEditorMinCropSide; h = w / ratio; }
+    if (h < kSPKEditorMinCropSide) {
+        h = kSPKEditorMinCropSide;
+        w = h * ratio;
+    }
+    if (w < kSPKEditorMinCropSide) {
+        w = kSPKEditorMinCropSide;
+        h = w / ratio;
+    }
 
     CGFloat newLeft = isLeft ? (anchorX - w) : anchorX;
-    CGFloat newTop  = isTop  ? (anchorY - h) : anchorY;
+    CGFloat newTop = isTop ? (anchorY - h) : anchorY;
     _cropRect = CGRectMake(newLeft, newTop, w, h);
 }
 
 #pragma mark - SPKChipBarDelegate (aspect)
 
 - (void)chipBar:(SPKChipBar *)bar didSelectIndex:(NSInteger)index {
-    if (index < 0 || index >= kSPKAspectCount) return;
+    if (index < 0 || index >= kSPKAspectCount)
+        return;
     _aspect = kSPKAspectOrder[index];
     [self resetCropRectForCurrentAspect];
     [self configureScrollForCropRect];
@@ -614,9 +679,21 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 
 #pragma mark - Rotate / flip
 
-- (void)rotateLeftTapped  { [self applyTransform:^{ self->_workingImage = SPKPhotoEditorRotated(self->_workingImage, NO); }]; }
-- (void)rotateRightTapped { [self applyTransform:^{ self->_workingImage = SPKPhotoEditorRotated(self->_workingImage, YES); }]; }
-- (void)flipTapped        { [self applyTransform:^{ self->_workingImage = SPKPhotoEditorFlipped(self->_workingImage); }]; }
+- (void)rotateLeftTapped {
+    [self applyTransform:^{
+        self->_workingImage = SPKPhotoEditorRotated(self->_workingImage, NO);
+    }];
+}
+- (void)rotateRightTapped {
+    [self applyTransform:^{
+        self->_workingImage = SPKPhotoEditorRotated(self->_workingImage, YES);
+    }];
+}
+- (void)flipTapped {
+    [self applyTransform:^{
+        self->_workingImage = SPKPhotoEditorFlipped(self->_workingImage);
+    }];
+}
 
 - (void)applyTransform:(void (^)(void))mutate {
     mutate();
@@ -639,7 +716,8 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 
 - (UIImage *)editedImage {
     UIImage *source = _workingImage;
-    if (!source.CGImage) return source;
+    if (!source.CGImage)
+        return source;
     CGFloat zoom = _scrollView.zoomScale;
     CGPoint offset = _scrollView.contentOffset;
     CGRect visiblePoints = CGRectMake((CGRectGetMinX(_cropRect) + offset.x) / zoom,
@@ -648,10 +726,11 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
                                       CGRectGetHeight(_cropRect) / zoom);
 
     UIGraphicsBeginImageContextWithOptions(source.size, YES, source.scale);
-    [source drawInRect:(CGRect){ CGPointZero, source.size }];
+    [source drawInRect:(CGRect){CGPointZero, source.size}];
     UIImage *normalized = UIGraphicsGetImageFromCurrentImageContext() ?: source;
     UIGraphicsEndImageContext();
-    if (!normalized.CGImage) return source;
+    if (!normalized.CGImage)
+        return source;
 
     CGFloat pixelWidth = (CGFloat)CGImageGetWidth(normalized.CGImage);
     CGFloat pixelHeight = (CGFloat)CGImageGetHeight(normalized.CGImage);
@@ -663,10 +742,12 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
                                   visiblePoints.size.height * scaleY);
     CGRect pixelBounds = CGRectMake(0.0, 0.0, pixelWidth, pixelHeight);
     pixelRect = CGRectIntersection(CGRectIntegral(pixelRect), pixelBounds);
-    if (CGRectIsEmpty(pixelRect) || CGRectIsNull(pixelRect)) return normalized;
+    if (CGRectIsEmpty(pixelRect) || CGRectIsNull(pixelRect))
+        return normalized;
 
     CGImageRef cropped = CGImageCreateWithImageInRect(normalized.CGImage, pixelRect);
-    if (!cropped) return normalized;
+    if (!cropped)
+        return normalized;
     UIImage *output = [UIImage imageWithCGImage:cropped scale:normalized.scale orientation:UIImageOrientationUp];
     CGImageRelease(cropped);
     return output.CGImage ? output : normalized;
@@ -679,17 +760,21 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     // (which retains itself across the async flow) can release. Plain-confirm
     // callers documented that `completion` is not called on cancel, so leave it.
     void (^destinationCompletion)(UIImage *, NSString *) = [self.destinationCompletion copy];
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (destinationCompletion) destinationCompletion(nil, nil);
-    }];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                                 if (destinationCompletion)
+                                     destinationCompletion(nil, nil);
+                             }];
 }
 
 - (void)confirmTapped {
     UIImage *image = [self editedImage];
     void (^completion)(UIImage *) = [self.completion copy];
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (completion && image) completion(image);
-    }];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                                 if (completion && image)
+                                     completion(image);
+                             }];
 }
 
 - (UIMenu *)buildDoneMenu {
@@ -698,14 +783,14 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
     for (SPKPhotoEditorDoneOption *option in self.configuration.doneOptions) {
         NSString *identifier = option.identifier;
         UIImage *image = option.iconName.length > 0
-            ? [SPKAssetUtils instagramIconNamed:option.iconName pointSize:22.0]
-            : nil;
+                             ? [SPKAssetUtils instagramIconNamed:option.iconName pointSize:22.0]
+                             : nil;
         UIAction *action = [UIAction actionWithTitle:option.title
                                                image:image
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
-            [weakSelf finishWithDestinationTag:identifier];
-        }];
+                                                 [weakSelf finishWithDestinationTag:identifier];
+                                             }];
         [children addObject:action];
     }
     return [UIMenu menuWithTitle:@"" children:children];
@@ -714,9 +799,11 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
 - (void)finishWithDestinationTag:(NSString *)destinationTag {
     UIImage *image = [self editedImage];
     void (^completion)(UIImage *, NSString *) = [self.destinationCompletion copy];
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (completion && image) completion(image, destinationTag);
-    }];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                                 if (completion && image)
+                                     completion(image, destinationTag);
+                             }];
 }
 
 @end

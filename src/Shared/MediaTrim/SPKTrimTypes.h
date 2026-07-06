@@ -1,5 +1,5 @@
-#import <Foundation/Foundation.h>
 #import <CoreMedia/CoreMedia.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,7 +15,7 @@ typedef NS_ENUM(NSInteger, SPKTrimMediaKind) {
 /// one-frame video — that is the storage win for "video that's really a photo".
 typedef NS_ENUM(NSInteger, SPKTrimResultMode) {
     SPKTrimResultModeTrimmedVideo = 0,
-    SPKTrimResultModeFrameOnly  = 1,
+    SPKTrimResultModeFrameOnly = 1,
     SPKTrimResultModeTrimmedAudio = 2,
 };
 

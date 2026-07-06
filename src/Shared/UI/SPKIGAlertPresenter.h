@@ -10,7 +10,7 @@ typedef NS_ENUM(NSInteger, SPKIGAlertActionStyle) {
 };
 
 typedef void (^SPKIGAlertActionHandler)(void);
-typedef void (^SPKIGAlertTextHandler)(NSString * _Nullable text);
+typedef void (^SPKIGAlertTextHandler)(NSString *_Nullable text);
 
 @interface SPKIGAlertAction : NSObject
 
@@ -47,12 +47,12 @@ typedef void (^SPKIGAlertTextHandler)(NSString * _Nullable text);
                                         message:(nullable NSString *)message
                                     placeholder:(nullable NSString *)placeholder
                                     initialText:(nullable NSString *)initialText
-                               autocapitalized:(BOOL)autocapitalized
-                                  confirmTitle:(NSString *)confirmTitle
-                                   cancelTitle:(NSString *)cancelTitle
-                                  confirmStyle:(SPKIGAlertActionStyle)confirmStyle
-                                  confirmBlock:(SPKIGAlertTextHandler)confirmBlock
-                                   cancelBlock:(nullable SPKIGAlertActionHandler)cancelBlock;
+                                autocapitalized:(BOOL)autocapitalized
+                                   confirmTitle:(NSString *)confirmTitle
+                                    cancelTitle:(NSString *)cancelTitle
+                                   confirmStyle:(SPKIGAlertActionStyle)confirmStyle
+                                   confirmBlock:(SPKIGAlertTextHandler)confirmBlock
+                                    cancelBlock:(nullable SPKIGAlertActionHandler)cancelBlock;
 
 @end
 

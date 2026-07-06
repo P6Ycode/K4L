@@ -19,7 +19,7 @@
 @implementation SPKDownloadTransfer
 
 - (void)downloadURL:(NSURL *)url
-         mediaKind:(SPKDownloadMediaKind)mediaKind
+          mediaKind:(SPKDownloadMediaKind)mediaKind
       fileExtension:(NSString *)fileExtension
          stagingDir:(NSString *)stagingDir
              itemID:(NSString *)itemID
@@ -67,19 +67,24 @@
 }
 
 - (BOOL)validateHTTPResponse:(NSURLResponse *)response error:(NSError **)error {
-    if (![response isKindOfClass:NSHTTPURLResponse.class]) return YES;
+    if (![response isKindOfClass:NSHTTPURLResponse.class])
+        return YES;
     NSInteger status = ((NSHTTPURLResponse *)response).statusCode;
-    if (status >= 200 && status < 300) return YES;
+    if (status >= 200 && status < 300)
+        return YES;
     if (status == 403 || status == 404 || status == 410) {
-        if (error) *error = SPKDownloadError(SPKDownloadErrorExpiredURL, @"The media URL expired. Refresh and try again.", nil);
+        if (error)
+            *error = SPKDownloadError(SPKDownloadErrorExpiredURL, @"The media URL expired. Refresh and try again.", nil);
         return NO;
     }
-    if (error) *error = SPKDownloadError(SPKDownloadErrorHTTPFailure, @"Instagram returned a missing media response.", nil);
+    if (error)
+        *error = SPKDownloadError(SPKDownloadErrorHTTPFailure, @"Instagram returned a missing media response.", nil);
     return NO;
 }
 
 - (BOOL)validateContentType:(NSString *)mime mediaKind:(SPKDownloadMediaKind)kind {
-    if (mime.length == 0 || kind == SPKDownloadMediaKindUnknown) return YES;
+    if (mime.length == 0 || kind == SPKDownloadMediaKindUnknown)
+        return YES;
     NSString *lower = mime.lowercaseString;
     if ([lower containsString:@"text/html"] || [lower containsString:@"application/json"] || [lower hasPrefix:@"text/"]) {
         return NO;
@@ -88,28 +93,37 @@
 }
 
 - (NSString *)resolvedExtensionForMIME:(NSString *)mime url:(NSURL *)url fallback:(NSString *)fallback {
-    if (fallback.length >= 2) return fallback;
+    if (fallback.length >= 2)
+        return fallback;
     NSString *lower = mime.lowercaseString;
-    if ([lower containsString:@"jpeg"] || [lower containsString:@"jpg"]) return @"jpg";
-    if ([lower containsString:@"png"]) return @"png";
-    if ([lower containsString:@"mp4"] || [lower containsString:@"video"]) return @"mp4";
-    if ([lower containsString:@"audio"] || [lower containsString:@"mpeg"]) return @"m4a";
+    if ([lower containsString:@"jpeg"] || [lower containsString:@"jpg"])
+        return @"jpg";
+    if ([lower containsString:@"png"])
+        return @"png";
+    if ([lower containsString:@"mp4"] || [lower containsString:@"video"])
+        return @"mp4";
+    if ([lower containsString:@"audio"] || [lower containsString:@"mpeg"])
+        return @"m4a";
     NSString *ext = url.pathExtension;
-    if (ext.length >= 2) return ext;
+    if (ext.length >= 2)
+        return ext;
     return fallback.length ? fallback : @"bin";
 }
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
-    (void)session; (void)bytesWritten;
+    (void)session;
+    (void)bytesWritten;
     int64_t expected = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : downloadTask.countOfBytesExpectedToReceive;
     float progress = [self normalizedProgressForTotal:totalBytesWritten expected:expected];
     self.lastReportedProgress = progress;
-    if (self.progressBlock) self.progressBlock(totalBytesWritten, expected, progress);
+    if (self.progressBlock)
+        self.progressBlock(totalBytesWritten, expected, progress);
 }
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location {
     (void)session;
-    if (self.finished) return;
+    if (self.finished)
+        return;
     NSError *httpError = nil;
     if (![self validateHTTPResponse:downloadTask.response error:&httpError]) {
         [self finishWithPath:nil error:httpError];
@@ -141,7 +155,8 @@
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
     (void)session;
-    if (self.finished) return;
+    if (self.finished)
+        return;
     if (error) {
         if (error.code == NSURLErrorCancelled) {
             [self finishWithPath:nil error:SPKDownloadError(SPKDownloadErrorCancelled, @"Download cancelled.", nil)];
@@ -152,7 +167,8 @@
 }
 
 - (void)finishWithPath:(NSString *)path error:(NSError *)error {
-    if (self.finished) return;
+    if (self.finished)
+        return;
     self.finished = YES;
     [self.session invalidateAndCancel];
     self.session = nil;

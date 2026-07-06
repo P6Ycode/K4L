@@ -3,7 +3,8 @@
 @implementation SPKAudioItem
 
 + (instancetype)itemWithURL:(NSURL *)url source:(SPKAudioSource)source {
-    if (!url.absoluteString.length) return nil;
+    if (!url.absoluteString.length)
+        return nil;
     SPKAudioItem *item = [[self alloc] init];
     item.url = url;
     item.source = source;
@@ -27,22 +28,27 @@
 
 - (SPKGallerySource)gallerySource {
     switch (self.source) {
-        case SPKAudioSourceFeed: return SPKGallerySourceFeed;
-        case SPKAudioSourceReels: return SPKGallerySourceReels;
-        case SPKAudioSourceStories: return SPKGallerySourceStories;
-        case SPKAudioSourceDMs:
-        case SPKAudioSourceDMNotes:
-            return SPKGallerySourceDMs;
-        case SPKAudioSourceAudioPage: return SPKGallerySourceAudioPage;
-        case SPKAudioSourceOther:
-        default:
-            return SPKGallerySourceOther;
+    case SPKAudioSourceFeed:
+        return SPKGallerySourceFeed;
+    case SPKAudioSourceReels:
+        return SPKGallerySourceReels;
+    case SPKAudioSourceStories:
+        return SPKGallerySourceStories;
+    case SPKAudioSourceDMs:
+    case SPKAudioSourceDMNotes:
+        return SPKGallerySourceDMs;
+    case SPKAudioSourceAudioPage:
+        return SPKGallerySourceAudioPage;
+    case SPKAudioSourceOther:
+    default:
+        return SPKGallerySourceOther;
     }
 }
 
 - (NSString *)preferredFileExtension {
     NSString *ext = self.url.pathExtension.lowercaseString;
-    if (ext.length > 0 && ext.length <= 5) return ext;
+    if (ext.length > 0 && ext.length <= 5)
+        return ext;
     return @"m4a";
 }
 

@@ -22,10 +22,10 @@ typedef void (^SPKGalleryPickerCompletion)(NSArray<SPKGalleryFile *> *selectedFi
                    completion:(SPKGalleryPickerCompletion)completion;
 
 - (instancetype)initWithFolderPath:(nullable NSString *)folderPath
-                              title:(nullable NSString *)title
-                  allowedMediaTypes:(nullable NSSet<NSNumber *> *)allowedMediaTypes
-            allowsMultipleSelection:(BOOL)allowsMultipleSelection
-                         completion:(SPKGalleryPickerCompletion)completion;
+                             title:(nullable NSString *)title
+                 allowedMediaTypes:(nullable NSSet<NSNumber *> *)allowedMediaTypes
+           allowsMultipleSelection:(BOOL)allowsMultipleSelection
+                        completion:(SPKGalleryPickerCompletion)completion;
 
 - (instancetype)init NS_UNAVAILABLE;
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;

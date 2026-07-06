@@ -1,10 +1,10 @@
 #import "SPKGalleryGridDensity.h"
 
-NSString * const kSPKGalleryGridColumnsKey = @"gallery_grid_columns";
-NSString * const kSPKGalleryGridPinchDisabledKey = @"gallery_grid_pinch_disabled";
-NSString * const kSPKGalleryGridShowSourceUsernameDisabledKey = @"gallery_grid_show_source_username_disabled";
-NSString * const kSPKGalleryFolderBarPinDisabledKey = @"gallery_folder_bar_pin_disabled";
-NSString * const kSPKGalleryGridControlsChangedNotification = @"SPKGalleryGridControlsPreferenceChanged";
+NSString *const kSPKGalleryGridColumnsKey = @"gallery_grid_columns";
+NSString *const kSPKGalleryGridPinchDisabledKey = @"gallery_grid_pinch_disabled";
+NSString *const kSPKGalleryGridShowSourceUsernameDisabledKey = @"gallery_grid_show_source_username_disabled";
+NSString *const kSPKGalleryFolderBarPinDisabledKey = @"gallery_folder_bar_pin_disabled";
+NSString *const kSPKGalleryGridControlsChangedNotification = @"SPKGalleryGridControlsPreferenceChanged";
 
 BOOL SPKGalleryFolderBarPinned(void) {
     return ![[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryFolderBarPinDisabledKey];
@@ -34,7 +34,8 @@ void SPKGalleryGridSetColumns(NSInteger columns) {
 
 static NSUInteger SPKColumnChoiceIndex(NSInteger columns) {
     for (NSUInteger i = 0; i < kColumnChoicesCount; i++) {
-        if (kColumnChoices[i] == columns) return i;
+        if (kColumnChoices[i] == columns)
+            return i;
     }
     return 1; // default to the index of "3"
 }

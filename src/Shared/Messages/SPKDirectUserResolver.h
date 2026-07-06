@@ -11,14 +11,14 @@ extern "C" {
 
 void spkDirectUserResolverSetActiveApplicator(id applicator);
 
-id _Nullable spkDirectUserResolverUserForPK(NSString * _Nullable pk);
-NSString * _Nullable spkDirectUserResolverUsernameForPK(NSString * _Nullable pk);
-NSString * _Nullable spkDirectUserResolverProfilePicURLStringForPK(NSString * _Nullable pk);
+id _Nullable spkDirectUserResolverUserForPK(NSString *_Nullable pk);
+NSString *_Nullable spkDirectUserResolverUsernameForPK(NSString *_Nullable pk);
+NSString *_Nullable spkDirectUserResolverProfilePicURLStringForPK(NSString *_Nullable pk);
 
 // IGUser field extraction — KVC-based, exception-safe.
-NSString * _Nullable spkDirectUserResolverPKFromUser(id _Nullable user);
-NSString * _Nullable spkDirectUserResolverUsernameFromUser(id _Nullable user);
-NSString * _Nullable spkDirectUserResolverProfilePicURLStringFromUser(id _Nullable user);
+NSString *_Nullable spkDirectUserResolverPKFromUser(id _Nullable user);
+NSString *_Nullable spkDirectUserResolverUsernameFromUser(id _Nullable user);
+NSString *_Nullable spkDirectUserResolverProfilePicURLStringFromUser(id _Nullable user);
 
 #ifdef __cplusplus
 }

@@ -1,7 +1,7 @@
 #import "SPKFullScreenImageViewController.h"
-#import "SPKMediaItem.h"
-#import "SPKMediaCacheManager.h"
 #import "SPKImageFormat.h"
+#import "SPKMediaCacheManager.h"
+#import "SPKMediaItem.h"
 #import <objc/message.h>
 
 static CGFloat const kMaxZoom = 5.0;
@@ -58,20 +58,24 @@ static CGFloat const kZoomEpsilon = 0.02;
     // Insets only affect the min-zoom fit/centering. While zoomed the image
     // uses the full screen, so there's nothing to update (and nothing jumps);
     // the new insets take effect naturally when the user returns to min zoom.
-    if (self.isZoomed) return;
+    if (self.isZoomed)
+        return;
     [self updateImageViewFrame];
 }
 
 - (UIEdgeInsets)effectiveMinZoomInsets {
     UIEdgeInsets insets = self.hasDesiredContentInsets ? self.desiredContentInsets : UIEdgeInsetsZero;
-    if (UIEdgeInsetsEqualToEdgeInsets(insets, UIEdgeInsetsZero)) return UIEdgeInsetsZero;
+    if (UIEdgeInsetsEqualToEdgeInsets(insets, UIEdgeInsetsZero))
+        return UIEdgeInsetsZero;
 
     UIImage *image = _imageView.image;
     CGSize boundsSize = _scrollView.bounds.size;
-    if (!image || boundsSize.width <= 0 || boundsSize.height <= 0) return insets;
+    if (!image || boundsSize.width <= 0 || boundsSize.height <= 0)
+        return insets;
 
     CGSize imageSize = image.size;
-    if (imageSize.width <= 0 || imageSize.height <= 0) return insets;
+    if (imageSize.width <= 0 || imageSize.height <= 0)
+        return insets;
 
     CGFloat availW = MAX(1.0, boundsSize.width - insets.left - insets.right);
     CGFloat availH = MAX(1.0, boundsSize.height - insets.top - insets.bottom);
@@ -86,7 +90,8 @@ static CGFloat const kZoomEpsilon = 0.02;
     // jump when the chrome toggles, so leave them full-bleed and centered.
     // Height-constrained fits (tall ~9:16 photos) would run under the bars, so
     // those do get inset.
-    if (ratioAvail >= ratioFull - 0.0001) return UIEdgeInsetsZero;
+    if (ratioAvail >= ratioFull - 0.0001)
+        return UIEdgeInsetsZero;
     return insets;
 }
 
@@ -166,13 +171,15 @@ static CGFloat const kZoomEpsilon = 0.02;
     [NSLayoutConstraint activateConstraints:@[
         [_errorView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [_errorView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-        [_errorView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:40],
+        [_errorView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor
+                                                              constant:40],
 
         [_errorLabel.topAnchor constraintEqualToAnchor:_errorView.topAnchor],
         [_errorLabel.leadingAnchor constraintEqualToAnchor:_errorView.leadingAnchor],
         [_errorLabel.trailingAnchor constraintEqualToAnchor:_errorView.trailingAnchor],
 
-        [_retryButton.topAnchor constraintEqualToAnchor:_errorLabel.bottomAnchor constant:16],
+        [_retryButton.topAnchor constraintEqualToAnchor:_errorLabel.bottomAnchor
+                                               constant:16],
         [_retryButton.centerXAnchor constraintEqualToAnchor:_errorView.centerXAnchor],
         [_retryButton.widthAnchor constraintEqualToConstant:100],
         [_retryButton.heightAnchor constraintEqualToConstant:36],
@@ -224,24 +231,26 @@ static CGFloat const kZoomEpsilon = 0.02;
     }
 
     __weak typeof(self) weakSelf = self;
-    [[SPKMediaCacheManager sharedManager] loadImageForItem:self.mediaItem completion:^(UIImage * _Nullable image, NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+    [[SPKMediaCacheManager sharedManager] loadImageForItem:self.mediaItem
+                                                completion:^(UIImage *_Nullable image, NSError *_Nullable error) {
+                                                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                    if (!strongSelf)
+                                                        return;
 
-        [strongSelf.loadingIndicator stopAnimating];
-        strongSelf.isLoadingImage = NO;
+                                                    [strongSelf.loadingIndicator stopAnimating];
+                                                    strongSelf.isLoadingImage = NO;
 
-        if (image) {
-            if (strongSelf.isViewLoaded) {
-                [strongSelf displayImage:image];
-            }
-            return;
-        }
+                                                    if (image) {
+                                                        if (strongSelf.isViewLoaded) {
+                                                            [strongSelf displayImage:image];
+                                                        }
+                                                        return;
+                                                    }
 
-        if (strongSelf.isViewLoaded) {
-            [strongSelf showError:error.localizedDescription.length > 0 ? error.localizedDescription : @"Failed to load image"];
-        }
-    }];
+                                                    if (strongSelf.isViewLoaded) {
+                                                        [strongSelf showError:error.localizedDescription.length > 0 ? error.localizedDescription : @"Failed to load image"];
+                                                    }
+                                                }];
 }
 
 - (void)retryLoading {
@@ -264,13 +273,16 @@ static CGFloat const kZoomEpsilon = 0.02;
     self.liveTextBridge = nil;
     NSURL *localURL = [[SPKMediaCacheManager sharedManager] bestAvailableFileURLForItem:self.mediaItem];
     SPKImageFormat format = SPKImageFormatForFileURL(localURL);
-    if (format == SPKImageFormatGIF || format == SPKImageFormatWebP) return;
+    if (format == SPKImageFormatGIF || format == SPKImageFormatWebP)
+        return;
 
     Class bridgeClass = NSClassFromString(@"SPKLiveTextBridge");
     if (!bridgeClass || ![bridgeClass respondsToSelector:@selector(supported)] ||
-        !((BOOL (*)(id, SEL))objc_msgSend)(bridgeClass, @selector(supported))) return;
+        !((BOOL (*)(id, SEL))objc_msgSend)(bridgeClass, @selector(supported)))
+        return;
     id bridge = ((id (*)(id, SEL, UIImageView *))objc_msgSend)([bridgeClass alloc], NSSelectorFromString(@"initWithImageView:"), _imageView);
-    if (!bridge) return;
+    if (!bridge)
+        return;
     self.liveTextBridge = bridge;
     ((void (*)(id, SEL, UIImage *))objc_msgSend)(bridge, NSSelectorFromString(@"analyzeImage:"), image);
 }
@@ -278,14 +290,17 @@ static CGFloat const kZoomEpsilon = 0.02;
 - (void)displayAnimatedImageIfAvailable {
     NSURL *localURL = [[SPKMediaCacheManager sharedManager] bestAvailableFileURLForItem:self.mediaItem];
     SPKImageFormat format = SPKImageFormatForFileURL(localURL);
-    if (format != SPKImageFormatGIF && format != SPKImageFormatWebP) return;
+    if (format != SPKImageFormatGIF && format != SPKImageFormatWebP)
+        return;
 
     Class factory = NSClassFromString(@"FLAnimatedImageFactory");
     SEL setAnimatedImage = NSSelectorFromString(@"setAnimatedImage:");
-    if (!factory || ![_imageView respondsToSelector:setAnimatedImage]) return;
+    if (!factory || ![_imageView respondsToSelector:setAnimatedImage])
+        return;
 
     NSData *data = [NSData dataWithContentsOfURL:localURL options:NSDataReadingMappedIfSafe error:nil];
-    if (!data.length) return;
+    if (!data.length)
+        return;
 
     BOOL isGIF = format == SPKImageFormatGIF;
     CGSize size = _imageView.image.size;
@@ -293,11 +308,11 @@ static CGFloat const kZoomEpsilon = 0.02;
     // IG <=435 took a trailing `flAnimatedFrameCacheOOMFixEnabled:` BOOL; IG 436+
     // dropped it. Prefer the 4-arg variant, fall back to the 3-arg one.
     SEL decode4 = NSSelectorFromString(isGIF
-        ? @"animatedImageWithGIFData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:"
-        : @"animatedImageWithWebPData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:");
+                                           ? @"animatedImageWithGIFData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:"
+                                           : @"animatedImageWithWebPData:size:targetQueueForFrameCache:flAnimatedFrameCacheOOMFixEnabled:");
     SEL decode3 = NSSelectorFromString(isGIF
-        ? @"animatedImageWithGIFData:size:targetQueueForFrameCache:"
-        : @"animatedImageWithWebPData:size:targetQueueForFrameCache:");
+                                           ? @"animatedImageWithGIFData:size:targetQueueForFrameCache:"
+                                           : @"animatedImageWithWebPData:size:targetQueueForFrameCache:");
 
     id animatedImage = nil;
     if ([factory respondsToSelector:decode4]) {
@@ -307,10 +322,12 @@ static CGFloat const kZoomEpsilon = 0.02;
         animatedImage = ((id (*)(id, SEL, NSData *, CGSize, id))objc_msgSend)(
             factory, decode3, data, size, nil);
     }
-    if (!animatedImage) return;
+    if (!animatedImage)
+        return;
     ((void (*)(id, SEL, id))objc_msgSend)(_imageView, setAnimatedImage, animatedImage);
     SEL play = NSSelectorFromString(@"play");
-    if ([_imageView respondsToSelector:play]) ((void (*)(id, SEL))objc_msgSend)(_imageView, play);
+    if ([_imageView respondsToSelector:play])
+        ((void (*)(id, SEL))objc_msgSend)(_imageView, play);
 }
 
 - (void)showError:(NSString *)message {
@@ -319,7 +336,7 @@ static CGFloat const kZoomEpsilon = 0.02;
     _scrollView.hidden = YES;
 
     if ([self.delegate respondsToSelector:@selector(mediaContent:didFailWithError:)]) {
-        NSError *error = [NSError errorWithDomain:@"SPKFullScreenImageViewController" code:-1 userInfo:@{NSLocalizedDescriptionKey: message}];
+        NSError *error = [NSError errorWithDomain:@"SPKFullScreenImageViewController" code:-1 userInfo:@{NSLocalizedDescriptionKey : message}];
         [self.delegate mediaContent:self didFailWithError:error];
     }
 }
@@ -351,10 +368,12 @@ static CGFloat const kZoomEpsilon = 0.02;
 
 - (void)updateImageViewFrame {
     UIImage *image = _imageView.image;
-    if (!image) return;
+    if (!image)
+        return;
 
     CGSize boundsSize = _scrollView.bounds.size;
-    if (boundsSize.width <= 0 || boundsSize.height <= 0) return;
+    if (boundsSize.width <= 0 || boundsSize.height <= 0)
+        return;
 
     BOOL atMinimumZoom = (_scrollView.zoomScale <= kMinZoom + kZoomEpsilon);
 
@@ -403,7 +422,8 @@ static CGFloat const kZoomEpsilon = 0.02;
 /// adapt its chrome (material backing behind the bars when zoomed in).
 - (void)notifyZoomStateIfChanged {
     BOOL zoomed = self.isZoomed;
-    if (zoomed == _lastReportedZoomState) return;
+    if (zoomed == _lastReportedZoomState)
+        return;
     _lastReportedZoomState = zoomed;
     if ([self.delegate respondsToSelector:@selector(mediaContent:didChangeZoomState:)]) {
         [self.delegate mediaContent:self didChangeZoomState:zoomed];

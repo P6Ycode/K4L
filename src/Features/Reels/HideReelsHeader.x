@@ -17,7 +17,8 @@
 %end
 
 void SPKInstallHideReelsHeaderHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"reels_hide_header"]) return;
+    if (![SPKUtils getBoolPref:@"reels_hide_header"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

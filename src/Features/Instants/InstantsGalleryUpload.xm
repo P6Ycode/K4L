@@ -1,22 +1,22 @@
-#import <substrate.h>
-#import <objc/runtime.h>
 #import <AVFoundation/AVFoundation.h>
+#import <Accelerate/Accelerate.h>
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
-#import <Accelerate/Accelerate.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <objc/runtime.h>
+#import <substrate.h>
 
-#import "../../Utils.h"
 #import "../../AssetUtils.h"
-#import "../../Shared/Gallery/SPKGalleryPickerViewController.h"
-#import "../../Shared/Gallery/SPKGalleryFile.h"
-#import "../../Shared/UI/SPKIGAlertPresenter.h"
-#import "../../Shared/UI/SPKChrome.h"
 #import "../../Settings/Topics/SPKInstantsSettingsProvider.h"
+#import "../../Shared/Gallery/SPKGalleryFile.h"
+#import "../../Shared/Gallery/SPKGalleryPickerViewController.h"
 #import "../../Shared/Instants/SPKInstantsFrameInjector.h"
 #import "../../Shared/PhotoEdit/SPKPhotoEditorViewController.h"
+#import "../../Shared/UI/SPKChrome.h"
+#import "../../Shared/UI/SPKIGAlertPresenter.h"
+#import "../../Utils.h"
 
-static NSString * const kSPKInstantsUploadFromGalleryPref = @"instants_upload_from_gallery";
+static NSString *const kSPKInstantsUploadFromGalleryPref = @"instants_upload_from_gallery";
 
 static BOOL SPKInstantsUploadFromGalleryEnabled(void) {
     return [SPKUtils getBoolPref:kSPKInstantsUploadFromGalleryPref];
@@ -52,7 +52,8 @@ static NSInteger const kSPKInstantsGalleryButtonTag = 921401;
 static __weak UIView *sSPKInstantsVisibleCreationView = nil;
 
 static void SPKInstantsPinEdges(UIView *view, UIView *host) {
-    if (!view || !host) return;
+    if (!view || !host)
+        return;
     view.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
         [view.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
@@ -74,7 +75,8 @@ static void SPKInstantsClearFrameCache(void) {
 }
 
 static UIImage *SPKInstantsNormalizedImage(UIImage *image) {
-    if (!image || image.imageOrientation == UIImageOrientationUp) return image;
+    if (!image || image.imageOrientation == UIImageOrientationUp)
+        return image;
     UIGraphicsBeginImageContextWithOptions(image.size, YES, image.scale);
     [image drawInRect:(CGRect){CGPointZero, image.size}];
     UIImage *normalized = UIGraphicsGetImageFromCurrentImageContext();
@@ -103,25 +105,30 @@ static UIViewController *SPKInstantsTopPresenter(void) {
 }
 
 static UIWindow *SPKInstantsWindowForView(UIView *view) {
-    if (view.window) return view.window;
+    if (view.window)
+        return view.window;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class]) continue;
+        if (![scene isKindOfClass:UIWindowScene.class])
+            continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            if (window.isKeyWindow) return window;
+            if (window.isKeyWindow)
+                return window;
         }
     }
     return nil;
 }
 
 static void SPKInstantsWalkViews(UIView *root, void (^visitor)(UIView *view, BOOL *stop)) {
-    if (!root || !visitor) return;
+    if (!root || !visitor)
+        return;
     BOOL stop = NO;
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:root];
     while (queue.count > 0 && !stop) {
         UIView *view = queue.firstObject;
         [queue removeObjectAtIndex:0];
         visitor(view, &stop);
-        if (stop) break;
+        if (stop)
+            break;
         for (UIView *subview in view.subviews) {
             [queue addObject:subview];
         }
@@ -139,10 +146,12 @@ static BOOL SPKInstantsHeaderHasVisibleCreationView(UIView *header) {
     }
 
     UIWindow *window = SPKInstantsWindowForView(header);
-    if (!window) return NO;
+    if (!window)
+        return NO;
     __block BOOL found = NO;
     SPKInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
-        if (!SPKInstantsViewIsVisible(view)) return;
+        if (!SPKInstantsViewIsVisible(view))
+            return;
         if ([NSStringFromClass(view.class) containsString:@"IGQuickSnapCreationView"]) {
             found = YES;
             *stop = YES;
@@ -153,10 +162,12 @@ static BOOL SPKInstantsHeaderHasVisibleCreationView(UIView *header) {
 
 static BOOL SPKInstantsHeaderHasVisibleSnapView(UIView *header) {
     UIWindow *window = SPKInstantsWindowForView(header);
-    if (!window) return NO;
+    if (!window)
+        return NO;
     __block BOOL found = NO;
     SPKInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
-        if (!SPKInstantsViewIsVisible(view)) return;
+        if (!SPKInstantsViewIsVisible(view))
+            return;
         if ([NSStringFromClass(view.class) containsString:@"IGQuickSnapImmersiveViewerSingleSnapView"]) {
             found = YES;
             *stop = YES;
@@ -166,13 +177,20 @@ static BOOL SPKInstantsHeaderHasVisibleSnapView(UIView *header) {
 }
 
 static UIView *SPKInstantsHeaderOwnedView(UIView *header, NSString *key) {
-    if (!header || key.length == 0) return nil;
+    if (!header || key.length == 0)
+        return nil;
     id view = nil;
-    @try { view = [header valueForKey:key]; } @catch (__unused NSException *exception) {}
+    @try {
+        view = [header valueForKey:key];
+    } @catch (__unused NSException *exception) {
+    }
     if (![view isKindOfClass:UIView.class]) {
         Ivar ivar = class_getInstanceVariable(header.class, key.UTF8String);
         if (ivar) {
-            @try { view = object_getIvar(header, ivar); } @catch (__unused NSException *exception) {}
+            @try {
+                view = object_getIvar(header, ivar);
+            } @catch (__unused NSException *exception) {
+            }
         }
     }
     return [view isKindOfClass:UIView.class] ? (UIView *)view : nil;
@@ -187,10 +205,12 @@ static UIView *SPKInstantsHeaderArchiveButton(UIView *header) {
 }
 
 static UIView *SPKInstantsHeaderInWindow(UIWindow *window) {
-    if (!window) return nil;
+    if (!window)
+        return nil;
     __block UIView *header = nil;
     SPKInstantsWalkViews(window, ^(UIView *view, BOOL *stop) {
-        if (!SPKInstantsViewIsVisible(view)) return;
+        if (!SPKInstantsViewIsVisible(view))
+            return;
         if ([NSStringFromClass(view.class) containsString:@"IGQuickSnapNavigationV3HeaderButtonView"]) {
             header = view;
             *stop = YES;
@@ -212,15 +232,18 @@ static NSString *SPKInstantsControlText(UIView *view) {
 }
 
 static BOOL SPKInstantsCreationViewIsPostCapture(UIView *creationView) {
-    if (!creationView) return NO;
+    if (!creationView)
+        return NO;
     __block BOOL foundUndo = NO;
     SPKInstantsWalkViews(creationView, ^(UIView *view, BOOL *stop) {
-        if (!SPKInstantsViewIsVisible(view)) return;
+        if (!SPKInstantsViewIsVisible(view))
+            return;
 
         // Language-independent first: an "undo" tap action or undo glyph marks the
         // post-capture edit state. The "Undo" title match is a localized fallback.
         if ([view isKindOfClass:UIControl.class] &&
-            [SPKUtils control:(UIControl *)view hasTapActionContaining:@"undo"]) {
+            [SPKUtils control:(UIControl *)view
+                hasTapActionContaining:@"undo"]) {
             foundUndo = YES;
             *stop = YES;
             return;
@@ -250,13 +273,14 @@ static void SPKInstantsClearPendingImageForCreationView(UIView *creationView) {
 }
 
 static void SPKInstantsPresentImageForPositioning(UIImage *image) {
-    if (!image) return;
+    if (!image)
+        return;
     [SPKPhotoEditorViewController presentWithSourceImage:SPKInstantsNormalizedImage(image)
-                                          configuration:[SPKPhotoEditorConfiguration lockedSquareConfiguration]
-                                                   from:SPKInstantsTopPresenter()
-                                             completion:^(UIImage *croppedImage) {
-        SPKInstantsSetPendingImage(croppedImage);
-    }];
+                                           configuration:[SPKPhotoEditorConfiguration lockedSquareConfiguration]
+                                                    from:SPKInstantsTopPresenter()
+                                              completion:^(UIImage *croppedImage) {
+                                                  SPKInstantsSetPendingImage(croppedImage);
+                                              }];
 }
 
 static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
@@ -267,11 +291,12 @@ static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
                                                             int32_t width,
                                                             int32_t height,
                                                             OSType format) {
-    if (!image.CGImage || width <= 0 || height <= 0) return NULL;
+    if (!image.CGImage || width <= 0 || height <= 0)
+        return NULL;
     NSDictionary *attributes = @{
-        (NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{},
-        (NSString *)kCVPixelBufferMetalCompatibilityKey: @YES,
-        (NSString *)kCVPixelBufferOpenGLESCompatibilityKey: @YES
+        (NSString *)kCVPixelBufferIOSurfacePropertiesKey : @{},
+        (NSString *)kCVPixelBufferMetalCompatibilityKey : @YES,
+        (NSString *)kCVPixelBufferOpenGLESCompatibilityKey : @YES
     };
 
     CVPixelBufferRef pixelBuffer = NULL;
@@ -281,7 +306,8 @@ static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
                                           format,
                                           (__bridge CFDictionaryRef)attributes,
                                           &pixelBuffer);
-    if (status != kCVReturnSuccess || !pixelBuffer) return NULL;
+    if (status != kCVReturnSuccess || !pixelBuffer)
+        return NULL;
 
     CGFloat visibleSide = MIN((CGFloat)width, (CGFloat)height);
     CGRect drawRect = CGRectMake(((CGFloat)width - visibleSide) / 2.0,
@@ -334,23 +360,21 @@ static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
                     void *yBase = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
                     void *cbcrBase = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
                     if (yBase && cbcrBase) {
-                        vImage_Buffer src = { bgra, (vImagePixelCount)height, (vImagePixelCount)width, bgraBytesPerRow };
+                        vImage_Buffer src = {bgra, (vImagePixelCount)height, (vImagePixelCount)width, bgraBytesPerRow};
                         vImage_Buffer yPlane = {
                             yBase,
                             CVPixelBufferGetHeightOfPlane(pixelBuffer, 0),
                             CVPixelBufferGetWidthOfPlane(pixelBuffer, 0),
-                            CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0)
-                        };
+                            CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0)};
                         vImage_Buffer cbcrPlane = {
                             cbcrBase,
                             CVPixelBufferGetHeightOfPlane(pixelBuffer, 1),
                             CVPixelBufferGetWidthOfPlane(pixelBuffer, 1),
-                            CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1)
-                        };
+                            CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1)};
                         BOOL fullRange = (format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange);
                         vImage_YpCbCrPixelRange range = fullRange
-                            ? (vImage_YpCbCrPixelRange){ 0, 128, 255, 255, 255, 1, 255, 0 }
-                            : (vImage_YpCbCrPixelRange){ 16, 128, 235, 240, 235, 16, 240, 16 };
+                                                            ? (vImage_YpCbCrPixelRange){0, 128, 255, 255, 255, 1, 255, 0}
+                                                            : (vImage_YpCbCrPixelRange){16, 128, 235, 240, 235, 16, 240, 16};
                         vImage_ARGBToYpCbCr conversion;
                         if (vImageConvert_ARGBToYpCbCr_GenerateConversion(kvImage_ARGBToYpCbCrMatrix_ITU_R_601_4,
                                                                           &range,
@@ -358,13 +382,13 @@ static CVPixelBufferRef SPKInstantsRenderImageToPixelBuffer(UIImage *image,
                                                                           kvImageARGB8888,
                                                                           kvImage420Yp8_CbCr8,
                                                                           kvImageNoFlags) == kvImageNoError) {
-                            const uint8_t permuteMap[4] = { 3, 2, 1, 0 };
+                            const uint8_t permuteMap[4] = {3, 2, 1, 0};
                             rendered = (vImageConvert_ARGB8888To420Yp8_CbCr8(&src,
-                                                                              &yPlane,
-                                                                              &cbcrPlane,
-                                                                              &conversion,
-                                                                              permuteMap,
-                                                                              kvImageNoFlags) == kvImageNoError);
+                                                                             &yPlane,
+                                                                             &cbcrPlane,
+                                                                             &conversion,
+                                                                             permuteMap,
+                                                                             kvImageNoFlags) == kvImageNoError);
                         }
                     }
                     CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
@@ -389,16 +413,18 @@ static CMSampleBufferRef SPKInstantsSampleBufferForPixelBuffer(CVPixelBufferRef 
                                                                CMSampleBufferRef templateBuffer) CF_RETURNS_RETAINED;
 static CMSampleBufferRef SPKInstantsSampleBufferForPixelBuffer(CVPixelBufferRef pixelBuffer,
                                                                CMSampleBufferRef templateBuffer) {
-    if (!pixelBuffer || !templateBuffer) return NULL;
+    if (!pixelBuffer || !templateBuffer)
+        return NULL;
 
     CMVideoFormatDescriptionRef formatDescription = NULL;
     if (CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault,
                                                      pixelBuffer,
-                                                     &formatDescription) != noErr || !formatDescription) {
+                                                     &formatDescription) != noErr ||
+        !formatDescription) {
         return NULL;
     }
 
-    CMSampleTimingInfo timing = { kCMTimeInvalid, kCMTimeZero, kCMTimeInvalid };
+    CMSampleTimingInfo timing = {kCMTimeInvalid, kCMTimeZero, kCMTimeInvalid};
     CMSampleBufferGetSampleTimingInfo(templateBuffer, 0, &timing);
 
     CMSampleBufferRef output = NULL;
@@ -418,9 +444,11 @@ static CMSampleBufferRef SPKInstantsSampleBufferForImage(UIImage *image,
                                                          CMSampleBufferRef templateBuffer) CF_RETURNS_RETAINED;
 static CMSampleBufferRef SPKInstantsSampleBufferForImage(UIImage *image,
                                                          CMSampleBufferRef templateBuffer) {
-    if (!image.CGImage || !templateBuffer) return NULL;
+    if (!image.CGImage || !templateBuffer)
+        return NULL;
     CMFormatDescriptionRef templateFormat = CMSampleBufferGetFormatDescription(templateBuffer);
-    if (!templateFormat) return NULL;
+    if (!templateFormat)
+        return NULL;
 
     CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(templateFormat);
     OSType format = CMFormatDescriptionGetMediaSubType(templateFormat);
@@ -436,16 +464,18 @@ static CMSampleBufferRef SPKInstantsSampleBufferForImage(UIImage *image,
         sSPKInstantsCachedHeight = dimensions.height;
         sSPKInstantsCachedFormat = format;
     }
-    if (!sSPKInstantsCachedPixelBuffer) return NULL;
+    if (!sSPKInstantsCachedPixelBuffer)
+        return NULL;
 
     CMVideoFormatDescriptionRef formatDescription = NULL;
     if (CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault,
                                                      sSPKInstantsCachedPixelBuffer,
-                                                     &formatDescription) != noErr || !formatDescription) {
+                                                     &formatDescription) != noErr ||
+        !formatDescription) {
         return NULL;
     }
 
-    CMSampleTimingInfo timing = { kCMTimeInvalid, kCMTimeZero, kCMTimeInvalid };
+    CMSampleTimingInfo timing = {kCMTimeInvalid, kCMTimeZero, kCMTimeInvalid};
     CMSampleBufferGetSampleTimingInfo(templateBuffer, 0, &timing);
 
     CMSampleBufferRef output = NULL;
@@ -475,10 +505,11 @@ static CMSampleBufferRef SPKInstantsSampleBufferForImage(UIImage *image,
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output
-didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
-       fromConnection:(AVCaptureConnection *)connection {
+    didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+           fromConnection:(AVCaptureConnection *)connection {
     id realDelegate = self.realDelegate;
-    if (!realDelegate) return;
+    if (!realDelegate)
+        return;
 
     // Keep the most recent live frame so a confirm-capture freeze can snapshot it
     // instantly. Cheap: just retain the current pixel buffer (no conversion).
@@ -501,8 +532,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         CMSampleBufferRef replacement = SPKInstantsSampleBufferForImage(pendingImage, sampleBuffer);
         if (replacement) {
             [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
-                                                                   didOutputSampleBuffer:replacement
-                                                                          fromConnection:connection];
+                                                                    didOutputSampleBuffer:replacement
+                                                                           fromConnection:connection];
             CFRelease(replacement);
             return;
         }
@@ -523,8 +554,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         CVPixelBufferRelease(frozen);
         if (replacement) {
             [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
-                                                                   didOutputSampleBuffer:replacement
-                                                                          fromConnection:connection];
+                                                                    didOutputSampleBuffer:replacement
+                                                                           fromConnection:connection];
             CFRelease(replacement);
             return;
         }
@@ -532,8 +563,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
     if ([realDelegate respondsToSelector:@selector(captureOutput:didOutputSampleBuffer:fromConnection:)]) {
         [(id<AVCaptureVideoDataOutputSampleBufferDelegate>)realDelegate captureOutput:output
-                                                               didOutputSampleBuffer:sampleBuffer
-                                                                      fromConnection:connection];
+                                                                didOutputSampleBuffer:sampleBuffer
+                                                                       fromConnection:connection];
     }
 }
 @end
@@ -542,7 +573,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 + (void)freezeNow {
     dispatch_sync(SPKInstantsFreezeQueue(), ^{
-        if (!sSPKInstantsLatestLivePixelBuffer) return;
+        if (!sSPKInstantsLatestLivePixelBuffer)
+            return;
         if (sSPKInstantsFrozenPixelBuffer) {
             CVPixelBufferRelease(sSPKInstantsFrozenPixelBuffer);
         }
@@ -578,9 +610,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey, id> *)info {
     UIImage *image = info[UIImagePickerControllerOriginalImage];
-    [picker dismissViewControllerAnimated:YES completion:^{
-        if (image) SPKInstantsPresentImageForPositioning(image);
-    }];
+    [picker dismissViewControllerAnimated:YES
+                               completion:^{
+                                   if (image)
+                                       SPKInstantsPresentImageForPositioning(image);
+                               }];
 }
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
@@ -603,18 +637,22 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
-    if (!url) return;
+    if (!url)
+        return;
     BOOL scoped = [url startAccessingSecurityScopedResource];
     NSData *data = [NSData dataWithContentsOfURL:url];
     UIImage *image = data ? [UIImage imageWithData:data] : nil;
-    if (scoped) [url stopAccessingSecurityScopedResource];
-    [controller dismissViewControllerAnimated:YES completion:^{
-        if (image) SPKInstantsPresentImageForPositioning(image);
-    }];
+    if (scoped)
+        [url stopAccessingSecurityScopedResource];
+    [controller dismissViewControllerAnimated:YES
+                                   completion:^{
+                                       if (image)
+                                           SPKInstantsPresentImageForPositioning(image);
+                                   }];
 }
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentAtURL:(NSURL *)url {
-    [self documentPicker:controller didPickDocumentsAtURLs:(url ? @[url] : @[])];
+    [self documentPicker:controller didPickDocumentsAtURLs:(url ? @[ url ] : @[])];
 }
 @end
 
@@ -627,45 +665,54 @@ static void SPKPresentInstantsSourcePicker(__unused UIView *sourceView) {
     UIViewController *presenter = SPKInstantsTopPresenter();
     NSMutableArray<SPKIGAlertAction *> *actions = [NSMutableArray array];
 
-    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Photos" style:SPKIGAlertActionStyleDefault handler:^{
-        UIImagePickerController *picker = [[UIImagePickerController alloc] init];
-        picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
-        picker.mediaTypes = @[@"public.image"];
-        picker.delegate = [SPKInstantsImagePickerDelegate shared];
-        picker.modalPresentationStyle = UIModalPresentationFullScreen;
-        [SPKInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
-    }]];
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Photos"
+                                                   style:SPKIGAlertActionStyleDefault
+                                                 handler:^{
+                                                     UIImagePickerController *picker = [[UIImagePickerController alloc] init];
+                                                     picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+                                                     picker.mediaTypes = @[ @"public.image" ];
+                                                     picker.delegate = [SPKInstantsImagePickerDelegate shared];
+                                                     picker.modalPresentationStyle = UIModalPresentationFullScreen;
+                                                     [SPKInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
+                                                 }]];
 
     if ([SPKGalleryPickerViewController hasSelectableFilesForAllowedMediaTypes:[NSSet setWithObject:@(SPKGalleryMediaTypeImage)]]) {
-        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Gallery" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKGalleryPickerViewController presentFromViewController:SPKInstantsTopPresenter()
-                                                                title:@"Choose Photo"
-                                                    allowedMediaTypes:[NSSet setWithObject:@(SPKGalleryMediaTypeImage)]
-                                              allowsMultipleSelection:NO
-                                                           completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
-                SPKGalleryFile *file = selectedFiles.firstObject;
-                UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
-                if (image) SPKInstantsPresentImageForPositioning(image);
-            }];
-        }]];
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Gallery"
+                                                       style:SPKIGAlertActionStyleDefault
+                                                     handler:^{
+                                                         [SPKGalleryPickerViewController presentFromViewController:SPKInstantsTopPresenter()
+                                                                                                             title:@"Choose Photo"
+                                                                                                 allowedMediaTypes:[NSSet setWithObject:@(SPKGalleryMediaTypeImage)]
+                                                                                           allowsMultipleSelection:NO
+                                                                                                        completion:^(NSArray<SPKGalleryFile *> *selectedFiles) {
+                                                                                                            SPKGalleryFile *file = selectedFiles.firstObject;
+                                                                                                            UIImage *image = file ? [UIImage imageWithContentsOfFile:file.filePath] : nil;
+                                                                                                            if (image)
+                                                                                                                SPKInstantsPresentImageForPositioning(image);
+                                                                                                        }];
+                                                     }]];
     }
 
-    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Files" style:SPKIGAlertActionStyleDefault handler:^{
-        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeImage ] asCopy:YES];
-        picker.allowsMultipleSelection = NO;
-        picker.delegate = [SPKInstantsDocumentPickerDelegate shared];
-        [SPKInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
-    }]];
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Select from Files"
+                                                   style:SPKIGAlertActionStyleDefault
+                                                 handler:^{
+                                                     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeImage ] asCopy:YES];
+                                                     picker.allowsMultipleSelection = NO;
+                                                     picker.delegate = [SPKInstantsDocumentPickerDelegate shared];
+                                                     [SPKInstantsTopPresenter() presentViewController:picker animated:YES completion:nil];
+                                                 }]];
 
-    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Instants Settings" style:SPKIGAlertActionStyleDefault handler:^{
-        [SPKUtils showSettingsForTopicTitle:@"Instants"];
-    }]];
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Instants Settings"
+                                                   style:SPKIGAlertActionStyleDefault
+                                                 handler:^{
+                                                     [SPKUtils showSettingsForTopicTitle:@"Instants"];
+                                                 }]];
 
     [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
     if (![SPKIGAlertPresenter presentActionSheetFromViewController:presenter
-                                                            title:@"Upload Photo"
-                                                          message:@"Choose a photo to position and crop, then send as an Instant."
-                                                          actions:actions]) {
+                                                             title:@"Upload Photo"
+                                                           message:@"Choose a photo to position and crop, then send as an Instant."
+                                                           actions:actions]) {
         UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
         [feedback impactOccurred];
     }
@@ -687,7 +734,8 @@ static void SPKPresentInstantsSourcePicker(__unused UIView *sourceView) {
 @end
 
 static BOOL SPKInstantsGalleryFrameMatches(UIView *view, CGRect frame) {
-    if (![view isKindOfClass:UIView.class] || view.hidden || !view.superview) return NO;
+    if (![view isKindOfClass:UIView.class] || view.hidden || !view.superview)
+        return NO;
     return ABS(CGRectGetMinX(view.frame) - CGRectGetMinX(frame)) < 0.5 &&
            ABS(CGRectGetMinY(view.frame) - CGRectGetMinY(frame)) < 0.5 &&
            ABS(CGRectGetWidth(view.frame) - CGRectGetWidth(frame)) < 0.5 &&
@@ -700,9 +748,12 @@ static UIView *SPKInstantsGalleryFallbackRightAnchor(UIView *header, UIView *hos
     CGFloat minX = CGFLOAT_MAX;
 
     for (UIView *subview in header.subviews) {
-        if (subview == host || subview.hidden || subview.alpha < 0.01) continue;
-        if (subview.bounds.size.width < 4.0 || subview.bounds.size.height < 4.0) continue;
-        if (CGRectGetMidX(subview.frame) < halfWidth) continue;
+        if (subview == host || subview.hidden || subview.alpha < 0.01)
+            continue;
+        if (subview.bounds.size.width < 4.0 || subview.bounds.size.height < 4.0)
+            continue;
+        if (CGRectGetMidX(subview.frame) < halfWidth)
+            continue;
         if (CGRectGetMinX(subview.frame) < minX) {
             anchor = subview;
             minX = CGRectGetMinX(subview.frame);
@@ -731,9 +782,9 @@ static CGRect SPKInstantsGalleryButtonFrame(UIView *header, UIView *host) {
 
 static NSString *SPKInstantsGalleryFrameKey(UIView *header, UIView *anchor, CGRect frame) {
     return [NSString stringWithFormat:@"%p|%@|%@",
-            anchor ?: header,
-            NSStringFromCGRect(anchor ? anchor.frame : CGRectZero),
-            NSStringFromCGRect(frame)];
+                                      anchor ?: header,
+                                      NSStringFromCGRect(anchor ? anchor.frame : CGRectZero),
+                                      NSStringFromCGRect(frame)];
 }
 
 static void SPKRemoveInstantsGalleryButton(UIView *header) {
@@ -742,7 +793,8 @@ static void SPKRemoveInstantsGalleryButton(UIView *header) {
 }
 
 static void SPKInstantsInstallGalleryButton(UIView *header) {
-    if (!header) return;
+    if (!header)
+        return;
     UIView *host = [header viewWithTag:kSPKInstantsGalleryButtonTag];
     UIButton *button = [host isKindOfClass:UIView.class] ? objc_getAssociatedObject(host, kSPKInstantsGalleryButtonKey) : nil;
     if (!SPKInstantsUploadFromGalleryEnabled()) {
@@ -775,8 +827,8 @@ static void SPKInstantsInstallGalleryButton(UIView *header) {
         [button setImage:image forState:UIControlStateNormal];
         button.tintColor = [UIColor whiteColor];
         [button addTarget:[SPKInstantsGalleryButtonTarget shared]
-                   action:@selector(buttonTapped:)
-         forControlEvents:UIControlEventTouchUpInside];
+                      action:@selector(buttonTapped:)
+            forControlEvents:UIControlEventTouchUpInside];
         [canvas.contentContainer addSubview:button];
         SPKInstantsPinEdges(button, canvas.contentContainer);
         objc_setAssociatedObject(host, kSPKInstantsGalleryButtonKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -812,7 +864,8 @@ static SPKInstantsHeaderLayoutIMP orig_headerLayoutSubviews = NULL;
 static SPKInstantsSetSampleDelegateIMP orig_setSampleBufferDelegate = NULL;
 
 static void replaced_creationViewLayoutSubviews(id self, SEL _cmd) {
-    if (orig_creationViewLayoutSubviews) orig_creationViewLayoutSubviews(self, _cmd);
+    if (orig_creationViewLayoutSubviews)
+        orig_creationViewLayoutSubviews(self, _cmd);
     UIView *creationView = (UIView *)self;
     if (SPKInstantsViewIsVisible(creationView)) {
         sSPKInstantsVisibleCreationView = creationView;
@@ -821,7 +874,8 @@ static void replaced_creationViewLayoutSubviews(id self, SEL _cmd) {
             return;
         }
         UIView *header = SPKInstantsHeaderInWindow(SPKInstantsWindowForView(creationView));
-        if (header) SPKInstantsInstallGalleryButton(header);
+        if (header)
+            SPKInstantsInstallGalleryButton(header);
     }
 }
 
@@ -832,11 +886,13 @@ static void replaced_creationViewWillMoveToWindow(id self, SEL _cmd, id window) 
     if (!window && sSPKInstantsVisibleCreationView == (UIView *)self) {
         sSPKInstantsVisibleCreationView = nil;
     }
-    if (orig_creationViewWillMoveToWindow) orig_creationViewWillMoveToWindow(self, _cmd, window);
+    if (orig_creationViewWillMoveToWindow)
+        orig_creationViewWillMoveToWindow(self, _cmd, window);
 }
 
 static void replaced_headerLayoutSubviews(id self, SEL _cmd) {
-    if (orig_headerLayoutSubviews) orig_headerLayoutSubviews(self, _cmd);
+    if (orig_headerLayoutSubviews)
+        orig_headerLayoutSubviews(self, _cmd);
     SPKInstantsInstallGalleryButton((UIView *)self);
 }
 
@@ -853,10 +909,12 @@ static void replaced_setSampleBufferDelegate(id self, SEL _cmd, id delegate, dis
         SPKInstantsVideoBufferInjector *injector = [[SPKInstantsVideoBufferInjector alloc] init];
         injector.realDelegate = delegate;
         objc_setAssociatedObject(self, kSPKInstantsVideoInjectorKey, injector, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        if (orig_setSampleBufferDelegate) orig_setSampleBufferDelegate(self, _cmd, injector, queue);
+        if (orig_setSampleBufferDelegate)
+            orig_setSampleBufferDelegate(self, _cmd, injector, queue);
         return;
     }
-    if (orig_setSampleBufferDelegate) orig_setSampleBufferDelegate(self, _cmd, delegate, queue);
+    if (orig_setSampleBufferDelegate)
+        orig_setSampleBufferDelegate(self, _cmd, delegate, queue);
 }
 
 static void SPKHookInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {

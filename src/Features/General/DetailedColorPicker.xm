@@ -15,37 +15,37 @@
 }
 
 %new - (void)addLongPressGestureRecognizer {
-    if ([self.gestureRecognizers count] == 0) {
-        SPKLog(@"General", @"[Sparkle] Adding color eyedroppper long press gesture recognizer");
+if ([self.gestureRecognizers count] == 0) {
+    SPKLog(@"General", @"[Sparkle] Adding color eyedroppper long press gesture recognizer");
 
-        UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
-        longPress.minimumPressDuration = 0.25;
-        [self addGestureRecognizer:longPress];
-    }
+    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+    longPress.minimumPressDuration = 0.25;
+    [self addGestureRecognizer:longPress];
+}
 }
 %new - (void)handleLongPress:(UILongPressGestureRecognizer *)sender {
-    if (sender.state != UIGestureRecognizerStateBegan) return;
-    
-    UIColorPickerViewController *colorPickerController = [[UIColorPickerViewController alloc] init];
+if (sender.state != UIGestureRecognizerStateBegan)
+    return;
 
-    colorPickerController.delegate = (id<UIColorPickerViewControllerDelegate>)self; // cast to suppress warnings
-    colorPickerController.title = @"Select color";
-    colorPickerController.modalPresentationStyle = UIModalPresentationPopover;
-    colorPickerController.supportsAlpha = NO;
-    colorPickerController.selectedColor = self.color;
-    
-    UIViewController *presentingVC = [SPKUtils nearestViewControllerForView:self];
-    
-    if (presentingVC != nil) {
-        [presentingVC presentViewController:colorPickerController animated:YES completion:nil];
-    }
+UIColorPickerViewController *colorPickerController = [[UIColorPickerViewController alloc] init];
+
+colorPickerController.delegate = (id<UIColorPickerViewControllerDelegate>)self; // cast to suppress warnings
+colorPickerController.title = @"Select color";
+colorPickerController.modalPresentationStyle = UIModalPresentationPopover;
+colorPickerController.supportsAlpha = NO;
+colorPickerController.selectedColor = self.color;
+
+UIViewController *presentingVC = [SPKUtils nearestViewControllerForView:self];
+
+if (presentingVC != nil) {
+    [presentingVC presentViewController:colorPickerController animated:YES completion:nil];
+}
 }
 
 // UIColorPickerViewControllerDelegate Protocol
 %new - (void)colorPickerViewController:(UIColorPickerViewController *)viewController
-                        didSelectColor:(UIColor *)color
-                          continuously:(BOOL)continuously
-{
+didSelectColor : (UIColor *)color
+                 continuously : (BOOL)continuously {
     SPKLog(@"General", @"[Sparkle] Selected text color: %@", color);
 
     UIColor *opaque = [color colorWithAlphaComponent:1.0];
@@ -58,14 +58,10 @@
 
     if ([presentingVC isKindOfClass:%c(IGStoryTextEntryViewController)]) {
         [presentingVC textViewControllerDidUpdateWithColor:color colorSource:0];
-    }
-    else if (
-        [presentingVC isKindOfClass:SPKResolveIGClass(@"IGStoryPostCaptureDrawing.IGStoryCreationDrawingViewController", @"IGStoryCreationDrawingViewController")]
-        || [presentingVC isKindOfClass:%c(IGDirectThreadViewDrawingViewController)]
-    ) {
+    } else if (
+        [presentingVC isKindOfClass:SPKResolveIGClass(@"IGStoryPostCaptureDrawing.IGStoryCreationDrawingViewController", @"IGStoryCreationDrawingViewController")] || [presentingVC isKindOfClass:%c(IGDirectThreadViewDrawingViewController)]) {
         [presentingVC drawingControls:nil didSelectColor:color];
     }
-
 };
 %end
 
@@ -74,9 +70,7 @@
     UIView *colorPickingControls = [self superview];
 
     if (
-        [colorPickingControls isKindOfClass:SPKResolveIGClass(@"IGStoryPostCaptureDrawingControls.IGStoryColorPickingControls", @"IGStoryColorPickingControls")]
-        || [colorPickingControls isKindOfClass:%c(IGDirectThreadColorPickingControls)]
-    ) {
+        [colorPickingControls isKindOfClass:SPKResolveIGClass(@"IGStoryPostCaptureDrawingControls.IGStoryColorPickingControls", @"IGStoryColorPickingControls")] || [colorPickingControls isKindOfClass:%c(IGDirectThreadColorPickingControls)]) {
         IGStoryEyedropperToggleButton *_eyedropperToggleButton = MSHookIvar<IGStoryEyedropperToggleButton *>(colorPickingControls, "_eyedropperToggleButton");
 
         if (_eyedropperToggleButton != nil) {
@@ -91,7 +85,8 @@
 %end
 
 extern "C" void SPKInstallDetailedColorPickerHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"stories_detailed_color_picker"]) return;
+    if (![SPKUtils getBoolPref:@"stories_detailed_color_picker"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

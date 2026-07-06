@@ -2,27 +2,42 @@
 #import "../Gallery/SPKGallerySaveMetadata.h"
 
 static NSDictionary *SPKDownloadMetadataDict(SPKGallerySaveMetadata *metadata) {
-    if (!metadata) return @{};
+    if (!metadata)
+        return @{};
     NSMutableDictionary *d = [NSMutableDictionary dictionary];
     d[@"source"] = @(metadata.source);
-    if (metadata.sourceUsername) d[@"sourceUsername"] = metadata.sourceUsername;
-    if (metadata.sourceUserPK) d[@"sourceUserPK"] = metadata.sourceUserPK;
-    if (metadata.sourceProfileURLString) d[@"sourceProfileURLString"] = metadata.sourceProfileURLString;
-    if (metadata.sourceMediaPK) d[@"sourceMediaPK"] = metadata.sourceMediaPK;
-    if (metadata.sourceMediaCode) d[@"sourceMediaCode"] = metadata.sourceMediaCode;
-    if (metadata.sourceMediaURLString) d[@"sourceMediaURLString"] = metadata.sourceMediaURLString;
-    if (metadata.pixelWidth > 0) d[@"pixelWidth"] = @(metadata.pixelWidth);
-    if (metadata.pixelHeight > 0) d[@"pixelHeight"] = @(metadata.pixelHeight);
-    if (metadata.durationSeconds > 0) d[@"durationSeconds"] = @(metadata.durationSeconds);
-    if (metadata.importFileNameStem) d[@"importFileNameStem"] = metadata.importFileNameStem;
-    if (metadata.customName) d[@"customName"] = metadata.customName;
-    if (metadata.importCapturedDate) d[@"importCapturedDate"] = @(metadata.importCapturedDate.timeIntervalSince1970);
-    if (metadata.importPostedDate) d[@"importPostedDate"] = @(metadata.importPostedDate.timeIntervalSince1970);
+    if (metadata.sourceUsername)
+        d[@"sourceUsername"] = metadata.sourceUsername;
+    if (metadata.sourceUserPK)
+        d[@"sourceUserPK"] = metadata.sourceUserPK;
+    if (metadata.sourceProfileURLString)
+        d[@"sourceProfileURLString"] = metadata.sourceProfileURLString;
+    if (metadata.sourceMediaPK)
+        d[@"sourceMediaPK"] = metadata.sourceMediaPK;
+    if (metadata.sourceMediaCode)
+        d[@"sourceMediaCode"] = metadata.sourceMediaCode;
+    if (metadata.sourceMediaURLString)
+        d[@"sourceMediaURLString"] = metadata.sourceMediaURLString;
+    if (metadata.pixelWidth > 0)
+        d[@"pixelWidth"] = @(metadata.pixelWidth);
+    if (metadata.pixelHeight > 0)
+        d[@"pixelHeight"] = @(metadata.pixelHeight);
+    if (metadata.durationSeconds > 0)
+        d[@"durationSeconds"] = @(metadata.durationSeconds);
+    if (metadata.importFileNameStem)
+        d[@"importFileNameStem"] = metadata.importFileNameStem;
+    if (metadata.customName)
+        d[@"customName"] = metadata.customName;
+    if (metadata.importCapturedDate)
+        d[@"importCapturedDate"] = @(metadata.importCapturedDate.timeIntervalSince1970);
+    if (metadata.importPostedDate)
+        d[@"importPostedDate"] = @(metadata.importPostedDate.timeIntervalSince1970);
     return d;
 }
 
 static SPKGallerySaveMetadata *SPKDownloadMetadataFromDict(NSDictionary *d) {
-    if (![d isKindOfClass:NSDictionary.class] || d.count == 0) return nil;
+    if (![d isKindOfClass:NSDictionary.class] || d.count == 0)
+        return nil;
     SPKGallerySaveMetadata *m = [SPKGallerySaveMetadata new];
     m.source = [d[@"source"] shortValue];
     m.sourceUsername = d[@"sourceUsername"];
@@ -36,8 +51,10 @@ static SPKGallerySaveMetadata *SPKDownloadMetadataFromDict(NSDictionary *d) {
     m.durationSeconds = [d[@"durationSeconds"] doubleValue];
     m.importFileNameStem = d[@"importFileNameStem"];
     m.customName = d[@"customName"];
-    if (d[@"importCapturedDate"]) m.importCapturedDate = [NSDate dateWithTimeIntervalSince1970:[d[@"importCapturedDate"] doubleValue]];
-    if (d[@"importPostedDate"]) m.importPostedDate = [NSDate dateWithTimeIntervalSince1970:[d[@"importPostedDate"] doubleValue]];
+    if (d[@"importCapturedDate"])
+        m.importCapturedDate = [NSDate dateWithTimeIntervalSince1970:[d[@"importCapturedDate"] doubleValue]];
+    if (d[@"importPostedDate"])
+        m.importPostedDate = [NSDate dateWithTimeIntervalSince1970:[d[@"importPostedDate"] doubleValue]];
     return m;
 }
 
@@ -85,19 +102,27 @@ static SPKGallerySaveMetadata *SPKDownloadMetadataFromDict(NSDictionary *d) {
 - (NSDictionary *)dictionaryRepresentation {
     NSMutableDictionary *d = [NSMutableDictionary dictionary];
     d[@"itemID"] = self.itemID ?: @"";
-    if (self.remoteURLString) d[@"remoteURLString"] = self.remoteURLString;
-    if (self.localSourcePath) d[@"localSourcePath"] = self.localSourcePath;
+    if (self.remoteURLString)
+        d[@"remoteURLString"] = self.remoteURLString;
+    if (self.localSourcePath)
+        d[@"localSourcePath"] = self.localSourcePath;
     d[@"mediaKind"] = @(self.mediaKind);
-    if (self.preferredFileExtension) d[@"preferredFileExtension"] = self.preferredFileExtension;
-    if (self.expectedFilenameStem) d[@"expectedFilenameStem"] = self.expectedFilenameStem;
-    if (self.linkString) d[@"linkString"] = self.linkString;
+    if (self.preferredFileExtension)
+        d[@"preferredFileExtension"] = self.preferredFileExtension;
+    if (self.expectedFilenameStem)
+        d[@"expectedFilenameStem"] = self.expectedFilenameStem;
+    if (self.linkString)
+        d[@"linkString"] = self.linkString;
     NSDictionary *meta = SPKDownloadMetadataDict(self.metadata);
-    if (meta.count) d[@"metadata"] = meta;
+    if (meta.count)
+        d[@"metadata"] = meta;
     d[@"index"] = @(self.index);
     d[@"requiresAudioConversion"] = @(self.requiresAudioConversion);
-    if (self.audioProcessingBasename) d[@"audioProcessingBasename"] = self.audioProcessingBasename;
+    if (self.audioProcessingBasename)
+        d[@"audioProcessingBasename"] = self.audioProcessingBasename;
     d[@"requiresDashMerge"] = @(self.requiresDashMerge);
-    if (self.dashSecondaryURLString) d[@"dashSecondaryURLString"] = self.dashSecondaryURLString;
+    if (self.dashSecondaryURLString)
+        d[@"dashSecondaryURLString"] = self.dashSecondaryURLString;
     d[@"dashOptionKind"] = @(self.dashOptionKind);
     d[@"dashDuration"] = @(self.dashDuration);
     d[@"dashWidth"] = @(self.dashWidth);
@@ -107,7 +132,8 @@ static SPKGallerySaveMetadata *SPKDownloadMetadataFromDict(NSDictionary *d) {
 }
 
 + (instancetype)fromDictionary:(NSDictionary *)dict {
-    if (![dict isKindOfClass:NSDictionary.class]) return nil;
+    if (![dict isKindOfClass:NSDictionary.class])
+        return nil;
     SPKDownloadItemRequest *item = [self new];
     item.itemID = dict[@"itemID"] ?: NSUUID.UUID.UUIDString;
     item.remoteURLString = dict[@"remoteURLString"];
@@ -177,18 +203,22 @@ static SPKGallerySaveMetadata *SPKDownloadMetadataFromDict(NSDictionary *d) {
     }
     d[@"items"] = items;
     NSDictionary *meta = SPKDownloadMetadataDict(self.metadata);
-    if (meta.count) d[@"metadata"] = meta;
-    if (self.notificationIdentifier) d[@"notificationIdentifier"] = self.notificationIdentifier;
+    if (meta.count)
+        d[@"metadata"] = meta;
+    if (self.notificationIdentifier)
+        d[@"notificationIdentifier"] = self.notificationIdentifier;
     d[@"duplicatePolicy"] = @(self.duplicatePolicy);
     d[@"qualityPolicy"] = @(self.qualityPolicy);
-    if (self.titleOverride) d[@"titleOverride"] = self.titleOverride;
+    if (self.titleOverride)
+        d[@"titleOverride"] = self.titleOverride;
     d[@"finalizeAsBatchShare"] = @(self.finalizeAsBatchShare);
     d[@"finalizeAsBatchClipboard"] = @(self.finalizeAsBatchClipboard);
     return d;
 }
 
 + (instancetype)fromDictionary:(NSDictionary *)dict {
-    if (![dict isKindOfClass:NSDictionary.class]) return nil;
+    if (![dict isKindOfClass:NSDictionary.class])
+        return nil;
     SPKDownloadRequest *request = [self new];
     request.requestID = dict[@"requestID"] ?: NSUUID.UUID.UUIDString;
     request.createdAt = [dict[@"createdAt"] doubleValue];
@@ -205,7 +235,8 @@ static SPKGallerySaveMetadata *SPKDownloadMetadataFromDict(NSDictionary *d) {
     NSMutableArray *items = [NSMutableArray array];
     for (NSDictionary *entry in dict[@"items"] ?: @[]) {
         SPKDownloadItemRequest *item = [SPKDownloadItemRequest fromDictionary:entry];
-        if (item) [items addObject:item];
+        if (item)
+            [items addObject:item];
     }
     request.items = items;
     return request;

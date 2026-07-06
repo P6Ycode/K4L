@@ -2,14 +2,14 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-#import "../../InstagramHeaders.h"
 #import "../../AssetUtils.h"
-#import "../../Tweak.h"
-#import "../../Utils.h"
+#import "../../InstagramHeaders.h"
 #import "../../Shared/Messages/SPKDirectSeenContext.h"
 #import "../../Shared/Stories/SPKStoryButtonPlacement.h"
 #import "../../Shared/Stories/SPKStoryContext.h"
 #import "../../Shared/UI/SPKChrome.h"
+#import "../../Tweak.h"
+#import "../../Utils.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,7 +27,7 @@ void SPKRemoveStoryMentionsButton(UIView *overlayView);
 }
 #endif
 
-static NSString * const kSPKSeenMessagesBarIconResource = @"eye";
+static NSString *const kSPKSeenMessagesBarIconResource = @"eye";
 static NSInteger const kSPKActionButtonSourceDirect = 4;
 static NSInteger const kSPKStorySeenButtonTag = 926001;
 static NSInteger const kSPKStoryMentionsButtonTag = 926002;
@@ -53,7 +53,8 @@ static inline BOOL SPKStorySeenHooksNeeded(void) {
            [SPKUtils getBoolPref:@"stories_advance_on_reply_seen"];
 }
 static id SPKKVCObject(id target, NSString *key) {
-    if (!target || key.length == 0) return nil;
+    if (!target || key.length == 0)
+        return nil;
 
     @try {
         return [target valueForKey:key];
@@ -63,19 +64,23 @@ static id SPKKVCObject(id target, NSString *key) {
 }
 
 static id SPKObjectForSelector(id target, NSString *selectorName) {
-    if (!target || selectorName.length == 0) return nil;
+    if (!target || selectorName.length == 0)
+        return nil;
 
     SEL selector = NSSelectorFromString(selectorName);
-    if (![target respondsToSelector:selector]) return nil;
+    if (![target respondsToSelector:selector])
+        return nil;
 
     return ((id (*)(id, SEL))objc_msgSend)(target, selector);
 }
 
 static id SPKFirstObjectForSelectors(id target, NSArray<NSString *> *selectors) {
-    if (!target || selectors.count == 0) return nil;
+    if (!target || selectors.count == 0)
+        return nil;
     for (NSString *selectorName in selectors) {
         id value = SPKObjectForSelector(target, selectorName);
-        if (value) return value;
+        if (value)
+            return value;
     }
     return nil;
 }
@@ -90,7 +95,8 @@ static BOOL SPKOverlayIsDirectVisualOverlay(UIView *overlayView) {
     dispatch_once(&onceToken, ^{
         directViewerClass = NSClassFromString(@"IGDirectVisualMessageViewerController");
     });
-    if (!directViewerClass) return NO;
+    if (!directViewerClass)
+        return NO;
     UIViewController *nearestVC = [SPKUtils nearestViewControllerForView:overlayView];
     return [nearestVC isKindOfClass:directViewerClass];
 }
@@ -134,12 +140,14 @@ static void SPKSetSeenButtonImage(UIButton *button, UIImage *image, NSString *lo
 }
 
 static void SPKApplyStorySeenButtonStyle(UIButton *button) {
-    if (!button) return;
+    if (!button)
+        return;
     SPKApplyButtonStyle(button, kSPKActionButtonSourceDirect);
 }
 
 static UIView *SPKStoryFooterContainerFromOverlay(UIView *overlayView) {
-    if (!overlayView) return nil;
+    if (!overlayView)
+        return nil;
 
     UIView *footerContainer = [SPKUtils getIvarForObj:overlayView name:"_footerContainerView"];
     if (![footerContainer isKindOfClass:[UIView class]]) {
@@ -150,7 +158,8 @@ static UIView *SPKStoryFooterContainerFromOverlay(UIView *overlayView) {
 }
 
 static void SPKUpdateStoryButtonsAlpha(UIView *overlayView, CGFloat alpha) {
-    if (!overlayView) return;
+    if (!overlayView)
+        return;
 
     // Our buttons are added directly to the overlay, so a single non-recursive
     // pass over the immediate subviews avoids three full-subtree -viewWithTag:
@@ -176,7 +185,8 @@ static void SPKRemoveStoryOverlayAlphaObserverIfNeeded(UIView *overlayView) {
 }
 
 static void SPKEnsureStoryOverlayAlphaObserver(UIView *overlayView) {
-    if (!overlayView) return;
+    if (!overlayView)
+        return;
 
     UIView *footerContainer = SPKStoryFooterContainerFromOverlay(overlayView);
     UIView *observedFooter = objc_getAssociatedObject(overlayView, kSPKStoryOverlayObservedFooterAssocKey);
@@ -205,17 +215,20 @@ static CGRect SPKStorySeenBaseFrame(UIView *overlayView) {
 }
 
 static id SPKStorySectionControllerFromOverlayView(UIView *overlayView) {
-    if (!overlayView) return nil;
+    if (!overlayView)
+        return nil;
 
-    NSArray<NSString *> *delegateSelectors = @[@"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate"];
+    NSArray<NSString *> *delegateSelectors = @[ @"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate" ];
     Class sectionControllerClass = NSClassFromString(@"IGStoryFullscreenSectionController");
 
     for (NSString *selectorName in delegateSelectors) {
         SEL selector = NSSelectorFromString(selectorName);
-        if (![overlayView respondsToSelector:selector]) continue;
+        if (![overlayView respondsToSelector:selector])
+            continue;
 
         id delegate = ((id (*)(id, SEL))objc_msgSend)(overlayView, selector);
-        if (!delegate) continue;
+        if (!delegate)
+            continue;
 
         if (!sectionControllerClass || [delegate isKindOfClass:sectionControllerClass]) {
             return delegate;
@@ -226,7 +239,8 @@ static id SPKStorySectionControllerFromOverlayView(UIView *overlayView) {
 }
 
 static NSString *SPKStringFromValue(id value) {
-    if (!value || value == (id)kCFNull) return nil;
+    if (!value || value == (id)kCFNull)
+        return nil;
     if ([value isKindOfClass:[NSString class]]) {
         NSString *string = (NSString *)value;
         return string.length > 0 ? string : nil;
@@ -239,21 +253,26 @@ static NSString *SPKStringFromValue(id value) {
 }
 
 static id SPKStoryMediaFromAnyObject(id object) {
-    if (!object) return nil;
-    id candidate = SPKFirstObjectForSelectors(object, @[@"media", @"mediaItem", @"storyItem", @"item", @"model"]);
+    if (!object)
+        return nil;
+    id candidate = SPKFirstObjectForSelectors(object, @[ @"media", @"mediaItem", @"storyItem", @"item", @"model" ]);
     return candidate ?: object;
 }
 
 static BOOL SPKResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTarget, id *outSectionController, id *outMedia) {
     SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
     if (sharedContext) {
-        if (outMarkTarget) *outMarkTarget = sharedContext.markSeenTarget;
-        if (outSectionController) *outSectionController = sharedContext.sectionController;
-        if (outMedia) *outMedia = sharedContext.media;
+        if (outMarkTarget)
+            *outMarkTarget = sharedContext.markSeenTarget;
+        if (outSectionController)
+            *outSectionController = sharedContext.sectionController;
+        if (outMedia)
+            *outMedia = sharedContext.media;
         return (sharedContext.media != nil);
     }
 
-    if (!overlayView) return NO;
+    if (!overlayView)
+        return NO;
 
     SEL markSelector = NSSelectorFromString(@"fullscreenSectionController:didMarkItemAsSeen:");
     UIViewController *viewerController = [SPKUtils nearestViewControllerForView:overlayView];
@@ -273,20 +292,25 @@ static BOOL SPKResolveStoryContextFromOverlay(UIView *overlayView, id *outMarkTa
     }
 
     if (!sectionController && markTarget) {
-        sectionController = SPKFirstObjectForSelectors(markTarget, @[@"currentSectionController"]);
+        sectionController = SPKFirstObjectForSelectors(markTarget, @[ @"currentSectionController" ]);
         if (!sectionController) {
             sectionController = [SPKUtils getIvarForObj:markTarget name:"_currentSectionController"];
         }
     }
 
-    id media = SPKFirstObjectForSelectors(sectionController, @[@"currentStoryItem", @"currentItem", @"item"]);
-    if (!media) media = SPKFirstObjectForSelectors(markTarget, @[@"currentStoryItem", @"currentItem", @"item"]);
-    if (!media && viewerController) media = SPKFirstObjectForSelectors(viewerController, @[@"currentStoryItem", @"currentItem", @"item"]);
+    id media = SPKFirstObjectForSelectors(sectionController, @[ @"currentStoryItem", @"currentItem", @"item" ]);
+    if (!media)
+        media = SPKFirstObjectForSelectors(markTarget, @[ @"currentStoryItem", @"currentItem", @"item" ]);
+    if (!media && viewerController)
+        media = SPKFirstObjectForSelectors(viewerController, @[ @"currentStoryItem", @"currentItem", @"item" ]);
     media = SPKStoryMediaFromAnyObject(media);
 
-    if (outMarkTarget) *outMarkTarget = markTarget;
-    if (outSectionController) *outSectionController = sectionController;
-    if (outMedia) *outMedia = media;
+    if (outMarkTarget)
+        *outMarkTarget = markTarget;
+    if (outSectionController)
+        *outSectionController = sectionController;
+    if (outMedia)
+        *outMedia = media;
 
     return (media != nil);
 }
@@ -298,10 +322,12 @@ static void SPKAdvanceStoryAfterManualSeenIfNeeded(UIView *overlayView, NSString
         return;
     }
 
-    if (advancePrefKey.length == 0 || ![SPKUtils getBoolPref:advancePrefKey]) return;
+    if (advancePrefKey.length == 0 || ![SPKUtils getBoolPref:advancePrefKey])
+        return;
 
     id sectionController = SPKStorySectionControllerFromOverlayView(overlayView);
-    if (!sectionController) return;
+    if (!sectionController)
+        return;
 
     SPKForceStoryAutoAdvance = YES;
     BOOL advanced = NO;
@@ -315,7 +341,8 @@ static void SPKAdvanceStoryAfterManualSeenIfNeeded(UIView *overlayView, NSString
         advanceSelector = NSSelectorFromString(@"storyPlayerMediaViewDidPlayToEnd:");
         if ([sectionController respondsToSelector:advanceSelector]) {
             id mediaView = [SPKUtils getIvarForObj:sectionController name:"_mediaView"];
-            if (!mediaView) mediaView = [SPKUtils getIvarForObj:overlayView name:"_mediaView"];
+            if (!mediaView)
+                mediaView = [SPKUtils getIvarForObj:overlayView name:"_mediaView"];
             ((void (*)(id, SEL, id))objc_msgSend)(sectionController, advanceSelector, mediaView);
         }
     }
@@ -329,7 +356,8 @@ static void SPKAdvanceStoryAfterManualSeenIfNeeded(UIView *overlayView, NSString
 extern void SPKPresentStoryMentionsSheet(UIView *overlayView);
 
 static void SPKMarkCurrentStoryAsSeenFromOverlayWithAdvancePref(UIView *overlayView, NSString *advancePrefKey) {
-    if (!overlayView) return;
+    if (!overlayView)
+        return;
 
     SPKStoryContext *sharedContext = SPKStoryContextFromOverlay(overlayView);
     if (sharedContext) {
@@ -449,23 +477,20 @@ UIView *SPKActiveStoryOverlayForInteractions(void) {
     }
 
     UIButton *storyActionButton = (UIButton *)[overlayView viewWithTag:kSPKStoriesActionButtonTag];
-    BOOL actionVisible = [storyActionButton isKindOfClass:[UIButton class]]
-        && !storyActionButton.hidden
-        && storyActionButton.superview == overlayView
-        && CGRectGetWidth(storyActionButton.frame) > 0.0
-        && CGRectGetHeight(storyActionButton.frame) > 0.0;
+    BOOL actionVisible = [storyActionButton isKindOfClass:[UIButton class]] && !storyActionButton.hidden && storyActionButton.superview == overlayView && CGRectGetWidth(storyActionButton.frame) > 0.0 && CGRectGetHeight(storyActionButton.frame) > 0.0;
     CGRect baseFrame = SPKStorySeenBaseFrame(overlayView);
     CGFloat size = CGRectGetWidth(baseFrame);
     if (actionVisible) {
         size = CGRectGetWidth(storyActionButton.frame);
     }
-    if (size <= 0.0) size = 38.0;
+    if (size <= 0.0)
+        size = 38.0;
 
     CGFloat spacingReduction = 2.0;
     CGFloat y = actionVisible ? CGRectGetMinY(storyActionButton.frame) : CGRectGetMinY(baseFrame);
     CGFloat nextX = actionVisible
-        ? (CGRectGetMinX(storyActionButton.frame) - size + spacingReduction)
-        : CGRectGetMinX(baseFrame);
+                        ? (CGRectGetMinX(storyActionButton.frame) - size + spacingReduction)
+                        : CGRectGetMinX(baseFrame);
 
     if (showSeenButton && seenButton) {
         seenButton.frame = CGRectMake(nextX, y, size, size);
@@ -512,22 +537,24 @@ UIView *SPKActiveStoryOverlayForInteractions(void) {
 }
 
 %new - (void)spk_storySeenButtonTapped:(UIButton *)sender {
-    (void)sender;
-    SPKPlayButtonTappedHaptic();
-    SPKMarkCurrentStoryAsSeenFromOverlay((UIView *)self);
+(void)sender;
+SPKPlayButtonTappedHaptic();
+SPKMarkCurrentStoryAsSeenFromOverlay((UIView *)self);
 }
 
 %new - (void)spk_storySeenButtonLongPressed:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state != UIGestureRecognizerStateBegan) return;
-    SPKPlayButtonTappedHaptic();
-    SPKStoryContext *context = SPKStoryContextFromOverlay((UIView *)self);
-    NSString *title = SPKStoryCurrentUserRuleConfirmationTitle(context);
-    NSString *message = SPKStoryCurrentUserRuleConfirmationMessage(context);
-    if (title.length == 0 || message.length == 0) {
-        SPKNotify(kSPKNotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SPKNotificationToneError);
-        return;
-    }
-    [SPKUtils showConfirmation:^{
+if (gesture.state != UIGestureRecognizerStateBegan)
+    return;
+SPKPlayButtonTappedHaptic();
+SPKStoryContext *context = SPKStoryContextFromOverlay((UIView *)self);
+NSString *title = SPKStoryCurrentUserRuleConfirmationTitle(context);
+NSString *message = SPKStoryCurrentUserRuleConfirmationMessage(context);
+if (title.length == 0 || message.length == 0) {
+    SPKNotify(kSPKNotificationStorySeenUserRule, @"Story user not found", nil, @"error_filled", SPKNotificationToneError);
+    return;
+}
+[SPKUtils
+    showConfirmation:^{
         NSString *notificationTitle = nil;
         NSString *notificationSubtitle = nil;
         if (!SPKStoryToggleCurrentUserRule(context, &notificationTitle, &notificationSubtitle)) {
@@ -536,14 +563,16 @@ UIView *SPKActiveStoryOverlayForInteractions(void) {
         }
         SPKNotify(kSPKNotificationStorySeenUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SPKNotificationToneSuccess);
         [(UIView *)self setNeedsLayout];
-    } title:title message:message];
+    }
+               title:title
+             message:message];
 }
-
 
 %end
 
 void SPKInstallStorySeenButtonHooksIfNeeded(void) {
-    if (!SPKStorySeenHooksNeeded()) return;
+    if (!SPKStorySeenHooksNeeded())
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

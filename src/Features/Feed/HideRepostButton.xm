@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 static inline BOOL SPKHideFeedRepostEnabled(void) {
     return [SPKUtils getBoolPref:@"feed_hide_repost_btn"];
@@ -10,16 +10,17 @@ static inline BOOL SPKHideReelsRepostEnabled(void) {
 }
 
 static void SPKHideFeedRepostButtons(id view) {
-    if (!SPKHideFeedRepostEnabled()) return;
+    if (!SPKHideFeedRepostEnabled())
+        return;
 
-    for (NSString *ivarName in @[@"_repostView", @"_undoRepostButton"]) {
+    for (NSString *ivarName in @[ @"_repostView", @"_undoRepostButton" ]) {
         id candidate = [SPKUtils getIvarForObj:view name:ivarName.UTF8String];
         if ([candidate isKindOfClass:[UIView class]]) {
             ((UIView *)candidate).hidden = YES;
         }
     }
 
-    for (NSString *ivarName in @[@"_lazyRepostButtonContainer", @"_lazyUndoRepostButtonContainer"]) {
+    for (NSString *ivarName in @[ @"_lazyRepostButtonContainer", @"_lazyUndoRepostButtonContainer" ]) {
         id container = [SPKUtils getIvarForObj:view name:ivarName.UTF8String];
         if (container) {
             if ([container respondsToSelector:@selector(setIsHidden:)]) {
@@ -64,7 +65,8 @@ static void SPKHideFeedRepostButtons(id view) {
 %end
 
 extern "C" void SPKInstallHideRepostButtonHooksIfEnabled(void) {
-    if (!SPKHideFeedRepostEnabled() && !SPKHideReelsRepostEnabled()) return;
+    if (!SPKHideFeedRepostEnabled() && !SPKHideReelsRepostEnabled())
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

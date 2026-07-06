@@ -20,7 +20,8 @@ static BOOL spkDisableReelsRefresh(void) {
 
 // Returns a very large interval when disabled, -1 to keep Instagram's value.
 static double spkOverrideInterval(void) {
-    if (spkDisableBgRefresh()) return 999999.0;
+    if (spkDisableBgRefresh())
+        return 999999.0;
     return -1.0;
 }
 
@@ -89,33 +90,34 @@ static void SPKInstallRefreshUtilityHooks(void) {
 %hook IGMainFeedNetworkSource
 
 - (instancetype)initWithDeps:(id)a1
-                       posts:(id)a2
-                   nextMaxID:(id)a3
-     initialPaginationSource:(id)a4
-          contentCoordinator:(id)a5
-dataSourceSupplementaryItemsProvider:(id)a6
-     disableAutomaticRefresh:(BOOL)disable
-       disableSerialization:(BOOL)a8
-                   sessionId:(id)a9
-             analyticsModule:(id)a10
-         serializationSuffix:(id)a11
-       disableFlashFeedTLI:(BOOL)a12
-disableFlashFeedOnColdStart:(BOOL)a13
-    disableResponseDeferral:(BOOL)a14
-             hidesStoriesTray:(BOOL)a15
-             isSecondaryFeed:(BOOL)a16
-collectionViewBackgroundColorOverride:(id)a17
-       minWarmStartFetchInterval:(double)a18
-  peakMinWarmStartFetchInterval:(double)a19
-minimumWarmStartBackgroundedInterval:(double)a20
-peakMinimumWarmStartBackgroundedInterval:(double)a21
-supplementalFeedHoistedMediaID:(id)a22
-          headerTitleOverride:(id)a23
-             isInFollowingTab:(BOOL)a24
-useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
+                                       posts:(id)a2
+                                   nextMaxID:(id)a3
+                     initialPaginationSource:(id)a4
+                          contentCoordinator:(id)a5
+        dataSourceSupplementaryItemsProvider:(id)a6
+                     disableAutomaticRefresh:(BOOL)disable
+                        disableSerialization:(BOOL)a8
+                                   sessionId:(id)a9
+                             analyticsModule:(id)a10
+                         serializationSuffix:(id)a11
+                         disableFlashFeedTLI:(BOOL)a12
+                 disableFlashFeedOnColdStart:(BOOL)a13
+                     disableResponseDeferral:(BOOL)a14
+                            hidesStoriesTray:(BOOL)a15
+                             isSecondaryFeed:(BOOL)a16
+       collectionViewBackgroundColorOverride:(id)a17
+                   minWarmStartFetchInterval:(double)a18
+               peakMinWarmStartFetchInterval:(double)a19
+        minimumWarmStartBackgroundedInterval:(double)a20
+    peakMinimumWarmStartBackgroundedInterval:(double)a21
+              supplementalFeedHoistedMediaID:(id)a22
+                         headerTitleOverride:(id)a23
+                            isInFollowingTab:(BOOL)a24
+          useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 
     double override = spkOverrideInterval();
-    if (spkDisableBgRefresh()) disable = YES;
+    if (spkDisableBgRefresh())
+        disable = YES;
     if (override > 0.0) {
         a18 = override;
         a19 = override;
@@ -151,7 +153,8 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
 %hook IGMainFeedViewController
 
 - (void)hotStartRefresh {
-    if (spkDisableBgRefresh()) return;
+    if (spkDisableBgRefresh())
+        return;
     %orig;
 }
 
@@ -173,8 +176,8 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
     }
 
     UIViewController *top = [selected isKindOfClass:[UINavigationController class]]
-        ? [(UINavigationController *)selected topViewController]
-        : selected;
+                                ? [(UINavigationController *)selected topViewController]
+                                : selected;
     BOOL onFeedTab = top && [NSStringFromClass([top class]) containsString:@"MainFeed"];
     if (!onFeedTab) {
         %orig;
@@ -182,7 +185,8 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
     }
 
     NSMutableArray *queue = [NSMutableArray array];
-    if (top.view) [queue addObject:top.view];
+    if (top.view)
+        [queue addObject:top.view];
     NSInteger scanned = 0;
     while (queue.count > 0 && scanned < 40) {
         UIView *current = queue.firstObject;
@@ -212,8 +216,8 @@ useShimmerLoadingWhenNoStoriesTray:(BOOL)a25 {
     }
 
     UIViewController *top = [selected isKindOfClass:[UINavigationController class]]
-        ? [(UINavigationController *)selected topViewController]
-        : selected;
+                                ? [(UINavigationController *)selected topViewController]
+                                : selected;
     NSString *topClass = top ? NSStringFromClass([top class]) : @"";
     BOOL onReelsTab = [topClass containsString:@"Sundial"] ||
                       [topClass containsString:@"Reels"] ||

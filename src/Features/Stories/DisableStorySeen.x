@@ -1,7 +1,7 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
-#import "../../Tweak.h"
 #import "../../Shared/Stories/SPKStoryContext.h"
+#import "../../Tweak.h"
+#import "../../Utils.h"
 
 static inline BOOL SPKShouldBlockStoryAutoAdvance(void) {
     return [SPKUtils getBoolPref:@"stories_stop_auto_advance"] && !SPKForceStoryAutoAdvance;

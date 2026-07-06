@@ -30,7 +30,7 @@ void SPKDirectRemoveManualSeenThreadId(NSString *threadId, BOOL manualSeenEnable
 NSString *SPKDirectManualSeenListTitle(BOOL manualSeenEnabled);
 NSUInteger SPKDirectManualSeenThreadCount(BOOL manualSeenEnabled);
 UIViewController *SPKDirectManualSeenListViewController(void);
-NSDictionary *_Nullable SPKDirectManualSeenThreadEntryForUserPK(NSString * _Nullable pk, BOOL manualSeenEnabled);
+NSDictionary *_Nullable SPKDirectManualSeenThreadEntryForUserPK(NSString *_Nullable pk, BOOL manualSeenEnabled);
 
 BOOL SPKDirectManualSeenAppliesToSource(id _Nullable source);
 BOOL SPKDirectShouldShowSeenButtonForSource(id _Nullable source);

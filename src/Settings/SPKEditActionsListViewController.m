@@ -1,14 +1,14 @@
 #import "SPKEditActionsListViewController.h"
 #include <UIKit/UIKit.h>
 
+#import "../AssetUtils.h"
+#import "../Shared/ActionButton/SPKActionDescriptor.h"
+#import "../Shared/UI/SPKMediaChrome.h"
+#import "../Shared/UI/SPKSwitch.h"
+#import "../Utils.h"
 #import "SPKActionSectionEditViewController.h"
 #import "SPKBulkActionMenuEditViewController.h"
 #import "SPKTopicSettingsSupport.h"
-#import "../Shared/UI/SPKSwitch.h"
-#import "../Shared/UI/SPKMediaChrome.h"
-#import "../Shared/ActionButton/SPKActionDescriptor.h"
-#import "../AssetUtils.h"
-#import "../Utils.h"
 
 static char kSPKActionsListSwitchAssocKey;
 
@@ -113,8 +113,8 @@ static char kSPKActionsListSwitchAssocKey;
                                                          supportedActions:SPKProfileCopyInfoSupportedActions()
                                                         configuredActions:SPKProfileConfiguredCopyInfoActions()
                                                                    onSave:^(NSArray<NSString *> *actions) {
-            SPKProfileSetConfiguredCopyInfoActions(actions);
-        }];
+                                                                       SPKProfileSetConfiguredCopyInfoActions(actions);
+                                                                   }];
     }
 
     return nil;
@@ -125,23 +125,32 @@ static char kSPKActionsListSwitchAssocKey;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) return self.configuration.sections.count;
-    if (section == [self bulkEditorSectionIndex]) return [self bulkEditorKinds].count;
-    if (section == [self unassignedSectionIndex]) return self.configuration.unassignedActions.count;
+    if (section == 0)
+        return self.configuration.sections.count;
+    if (section == [self bulkEditorSectionIndex])
+        return [self bulkEditorKinds].count;
+    if (section == [self unassignedSectionIndex])
+        return self.configuration.unassignedActions.count;
     return self.configuration.supportedActions.count;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) return @"Menu Sections";
-    if (section == [self bulkEditorSectionIndex]) return @"All Menus";
-    if (section == [self unassignedSectionIndex]) return @"Unassigned Actions";
+    if (section == 0)
+        return @"Menu Sections";
+    if (section == [self bulkEditorSectionIndex])
+        return @"All Menus";
+    if (section == [self unassignedSectionIndex])
+        return @"Unassigned Actions";
     return @"Available Actions";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) return @"Long press and drag to reorder sections.";
-    if (section == [self unassignedSectionIndex]) return @"Actions here are supported but do not appear in the runtime menu.";
-    if (section == [self availableSectionIndex]) return @"Disabled actions are hidden even if they remain assigned to a section.";
+    if (section == 0)
+        return @"Long press and drag to reorder sections.";
+    if (section == [self unassignedSectionIndex])
+        return @"Actions here are supported but do not appear in the runtime menu.";
+    if (section == [self availableSectionIndex])
+        return @"Disabled actions are hidden even if they remain assigned to a section.";
     return nil;
 }
 
@@ -149,7 +158,8 @@ static char kSPKActionsListSwitchAssocKey;
 // stays assigned but is hidden from the runtime menu, so we flag the section row.
 - (BOOL)sectionHasDisabledAction:(SPKActionMenuSection *)section {
     for (NSString *identifier in section.actions) {
-        if ([self.configuration.disabledActions containsObject:identifier]) return YES;
+        if ([self.configuration.disabledActions containsObject:identifier])
+            return YES;
     }
     return NO;
 }
@@ -173,7 +183,8 @@ static char kSPKActionsListSwitchAssocKey;
             // action switched off in "Available Actions" (hidden from the runtime menu).
             UIFont *font = config.secondaryTextProperties.font ?: [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
             UIImage *warning = [[SPKAssetUtils instagramIconNamed:@"warning_filled" pointSize:16.0]
-                                imageWithTintColor:[UIColor systemOrangeColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+                imageWithTintColor:[UIColor systemOrangeColor]
+                     renderingMode:UIImageRenderingModeAlwaysOriginal];
             NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
             attachment.image = warning;
             CGFloat yOffset = (font.capHeight - warning.size.height) / 2.0;
@@ -182,8 +193,8 @@ static char kSPKActionsListSwitchAssocKey;
             [subtitle appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
             [subtitle appendAttributedString:[[NSAttributedString alloc] initWithString:[@"  " stringByAppendingString:stateText]
                                                                              attributes:@{
-                                                                                 NSForegroundColorAttributeName: [SPKUtils SPKColor_InstagramSecondaryText],
-                                                                                 NSFontAttributeName: font
+                                                                                 NSForegroundColorAttributeName : [SPKUtils SPKColor_InstagramSecondaryText],
+                                                                                 NSFontAttributeName : font
                                                                              }]];
             config.secondaryAttributedText = subtitle;
         } else {
@@ -229,11 +240,12 @@ static char kSPKActionsListSwitchAssocKey;
 }
 
 - (NSArray<UIDragItem *> *)tableView:(UITableView *)tableView itemsForBeginningDragSession:(id<UIDragSession>)session atIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section != 0) return @[];
+    if (indexPath.section != 0)
+        return @[];
     SPKActionMenuSection *section = self.configuration.sections[indexPath.row];
     UIDragItem *item = [[UIDragItem alloc] initWithItemProvider:[[NSItemProvider alloc] initWithObject:section.identifier]];
     item.localObject = section.identifier;
-    return @[item];
+    return @[ item ];
 }
 
 - (BOOL)tableView:(UITableView *)tableView dragSessionAllowsMoveOperation:(id<UIDragSession>)session {
@@ -258,17 +270,20 @@ static char kSPKActionsListSwitchAssocKey;
     if (!destinationIndexPath ||
         !sourceIndexPath ||
         sourceIndexPath.section != 0 ||
-        destinationIndexPath.section != 0) return;
+        destinationIndexPath.section != 0)
+        return;
 
     NSInteger rowCount = self.configuration.sections.count;
     NSInteger destinationRow = MIN(MAX(0, destinationIndexPath.row), MAX(0, rowCount - 1));
     NSIndexPath *target = [NSIndexPath indexPathForRow:destinationRow inSection:0];
 
-    [tableView performBatchUpdates:^{
-        [self.configuration moveSectionFromIndex:sourceIndexPath.row toIndex:target.row];
-        [self.configuration save];
-        [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:target];
-    } completion:nil];
+    [tableView
+        performBatchUpdates:^{
+            [self.configuration moveSectionFromIndex:sourceIndexPath.row toIndex:target.row];
+            [self.configuration save];
+            [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:target];
+        }
+                 completion:nil];
     [coordinator dropItem:dropItem.dragItem toRowAtIndexPath:target];
 }
 
@@ -285,10 +300,12 @@ static char kSPKActionsListSwitchAssocKey;
     if (indexPath.section == 0) {
         SPKActionMenuSection *section = self.configuration.sections[indexPath.row];
         __weak typeof(self) weakSelf = self;
-        SPKActionSectionEditViewController *controller = [[SPKActionSectionEditViewController alloc] initWithConfiguration:self.configuration sectionIdentifier:section.identifier onChange:^{
-            [weakSelf.configuration save];
-            [weakSelf.tableView reloadData];
-        }];
+        SPKActionSectionEditViewController *controller = [[SPKActionSectionEditViewController alloc] initWithConfiguration:self.configuration
+                                                                                                         sectionIdentifier:section.identifier
+                                                                                                                  onChange:^{
+                                                                                                                      [weakSelf.configuration save];
+                                                                                                                      [weakSelf.tableView reloadData];
+                                                                                                                  }];
         [self.navigationController pushViewController:controller animated:YES];
     }
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -299,7 +316,8 @@ static char kSPKActionsListSwitchAssocKey;
 }
 
 - (void)removeSectionAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section != 0 || indexPath.row >= (NSInteger)self.configuration.sections.count) return;
+    if (indexPath.section != 0 || indexPath.row >= (NSInteger)self.configuration.sections.count)
+        return;
 
     SPKActionMenuSection *section = self.configuration.sections[indexPath.row];
     for (NSString *identifier in section.actions) {
@@ -313,22 +331,26 @@ static char kSPKActionsListSwitchAssocKey;
 }
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (editingStyle != UITableViewCellEditingStyleDelete) return;
+    if (editingStyle != UITableViewCellEditingStyleDelete)
+        return;
     [self removeSectionAtIndexPath:indexPath];
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (![self tableView:tableView canEditRowAtIndexPath:indexPath]) return nil;
+    if (![self tableView:tableView canEditRowAtIndexPath:indexPath])
+        return nil;
 
     __weak typeof(self) weakSelf = self;
-    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:nil handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
-        [weakSelf removeSectionAtIndexPath:indexPath];
-        completionHandler(YES);
-    }];
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+                                                                               title:nil
+                                                                             handler:^(__unused UIContextualAction *action, __unused UIView *sourceView, void (^completionHandler)(BOOL)) {
+                                                                                 [weakSelf removeSectionAtIndexPath:indexPath];
+                                                                                 completionHandler(YES);
+                                                                             }];
     deleteAction.image = [SPKAssetUtils instagramIconNamed:@"trash" pointSize:22.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     deleteAction.backgroundColor = [SPKUtils SPKColor_InstagramDestructive];
     deleteAction.accessibilityLabel = @"Remove Section";
-    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
+    return [UISwipeActionsConfiguration configurationWithActions:@[ deleteAction ]];
 }
 
 - (void)addSectionTapped {
@@ -342,16 +364,19 @@ static char kSPKActionsListSwitchAssocKey;
     [self.tableView reloadData];
 
     __weak typeof(self) weakSelf = self;
-    SPKActionSectionEditViewController *controller = [[SPKActionSectionEditViewController alloc] initWithConfiguration:self.configuration sectionIdentifier:section.identifier onChange:^{
-        [weakSelf.configuration save];
-        [weakSelf.tableView reloadData];
-    }];
+    SPKActionSectionEditViewController *controller = [[SPKActionSectionEditViewController alloc] initWithConfiguration:self.configuration
+                                                                                                     sectionIdentifier:section.identifier
+                                                                                                              onChange:^{
+                                                                                                                  [weakSelf.configuration save];
+                                                                                                                  [weakSelf.tableView reloadData];
+                                                                                                              }];
     [self.navigationController pushViewController:controller animated:YES];
 }
 
 - (void)disabledSwitchChanged:(UISwitch *)sender {
     NSString *identifier = objc_getAssociatedObject(sender, &kSPKActionsListSwitchAssocKey);
-    if (identifier.length == 0) return;
+    if (identifier.length == 0)
+        return;
 
     if (sender.isOn) {
         [self.configuration.disabledActions removeObject:identifier];

@@ -1,8 +1,8 @@
 #import "SPKDeletedMessageBubbleCell.h"
+#import "../../../AssetUtils.h"
+#import "../../../Utils.h"
 #import "SPKDeletedMessagesAvatarView.h"
 #import "SPKDeletedMessagesDate.h"
-#import "../../../Utils.h"
-#import "../../../AssetUtils.h"
 
 NSString *const SPKDeletedMessageBubbleCellReuseID = @"SPKDeletedMessageBubbleCell";
 
@@ -48,14 +48,14 @@ static NSString *SPKDeletedFormatDuration(double seconds);
 // Per-sender avatar + name row above incoming bubbles (group threads only).
 @property (nonatomic, strong) SPKDeletedMessagesAvatarView *senderAvatarView;
 @property (nonatomic, strong) UILabel *senderLabel;
-@property (nonatomic, strong) NSLayoutConstraint *bubbleTopDefault;     // bubble pinned to contentView top
-@property (nonatomic, strong) NSLayoutConstraint *bubbleTopBelowName;   // bubble pinned below the avatar row
+@property (nonatomic, strong) NSLayoutConstraint *bubbleTopDefault;   // bubble pinned to contentView top
+@property (nonatomic, strong) NSLayoutConstraint *bubbleTopBelowName; // bubble pinned below the avatar row
 
 @property (nonatomic, strong) UILabel *timeLabel;
-@property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingPin;     // incoming: pin to left
-@property (nonatomic, strong) NSLayoutConstraint *bubbleTrailingPin;    // outgoing: pin to right
-@property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingLimit;   // outgoing: keep off the left edge
-@property (nonatomic, strong) NSLayoutConstraint *bubbleTrailingLimit;  // incoming: keep off the right edge
+@property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingPin;    // incoming: pin to left
+@property (nonatomic, strong) NSLayoutConstraint *bubbleTrailingPin;   // outgoing: pin to right
+@property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingLimit;  // outgoing: keep off the left edge
+@property (nonatomic, strong) NSLayoutConstraint *bubbleTrailingLimit; // incoming: keep off the right edge
 @property (nonatomic, strong) NSLayoutConstraint *timeLeadingPin;
 @property (nonatomic, strong) NSLayoutConstraint *timeTrailingPin;
 @end
@@ -120,41 +120,51 @@ static NSString *SPKDeletedFormatDuration(double seconds);
     [self.contentView addSubview:_timeLabel];
 
     CGFloat sideInset = 16.0;
-    CGFloat minGutter = 56.0;   // keep the opposite edge clear so bubbles read as L/R
+    CGFloat minGutter = 56.0; // keep the opposite edge clear so bubbles read as L/R
 
-    _bubbleLeadingPin    = [_bubble.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:sideInset];
-    _bubbleTrailingPin   = [_bubble.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-sideInset];
-    _bubbleLeadingLimit  = [_bubble.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:minGutter];
+    _bubbleLeadingPin = [_bubble.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:sideInset];
+    _bubbleTrailingPin = [_bubble.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-sideInset];
+    _bubbleLeadingLimit = [_bubble.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:minGutter];
     _bubbleTrailingLimit = [_bubble.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-minGutter];
 
-    _timeLeadingPin  = [_timeLabel.leadingAnchor constraintEqualToAnchor:_bubble.leadingAnchor constant:4.0];
+    _timeLeadingPin = [_timeLabel.leadingAnchor constraintEqualToAnchor:_bubble.leadingAnchor constant:4.0];
     _timeTrailingPin = [_timeLabel.trailingAnchor constraintEqualToAnchor:_bubble.trailingAnchor constant:-4.0];
 
     // Bubble top is normally pinned to the cell top; when a sender avatar+name row
     // is shown (group threads) the bubble drops below the avatar instead.
-    _bubbleTopDefault   = [_bubble.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0];
+    _bubbleTopDefault = [_bubble.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0];
     _bubbleTopBelowName = [_bubble.topAnchor constraintEqualToAnchor:_senderAvatarView.bottomAnchor constant:4.0];
     _bubbleTopDefault.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         // Avatar: left-aligned with the bubble, sits at the top of the name row.
-        [_senderAvatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:sideInset],
-        [_senderAvatarView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
+        [_senderAvatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                        constant:sideInset],
+        [_senderAvatarView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                                    constant:6.0],
         [_senderAvatarView.widthAnchor constraintEqualToConstant:kSenderAvatarSize],
         [_senderAvatarView.heightAnchor constraintEqualToConstant:kSenderAvatarSize],
 
         // Name: to the right of the avatar, vertically centered with it.
-        [_senderLabel.leadingAnchor constraintEqualToAnchor:_senderAvatarView.trailingAnchor constant:6.0],
+        [_senderLabel.leadingAnchor constraintEqualToAnchor:_senderAvatarView.trailingAnchor
+                                                   constant:6.0],
         [_senderLabel.centerYAnchor constraintEqualToAnchor:_senderAvatarView.centerYAnchor],
-        [_senderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
+        [_senderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor
+                                                              constant:-16.0],
 
-        [_contentStack.leadingAnchor constraintEqualToAnchor:_bubble.leadingAnchor constant:12.0],
-        [_contentStack.trailingAnchor constraintEqualToAnchor:_bubble.trailingAnchor constant:-12.0],
-        [_contentStack.topAnchor constraintEqualToAnchor:_bubble.topAnchor constant:10.0],
-        [_contentStack.bottomAnchor constraintEqualToAnchor:_bubble.bottomAnchor constant:-10.0],
+        [_contentStack.leadingAnchor constraintEqualToAnchor:_bubble.leadingAnchor
+                                                    constant:12.0],
+        [_contentStack.trailingAnchor constraintEqualToAnchor:_bubble.trailingAnchor
+                                                     constant:-12.0],
+        [_contentStack.topAnchor constraintEqualToAnchor:_bubble.topAnchor
+                                                constant:10.0],
+        [_contentStack.bottomAnchor constraintEqualToAnchor:_bubble.bottomAnchor
+                                                   constant:-10.0],
 
-        [_timeLabel.topAnchor constraintEqualToAnchor:_bubble.bottomAnchor constant:4.0],
-        [_timeLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
+        [_timeLabel.topAnchor constraintEqualToAnchor:_bubble.bottomAnchor
+                                             constant:4.0],
+        [_timeLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor
+                                                constant:-8.0],
     ]];
 
     // Default to incoming (left-aligned).
@@ -247,7 +257,8 @@ static NSString *SPKDeletedFormatDuration(double seconds);
         [_kindIcon.heightAnchor constraintEqualToConstant:12.0],
         [_kindIcon.topAnchor constraintEqualToAnchor:_kindChip.topAnchor],
         [_kindIcon.bottomAnchor constraintEqualToAnchor:_kindChip.bottomAnchor],
-        [_kindLabel.leadingAnchor constraintEqualToAnchor:_kindIcon.trailingAnchor constant:5.0],
+        [_kindLabel.leadingAnchor constraintEqualToAnchor:_kindIcon.trailingAnchor
+                                                 constant:5.0],
         [_kindLabel.trailingAnchor constraintEqualToAnchor:_kindChip.trailingAnchor],
         [_kindLabel.centerYAnchor constraintEqualToAnchor:_kindChip.centerYAnchor],
     ]];
@@ -311,11 +322,15 @@ static NSString *SPKDeletedFormatDuration(double seconds);
         [_playGlyph.widthAnchor constraintEqualToConstant:40.0],
         [_playGlyph.heightAnchor constraintEqualToConstant:40.0],
 
-        [_durationPill.trailingAnchor constraintEqualToAnchor:_mediaView.trailingAnchor constant:-8.0],
-        [_durationPill.bottomAnchor constraintEqualToAnchor:_mediaView.bottomAnchor constant:-8.0],
+        [_durationPill.trailingAnchor constraintEqualToAnchor:_mediaView.trailingAnchor
+                                                     constant:-8.0],
+        [_durationPill.bottomAnchor constraintEqualToAnchor:_mediaView.bottomAnchor
+                                                   constant:-8.0],
         [_durationPill.heightAnchor constraintEqualToConstant:18.0],
-        [_durationLabel.leadingAnchor constraintEqualToAnchor:_durationPill.leadingAnchor constant:7.0],
-        [_durationLabel.trailingAnchor constraintEqualToAnchor:_durationPill.trailingAnchor constant:-7.0],
+        [_durationLabel.leadingAnchor constraintEqualToAnchor:_durationPill.leadingAnchor
+                                                     constant:7.0],
+        [_durationLabel.trailingAnchor constraintEqualToAnchor:_durationPill.trailingAnchor
+                                                      constant:-7.0],
         [_durationLabel.centerYAnchor constraintEqualToAnchor:_durationPill.centerYAnchor],
     ]];
 }
@@ -346,13 +361,16 @@ static NSString *SPKDeletedFormatDuration(double seconds);
     [NSLayoutConstraint activateConstraints:@[
         [_voicePill.heightAnchor constraintEqualToConstant:44.0],
 
-        [_voicePlayIcon.leadingAnchor constraintEqualToAnchor:_voicePill.leadingAnchor constant:14.0],
+        [_voicePlayIcon.leadingAnchor constraintEqualToAnchor:_voicePill.leadingAnchor
+                                                     constant:14.0],
         [_voicePlayIcon.centerYAnchor constraintEqualToAnchor:_voicePill.centerYAnchor],
         [_voicePlayIcon.widthAnchor constraintEqualToConstant:20.0],
         [_voicePlayIcon.heightAnchor constraintEqualToConstant:20.0],
 
-        [_voiceLabel.leadingAnchor constraintEqualToAnchor:_voicePlayIcon.trailingAnchor constant:10.0],
-        [_voiceLabel.trailingAnchor constraintEqualToAnchor:_voicePill.trailingAnchor constant:-16.0],
+        [_voiceLabel.leadingAnchor constraintEqualToAnchor:_voicePlayIcon.trailingAnchor
+                                                  constant:10.0],
+        [_voiceLabel.trailingAnchor constraintEqualToAnchor:_voicePill.trailingAnchor
+                                                   constant:-16.0],
         [_voiceLabel.centerYAnchor constraintEqualToAnchor:_voicePill.centerYAnchor],
     ]];
 }
@@ -392,7 +410,7 @@ static NSString *SPKDeletedFormatDuration(double seconds);
     _cardURL.textColor = [SPKUtils SPKColor_InstagramSecondaryText];
     _cardURL.numberOfLines = 1;
 
-    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[_cardTitle, _cardURL]];
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[ _cardTitle, _cardURL ]];
     textStack.translatesAutoresizingMaskIntoConstraints = NO;
     textStack.axis = UILayoutConstraintAxisVertical;
     textStack.spacing = 2.0;
@@ -408,7 +426,8 @@ static NSString *SPKDeletedFormatDuration(double seconds);
         [_cardView.widthAnchor constraintEqualToConstant:248.0],
         [_cardView.heightAnchor constraintEqualToConstant:72.0],
 
-        [_cardThumb.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:8.0],
+        [_cardThumb.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor
+                                                 constant:8.0],
         [_cardThumb.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
         [_cardThumb.widthAnchor constraintEqualToConstant:56.0],
         [_cardThumb.heightAnchor constraintEqualToConstant:56.0],
@@ -418,8 +437,10 @@ static NSString *SPKDeletedFormatDuration(double seconds);
         [_cardPlaceholder.widthAnchor constraintEqualToConstant:24.0],
         [_cardPlaceholder.heightAnchor constraintEqualToConstant:24.0],
 
-        [textStack.leadingAnchor constraintEqualToAnchor:_cardThumb.trailingAnchor constant:10.0],
-        [textStack.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-12.0],
+        [textStack.leadingAnchor constraintEqualToAnchor:_cardThumb.trailingAnchor
+                                                constant:10.0],
+        [textStack.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor
+                                                 constant:-12.0],
         [textStack.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
     ]];
 }
@@ -486,23 +507,25 @@ static NSString *SPKDeletedFormatDuration(double seconds);
 }
 
 - (void)applyLoadedThumbnail:(UIImage *)thumbnail forMessageId:(NSString *)messageId {
-    if (!thumbnail || !messageId.length) return;
-    if (![self.messageId isEqualToString:messageId]) return;   // cell was reused
+    if (!thumbnail || !messageId.length)
+        return;
+    if (![self.messageId isEqualToString:messageId])
+        return; // cell was reused
     switch (self.message.kind) {
-        case SPKDeletedMessageKindPhoto:
-        case SPKDeletedMessageKindVideo:
-        case SPKDeletedMessageKindGif:
-        case SPKDeletedMessageKindSticker:
-            self.mediaView.image = thumbnail;
-            break;
-        case SPKDeletedMessageKindShare:
-        case SPKDeletedMessageKindLink:
-        case SPKDeletedMessageKindAudioShare:
-            self.cardThumb.image = thumbnail;
-            self.cardPlaceholder.hidden = YES;
-            break;
-        default:
-            break;
+    case SPKDeletedMessageKindPhoto:
+    case SPKDeletedMessageKindVideo:
+    case SPKDeletedMessageKindGif:
+    case SPKDeletedMessageKindSticker:
+        self.mediaView.image = thumbnail;
+        break;
+    case SPKDeletedMessageKindShare:
+    case SPKDeletedMessageKindLink:
+    case SPKDeletedMessageKindAudioShare:
+        self.cardThumb.image = thumbnail;
+        self.cardPlaceholder.hidden = YES;
+        break;
+    default:
+        break;
     }
 }
 
@@ -518,15 +541,16 @@ static NSString *SPKDeletedFormatDuration(double seconds);
     // instead of a generic "Share".
     NSString *kindName, *kindSymbol;
     if (message.kind == SPKDeletedMessageKindShare) {
-        kindName   = SPKDeletedMessageShareSubtypeName(message.shareSubtype);
+        kindName = SPKDeletedMessageShareSubtypeName(message.shareSubtype);
         kindSymbol = SPKDeletedMessageShareSubtypeSymbol(message.shareSubtype);
     } else {
-        kindName   = SPKDeletedMessageKindLocalizedName(message.kind);
+        kindName = SPKDeletedMessageKindLocalizedName(message.kind);
         kindSymbol = SPKDeletedMessageKindSymbolFilled(message.kind, YES);
     }
     self.kindIcon.image = [SPKAssetUtils instagramIconNamed:kindSymbol pointSize:12.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     self.kindLabel.text = [kindName uppercaseString];
-    self.timeLabel.text = [SPKDeletedMessagesDate stringForDate:(message.deletedAt ?: message.capturedAt ?: message.sentAt)];
+    self.timeLabel.text = [SPKDeletedMessagesDate stringForDate:(message.deletedAt ?: message.capturedAt ?
+                                                                                                         : message.sentAt)];
 
     // Reset visibility.
     self.textLabel_.hidden = YES;
@@ -537,26 +561,26 @@ static NSString *SPKDeletedFormatDuration(double seconds);
     self.durationPill.hidden = YES;
 
     switch (message.kind) {
-        case SPKDeletedMessageKindText:
-        case SPKDeletedMessageKindReaction:
-        case SPKDeletedMessageKindUnknown:
-        case SPKDeletedMessageKindOther:
-            [self configureTextWithMessage:message];
-            break;
-        case SPKDeletedMessageKindPhoto:
-        case SPKDeletedMessageKindVideo:
-        case SPKDeletedMessageKindGif:
-        case SPKDeletedMessageKindSticker:
-            [self configureMediaWithMessage:message thumbnail:thumbnail];
-            break;
-        case SPKDeletedMessageKindVoice:
-            [self configureVoiceWithMessage:message];
-            break;
-        case SPKDeletedMessageKindShare:
-        case SPKDeletedMessageKindLink:
-        case SPKDeletedMessageKindAudioShare:
-            [self configureCardWithMessage:message thumbnail:thumbnail];
-            break;
+    case SPKDeletedMessageKindText:
+    case SPKDeletedMessageKindReaction:
+    case SPKDeletedMessageKindUnknown:
+    case SPKDeletedMessageKindOther:
+        [self configureTextWithMessage:message];
+        break;
+    case SPKDeletedMessageKindPhoto:
+    case SPKDeletedMessageKindVideo:
+    case SPKDeletedMessageKindGif:
+    case SPKDeletedMessageKindSticker:
+        [self configureMediaWithMessage:message thumbnail:thumbnail];
+        break;
+    case SPKDeletedMessageKindVoice:
+        [self configureVoiceWithMessage:message];
+        break;
+    case SPKDeletedMessageKindShare:
+    case SPKDeletedMessageKindLink:
+    case SPKDeletedMessageKindAudioShare:
+        [self configureCardWithMessage:message thumbnail:thumbnail];
+        break;
     }
 }
 
@@ -590,8 +614,8 @@ static NSString *SPKDeletedFormatDuration(double seconds);
 - (void)configureVoiceWithMessage:(SPKDeletedMessage *)message {
     self.voicePill.hidden = NO;
     self.voiceLabel.text = message.durationSeconds > 0
-        ? SPKDeletedFormatDuration(message.durationSeconds)
-        : @"Tap to play";
+                               ? SPKDeletedFormatDuration(message.durationSeconds)
+                               : @"Tap to play";
 }
 
 - (void)configureCardWithMessage:(SPKDeletedMessage *)message thumbnail:(UIImage *)thumbnail {
@@ -607,14 +631,15 @@ static NSString *SPKDeletedFormatDuration(double seconds);
         NSString *symbol = isShare ? SPKDeletedMessageShareSubtypeSymbol(message.shareSubtype)
                                    : SPKDeletedMessageKindSymbol(message.kind);
         self.cardPlaceholder.image = [SPKAssetUtils instagramIconNamed:symbol
-                                                              pointSize:22.0
-                                                          renderingMode:UIImageRenderingModeAlwaysTemplate];
+                                                             pointSize:22.0
+                                                         renderingMode:UIImageRenderingModeAlwaysTemplate];
     }
 
     // First line of the caption (if any).
     NSString *caption = message.text.length ? message.text : message.previewText;
     NSRange newline = caption.length ? [caption rangeOfString:@"\n"] : NSMakeRange(NSNotFound, 0);
-    if (newline.location != NSNotFound) caption = [caption substringToIndex:newline.location];
+    if (newline.location != NSNotFound)
+        caption = [caption substringToIndex:newline.location];
 
     if (isShare) {
         // Title = the shared content's author; subtitle = "Reel • caption".
@@ -628,7 +653,8 @@ static NSString *SPKDeletedFormatDuration(double seconds);
         NSString *subtitle = nil;
         if (author) {
             subtitle = (caption.length && ![caption isEqualToString:author])
-                ? [NSString stringWithFormat:@"%@ • %@", typeName, caption] : typeName;
+                           ? [NSString stringWithFormat:@"%@ • %@", typeName, caption]
+                           : typeName;
         } else if (caption.length) {
             subtitle = typeName;
         }
@@ -647,7 +673,8 @@ static NSString *SPKDeletedFormatDuration(double seconds);
 #pragma mark - Helpers
 
 static NSString *SPKDeletedFormatDuration(double seconds) {
-    if (seconds <= 0) return @"0:00";
+    if (seconds <= 0)
+        return @"0:00";
     int total = (int)round(seconds);
     int mins = total / 60;
     int secs = total % 60;

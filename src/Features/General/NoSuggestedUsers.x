@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 static inline BOOL SPKHideFeedSuggestedUsers(void) {
     return [SPKUtils getBoolPref:@"general_hide_suggested_users_feed"];
@@ -45,7 +45,7 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
     }
 
     return %orig;
-} 
+}
 %end
 
 // Suggested users in profile header
@@ -84,7 +84,7 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        // Section header 
+        // Section header
         if ([obj isKindOfClass:%c(IGLabelItemViewModel)]) {
             // Suggested for you
             if ([[obj valueForKey:@"tag"] intValue] == 2) { // 2 == Suggested Users
@@ -142,7 +142,7 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
                 shouldHide = YES;
             }
 
-            // Section header 
+            // Section header
             else if ([obj isKindOfClass:%c(IGLabelItemViewModel)]) {
 
                 // "Suggested for you" search results header
@@ -158,7 +158,6 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
 
                 shouldHide = YES;
             }
-
         }
 
         // Populate new objs array
@@ -170,7 +169,7 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
     return [filteredObjs copy];
 }
 %end
-    
+
 %hook IGSegmentedTabControl
 - (void)setSegments:(id)segments {
     NSArray *originalObjs = segments;
@@ -227,16 +226,14 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
                 shouldHide = YES;
             }
 
-            // Section header 
+            // Section header
             else if ([obj isKindOfClass:%c(IGLabelItemViewModel)]) {
 
                 // "Suggested for you" search results header
                 if ([[obj valueForKey:@"labelTitle"] isEqualToString:@"Suggested for you"]) {
                     shouldHide = YES;
                 }
-
             }
-
         }
 
         // Populate new objs array
@@ -251,24 +248,23 @@ static inline BOOL SPKHideSubscriptionSuggestedUsers(void) {
 
 %hook IGProfileActionBarViewModel
 - (id)initWithIdentifier:(id)arg1
-                    rows:(id)arg2
-     allActionsToDisplay:(id)arg3
-         overflowActions:(id)arg4
-    actionToBadgeInfoMap:(id)arg5
-      allBusinessActions:(id)arg6
- overflowBusinessActions:(id)arg7
-     contactSheetActions:(id)arg8
-                    user:(id)arg9
-   sponsoredInfoProvider:(id)arg10
-  profileBackgroundColor:(id)arg11
-{
+                       rows:(id)arg2
+        allActionsToDisplay:(id)arg3
+            overflowActions:(id)arg4
+       actionToBadgeInfoMap:(id)arg5
+         allBusinessActions:(id)arg6
+    overflowBusinessActions:(id)arg7
+        contactSheetActions:(id)arg8
+                       user:(id)arg9
+      sponsoredInfoProvider:(id)arg10
+     profileBackgroundColor:(id)arg11 {
     NSArray *rows = arg2;
     NSOrderedSet *allActions = [arg3 copy];
     NSOrderedSet *overflowActions = [arg4 copy];
 
     if (SPKHideProfileSuggestedUsers()) {
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"NOT (SELF IN %@)", @[ @(3) ]];
-        
+
         // Actions sets
         allActions = [allActions filteredOrderedSetUsingPredicate:predicate];
         overflowActions = [overflowActions filteredOrderedSetUsingPredicate:predicate];
@@ -299,7 +295,7 @@ void SPKInstallNoSuggestedUsersHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SPKNoSuggestedUsersHooks,
-              IGSuggestionsUnitViewModel = SPKResolveIGClass(@"IGSuggestionsUnit.IGSuggestionsUnitViewModel", @"IGSuggestionsUnitViewModel"),
-              IGProfileHeaderView = SPKResolveIGClass(@"IGProfileHeader.IGProfileHeaderView", @"IGProfileHeaderView"));
+                       IGSuggestionsUnitViewModel = SPKResolveIGClass(@"IGSuggestionsUnit.IGSuggestionsUnitViewModel", @"IGSuggestionsUnitViewModel"),
+                       IGProfileHeaderView = SPKResolveIGClass(@"IGProfileHeader.IGProfileHeaderView", @"IGProfileHeaderView"));
     });
 }

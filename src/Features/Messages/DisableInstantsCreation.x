@@ -23,20 +23,20 @@
 // and intercept the post-creation Send button (IGQuickSnapPostCreationView
 // -didTapConfirm), which fires after the frame is frozen.
 
-#import <substrate.h>
-#import <objc/runtime.h>
-#import <objc/message.h>
 #import <AVFoundation/AVFoundation.h>
+#import <objc/message.h>
+#import <objc/runtime.h>
+#import <substrate.h>
 
-#import "../../Utils.h"
-#import "../../Shared/UI/SPKNotificationCenter.h"
-#import "../../Shared/Instants/SPKInstantsFrameInjector.h"
 #import "../../Settings/SPKPreferences.h"
+#import "../../Shared/Instants/SPKInstantsFrameInjector.h"
+#import "../../Shared/UI/SPKNotificationCenter.h"
+#import "../../Utils.h"
 
-static NSString * const kSPKQuickSnapDisableCreationPref = @"instants_disable_creation";
-static NSString * const kSPKQuickSnapConfirmCapturePref = @"instants_confirm_capture";
-static NSString * const kSPKQuickSnapDisableCameraControlPref = @"instants_disable_camera_control";
-static NSString * const kSPKQuickSnapSkipCameraAfterViewingPref = @"instants_skip_camera_after_viewing";
+static NSString *const kSPKQuickSnapDisableCreationPref = @"instants_disable_creation";
+static NSString *const kSPKQuickSnapConfirmCapturePref = @"instants_confirm_capture";
+static NSString *const kSPKQuickSnapDisableCameraControlPref = @"instants_disable_camera_control";
+static NSString *const kSPKQuickSnapSkipCameraAfterViewingPref = @"instants_skip_camera_after_viewing";
 
 typedef void (*SPKQuickSnapVoidIMP)(id, SEL);
 typedef void (*SPKQuickSnapVoidOneArgIMP)(id, SEL, id);
@@ -74,7 +74,7 @@ static BOOL sSPKQuickSnapSendConfirmVisible = NO;
 
 // Posted by the settings toggle so a visible camera refreshes its darken state
 // live (no app or Instants restart needed).
-static NSString * const kSPKQuickSnapCreationPrefChangedNotification = @"SPKQuickSnapCreationPrefChangedNotification";
+static NSString *const kSPKQuickSnapCreationPrefChangedNotification = @"SPKQuickSnapCreationPrefChangedNotification";
 
 // The currently on-screen camera control view, tracked from its layout pass so a
 // live pref change can re-apply the lock state to it immediately.
@@ -132,12 +132,14 @@ static void SPKQuickSnapNotifyBlocked(void) {
 static void SPKQuickSnapHandleCaptureDelegate(id self, SEL _cmd, SPKQuickSnapVoidIMP original, BOOL isCaptureInitiation) {
     if (SPKQuickSnapCreationDisabled()) {
         SPKLog(@"General", @"[Sparkle] Blocking Instant capture (%@)", NSStringFromSelector(_cmd));
-        if (isCaptureInitiation) SPKQuickSnapNotifyBlocked();
+        if (isCaptureInitiation)
+            SPKQuickSnapNotifyBlocked();
         return;
     }
 
     if (SPKQuickSnapSendConfirmEnabled() && isCaptureInitiation) {
-        if (sSPKQuickSnapSendConfirmVisible) return;
+        if (sSPKQuickSnapSendConfirmVisible)
+            return;
         sSPKQuickSnapSendConfirmVisible = YES;
         // Freeze the live preview on the exact frame the user pressed the shutter
         // on, so confirming sends THAT frame (not a later one) and the preview
@@ -146,23 +148,28 @@ static void SPKQuickSnapHandleCaptureDelegate(id self, SEL _cmd, SPKQuickSnapVoi
         id capturedSelf = self;
         SEL capturedSelector = _cmd;
         SPKQuickSnapVoidIMP capturedOriginal = original;
-        [SPKUtils showConfirmation:^{
-            sSPKQuickSnapSendConfirmVisible = NO;
-            // Keep the frozen frame in place through the capture so the sent
-            // media is exactly what was confirmed, then resume the live feed.
-            if (capturedOriginal) capturedOriginal(capturedSelf, capturedSelector);
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [SPKUtils
+            showConfirmation:^{
+                sSPKQuickSnapSendConfirmVisible = NO;
+                // Keep the frozen frame in place through the capture so the sent
+                // media is exactly what was confirmed, then resume the live feed.
+                if (capturedOriginal)
+                    capturedOriginal(capturedSelf, capturedSelector);
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [SPKInstantsFrameInjector clearFrozen];
+                });
+            }
+            cancelHandler:^{
+                sSPKQuickSnapSendConfirmVisible = NO;
                 [SPKInstantsFrameInjector clearFrozen];
-            });
-        } cancelHandler:^{
-            sSPKQuickSnapSendConfirmVisible = NO;
-            [SPKInstantsFrameInjector clearFrozen];
-        } title:@"Send Instant?"
-          message:@"Capture and send this Instant?"];
+            }
+            title:@"Send Instant?"
+            message:@"Capture and send this Instant?"];
         return;
     }
 
-    if (original) original(self, _cmd);
+    if (original)
+        original(self, _cmd);
 }
 
 static void replaced_captureButtonDidTouchDown(id self, SEL _cmd) {
@@ -219,13 +226,16 @@ static void replaced_avCaptureEventInteraction_setEnabled(id self, SEL _cmd, BOO
     if (enabled && sSPKQuickSnapCameraOnScreen && SPKQuickSnapDisableCameraControlEnabled()) {
         enabled = NO;
     }
-    if (orig_avCaptureEventInteraction_setEnabled) orig_avCaptureEventInteraction_setEnabled(self, _cmd, enabled);
+    if (orig_avCaptureEventInteraction_setEnabled)
+        orig_avCaptureEventInteraction_setEnabled(self, _cmd, enabled);
 }
 
 static void SPKQuickSnapDisableHardwareCaptureInTree(UIView *root) {
-    if (!root) return;
+    if (!root)
+        return;
     Class interactionClass = NSClassFromString(@"AVCaptureEventInteraction");
-    if (!interactionClass) return;
+    if (!interactionClass)
+        return;
 
     BOOL disable = SPKQuickSnapDisableCameraControlEnabled();
 
@@ -250,7 +260,8 @@ static void SPKQuickSnapDisableHardwareCaptureInTree(UIView *root) {
 // MARK: - Darkened shutter (Disable Creation only)
 
 static UIView *SPKQuickSnapFindCaptureButton(UIView *root) {
-    if (!root) return nil;
+    if (!root)
+        return nil;
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:root];
     while (queue.count > 0) {
         UIView *view = queue.firstObject;
@@ -265,11 +276,10 @@ static UIView *SPKQuickSnapFindCaptureButton(UIView *root) {
     return nil;
 }
 
-
-
 static void SPKQuickSnapApplyLockState(UIView *controlView) {
     UIView *captureButton = SPKQuickSnapFindCaptureButton(controlView);
-    if (!captureButton) return;
+    if (!captureButton)
+        return;
 
     if (SPKQuickSnapCreationDisabled()) {
         captureButton.userInteractionEnabled = NO;
@@ -281,7 +291,8 @@ static void SPKQuickSnapApplyLockState(UIView *controlView) {
 }
 
 static void replaced_cameraControlViewLayoutSubviews(id self, SEL _cmd) {
-    if (orig_cameraControlViewLayoutSubviews) orig_cameraControlViewLayoutSubviews(self, _cmd);
+    if (orig_cameraControlViewLayoutSubviews)
+        orig_cameraControlViewLayoutSubviews(self, _cmd);
     if ([self isKindOfClass:[UIView class]]) {
         UIView *controlView = (UIView *)self;
         sSPKQuickSnapVisibleControlView = controlView;
@@ -294,7 +305,8 @@ static void replaced_cameraControlViewLayoutSubviews(id self, SEL _cmd) {
 
 static void (*orig_cameraControlViewWillMoveToWindow)(id, SEL, id) = NULL;
 static void replaced_cameraControlViewWillMoveToWindow(id self, SEL _cmd, id window) {
-    if (orig_cameraControlViewWillMoveToWindow) orig_cameraControlViewWillMoveToWindow(self, _cmd, window);
+    if (orig_cameraControlViewWillMoveToWindow)
+        orig_cameraControlViewWillMoveToWindow(self, _cmd, window);
     // Track QuickSnap camera presence so the global AVCaptureEventInteraction
     // clamp only applies while the Instants camera is up.
     sSPKQuickSnapCameraOnScreen = (window != nil);
@@ -309,7 +321,8 @@ static void replaced_cameraControlViewWillMoveToWindow(id self, SEL _cmd, id win
 // MARK: - Skip camera after viewing
 
 static void SPKDismissQuickSnapCreationController(id controller) {
-    if (![controller isKindOfClass:[UIViewController class]]) return;
+    if (![controller isKindOfClass:[UIViewController class]])
+        return;
 
     UIViewController *viewController = (UIViewController *)controller;
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -329,16 +342,19 @@ static void SPKMarkQuickSnapExplicitCameraEntry(void) {
 
 static void replaced_quickSnapPeekViewDidSelectCamera(id self, SEL _cmd, id arg) {
     SPKMarkQuickSnapExplicitCameraEntry();
-    if (orig_quickSnapPeekViewDidSelectCamera) orig_quickSnapPeekViewDidSelectCamera(self, _cmd, arg);
+    if (orig_quickSnapPeekViewDidSelectCamera)
+        orig_quickSnapPeekViewDidSelectCamera(self, _cmd, arg);
 }
 
 static void replaced_didTapCameraButtonWithCameraEntryPoint(id self, SEL _cmd, long long point) {
     SPKMarkQuickSnapExplicitCameraEntry();
-    if (orig_didTapCameraButtonWithCameraEntryPoint) orig_didTapCameraButtonWithCameraEntryPoint(self, _cmd, point);
+    if (orig_didTapCameraButtonWithCameraEntryPoint)
+        orig_didTapCameraButtonWithCameraEntryPoint(self, _cmd, point);
 }
 
 static void replaced_consumptionViewDidAppear(id self, SEL _cmd, _Bool animated) {
-    if (orig_consumptionViewDidAppear) orig_consumptionViewDidAppear(self, _cmd, animated);
+    if (orig_consumptionViewDidAppear)
+        orig_consumptionViewDidAppear(self, _cmd, animated);
 
     if (SPKQuickSnapSkipCameraAfterViewingEnabled()) {
         sSPKQuickSnapConsumptionWasVisible = YES;
@@ -348,7 +364,8 @@ static void replaced_consumptionViewDidAppear(id self, SEL _cmd, _Bool animated)
 }
 
 static void replaced_consumptionViewDidDisappear(id self, SEL _cmd, _Bool animated) {
-    if (orig_consumptionViewDidDisappear) orig_consumptionViewDidDisappear(self, _cmd, animated);
+    if (orig_consumptionViewDidDisappear)
+        orig_consumptionViewDidDisappear(self, _cmd, animated);
     sSPKQuickSnapConsumptionWasVisible = NO;
 }
 
@@ -365,14 +382,16 @@ static void replaced_creationViewWillAppear(id self, SEL _cmd, _Bool animated) {
         return;
     }
 
-    if (orig_creationViewWillAppear) orig_creationViewWillAppear(self, _cmd, animated);
+    if (orig_creationViewWillAppear)
+        orig_creationViewWillAppear(self, _cmd, animated);
 }
 
 // MARK: - Install
 
 static void SPKHookInstanceMethod(const char *className, SEL selector, IMP replacement, IMP *original) {
     Class cls = objc_getClass(className);
-    if (!cls || !class_getInstanceMethod(cls, selector)) return;
+    if (!cls || !class_getInstanceMethod(cls, selector))
+        return;
 
     MSHookMessageEx(cls, selector, replacement, original);
 }
@@ -433,13 +452,14 @@ void SPKInstallDisableInstantsCreationHooksIfEnabled(void) {
                                                           object:nil
                                                            queue:NSOperationQueue.mainQueue
                                                       usingBlock:^(__unused NSNotification *note) {
-            UIView *controlView = sSPKQuickSnapVisibleControlView;
-            if (!controlView.window) return;
-            SPKQuickSnapApplyLockState(controlView);
-            UIView *scope = controlView.window ?: controlView;
-            SPKQuickSnapDisableHardwareCaptureInTree(scope);
-            [controlView setNeedsLayout];
-        }];
+                                                          UIView *controlView = sSPKQuickSnapVisibleControlView;
+                                                          if (!controlView.window)
+                                                              return;
+                                                          SPKQuickSnapApplyLockState(controlView);
+                                                          UIView *scope = controlView.window ?: controlView;
+                                                          SPKQuickSnapDisableHardwareCaptureInTree(scope);
+                                                          [controlView setNeedsLayout];
+                                                      }];
 
         // Explicit camera entry points (clear the skip flag).
         SPKHookInstanceMethod("_TtC30IGQuickSnapPresentationManager30IGQuickSnapPresentationManager",

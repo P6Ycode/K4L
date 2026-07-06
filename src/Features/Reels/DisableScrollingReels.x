@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 %group SPKDisableScrollingReelsHooks
 
@@ -9,7 +9,7 @@
 
     if ([SPKUtils getBoolPref:@"reels_disable_scrolling"]) {
         SPKLog(@"General", @"[Sparkle] Disabling scrolling reels");
-        
+
         self.scrollEnabled = false;
     }
 }
@@ -17,7 +17,7 @@
 - (void)setScrollEnabled:(BOOL)arg1 {
     if ([SPKUtils getBoolPref:@"reels_disable_scrolling"]) {
         SPKLog(@"General", @"[Sparkle] Disabling scrolling reels");
-        
+
         return %orig(NO);
     }
 
@@ -30,8 +30,7 @@
 - (void)setIsEnabled:(BOOL)enabled {
     if ([SPKUtils getBoolPref:@"reels_disable_scrolling"]) {
         %orig(NO);
-    }
-    else {
+    } else {
         %orig(enabled);
     }
 }
@@ -40,7 +39,8 @@
 %end
 
 void SPKInstallDisableScrollingReelsHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"reels_disable_scrolling"]) return;
+    if (![SPKUtils getBoolPref:@"reels_disable_scrolling"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

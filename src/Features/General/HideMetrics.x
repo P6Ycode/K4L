@@ -14,7 +14,8 @@
 // view removes only the number, not the action button.
 static void SPKHideLazyCountView(id owner, const char *ivarName) {
     id lazy = [SPKUtils getIvarForObj:owner name:ivarName];
-    if (!lazy) return;
+    if (!lazy)
+        return;
     if ([lazy respondsToSelector:@selector(hide)]) {
         ((void (*)(id, SEL))objc_msgSend)(lazy, @selector(hide));
     }
@@ -23,7 +24,8 @@ static void SPKHideLazyCountView(id owner, const char *ivarName) {
 // Clears the count label on an IGSundialUFIButtonWithCount-style button (save /
 // comment / reshare counts share the icon button, so we blank just the label).
 static void SPKHideButtonCountLabel(id button) {
-    if (!button || ![button respondsToSelector:@selector(label)]) return;
+    if (!button || ![button respondsToSelector:@selector(label)])
+        return;
     id label = ((id (*)(id, SEL))objc_msgSend)(button, @selector(label));
     if ([label isKindOfClass:[UILabel class]]) {
         ((UILabel *)label).text = @"";
@@ -32,12 +34,14 @@ static void SPKHideButtonCountLabel(id button) {
 }
 
 static id SPKControlForSelector(id ufi, SEL sel) {
-    if (![ufi respondsToSelector:sel]) return nil;
+    if (![ufi respondsToSelector:sel])
+        return nil;
     return ((id (*)(id, SEL))objc_msgSend)(ufi, sel);
 }
 
 static void SPKApplyReelsMetricHiding(id ufi) {
-    if (!ufi) return;
+    if (!ufi)
+        return;
 
     if ([SPKUtils getBoolPref:@"reels_hide_like_count"]) {
         SPKHideLazyCountView(ufi, "lazyLikeCountButton");
@@ -83,7 +87,7 @@ static void SPKApplyReelsMetricHiding(id ufi) {
         UIView *commentsView = [countsView valueForKey:@"_commentsView"];
         UIView *repostView = [countsView valueForKey:@"_repostView"];
         UIView *sendView = [countsView valueForKey:@"_sendView"];
-        
+
         if (self == likesView && [SPKUtils getBoolPref:@"feed_hide_like_count"]) {
             return %orig(@"", showButton);
         } else if (self == commentsView && [SPKUtils getBoolPref:@"feed_hide_comment_count"]) {
@@ -109,7 +113,8 @@ void SPKInstallHideMetricsHooksIfEnabled(void) {
         ![SPKUtils getBoolPref:@"reels_hide_reshare_count"] &&
         ![SPKUtils getBoolPref:@"reels_hide_comment_count"] &&
         ![SPKUtils getBoolPref:@"reels_hide_repost_count"] &&
-        ![SPKUtils getBoolPref:@"reels_hide_save_count"]) return;
+        ![SPKUtils getBoolPref:@"reels_hide_save_count"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

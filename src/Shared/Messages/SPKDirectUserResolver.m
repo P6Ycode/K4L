@@ -7,46 +7,60 @@
 static __weak id spkCachedApplicator = nil;
 
 void spkDirectUserResolverSetActiveApplicator(id applicator) {
-    if (!applicator) return;
+    if (!applicator)
+        return;
     spkCachedApplicator = applicator;
 }
 
 #pragma mark - IGUser field extraction
 
 NSString *spkDirectUserResolverPKFromUser(id user) {
-    if (!user) return nil;
+    if (!user)
+        return nil;
     @try {
-        for (NSString *key in @[@"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId", @"identifier"]) {
+        for (NSString *key in @[ @"pk", @"instagramUserID", @"instagramUserId", @"userID", @"userId", @"identifier" ]) {
             @try {
                 id v = [user valueForKey:key];
-                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0) return v;
-                if ([v isKindOfClass:[NSNumber class]]) return [(NSNumber *)v stringValue];
-            } @catch (__unused id e) {}
+                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0)
+                    return v;
+                if ([v isKindOfClass:[NSNumber class]])
+                    return [(NSNumber *)v stringValue];
+            } @catch (__unused id e) {
+            }
         }
-    } @catch (__unused id e) {}
+    } @catch (__unused id e) {
+    }
     return nil;
 }
 
 NSString *spkDirectUserResolverUsernameFromUser(id user) {
-    if (!user) return nil;
+    if (!user)
+        return nil;
     @try {
         id un = [user valueForKey:@"username"];
-        if ([un isKindOfClass:[NSString class]] && [(NSString *)un length] > 0) return un;
-    } @catch (__unused id e) {}
+        if ([un isKindOfClass:[NSString class]] && [(NSString *)un length] > 0)
+            return un;
+    } @catch (__unused id e) {
+    }
     return nil;
 }
 
 NSString *spkDirectUserResolverProfilePicURLStringFromUser(id user) {
-    if (!user) return nil;
+    if (!user)
+        return nil;
     @try {
-        for (NSString *key in @[@"profilePicURL", @"profilePictureURL", @"profileImageURL", @"profilePicURLString"]) {
+        for (NSString *key in @[ @"profilePicURL", @"profilePictureURL", @"profileImageURL", @"profilePicURLString" ]) {
             @try {
                 id v = [user valueForKey:key];
-                if ([v isKindOfClass:[NSURL class]]) return [(NSURL *)v absoluteString];
-                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0) return v;
-            } @catch (__unused id e) {}
+                if ([v isKindOfClass:[NSURL class]])
+                    return [(NSURL *)v absoluteString];
+                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0)
+                    return v;
+            } @catch (__unused id e) {
+            }
         }
-    } @catch (__unused id e) {}
+    } @catch (__unused id e) {
+    }
     return nil;
 }
 
@@ -55,20 +69,25 @@ NSString *spkDirectUserResolverProfilePicURLStringFromUser(id user) {
 // applicator._userMap._objectMap._objects (NSMapTable). IG mutates the map
 // on its own queue so the lookup hops onto _queue when present.
 id spkDirectUserResolverUserForPK(NSString *pk) {
-    if (pk.length == 0) return nil;
+    if (pk.length == 0)
+        return nil;
     id applicator = spkCachedApplicator;
-    if (!applicator) return nil;
+    if (!applicator)
+        return nil;
 
     @try {
         Ivar umIv = class_getInstanceVariable([applicator class], "_userMap");
         id userMap = umIv ? object_getIvar(applicator, umIv) : nil;
-        if (!userMap) return nil;
+        if (!userMap)
+            return nil;
         Ivar omIv = class_getInstanceVariable([userMap class], "_objectMap");
         id objMap = omIv ? object_getIvar(userMap, omIv) : nil;
-        if (!objMap) return nil;
+        if (!objMap)
+            return nil;
         Ivar oIv = class_getInstanceVariable([objMap class], "_objects");
         id store = oIv ? object_getIvar(objMap, oIv) : nil;
-        if (!store) return nil;
+        if (!store)
+            return nil;
 
         Ivar qIv = class_getInstanceVariable([userMap class], "_queue");
         id qObj = qIv ? object_getIvar(userMap, qIv) : nil;
@@ -81,28 +100,38 @@ id spkDirectUserResolverUserForPK(NSString *pk) {
             if ([store isKindOfClass:[NSMapTable class]]) {
                 NSMapTable *mt = (NSMapTable *)store;
                 user = [mt objectForKey:pk];
-                if (!user) user = [mt objectForKey:@([pk longLongValue])];
+                if (!user)
+                    user = [mt objectForKey:@([pk longLongValue])];
                 if (!user) {
                     for (id candidate in [mt objectEnumerator]) {
                         NSString *cpk = spkDirectUserResolverPKFromUser(candidate);
-                        if (cpk && [cpk isEqualToString:pk]) { user = candidate; break; }
+                        if (cpk && [cpk isEqualToString:pk]) {
+                            user = candidate;
+                            break;
+                        }
                     }
                 }
             } else if ([store isKindOfClass:[NSDictionary class]]) {
                 user = ((NSDictionary *)store)[pk];
-                if (!user) user = ((NSDictionary *)store)[@([pk longLongValue])];
+                if (!user)
+                    user = ((NSDictionary *)store)[@([pk longLongValue])];
             }
             result = user;
         };
 
         if (userQueue) {
-            @try { dispatch_sync(userQueue, lookup); }
-            @catch (__unused id e) { lookup(); }
+            @try {
+                dispatch_sync(userQueue, lookup);
+            }
+            @catch (__unused id e) {
+                lookup();
+            }
         } else {
             lookup();
         }
         return result;
-    } @catch (__unused id e) {}
+    } @catch (__unused id e) {
+    }
     return nil;
 }
 

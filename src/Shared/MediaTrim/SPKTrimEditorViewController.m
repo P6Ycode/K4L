@@ -1,11 +1,11 @@
 #import "SPKTrimEditorViewController.h"
-#import "SPKTrimScrubberView.h"
-#import "../UI/SPKMediaChrome.h"
-#import "../UI/SPKChipBar.h"
-#import "../Gallery/SPKGalleryFile.h"
-#import "../PhotoEdit/SPKPhotoEditorViewController.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../Gallery/SPKGalleryFile.h"
+#import "../PhotoEdit/SPKPhotoEditorViewController.h"
+#import "../UI/SPKChipBar.h"
+#import "../UI/SPKMediaChrome.h"
+#import "SPKTrimScrubberView.h"
 
 #import <AVFoundation/AVFoundation.h>
 
@@ -19,7 +19,8 @@ static UIImage *SPKTrimPlayerIcon(NSString *name, CGFloat pointSize) {
 }
 
 static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
-    if (seconds < 0.0 || !isfinite(seconds)) seconds = 0.0;
+    if (seconds < 0.0 || !isfinite(seconds))
+        seconds = 0.0;
     NSInteger total = (NSInteger)llround(seconds);
     return [NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)];
 }
@@ -35,10 +36,10 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 @property (nonatomic, strong) UIImageView *audioArtworkView;
 @property (nonatomic, assign) BOOL waveformLoaded;
 @property (nonatomic, strong) UIButton *playPauseButton;
-@property (nonatomic, strong) UIButton *editFrameButton;   // shown in Frame Only mode, in the play/pause slot
-@property (nonatomic, strong) UIButton *revertFrameButton; // shown while an edit is locked in, to discard it
-@property (nonatomic, strong) UIImageView *editedFramePreview;  // covers the pane with the edited still
-@property (nonatomic, copy, nullable) NSURL *pendingEditedFrameURL;  // set once the user edits the current frame
+@property (nonatomic, strong) UIButton *editFrameButton;            // shown in Frame Only mode, in the play/pause slot
+@property (nonatomic, strong) UIButton *revertFrameButton;          // shown while an edit is locked in, to discard it
+@property (nonatomic, strong) UIImageView *editedFramePreview;      // covers the pane with the edited still
+@property (nonatomic, copy, nullable) NSURL *pendingEditedFrameURL; // set once the user edits the current frame
 @property (nonatomic, strong) UIView *bottomContent;
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) SPKTrimScrubberView *scrubber;
@@ -67,7 +68,8 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
                             from:(UIViewController *)presenter
                       completion:(void (^)(SPKTrimResult *_Nullable))completion {
     if (!configuration.sourceURL || !presenter) {
-        if (completion) completion(nil);
+        if (completion)
+            completion(nil);
         return;
     }
     SPKTrimEditorViewController *editor = [[self alloc] initWithConfiguration:configuration];
@@ -247,9 +249,12 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     [_bottomContent addSubview:_scrubber];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_bottomContent.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:14.0],
-        [_bottomContent.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-14.0],
-        [_bottomContent.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8.0],
+        [_bottomContent.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor
+                                                     constant:14.0],
+        [_bottomContent.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor
+                                                      constant:-14.0],
+        [_bottomContent.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+                                                    constant:-8.0],
 
         [_timeLabel.topAnchor constraintEqualToAnchor:_bottomContent.topAnchor],
         [_timeLabel.centerXAnchor constraintEqualToAnchor:_bottomContent.centerXAnchor],
@@ -267,8 +272,10 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         [_revertFrameButton.trailingAnchor constraintEqualToAnchor:_bottomContent.trailingAnchor],
         [_revertFrameButton.centerYAnchor constraintEqualToAnchor:_playPauseButton.centerYAnchor],
 
-        [_scrubber.topAnchor constraintEqualToAnchor:_timeLabel.bottomAnchor constant:10.0],
-        [_scrubber.leadingAnchor constraintEqualToAnchor:_playPauseButton.trailingAnchor constant:10.0],
+        [_scrubber.topAnchor constraintEqualToAnchor:_timeLabel.bottomAnchor
+                                            constant:10.0],
+        [_scrubber.leadingAnchor constraintEqualToAnchor:_playPauseButton.trailingAnchor
+                                                constant:10.0],
         [_scrubber.trailingAnchor constraintEqualToAnchor:_bottomContent.trailingAnchor],
         [_scrubber.heightAnchor constraintEqualToConstant:52.0],
         [_scrubber.bottomAnchor constraintEqualToAnchor:_bottomContent.bottomAnchor],
@@ -289,9 +296,11 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         [NSLayoutConstraint activateConstraints:@[
             [_modeChips.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
             [_modeChips.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
-            [_modeChips.bottomAnchor constraintEqualToAnchor:_bottomContent.topAnchor constant:-4.0],
+            [_modeChips.bottomAnchor constraintEqualToAnchor:_bottomContent.topAnchor
+                                                    constant:-4.0],
             // Video pane fills the gap above the mode picker.
-            [_playerContainer.bottomAnchor constraintEqualToAnchor:_modeChips.topAnchor constant:-4.0],
+            [_playerContainer.bottomAnchor constraintEqualToAnchor:_modeChips.topAnchor
+                                                          constant:-4.0],
         ]];
     } else {
         // No mode row: the video pane pins directly above the controls.
@@ -303,7 +312,8 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // again if a mode is pruned after the asset loads (e.g. a silent video drops the
 // Audio Only chip).
 - (void)rebuildModeChipItems {
-    if (!_modeChips) return;
+    if (!_modeChips)
+        return;
     NSMutableArray<NSString *> *titles = [NSMutableArray array];
     NSMutableArray<NSString *> *symbols = [NSMutableArray array];
     NSMutableArray<NSString *> *selectedSymbols = [NSMutableArray array];
@@ -330,8 +340,10 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // (Modes are decided synchronously in viewDidLoad, before the async track load,
 // so the chip is added optimistically and pruned here if the video is silent.)
 - (void)pruneAudioModeIfSilent {
-    if (![self.availableModes containsObject:@(SPKTrimResultModeTrimmedAudio)]) return;
-    if ([self.asset tracksWithMediaType:AVMediaTypeAudio].count > 0) return;
+    if (![self.availableModes containsObject:@(SPKTrimResultModeTrimmedAudio)])
+        return;
+    if ([self.asset tracksWithMediaType:AVMediaTypeAudio].count > 0)
+        return;
 
     NSMutableArray<NSNumber *> *modes = [self.availableModes mutableCopy];
     [modes removeObject:@(SPKTrimResultModeTrimmedAudio)];
@@ -355,19 +367,21 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     self.asset = asset;
 
     __weak typeof(self) weakSelf = self;
-    [asset loadValuesAsynchronouslyForKeys:@[@"duration", @"tracks"] completionHandler:^{
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
-            NSError *err = nil;
-            AVKeyValueStatus status = [asset statusOfValueForKey:@"duration" error:&err];
-            if (status != AVKeyValueStatusLoaded) {
-                [strongSelf failWithMessage:@"This file could not be opened for trimming."];
-                return;
-            }
-            [strongSelf configurePlayerAndScrubber];
-        });
-    }];
+    [asset loadValuesAsynchronouslyForKeys:@[ @"duration", @"tracks" ]
+                         completionHandler:^{
+                             dispatch_async(dispatch_get_main_queue(), ^{
+                                 __strong typeof(weakSelf) strongSelf = weakSelf;
+                                 if (!strongSelf)
+                                     return;
+                                 NSError *err = nil;
+                                 AVKeyValueStatus status = [asset statusOfValueForKey:@"duration" error:&err];
+                                 if (status != AVKeyValueStatusLoaded) {
+                                     [strongSelf failWithMessage:@"This file could not be opened for trimming."];
+                                     return;
+                                 }
+                                 [strongSelf configurePlayerAndScrubber];
+                             });
+                         }];
 }
 
 - (void)configurePlayerAndScrubber {
@@ -405,8 +419,8 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     self.timeObserver = [self.player addPeriodicTimeObserverForInterval:CMTimeMake(1, 30)
                                                                   queue:dispatch_get_main_queue()
                                                              usingBlock:^(CMTime time) {
-        [weakSelf playbackTimeChanged:CMTimeGetSeconds(time)];
-    }];
+                                                                 [weakSelf playbackTimeChanged:CMTimeGetSeconds(time)];
+                                                             }];
 
     self.playerReady = YES;
     [self updateTimeLabel];
@@ -418,12 +432,13 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // drawn in IG's white text color (no gray card) so they read on the editor's
 // black pane. Created hidden; shown by -setAudioPresentation:.
 - (UIImageView *)ensureAudioArtworkView {
-    if (_audioArtworkView) return _audioArtworkView;
+    if (_audioArtworkView)
+        return _audioArtworkView;
     // Resolve the dynamic text color against dark (the editor is always dark) so
     // the baked-in bar image is white regardless of the drawing trait collection.
     UIColor *barColor = [[SPKUtils SPKColor_InstagramPrimaryText]
-        resolvedColorWithTraitCollection:[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark]]
-        ?: [UIColor whiteColor];
+                            resolvedColorWithTraitCollection:[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark]]
+                            ?: [UIColor whiteColor];
     UIImageView *art = [[UIImageView alloc] initWithImage:[SPKGalleryFile audioGlyphImageWithBarColor:barColor]];
     art.translatesAutoresizingMaskIntoConstraints = NO;
     art.contentMode = UIViewContentModeScaleAspectFit;
@@ -462,7 +477,8 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 #pragma mark - Playback
 
 - (void)playbackTimeChanged:(NSTimeInterval)t {
-    if (self.scrubberInteracting || self.scrubber.isFrameOnlyMode) return;
+    if (self.scrubberInteracting || self.scrubber.isFrameOnlyMode)
+        return;
     self.scrubber.playheadTime = t;
     [self updateTimeLabel];
     // Loop within the selected range.
@@ -472,7 +488,8 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 }
 
 - (void)togglePlayback {
-    if (self.scrubber.isFrameOnlyMode || !self.player) return;
+    if (self.scrubber.isFrameOnlyMode || !self.player)
+        return;
     if (self.isPlaying) {
         [self.player pause];
         self.isPlaying = NO;
@@ -528,19 +545,19 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     // Refine an existing edit when one is locked in; otherwise start from the raw
     // frame at the current playhead.
     UIImage *frame = self.pendingEditedFrameURL
-        ? [UIImage imageWithContentsOfFile:self.pendingEditedFrameURL.path]
-        : [self extractFrameAtSeconds:self.scrubber.frameTime];
+                         ? [UIImage imageWithContentsOfFile:self.pendingEditedFrameURL.path]
+                         : [self extractFrameAtSeconds:self.scrubber.frameTime];
     if (!frame) {
         [self failWithMessage:@"Couldn't read this frame."];
         return;
     }
     __weak typeof(self) weakSelf = self;
     [SPKPhotoEditorViewController presentWithSourceImage:frame
-                                          configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
-                                                   from:self
-                                             completion:^(UIImage *edited) {
-        [weakSelf applyEditedFrame:edited];
-    }];
+                                           configuration:[SPKPhotoEditorConfiguration freeformConfiguration]
+                                                    from:self
+                                              completion:^(UIImage *edited) {
+                                                  [weakSelf applyEditedFrame:edited];
+                                              }];
 }
 
 // Discards the locked-in edit and returns to free frame selection.
@@ -552,14 +569,16 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 }
 
 - (UIImage *)extractFrameAtSeconds:(NSTimeInterval)seconds {
-    if (!self.asset) return nil;
+    if (!self.asset)
+        return nil;
     AVAssetImageGenerator *generator = [AVAssetImageGenerator assetImageGeneratorWithAsset:self.asset];
     generator.appliesPreferredTrackTransform = YES;
     generator.requestedTimeToleranceBefore = kCMTimeZero;
     generator.requestedTimeToleranceAfter = kCMTimeZero;
     CMTime time = CMTimeMakeWithSeconds(seconds, 600);
     CGImageRef cg = [generator copyCGImageAtTime:time actualTime:NULL error:NULL];
-    if (!cg) return nil;
+    if (!cg)
+        return nil;
     UIImage *image = [UIImage imageWithCGImage:cg];
     CGImageRelease(cg);
     return image;
@@ -567,11 +586,13 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 
 - (void)applyEditedFrame:(UIImage *)edited {
     NSData *data = edited ? UIImageJPEGRepresentation(edited, 0.95) : nil;
-    if (!data) return;
+    if (!data)
+        return;
     [self clearPendingEditedFrame];
     NSString *name = [[[NSProcessInfo processInfo] globallyUniqueString] stringByAppendingPathExtension:@"jpg"];
     NSURL *url = [[NSURL fileURLWithPath:NSTemporaryDirectory()] URLByAppendingPathComponent:name];
-    if (![data writeToURL:url options:NSDataWritingAtomic error:NULL]) return;
+    if (![data writeToURL:url options:NSDataWritingAtomic error:NULL])
+        return;
     self.pendingEditedFrameURL = url;
     self.editedFramePreview.image = edited;
     [self updateTimeLabel];
@@ -629,14 +650,14 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     if (self.scrubber.isFrameOnlyMode) {
         NSString *suffix = self.pendingEditedFrameURL ? @"  •  edited" : @"";
         self.timeLabel.text = [NSString stringWithFormat:@"Frame • %@%@",
-                               SPKTrimFormatTime(self.scrubber.frameTime), suffix];
+                                                         SPKTrimFormatTime(self.scrubber.frameTime), suffix];
         return;
     }
     NSTimeInterval dur = self.scrubber.endTime - self.scrubber.startTime;
     self.timeLabel.text = [NSString stringWithFormat:@"%@ – %@  •  %.1fs",
-                           SPKTrimFormatTime(self.scrubber.startTime),
-                           SPKTrimFormatTime(self.scrubber.endTime),
-                           dur];
+                                                     SPKTrimFormatTime(self.scrubber.startTime),
+                                                     SPKTrimFormatTime(self.scrubber.endTime),
+                                                     dur];
 }
 
 #pragma mark - SPKTrimScrubberViewDelegate
@@ -697,14 +718,14 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
             iconName = @"audio_download";
         }
         UIImage *image = iconName.length > 0
-            ? [SPKAssetUtils instagramIconNamed:iconName pointSize:22.0]
-            : nil;
+                             ? [SPKAssetUtils instagramIconNamed:iconName pointSize:22.0]
+                             : nil;
         UIAction *action = [UIAction actionWithTitle:title
                                                image:image
                                           identifier:nil
                                              handler:^(__unused UIAction *a) {
-            [weakSelf finishWithDestinationTag:identifier];
-        }];
+                                                 [weakSelf finishWithDestinationTag:identifier];
+                                             }];
         [children addObject:action];
     }
     return [UIMenu menuWithTitle:@"" children:children];
@@ -721,8 +742,8 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         return self.availableModes.firstObject.integerValue;
     }
     return (self.configuration.mediaKind == SPKTrimMediaKindAudio)
-        ? SPKTrimResultModeTrimmedAudio
-        : SPKTrimResultModeTrimmedVideo;
+               ? SPKTrimResultModeTrimmedAudio
+               : SPKTrimResultModeTrimmedVideo;
 }
 
 // Reassigns the Done menu's button so it reflects the current mode (see
@@ -747,9 +768,9 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
     SPKTrimResult *result;
     if (currentMode == SPKTrimResultModeFrameOnly) {
         result = [SPKTrimResult requestWithMode:SPKTrimResultModeFrameOnly
-                                       sourceURL:self.configuration.sourceURL
-                                    startSeconds:self.scrubber.frameTime
-                                 durationSeconds:0.0];
+                                      sourceURL:self.configuration.sourceURL
+                                   startSeconds:self.scrubber.frameTime
+                                durationSeconds:0.0];
         // If the user edited this frame, hand the pre-rendered edit to the save
         // pipeline (it short-circuits extraction). Transfer ownership so dealloc
         // doesn't delete the file before the coordinator consumes it.
@@ -759,14 +780,14 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         }
     } else if (currentMode == SPKTrimResultModeTrimmedAudio) {
         result = [SPKTrimResult requestWithMode:SPKTrimResultModeTrimmedAudio
-                                       sourceURL:self.configuration.sourceURL
-                                    startSeconds:self.scrubber.startTime
-                                 durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
+                                      sourceURL:self.configuration.sourceURL
+                                   startSeconds:self.scrubber.startTime
+                                durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
     } else {
         result = [SPKTrimResult requestWithMode:SPKTrimResultModeTrimmedVideo
-                                       sourceURL:self.configuration.sourceURL
-                                    startSeconds:self.scrubber.startTime
-                                 durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
+                                      sourceURL:self.configuration.sourceURL
+                                   startSeconds:self.scrubber.startTime
+                                durationSeconds:(self.scrubber.endTime - self.scrubber.startTime)];
     }
     result.destinationTag = destinationTag;
     [self finishWithResult:result];
@@ -779,12 +800,15 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 }
 
 - (void)finishWithResult:(SPKTrimResult *)result {
-    if (self.finished) return;
+    if (self.finished)
+        return;
     self.finished = YES;
     void (^completion)(SPKTrimResult *_Nullable) = self.completion;
-    [self dismissViewControllerAnimated:YES completion:^{
-        if (completion) completion(result);
-    }];
+    [self dismissViewControllerAnimated:YES
+                             completion:^{
+                                 if (completion)
+                                     completion(result);
+                             }];
 }
 
 @end

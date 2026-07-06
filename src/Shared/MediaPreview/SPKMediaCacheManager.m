@@ -6,7 +6,8 @@
 #import "SPKMediaItem.h"
 
 static NSString *SPKSHA256String(NSString *value) {
-    if (value.length == 0) return @"";
+    if (value.length == 0)
+        return @"";
 
     NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
     uint8_t digest[CC_SHA256_DIGEST_LENGTH];
@@ -20,7 +21,8 @@ static NSString *SPKSHA256String(NSString *value) {
 }
 
 static NSString *SPKFileKeyForURL(NSURL *url) {
-    return url.absoluteString ?: url.path ?: @"";
+    return url.absoluteString ?: url.path ?
+                                          : @"";
 }
 
 @interface SPKMediaCacheManager ()
@@ -29,7 +31,7 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *thumbnailCache;
 @property (nonatomic, strong) dispatch_queue_t stateQueue;
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSMutableArray<void (^)(NSURL * _Nullable, NSError * _Nullable)> *> *downloadCompletions;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSMutableArray<void (^)(NSURL *_Nullable, NSError *_Nullable)> *> *downloadCompletions;
 
 @end
 
@@ -93,7 +95,8 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
 }
 
 - (nullable NSURL *)bestAvailableFileURLForItem:(SPKMediaItem *)item {
-    if (!item) return nil;
+    if (!item)
+        return nil;
 
     [self ensureDirectoriesExist];
 
@@ -118,10 +121,12 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
 }
 
 - (nullable NSURL *)cachedFileURLForRemoteURL:(NSURL *)url {
-    if (!url || url.isFileURL) return nil;
+    if (!url || url.isFileURL)
+        return nil;
 
     NSString *key = SPKFileKeyForURL(url);
-    if (key.length == 0) return nil;
+    if (key.length == 0)
+        return nil;
 
     NSString *hash = SPKSHA256String(key);
     NSString *ext = url.pathExtension.lowercaseString;
@@ -146,45 +151,49 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
 }
 
 - (void)fetchLocalFileURLForItem:(SPKMediaItem *)item
-                      completion:(void (^)(NSURL * _Nullable localURL, NSError * _Nullable error))completion {
+                      completion:(void (^)(NSURL *_Nullable localURL, NSError *_Nullable error))completion {
     if (!item) {
         if (completion) {
             completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
                                                 code:-1
-                                            userInfo:@{NSLocalizedDescriptionKey: @"Missing media item"}]);
+                                            userInfo:@{NSLocalizedDescriptionKey : @"Missing media item"}]);
         }
         return;
     }
 
     NSURL *existingURL = [self bestAvailableFileURLForItem:item];
     if (existingURL) {
-        if (completion) completion(existingURL, nil);
+        if (completion)
+            completion(existingURL, nil);
         return;
     }
 
     NSURL *remoteURL = item.fileURL;
     if (!remoteURL || remoteURL.isFileURL) {
-        if (completion) completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
-                                                            code:-2
-                                                        userInfo:@{NSLocalizedDescriptionKey: @"Missing remote media URL"}]);
+        if (completion)
+            completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
+                                                code:-2
+                                            userInfo:@{NSLocalizedDescriptionKey : @"Missing remote media URL"}]);
         return;
     }
 
     NSString *key = SPKFileKeyForURL(remoteURL);
     if (key.length == 0) {
-        if (completion) completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
-                                                            code:-3
-                                                        userInfo:@{NSLocalizedDescriptionKey: @"Invalid remote media URL"}]);
+        if (completion)
+            completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
+                                                code:-3
+                                            userInfo:@{NSLocalizedDescriptionKey : @"Invalid remote media URL"}]);
         return;
     }
 
     __weak typeof(self) weakSelf = self;
     dispatch_async(self.stateQueue, ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+        if (!strongSelf)
+            return;
 
         NSMutableArray *existingCompletions = strongSelf.downloadCompletions[key];
-        void (^wrappedCompletion)(NSURL * _Nullable, NSError * _Nullable) = ^(NSURL * _Nullable localURL, NSError * _Nullable error) {
+        void (^wrappedCompletion)(NSURL *_Nullable, NSError *_Nullable) = ^(NSURL *_Nullable localURL, NSError *_Nullable error) {
             if (localURL) {
                 item.resolvedFileURL = localURL;
             }
@@ -208,52 +217,54 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
 
         NSURLSessionDownloadTask *task = [strongSelf.session downloadTaskWithRequest:request
                                                                    completionHandler:^(NSURL *tempURL, NSURLResponse *response, NSError *error) {
-            NSURL *finalURL = nil;
-            NSError *finalError = error;
+                                                                       NSURL *finalURL = nil;
+                                                                       NSError *finalError = error;
 
-            if (!finalError && tempURL) {
-                [strongSelf ensureDirectoriesExist];
+                                                                       if (!finalError && tempURL) {
+                                                                           [strongSelf ensureDirectoriesExist];
 
-                NSString *hash = SPKSHA256String(key);
-                NSString *ext = remoteURL.pathExtension.lowercaseString;
-                if (ext.length == 0) {
-                    ext = response.suggestedFilename.pathExtension.lowercaseString;
-                }
-                if (ext.length == 0) {
-                    ext = [strongSelf inferredDefaultExtensionForURL:remoteURL];
-                }
+                                                                           NSString *hash = SPKSHA256String(key);
+                                                                           NSString *ext = remoteURL.pathExtension.lowercaseString;
+                                                                           if (ext.length == 0) {
+                                                                               ext = response.suggestedFilename.pathExtension.lowercaseString;
+                                                                           }
+                                                                           if (ext.length == 0) {
+                                                                               ext = [strongSelf inferredDefaultExtensionForURL:remoteURL];
+                                                                           }
 
-                NSString *fileName = ext.length > 0 ? [NSString stringWithFormat:@"%@.%@", hash, ext] : hash;
-                NSURL *destinationURL = [[strongSelf fileCacheDirectoryURL] URLByAppendingPathComponent:fileName];
-                [[NSFileManager defaultManager] removeItemAtURL:destinationURL error:nil];
-                if ([[NSFileManager defaultManager] moveItemAtURL:tempURL toURL:destinationURL error:&finalError]) {
-                    finalURL = destinationURL;
-                }
-            }
+                                                                           NSString *fileName = ext.length > 0 ? [NSString stringWithFormat:@"%@.%@", hash, ext] : hash;
+                                                                           NSURL *destinationURL = [[strongSelf fileCacheDirectoryURL] URLByAppendingPathComponent:fileName];
+                                                                           [[NSFileManager defaultManager] removeItemAtURL:destinationURL error:nil];
+                                                                           if ([[NSFileManager defaultManager] moveItemAtURL:tempURL toURL:destinationURL error:&finalError]) {
+                                                                               finalURL = destinationURL;
+                                                                           }
+                                                                       }
 
-            dispatch_async(strongSelf.stateQueue, ^{
-                NSArray<void (^)(NSURL * _Nullable, NSError * _Nullable)> *callbacks = [strongSelf.downloadCompletions[key] copy] ?: @[];
-                [strongSelf.downloadCompletions removeObjectForKey:key];
-                for (void (^callback)(NSURL * _Nullable, NSError * _Nullable) in callbacks) {
-                    callback(finalURL, finalError);
-                }
-            });
-        }];
+                                                                       dispatch_async(strongSelf.stateQueue, ^{
+                                                                           NSArray<void (^)(NSURL *_Nullable, NSError *_Nullable)> *callbacks = [strongSelf.downloadCompletions[key] copy] ?: @[];
+                                                                           [strongSelf.downloadCompletions removeObjectForKey:key];
+                                                                           for (void (^callback)(NSURL *_Nullable, NSError *_Nullable) in callbacks) {
+                                                                               callback(finalURL, finalError);
+                                                                           }
+                                                                       });
+                                                                   }];
         [task resume];
     });
 }
 
 - (void)loadImageForItem:(SPKMediaItem *)item
-              completion:(void (^)(UIImage * _Nullable image, NSError * _Nullable error))completion {
+              completion:(void (^)(UIImage *_Nullable image, NSError *_Nullable error))completion {
     if (!item) {
-        if (completion) completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
-                                                            code:-4
-                                                        userInfo:@{NSLocalizedDescriptionKey: @"Missing media item"}]);
+        if (completion)
+            completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
+                                                code:-4
+                                            userInfo:@{NSLocalizedDescriptionKey : @"Missing media item"}]);
         return;
     }
 
     if (item.image) {
-        if (completion) completion(item.image, nil);
+        if (completion)
+            completion(item.image, nil);
         return;
     }
 
@@ -263,7 +274,8 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
         UIImage *cachedImage = [self.imageCache objectForKey:cacheKey];
         if (cachedImage) {
             item.image = cachedImage;
-            if (completion) completion(cachedImage, nil);
+            if (completion)
+                completion(cachedImage, nil);
             return;
         }
     }
@@ -271,7 +283,8 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
     __weak typeof(self) weakSelf = self;
     void (^decodeImageAtURL)(NSURL *) = ^(NSURL *localURL) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+        if (!strongSelf)
+            return;
 
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
             UIImage *image = nil;
@@ -285,11 +298,12 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
                     if (cacheKey.length > 0) {
                         [strongSelf.imageCache setObject:image forKey:cacheKey];
                     }
-                    if (completion) completion(image, nil);
+                    if (completion)
+                        completion(image, nil);
                 } else if (completion) {
                     completion(nil, [NSError errorWithDomain:@"SPKMediaCacheManager"
                                                         code:-5
-                                                    userInfo:@{NSLocalizedDescriptionKey: @"Failed to decode image"}]);
+                                                    userInfo:@{NSLocalizedDescriptionKey : @"Failed to decode image"}]);
                 }
             });
         });
@@ -300,24 +314,28 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
         return;
     }
 
-    [self fetchLocalFileURLForItem:item completion:^(NSURL * _Nullable localURL, NSError * _Nullable error) {
-        if (!localURL || error) {
-            if (completion) completion(nil, error);
-            return;
-        }
-        decodeImageAtURL(localURL);
-    }];
+    [self fetchLocalFileURLForItem:item
+                        completion:^(NSURL *_Nullable localURL, NSError *_Nullable error) {
+                            if (!localURL || error) {
+                                if (completion)
+                                    completion(nil, error);
+                                return;
+                            }
+                            decodeImageAtURL(localURL);
+                        }];
 }
 
 - (void)loadThumbnailForVideoItem:(SPKMediaItem *)item
-                       completion:(void (^)(UIImage * _Nullable image))completion {
+                       completion:(void (^)(UIImage *_Nullable image))completion {
     if (!item || item.mediaType != SPKMediaItemTypeVideo) {
-        if (completion) completion(nil);
+        if (completion)
+            completion(nil);
         return;
     }
 
     if (item.thumbnail) {
-        if (completion) completion(item.thumbnail);
+        if (completion)
+            completion(item.thumbnail);
         return;
     }
 
@@ -326,14 +344,16 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
         UIImage *cachedImage = [self.thumbnailCache objectForKey:cacheKey];
         if (cachedImage) {
             item.thumbnail = cachedImage;
-            if (completion) completion(cachedImage);
+            if (completion)
+                completion(cachedImage);
             return;
         }
     }
 
     NSURL *sourceURL = [self bestAvailableFileURLForItem:item] ?: item.fileURL;
     if (!sourceURL) {
-        if (completion) completion(nil);
+        if (completion)
+            completion(nil);
         return;
     }
 
@@ -357,24 +377,29 @@ static NSString *SPKFileKeyForURL(NSURL *url) {
                     [self.thumbnailCache setObject:thumbnail forKey:cacheKey];
                 }
             }
-            if (completion) completion(thumbnail);
+            if (completion)
+                completion(thumbnail);
         });
     });
 }
 
 - (void)prefetchItem:(SPKMediaItem *)item {
-    if (!item) return;
+    if (!item)
+        return;
 
     if (item.mediaType == SPKMediaItemTypeImage) {
-        [self loadImageForItem:item completion:^(__unused UIImage *image, __unused NSError *error) {
-        }];
+        [self loadImageForItem:item
+                    completion:^(__unused UIImage *image, __unused NSError *error){
+                    }];
         return;
     }
 
-    [self fetchLocalFileURLForItem:item completion:^(__unused NSURL *localURL, __unused NSError *error) {
-    }];
-    [self loadThumbnailForVideoItem:item completion:^(__unused UIImage *image) {
-    }];
+    [self fetchLocalFileURLForItem:item
+                        completion:^(__unused NSURL *localURL, __unused NSError *error){
+                        }];
+    [self loadThumbnailForVideoItem:item
+                         completion:^(__unused UIImage *image){
+                         }];
 }
 
 @end

@@ -1,5 +1,5 @@
-#import <Foundation/Foundation.h>
 #import "SPKDeletedMessagesModels.h"
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -23,7 +23,7 @@ extern NSNotificationName const SPKDeletedMessagesDidChangeNotification;
 // or when it has two or more distinct non-owner senders.
 + (NSArray<SPKDeletedMessageGroup *> *)groupedForOwnerPK:(NSString *)ownerPK;
 + (NSArray<SPKDeletedMessage *> *)messagesForSenderPK:(NSString *)senderPK
-                                            ownerPK:(NSString *)ownerPK;
+                                              ownerPK:(NSString *)ownerPK;
 
 // All captured messages in a thread (every sender, including the owner's own
 // unsends), oldest-first by sent time — used to render a chat-style view.
@@ -65,7 +65,7 @@ extern NSNotificationName const SPKDeletedMessagesDidChangeNotification;
 + (BOOL)backfillThreadTitle:(nullable NSString *)title
                     isGroup:(BOOL)isGroup
                    photoURL:(nullable NSString *)photoURL
-               forThreadId:(NSString *)threadId
+                forThreadId:(NSString *)threadId
                     ownerPK:(NSString *)ownerPK;
 
 + (BOOL)isSenderPinned:(NSString *)senderPK ownerPK:(NSString *)ownerPK;
@@ -87,7 +87,7 @@ extern NSNotificationName const SPKDeletedMessagesDidChangeNotification;
 
 // Absolute paths derived from relative paths stored on the model.
 + (nullable NSString *)absolutePathForRelativePath:(nullable NSString *)relativePath
-                                          ownerPK:(NSString *)ownerPK;
+                                           ownerPK:(NSString *)ownerPK;
 
 // Reserve a relative path under media/<ownerPK>/ for a new blob. Caller writes the file.
 + (NSString *)reserveRelativeMediaPathForMessageId:(NSString *)messageId
@@ -110,9 +110,9 @@ extern NSNotificationName const SPKDeletedMessagesDidChangeNotification;
 + (NSArray<NSDictionary *> *)pendingRemovalsForOwnerPK:(NSString *)ownerPK;
 + (void)removePendingRemovalForMessageId:(NSString *)messageId ownerPK:(NSString *)ownerPK;
 + (NSString *)reserveRelativeStagedMediaPathForMessageId:(NSString *)messageId
-                                                extension:(nullable NSString *)ext
-                                                   ownerPK:(NSString *)ownerPK
-                                                 thumbnail:(BOOL)thumbnail;
+                                               extension:(nullable NSString *)ext
+                                                 ownerPK:(NSString *)ownerPK
+                                               thumbnail:(BOOL)thumbnail;
 + (nullable NSString *)absoluteStagedPathForRelativePath:(nullable NSString *)relativePath ownerPK:(NSString *)ownerPK;
 + (nullable NSString *)promoteStagedRelativePath:(nullable NSString *)relativePath
                                        messageId:(NSString *)messageId

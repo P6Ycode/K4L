@@ -1,10 +1,10 @@
 #import "SPKGalleryFileDetailsViewController.h"
-#import "SPKGalleryFile.h"
-#import "SPKGalleryCoreDataStack.h"
+#import "../../Utils.h"
 #import "../Account/SPKAccountManager.h"
 #import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKMediaChrome.h"
-#import "../../Utils.h"
+#import "SPKGalleryCoreDataStack.h"
+#import "SPKGalleryFile.h"
 
 typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
     SPKDetailsEditRowName = 0,
@@ -71,23 +71,25 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
 - (void)buildInfoRows {
     NSMutableArray<NSArray<NSString *> *> *rows = [NSMutableArray array];
     NSString *typeName = @"Photo";
-    if (self.file.mediaType == SPKGalleryMediaTypeVideo) typeName = @"Video";
-    else if (self.file.mediaType == SPKGalleryMediaTypeAudio) typeName = @"Audio";
-    [rows addObject:@[@"Type", typeName]];
+    if (self.file.mediaType == SPKGalleryMediaTypeVideo)
+        typeName = @"Video";
+    else if (self.file.mediaType == SPKGalleryMediaTypeAudio)
+        typeName = @"Audio";
+    [rows addObject:@[ @"Type", typeName ]];
     if (self.file.pixelWidth > 0 && self.file.pixelHeight > 0) {
-        [rows addObject:@[@"Dimensions", [NSString stringWithFormat:@"%d × %d", self.file.pixelWidth, self.file.pixelHeight]]];
+        [rows addObject:@[ @"Dimensions", [NSString stringWithFormat:@"%d × %d", self.file.pixelWidth, self.file.pixelHeight] ]];
     }
     if (self.file.mediaType == SPKGalleryMediaTypeVideo && self.file.durationSeconds > 0) {
         NSInteger total = (NSInteger)llround(self.file.durationSeconds);
-        [rows addObject:@[@"Duration", [NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)]]];
+        [rows addObject:@[ @"Duration", [NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)] ]];
     }
     if (self.file.fileSize > 0) {
-        [rows addObject:@[@"Size", [NSByteCountFormatter stringFromByteCount:self.file.fileSize countStyle:NSByteCountFormatterCountStyleFile]]];
+        [rows addObject:@[ @"Size", [NSByteCountFormatter stringFromByteCount:self.file.fileSize countStyle:NSByteCountFormatterCountStyleFile] ]];
     }
     NSString *folder = self.file.folderPath.length > 0 ? [self.file.folderPath lastPathComponent] : @"Gallery";
-    [rows addObject:@[@"Folder", folder]];
+    [rows addObject:@[ @"Folder", folder ]];
     if (self.file.sourceMediaCode.length > 0) {
-        [rows addObject:@[@"Media code", self.file.sourceMediaCode]];
+        [rows addObject:@[ @"Media code", self.file.sourceMediaCode ]];
     }
     self.infoRows = rows;
 }
@@ -147,30 +149,30 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
 
     if (indexPath.section == 0) {
         switch ((SPKDetailsEditRow)indexPath.row) {
-            case SPKDetailsEditRowName:
-                cell.textLabel.text = @"Name";
-                [self embedAccessory:self.nameField inCell:cell];
-                break;
-            case SPKDetailsEditRowUsername:
-                cell.textLabel.text = @"Username";
-                [self embedAccessory:self.usernameField inCell:cell];
-                break;
-            case SPKDetailsEditRowAccount: {
-                cell.textLabel.text = @"Account";
-                cell.detailTextLabel.text = [self ownerDisplayText];
-                cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-                cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-                UIView *selectedBackground = [[UIView alloc] init];
-                selectedBackground.backgroundColor = [SPKUtils SPKColor_InstagramPressedBackground];
-                cell.selectedBackgroundView = selectedBackground;
-                break;
-            }
-            case SPKDetailsEditRowDate:
-                cell.textLabel.text = @"Date";
-                [self embedAccessory:self.datePicker inCell:cell];
-                break;
-            default:
-                break;
+        case SPKDetailsEditRowName:
+            cell.textLabel.text = @"Name";
+            [self embedAccessory:self.nameField inCell:cell];
+            break;
+        case SPKDetailsEditRowUsername:
+            cell.textLabel.text = @"Username";
+            [self embedAccessory:self.usernameField inCell:cell];
+            break;
+        case SPKDetailsEditRowAccount: {
+            cell.textLabel.text = @"Account";
+            cell.detailTextLabel.text = [self ownerDisplayText];
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+            UIView *selectedBackground = [[UIView alloc] init];
+            selectedBackground.backgroundColor = [SPKUtils SPKColor_InstagramPressedBackground];
+            cell.selectedBackgroundView = selectedBackground;
+            break;
+        }
+        case SPKDetailsEditRowDate:
+            cell.textLabel.text = @"Date";
+            [self embedAccessory:self.datePicker inCell:cell];
+            break;
+        default:
+            break;
         }
     } else {
         NSArray<NSString *> *row = self.infoRows[indexPath.row];
@@ -181,10 +183,11 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
 }
 
 - (NSString *)ownerDisplayText {
-    if (self.selectedOwnerPK.length == 0) return @"Unassigned";
+    if (self.selectedOwnerPK.length == 0)
+        return @"Unassigned";
     NSString *username = self.selectedOwnerUsername.length > 0
-        ? self.selectedOwnerUsername
-        : [SPKAccountManager usernameForPK:self.selectedOwnerPK];
+                             ? self.selectedOwnerUsername
+                             : [SPKAccountManager usernameForPK:self.selectedOwnerPK];
     return username.length > 0 ? [@"@" stringByAppendingString:username] : self.selectedOwnerPK;
 }
 
@@ -195,10 +198,13 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
     NSMutableArray<NSDictionary *> *accounts = [[SPKAccountManager knownAccounts] mutableCopy];
     BOOL hasSelected = NO;
     for (NSDictionary *account in accounts) {
-        if ([account[@"pk"] isEqualToString:self.selectedOwnerPK]) { hasSelected = YES; break; }
+        if ([account[@"pk"] isEqualToString:self.selectedOwnerPK]) {
+            hasSelected = YES;
+            break;
+        }
     }
     if (self.selectedOwnerPK.length > 0 && !hasSelected) {
-        [accounts addObject:@{ @"pk": self.selectedOwnerPK, @"username": self.selectedOwnerUsername ?: @"" }];
+        [accounts addObject:@{@"pk" : self.selectedOwnerPK, @"username" : self.selectedOwnerUsername ?: @""}];
     }
     return accounts;
 }
@@ -209,25 +215,30 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
     for (NSDictionary *account in [self pickerAccounts]) {
         NSString *pk = account[@"pk"];
         NSString *username = account[@"username"];
-        if (![pk isKindOfClass:[NSString class]] || pk.length == 0) continue;
+        if (![pk isKindOfClass:[NSString class]] || pk.length == 0)
+            continue;
         NSString *title = username.length > 0 ? [@"@" stringByAppendingString:username] : pk;
-        [actions addObject:[SPKIGAlertAction actionWithTitle:title style:SPKIGAlertActionStyleDefault handler:^{
-            weakSelf.selectedOwnerPK = pk;
-            weakSelf.selectedOwnerUsername = username.length > 0 ? username : nil;
-            [weakSelf.tableView reloadData];
-        }]];
+        [actions addObject:[SPKIGAlertAction actionWithTitle:title
+                                                       style:SPKIGAlertActionStyleDefault
+                                                     handler:^{
+                                                         weakSelf.selectedOwnerPK = pk;
+                                                         weakSelf.selectedOwnerUsername = username.length > 0 ? username : nil;
+                                                         [weakSelf.tableView reloadData];
+                                                     }]];
     }
-    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Unassigned" style:SPKIGAlertActionStyleDestructive handler:^{
-        weakSelf.selectedOwnerPK = nil;
-        weakSelf.selectedOwnerUsername = nil;
-        [weakSelf.tableView reloadData];
-    }]];
+    [actions addObject:[SPKIGAlertAction actionWithTitle:@"Unassigned"
+                                                   style:SPKIGAlertActionStyleDestructive
+                                                 handler:^{
+                                                     weakSelf.selectedOwnerPK = nil;
+                                                     weakSelf.selectedOwnerUsername = nil;
+                                                     [weakSelf.tableView reloadData];
+                                                 }]];
     [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
 
     [SPKIGAlertPresenter presentActionSheetFromViewController:self
-                                                       title:@"Change File Owner"
-                                                     message:@"Which account does this file belong to?"
-                                                     actions:actions];
+                                                        title:@"Change File Owner"
+                                                      message:@"Which account does this file belong to?"
+                                                      actions:actions];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -243,7 +254,8 @@ typedef NS_ENUM(NSInteger, SPKDetailsEditRow) {
     cell.accessoryView = nil;
     [cell.contentView addSubview:view];
     [NSLayoutConstraint activateConstraints:@[
-        [view.leadingAnchor constraintEqualToAnchor:cell.textLabel.trailingAnchor constant:12],
+        [view.leadingAnchor constraintEqualToAnchor:cell.textLabel.trailingAnchor
+                                           constant:12],
         [view.trailingAnchor constraintEqualToAnchor:cell.contentView.layoutMarginsGuide.trailingAnchor],
         [view.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
     ]];

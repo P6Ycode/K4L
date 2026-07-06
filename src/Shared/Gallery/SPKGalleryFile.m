@@ -3,13 +3,13 @@
 #import <ctype.h>
 #import <math.h>
 
-#import "SPKGalleryFile.h"
-#import "SPKGalleryPaths.h"
-#import "SPKGalleryCoreDataStack.h"
-#import "SPKGalleryOriginController.h"
-#import "../Account/SPKAccountManager.h"
-#import "../../Utils.h"
 #import "../../AssetUtils.h"
+#import "../../Utils.h"
+#import "../Account/SPKAccountManager.h"
+#import "SPKGalleryCoreDataStack.h"
+#import "SPKGalleryFile.h"
+#import "SPKGalleryOriginController.h"
+#import "SPKGalleryPaths.h"
 
 static CGFloat const kThumbnailSize = 300.0;
 
@@ -32,8 +32,8 @@ static dispatch_queue_t SPKGalleryThumbnailStateQueue(void) {
     return queue;
 }
 
-static NSMutableDictionary<NSString *, NSMutableArray<void(^)(BOOL success)> *> *SPKGalleryThumbnailCompletions(void) {
-    static NSMutableDictionary<NSString *, NSMutableArray<void(^)(BOOL success)> *> *completions;
+static NSMutableDictionary<NSString *, NSMutableArray<void (^)(BOOL success)> *> *SPKGalleryThumbnailCompletions(void) {
+    static NSMutableDictionary<NSString *, NSMutableArray<void (^)(BOOL success)> *> *completions;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         completions = [NSMutableDictionary dictionary];
@@ -41,7 +41,7 @@ static NSMutableDictionary<NSString *, NSMutableArray<void(^)(BOOL success)> *> 
     return completions;
 }
 
-static NSString *SPKGalleryNormalizedExtension(NSString * _Nullable origExt, SPKGalleryMediaType mediaType) {
+static NSString *SPKGalleryNormalizedExtension(NSString *_Nullable origExt, SPKGalleryMediaType mediaType) {
     NSString *e = origExt.length ? origExt.lowercaseString : @"";
     static NSSet<NSString *> *imageExts;
     static NSSet<NSString *> *videoExts;
@@ -57,43 +57,56 @@ static NSString *SPKGalleryNormalizedExtension(NSString * _Nullable origExt, SPK
     // (audio extracted from a video container), which makes the file look like a
     // video to every downstream extension-based check and breaks duplicate detection.
     if (e.length > 0 && e.length <= 5) {
-        if (mediaType == SPKGalleryMediaTypeAudio && [audioExts containsObject:e]) return e;
-        if (mediaType == SPKGalleryMediaTypeVideo && [videoExts containsObject:e]) return e;
+        if (mediaType == SPKGalleryMediaTypeAudio && [audioExts containsObject:e])
+            return e;
+        if (mediaType == SPKGalleryMediaTypeVideo && [videoExts containsObject:e])
+            return e;
         if (mediaType == SPKGalleryMediaTypeImage && [imageExts containsObject:e]) {
             return [e isEqualToString:@"jpeg"] ? @"jpg" : e;
         }
     }
-    if (mediaType == SPKGalleryMediaTypeAudio) return @"m4a";
+    if (mediaType == SPKGalleryMediaTypeAudio)
+        return @"m4a";
     return (mediaType == SPKGalleryMediaTypeVideo) ? @"mp4" : @"jpg";
 }
 
 static NSString *SPKGallerySourceSlug(SPKGallerySource source) {
     switch (source) {
-        case SPKGallerySourceFeed:    return @"feed";
-        case SPKGallerySourceStories: return @"story";
-        case SPKGallerySourceReels:   return @"reel";
-        case SPKGallerySourceProfile: return @"profile-photo";
-        case SPKGallerySourceDMs:     return @"dms";
-        case SPKGallerySourceThumbnail: return @"thumbnail";
-        case SPKGallerySourceInstants: return @"instants";
-        case SPKGallerySourceAudioPage: return @"audio-page";
-        case SPKGallerySourceComments: return @"comments";
-        case SPKGallerySourceOther:
-        default:                    return @"other";
+    case SPKGallerySourceFeed:
+        return @"feed";
+    case SPKGallerySourceStories:
+        return @"story";
+    case SPKGallerySourceReels:
+        return @"reel";
+    case SPKGallerySourceProfile:
+        return @"profile-photo";
+    case SPKGallerySourceDMs:
+        return @"dms";
+    case SPKGallerySourceThumbnail:
+        return @"thumbnail";
+    case SPKGallerySourceInstants:
+        return @"instants";
+    case SPKGallerySourceAudioPage:
+        return @"audio-page";
+    case SPKGallerySourceComments:
+        return @"comments";
+    case SPKGallerySourceOther:
+    default:
+        return @"other";
     }
 }
 
 /// Path component for a canonical web post/reel link (`/p/` or `/reel/`). Stories are intentionally excluded — they use `/stories/<user>/<pk>/` instead, built separately. Returns nil for sources that have no shareable post link.
 static NSString *SPKGalleryPostPathComponentForSource(SPKGallerySource source) {
     switch (source) {
-        case SPKGallerySourceReels:
-            return @"reel";
-        case SPKGallerySourceFeed:
-        case SPKGallerySourceProfile:
-        case SPKGallerySourceOther:
-            return @"p";
-        default:
-            return nil;
+    case SPKGallerySourceReels:
+        return @"reel";
+    case SPKGallerySourceFeed:
+    case SPKGallerySourceProfile:
+    case SPKGallerySourceOther:
+        return @"p";
+    default:
+        return nil;
     }
 }
 
@@ -114,24 +127,24 @@ static NSString *SPKSanitizedGalleryUsername(NSString *raw) {
     NSUInteger maxLen = 48;
     [raw enumerateSubstringsInRange:NSMakeRange(0, raw.length)
                             options:NSStringEnumerationByComposedCharacterSequences
-                         usingBlock:^(NSString * _Nullable substring, NSRange substringRange, NSRange enclosingRange, BOOL *stop) {
-        if (out.length >= maxLen) {
-            *stop = YES;
-            return;
-        }
-        if (substring.length != 1) {
-            [out appendString:@"_"];
-            return;
-        }
-        unichar c = [substring characterAtIndex:0];
-        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.') {
-            [out appendString:substring];
-        } else if (c == ' ') {
-            [out appendString:@"_"];
-        } else {
-            [out appendString:@"_"];
-        }
-    }];
+                         usingBlock:^(NSString *_Nullable substring, NSRange substringRange, NSRange enclosingRange, BOOL *stop) {
+                             if (out.length >= maxLen) {
+                                 *stop = YES;
+                                 return;
+                             }
+                             if (substring.length != 1) {
+                                 [out appendString:@"_"];
+                                 return;
+                             }
+                             unichar c = [substring characterAtIndex:0];
+                             if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.') {
+                                 [out appendString:substring];
+                             } else if (c == ' ') {
+                                 [out appendString:@"_"];
+                             } else {
+                                 [out appendString:@"_"];
+                             }
+                         }];
     NSString *collapsed = [out stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
     while ([collapsed containsString:@"__"]) {
         collapsed = [collapsed stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
@@ -152,7 +165,7 @@ static BOOL SPKDigitsOnlyString(NSString *s) {
     return YES;
 }
 
-static NSDate * _Nullable SPKParseCompactDigitDateFromString(NSString *s) {
+static NSDate *_Nullable SPKParseCompactDigitDateFromString(NSString *s) {
     if (!SPKDigitsOnlyString(s)) {
         return nil;
     }
@@ -190,7 +203,7 @@ static NSDate * _Nullable SPKParseCompactDigitDateFromString(NSString *s) {
 }
 
 /// Parses unix epoch seconds/milliseconds, with sanity bounds to avoid confusing user ids for timestamps.
-static NSDate * _Nullable SPKParseEpochDateFromString(NSString *s) {
+static NSDate *_Nullable SPKParseEpochDateFromString(NSString *s) {
     if (!SPKDigitsOnlyString(s)) {
         return nil;
     }
@@ -355,7 +368,7 @@ void SPKGalleryApplyImportHeuristicsFromFilename(NSString *fileName, SPKGalleryS
 
 NSString *SPKFileNameForMedia(NSURL *fileURL,
                               SPKGalleryMediaType mediaType,
-                              SPKGallerySaveMetadata * _Nullable metadata) {
+                              SPKGallerySaveMetadata *_Nullable metadata) {
     NSString *orig = fileURL.lastPathComponent ?: @"";
     NSString *origExt = orig.pathExtension;
     NSString *ext = SPKGalleryNormalizedExtension(origExt, mediaType);
@@ -424,17 +437,17 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 #pragma mark - Save to Gallery
 
 + (SPKGalleryFile *)saveFileToGallery:(NSURL *)fileURL
-                           source:(SPKGallerySource)source
-                        mediaType:(SPKGalleryMediaType)mediaType
-                            error:(NSError **)error {
+                               source:(SPKGallerySource)source
+                            mediaType:(SPKGalleryMediaType)mediaType
+                                error:(NSError **)error {
     return [self saveFileToGallery:fileURL source:source mediaType:mediaType folderPath:nil metadata:nil error:error];
 }
 
 + (SPKGalleryFile *)saveFileToGallery:(NSURL *)fileURL
-                           source:(SPKGallerySource)source
-                        mediaType:(SPKGalleryMediaType)mediaType
-                       folderPath:(NSString *)folderPath
-                            error:(NSError **)error {
+                               source:(SPKGallerySource)source
+                            mediaType:(SPKGalleryMediaType)mediaType
+                           folderPath:(NSString *)folderPath
+                                error:(NSError **)error {
     return [self saveFileToGallery:fileURL source:source mediaType:mediaType folderPath:folderPath metadata:nil error:error];
 }
 
@@ -479,14 +492,16 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 }
 
 + (NSUInteger)claimUnassignedFilesForAccountPK:(NSString *)pk username:(NSString *)username {
-    if (pk.length == 0) return 0;
+    if (pk.length == 0)
+        return 0;
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     NSArray<SPKGalleryFile *> *files = [ctx executeFetchRequest:[self unassignedFetchRequest] error:nil];
     for (SPKGalleryFile *file in files) {
         file.ownerAccountPK = pk;
         file.ownerUsername = username.length > 0 ? username : nil;
     }
-    if (files.count > 0) [[SPKGalleryCoreDataStack shared] saveContext];
+    if (files.count > 0)
+        [[SPKGalleryCoreDataStack shared] saveContext];
     return files.count;
 }
 
@@ -563,17 +578,18 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 }
 
 + (SPKGalleryFile *)saveFileToGallery:(NSURL *)fileURL
-                           source:(SPKGallerySource)source
-                        mediaType:(SPKGalleryMediaType)mediaType
-                       folderPath:(NSString *)folderPath
-                         metadata:(SPKGallerySaveMetadata *)metadata
-                            error:(NSError **)error {
+                               source:(SPKGallerySource)source
+                            mediaType:(SPKGalleryMediaType)mediaType
+                           folderPath:(NSString *)folderPath
+                             metadata:(SPKGallerySaveMetadata *)metadata
+                                error:(NSError **)error {
     NSFileManager *fm = [NSFileManager defaultManager];
 
     if (![fm fileExistsAtPath:fileURL.path]) {
         if (error) {
-            *error = [NSError errorWithDomain:@"SPKGallery" code:1
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Source file does not exist"}];
+            *error = [NSError errorWithDomain:@"SPKGallery"
+                                         code:1
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Source file does not exist"}];
         }
         return nil;
     }
@@ -598,7 +614,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     NSError *copyError;
     if (![fm copyItemAtPath:fileURL.path toPath:destPath error:&copyError]) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed to copy file: %@", copyError);
-        if (error) *error = copyError;
+        if (error)
+            *error = copyError;
         return nil;
     }
 
@@ -607,11 +624,12 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 
     NSManagedObjectContext *ctx = [SPKGalleryCoreDataStack shared].viewContext;
     SPKGalleryFile *file = [NSEntityDescription insertNewObjectForEntityForName:@"SPKGalleryFile"
-                                                       inManagedObjectContext:ctx];
+                                                         inManagedObjectContext:ctx];
     file.identifier = [NSUUID UUID].UUIDString;
     file.relativePath = fileName;
     file.mediaType = mediaType;
-    file.dateAdded = metadata.importCapturedDate ?: metadata.importPostedDate ?: [NSDate date];
+    file.dateAdded = metadata.importCapturedDate ?: metadata.importPostedDate ?
+                                                                              : [NSDate date];
     file.fileSize = size;
     file.isFavorite = NO;
     file.folderPath = folderPath;
@@ -630,7 +648,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     if (![ctx save:&saveError]) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed to save entity: %@", saveError);
         [fm removeItemAtPath:destPath error:nil];
-        if (error) *error = saveError;
+        if (error)
+            *error = saveError;
         return nil;
     }
 
@@ -660,7 +679,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     NSError *saveError;
     if (![ctx save:&saveError]) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed to delete entity: %@", saveError);
-        if (error) *error = saveError;
+        if (error)
+            *error = saveError;
         return NO;
     }
 
@@ -673,8 +693,9 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     NSFileManager *fm = [NSFileManager defaultManager];
     if (!newURL || ![fm fileExistsAtPath:newURL.path]) {
         if (error) {
-            *error = [NSError errorWithDomain:@"SPKGallery" code:2
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Replacement file does not exist"}];
+            *error = [NSError errorWithDomain:@"SPKGallery"
+                                         code:2
+                                     userInfo:@{NSLocalizedDescriptionKey : @"Replacement file does not exist"}];
         }
         return NO;
     }
@@ -708,7 +729,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     NSError *copyError = nil;
     if (![fm copyItemAtPath:newURL.path toPath:newPath error:&copyError]) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed to copy replacement file: %@", copyError);
-        if (error) *error = copyError;
+        if (error)
+            *error = copyError;
         return NO;
     }
 
@@ -736,7 +758,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     NSError *saveError = nil;
     if (![ctx save:&saveError]) {
         SPKLog(@"General", @"[Sparkle Gallery] Failed to save replaced entity: %@", saveError);
-        if (error) *error = saveError;
+        if (error)
+            *error = saveError;
         return NO;
     }
 
@@ -787,7 +810,7 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 
 - (NSString *)thumbnailPath {
     return [[SPKGalleryPaths galleryThumbnailsDirectory]
-            stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", self.identifier]];
+        stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", self.identifier]];
 }
 
 - (BOOL)thumbnailExists {
@@ -797,7 +820,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 #pragma mark - Display helpers
 
 - (NSString *)displayName {
-    if (self.customName.length > 0) return self.customName;
+    if (self.customName.length > 0)
+        return self.customName;
 
     // relativePath: "<epochMs>_<rest>" — rest may be "user_slug_date.ext" or legacy "originalFilename".
     NSString *rel = self.relativePath ?: @"";
@@ -857,7 +881,7 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
         }
     }
     NSString *sz = [NSByteCountFormatter stringFromByteCount:self.fileSize
-                                                    countStyle:NSByteCountFormatterCountStyleFile];
+                                                  countStyle:NSByteCountFormatterCountStyleFile];
     if (sz.length) {
         [parts addObject:sz];
     }
@@ -886,13 +910,15 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 - (NSURL *)preferredProfileURL {
     if (self.sourceProfileURLString.length > 0) {
         NSURL *url = [NSURL URLWithString:self.sourceProfileURLString];
-        if (url) return url;
+        if (url)
+            return url;
     }
     if (self.sourceUsername.length > 0) {
         NSString *encodedUsername = [self.sourceUsername stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
         if (encodedUsername.length > 0) {
             NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"instagram://user?username=%@", encodedUsername]];
-            if (url) return url;
+            if (url)
+                return url;
         }
     }
     return nil;
@@ -908,16 +934,21 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
         NSString *u = parts[1];
         BOOL mDigits = m.length > 0 && [m rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location == NSNotFound;
         BOOL uDigits = u.length > 0 && [u rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location == NSNotFound;
-        if (mDigits && uDigits) return rawMediaPK;
+        if (mDigits && uDigits)
+            return rawMediaPK;
     }
 
     NSString *mediaPK = parts.firstObject ?: rawMediaPK;
-    if (mediaPK.length == 0) return nil;
-    if ([mediaPK rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+    if (mediaPK.length == 0)
+        return nil;
+    if ([mediaPK rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound)
+        return nil;
 
     NSString *userPK = [self.sourceUserPK componentsSeparatedByString:@"_"].lastObject ?: self.sourceUserPK;
-    if (userPK.length == 0) return nil;
-    if ([userPK rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound) return nil;
+    if (userPK.length == 0)
+        return nil;
+    if ([userPK rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location != NSNotFound)
+        return nil;
 
     return [NSString stringWithFormat:@"%@_%@", mediaPK, userPK];
 }
@@ -1023,69 +1054,99 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 
 - (NSString *)openOriginalActionTitle {
     switch ((SPKGallerySource)self.source) {
-        case SPKGallerySourceStories:
-            return @"Open Story";
-        case SPKGallerySourceReels:
-            return @"Open Reel";
-        case SPKGallerySourceFeed:
-        case SPKGallerySourceProfile:
-            return @"Open Post";
-        default:
-            return @"Open Original Post";
+    case SPKGallerySourceStories:
+        return @"Open Story";
+    case SPKGallerySourceReels:
+        return @"Open Reel";
+    case SPKGallerySourceFeed:
+    case SPKGallerySourceProfile:
+        return @"Open Post";
+    default:
+        return @"Open Original Post";
     }
 }
 
 + (NSString *)labelForSource:(SPKGallerySource)source {
     switch (source) {
-        case SPKGallerySourceFeed:      return @"Feed";
-        case SPKGallerySourceStories:   return @"Stories";
-        case SPKGallerySourceReels:     return @"Reels";
-        case SPKGallerySourceProfile:   return @"Profile";
-        case SPKGallerySourceDMs:       return @"DMs";
-        case SPKGallerySourceThumbnail: return @"Thumb";
-        case SPKGallerySourceInstants:  return @"Instants";
-        case SPKGallerySourceAudioPage: return @"Audio Page";
-        case SPKGallerySourceComments:  return @"Comments";
-        case SPKGallerySourceOther:
-        default:                      return @"Other";
+    case SPKGallerySourceFeed:
+        return @"Feed";
+    case SPKGallerySourceStories:
+        return @"Stories";
+    case SPKGallerySourceReels:
+        return @"Reels";
+    case SPKGallerySourceProfile:
+        return @"Profile";
+    case SPKGallerySourceDMs:
+        return @"DMs";
+    case SPKGallerySourceThumbnail:
+        return @"Thumb";
+    case SPKGallerySourceInstants:
+        return @"Instants";
+    case SPKGallerySourceAudioPage:
+        return @"Audio Page";
+    case SPKGallerySourceComments:
+        return @"Comments";
+    case SPKGallerySourceOther:
+    default:
+        return @"Other";
     }
 }
 
 + (NSString *)shortLabelForSource:(SPKGallerySource)source {
     switch (source) {
-        case SPKGallerySourceFeed:      return @"Feed";
-        case SPKGallerySourceStories:   return @"Story";
-        case SPKGallerySourceReels:     return @"Reel";
-        case SPKGallerySourceProfile:   return @"Profile";
-        case SPKGallerySourceDMs:       return @"DMs";
-        case SPKGallerySourceThumbnail: return @"Thumb";
-        case SPKGallerySourceInstants:  return @"Instant";
-        case SPKGallerySourceAudioPage: return @"Audio Page";
-        case SPKGallerySourceComments:  return @"Comment";
-        case SPKGallerySourceOther:
-        default:                      return @"Other";
+    case SPKGallerySourceFeed:
+        return @"Feed";
+    case SPKGallerySourceStories:
+        return @"Story";
+    case SPKGallerySourceReels:
+        return @"Reel";
+    case SPKGallerySourceProfile:
+        return @"Profile";
+    case SPKGallerySourceDMs:
+        return @"DMs";
+    case SPKGallerySourceThumbnail:
+        return @"Thumb";
+    case SPKGallerySourceInstants:
+        return @"Instant";
+    case SPKGallerySourceAudioPage:
+        return @"Audio Page";
+    case SPKGallerySourceComments:
+        return @"Comment";
+    case SPKGallerySourceOther:
+    default:
+        return @"Other";
     }
 }
 
 + (NSString *)symbolNameForSource:(SPKGallerySource)source {
     switch (source) {
-        case SPKGallerySourceFeed:    return @"feed";
-        case SPKGallerySourceStories: return @"story";
-        case SPKGallerySourceReels:   return @"reels";
-        case SPKGallerySourceProfile: return @"user_circle";
-        case SPKGallerySourceDMs:     return @"messages";
-        case SPKGallerySourceThumbnail: return @"photo_gallery";
-        case SPKGallerySourceInstants: return @"instants";
-        case SPKGallerySourceAudioPage: return @"audio_page";
-        case SPKGallerySourceComments: return @"comment";
-        case SPKGallerySourceOther:
-        default:                    return @"media";
+    case SPKGallerySourceFeed:
+        return @"feed";
+    case SPKGallerySourceStories:
+        return @"story";
+    case SPKGallerySourceReels:
+        return @"reels";
+    case SPKGallerySourceProfile:
+        return @"user_circle";
+    case SPKGallerySourceDMs:
+        return @"messages";
+    case SPKGallerySourceThumbnail:
+        return @"photo_gallery";
+    case SPKGallerySourceInstants:
+        return @"instants";
+    case SPKGallerySourceAudioPage:
+        return @"audio_page";
+    case SPKGallerySourceComments:
+        return @"comment";
+    case SPKGallerySourceOther:
+    default:
+        return @"media";
     }
 }
 
 #pragma mark - Thumbnails
 
-+ (void)generateThumbnailForFile:(SPKGalleryFile *)file completion:(void(^)(BOOL success))completion {
++ (void)generateThumbnailForFile:(SPKGalleryFile *)file completion:(void (^)(BOOL success))completion {
     int16_t mediaType = file.mediaType;
     if (mediaType == SPKGalleryMediaTypeAudio) {
         if (completion) {
@@ -1118,8 +1179,8 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 
     __block BOOL shouldGenerate = NO;
     dispatch_sync(SPKGalleryThumbnailStateQueue(), ^{
-        NSMutableDictionary<NSString *, NSMutableArray<void(^)(BOOL success)> *> *pending = SPKGalleryThumbnailCompletions();
-        NSMutableArray<void(^)(BOOL success)> *callbacks = pending[thumbPath];
+        NSMutableDictionary<NSString *, NSMutableArray<void (^)(BOOL success)> *> *pending = SPKGalleryThumbnailCompletions();
+        NSMutableArray<void (^)(BOOL success)> *callbacks = pending[thumbPath];
         if (callbacks) {
             if (completion) {
                 [callbacks addObject:[completion copy]];
@@ -1168,7 +1229,7 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
             [cache setObject:thumb forKey:thumbPath];
         }
 
-        __block NSArray<void(^)(BOOL success)> *callbacks = nil;
+        __block NSArray<void (^)(BOOL success)> *callbacks = nil;
         dispatch_sync(SPKGalleryThumbnailStateQueue(), ^{
             callbacks = [[SPKGalleryThumbnailCompletions()[thumbPath] copy] ?: @[] copy];
             [SPKGalleryThumbnailCompletions() removeObjectForKey:thumbPath];
@@ -1201,16 +1262,16 @@ static void SPKGalleryDrawAudioBars(CGSize size, UIColor *barColor) {
     CGFloat const cy = size.height / 2.0;
 
     // Left bar
-    CGRect leftRect = CGRectMake(cx - w/2.0 - s - w, cy - h_side/2.0, w, h_side);
-    [[UIBezierPath bezierPathWithRoundedRect:leftRect cornerRadius:w/2.0] fill];
+    CGRect leftRect = CGRectMake(cx - w / 2.0 - s - w, cy - h_side / 2.0, w, h_side);
+    [[UIBezierPath bezierPathWithRoundedRect:leftRect cornerRadius:w / 2.0] fill];
 
     // Middle bar
-    CGRect middleRect = CGRectMake(cx - w/2.0, cy - h_middle/2.0, w, h_middle);
-    [[UIBezierPath bezierPathWithRoundedRect:middleRect cornerRadius:w/2.0] fill];
+    CGRect middleRect = CGRectMake(cx - w / 2.0, cy - h_middle / 2.0, w, h_middle);
+    [[UIBezierPath bezierPathWithRoundedRect:middleRect cornerRadius:w / 2.0] fill];
 
     // Right bar
-    CGRect rightRect = CGRectMake(cx + w/2.0 + s, cy - h_side/2.0, w, h_side);
-    [[UIBezierPath bezierPathWithRoundedRect:rightRect cornerRadius:w/2.0] fill];
+    CGRect rightRect = CGRectMake(cx + w / 2.0 + s, cy - h_side / 2.0, w, h_side);
+    [[UIBezierPath bezierPathWithRoundedRect:rightRect cornerRadius:w / 2.0] fill];
 }
 
 static UIImage *SPKGalleryAudioPlaceholderImage(void) {
@@ -1243,7 +1304,7 @@ static UIImage *SPKGalleryAudioPlaceholderImage(void) {
 
 + (UIImage *)audioGlyphImageWithBarColor:(UIColor *)barColor {
     CGSize size = CGSizeMake(kThumbnailSize, kThumbnailSize);
-    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);  // transparent background
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0); // transparent background
     SPKGalleryDrawAudioBars(size, barColor ?: [UIColor whiteColor]);
     UIImage *glyph = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();

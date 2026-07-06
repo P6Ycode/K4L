@@ -6,10 +6,10 @@
 static char kSPKSwipeCloseCommentsInstalledKey;
 static char kSPKSwipeCloseCommentsTargetKey;
 
-static NSString * const kSPKSwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
-static NSString * const kSPKSwipeCloseCommentsDirectionLeft = @"left";
-static NSString * const kSPKSwipeCloseCommentsDirectionRight = @"right";
-static NSString * const kSPKSwipeCloseCommentsDirectionBoth = @"both";
+static NSString *const kSPKSwipeCloseCommentsDirectionKey = @"general_comments_swipe_close_direction";
+static NSString *const kSPKSwipeCloseCommentsDirectionLeft = @"left";
+static NSString *const kSPKSwipeCloseCommentsDirectionRight = @"right";
+static NSString *const kSPKSwipeCloseCommentsDirectionBoth = @"both";
 
 typedef NS_OPTIONS(NSUInteger, SPKSwipeCloseCommentsDirection) {
     SPKSwipeCloseCommentsDirectionLeft = 1 << 0,
@@ -36,19 +36,27 @@ static SPKSwipeCloseCommentsDirection SPKSwipeCloseCommentsDirectionFromPref(voi
 }
 
 static NSString *SPKCommentsSwipeDescribe(id object) {
-    if (!object) return @"nil";
+    if (!object)
+        return @"nil";
     return [NSString stringWithFormat:@"%@<%p>", NSStringFromClass([object class]), object];
 }
 
 static NSString *SPKCommentsSwipeStateName(UIGestureRecognizerState state) {
     switch (state) {
-        case UIGestureRecognizerStatePossible: return @"possible";
-        case UIGestureRecognizerStateBegan: return @"began";
-        case UIGestureRecognizerStateChanged: return @"changed";
-        case UIGestureRecognizerStateEnded: return @"ended";
-        case UIGestureRecognizerStateCancelled: return @"cancelled";
-        case UIGestureRecognizerStateFailed: return @"failed";
-        default: return [NSString stringWithFormat:@"unknown(%ld)", (long)state];
+    case UIGestureRecognizerStatePossible:
+        return @"possible";
+    case UIGestureRecognizerStateBegan:
+        return @"began";
+    case UIGestureRecognizerStateChanged:
+        return @"changed";
+    case UIGestureRecognizerStateEnded:
+        return @"ended";
+    case UIGestureRecognizerStateCancelled:
+        return @"cancelled";
+    case UIGestureRecognizerStateFailed:
+        return @"failed";
+    default:
+        return [NSString stringWithFormat:@"unknown(%ld)", (long)state];
     }
 }
 
@@ -73,7 +81,8 @@ static CGFloat SPKCommentsSwipeSignedHorizontalVelocity(CGFloat velocityX, SPKSw
 }
 
 static NSNumber *SPKCommentsSwipeNumberFromSelector(id object, SEL selector) {
-    if (!object || ![object respondsToSelector:selector]) return nil;
+    if (!object || ![object respondsToSelector:selector])
+        return nil;
     @try {
         double (*sendDouble)(id, SEL) = (double (*)(id, SEL))objc_msgSend;
         return @(sendDouble(object, selector));
@@ -83,7 +92,8 @@ static NSNumber *SPKCommentsSwipeNumberFromSelector(id object, SEL selector) {
 }
 
 static NSNumber *SPKCommentsSwipeUnsignedNumberFromSelector(id object, SEL selector) {
-    if (!object || ![object respondsToSelector:selector]) return nil;
+    if (!object || ![object respondsToSelector:selector])
+        return nil;
     @try {
         unsigned long long (*sendUnsigned)(id, SEL) = (unsigned long long (*)(id, SEL))objc_msgSend;
         return @(sendUnsigned(object, selector));
@@ -93,7 +103,8 @@ static NSNumber *SPKCommentsSwipeUnsignedNumberFromSelector(id object, SEL selec
 }
 
 static NSNumber *SPKCommentsSwipeBoolNumberFromSelector(id object, SEL selector) {
-    if (!object || ![object respondsToSelector:selector]) return nil;
+    if (!object || ![object respondsToSelector:selector])
+        return nil;
     @try {
         BOOL (*sendBool)(id, SEL) = (BOOL (*)(id, SEL))objc_msgSend;
         return @(sendBool(object, selector));
@@ -107,7 +118,8 @@ static BOOL SPKCommentsSwipeStringLooksCommentRelated(NSString *value) {
 }
 
 static BOOL SPKCommentsSwipeStringLooksShareRelated(NSString *value) {
-    if (value.length == 0) return NO;
+    if (value.length == 0)
+        return NO;
     NSArray<NSString *> *patterns = @[
         @"share",
         @"IGExternalShare",
@@ -132,25 +144,29 @@ static BOOL SPKCommentsSwipeViewTreeLooksShareRelated(UIView *view, NSUInteger d
 
     NSString *className = NSStringFromClass([view class]);
     if (SPKCommentsSwipeStringLooksShareRelated(className)) {
-        if (reason) *reason = [NSString stringWithFormat:@"view class %@", className];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"view class %@", className];
         return YES;
     }
 
     NSString *identifier = view.accessibilityIdentifier;
     if (SPKCommentsSwipeStringLooksShareRelated(identifier)) {
-        if (reason) *reason = [NSString stringWithFormat:@"view accessibilityIdentifier %@", identifier];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"view accessibilityIdentifier %@", identifier];
         return YES;
     }
 
     NSString *label = view.accessibilityLabel;
     if (SPKCommentsSwipeStringLooksShareRelated(label)) {
-        if (reason) *reason = [NSString stringWithFormat:@"view accessibilityLabel %@", label];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"view accessibilityLabel %@", label];
         return YES;
     }
 
     UIResponder *responder = view.nextResponder;
     if (responder && SPKCommentsSwipeStringLooksShareRelated(NSStringFromClass([responder class]))) {
-        if (reason) *reason = [NSString stringWithFormat:@"nextResponder %@", NSStringFromClass([responder class])];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"nextResponder %@", NSStringFromClass([responder class])];
         return YES;
     }
 
@@ -170,13 +186,15 @@ static BOOL SPKCommentsSwipeControllerTreeLooksShareRelated(UIViewController *co
 
     NSString *className = NSStringFromClass([controller class]);
     if (SPKCommentsSwipeStringLooksShareRelated(className)) {
-        if (reason) *reason = [NSString stringWithFormat:@"controller class %@", className];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"controller class %@", className];
         return YES;
     }
 
     NSString *title = controller.title;
     if (SPKCommentsSwipeStringLooksShareRelated(title)) {
-        if (reason) *reason = [NSString stringWithFormat:@"controller title %@", title];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"controller title %@", title];
         return YES;
     }
 
@@ -204,25 +222,29 @@ static BOOL SPKCommentsSwipeViewTreeLooksCommentRelated(UIView *view, NSUInteger
 
     NSString *className = NSStringFromClass([view class]);
     if (SPKCommentsSwipeStringLooksCommentRelated(className)) {
-        if (reason) *reason = [NSString stringWithFormat:@"view class %@", className];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"view class %@", className];
         return YES;
     }
 
     NSString *identifier = view.accessibilityIdentifier;
     if (SPKCommentsSwipeStringLooksCommentRelated(identifier)) {
-        if (reason) *reason = [NSString stringWithFormat:@"view accessibilityIdentifier %@", identifier];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"view accessibilityIdentifier %@", identifier];
         return YES;
     }
 
     NSString *label = view.accessibilityLabel;
     if (SPKCommentsSwipeStringLooksCommentRelated(label)) {
-        if (reason) *reason = [NSString stringWithFormat:@"view accessibilityLabel %@", label];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"view accessibilityLabel %@", label];
         return YES;
     }
 
     UIResponder *responder = view.nextResponder;
     if (responder && SPKCommentsSwipeStringLooksCommentRelated(NSStringFromClass([responder class]))) {
-        if (reason) *reason = [NSString stringWithFormat:@"nextResponder %@", NSStringFromClass([responder class])];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"nextResponder %@", NSStringFromClass([responder class])];
         return YES;
     }
 
@@ -242,13 +264,15 @@ static BOOL SPKCommentsSwipeControllerTreeLooksCommentRelated(UIViewController *
 
     NSString *className = NSStringFromClass([controller class]);
     if (SPKCommentsSwipeStringLooksCommentRelated(className)) {
-        if (reason) *reason = [NSString stringWithFormat:@"controller class %@", className];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"controller class %@", className];
         return YES;
     }
 
     NSString *title = controller.title;
     if (SPKCommentsSwipeStringLooksCommentRelated(title)) {
-        if (reason) *reason = [NSString stringWithFormat:@"controller title %@", title];
+        if (reason)
+            *reason = [NSString stringWithFormat:@"controller title %@", title];
         return YES;
     }
 
@@ -287,12 +311,14 @@ static UIView *SPKCommentsSwipeContentView(UIViewController *controller) {
 }
 
 static UIView *SPKCommentsSwipeSheetContainerView(UIViewController *controller, UIView *contentView) {
-    if (!controller) return contentView;
+    if (!controller)
+        return contentView;
 
     UIView *root = controller.view;
     CGRect rootWindowFrame = root ? [root convertRect:root.bounds toView:nil] : CGRectZero;
     CGFloat screenHeight = CGRectGetHeight([UIScreen mainScreen].bounds);
-    if (screenHeight < 1.0) screenHeight = CGRectGetHeight(rootWindowFrame);
+    if (screenHeight < 1.0)
+        screenHeight = CGRectGetHeight(rootWindowFrame);
 
     UIView *bestView = nil;
     UIView *view = contentView;
@@ -315,7 +341,8 @@ static UIView *SPKCommentsSwipeSheetContainerView(UIViewController *controller, 
     while (view.superview && view.superview != root) {
         view = view.superview;
     }
-    return contentView ?: view ?: root;
+    return contentView ?: view ?
+                               : root;
 }
 
 static CGFloat SPKCommentsSwipeDismissDistanceForView(UIViewController *controller, UIView *sheetView) {
@@ -416,9 +443,13 @@ static CGFloat SPKCommentsSwipeDismissDistanceForView(UIViewController *controll
     BOOL velocityCommitted = clampedTranslation >= kSPKCommentsSwipeVelocityCommitMinimumDistance && verticalVelocity >= kSPKCommentsSwipeCommitVelocity;
     BOOL committed = gesture.state == UIGestureRecognizerStateEnded && (distanceCommitted || velocityCommitted);
     if (!committed) {
-        [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState animations:^{
-            sheetView.transform = self.originalTransform;
-        } completion:nil];
+        [UIView animateWithDuration:0.24
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+                             sheetView.transform = self.originalTransform;
+                         }
+                         completion:nil];
         SPKLog(@"General", @"[Sparkle CommentsSwipe] Interactive cancel progress=%.2f translationY=%.1f velocityY=%.1f distanceCommitted=%d velocityCommitted=%d",
                progress,
                clampedTranslation,
@@ -436,10 +467,11 @@ static CGFloat SPKCommentsSwipeDismissDistanceForView(UIViewController *controll
            velocityCommitted);
 
     sheetView.userInteractionEnabled = NO;
-    [controller dismissViewControllerAnimated:YES completion:^{
-        sheetView.userInteractionEnabled = YES;
-        sheetView.transform = self.originalTransform;
-    }];
+    [controller dismissViewControllerAnimated:YES
+                                   completion:^{
+                                       sheetView.userInteractionEnabled = YES;
+                                       sheetView.transform = self.originalTransform;
+                                   }];
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
@@ -574,7 +606,8 @@ static void SPKInstallSwipeCloseCommentsGesture(UIViewController *controller) {
 %end
 
 extern "C" void SPKInstallSwipeCloseCommentsHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"general_comments_swipe_close"]) return;
+    if (![SPKUtils getBoolPref:@"general_comments_swipe_close"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

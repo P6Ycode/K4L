@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 // Channels dms tab (header)
 %group SPKNoSuggestedChatsHooks
@@ -13,7 +13,6 @@
 
             return nil;
         }
-
     }
 
     return %orig;
@@ -23,11 +22,12 @@
 %end
 
 void SPKInstallNoSuggestedChatsHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"msgs_hide_suggested_chats"]) return;
+    if (![SPKUtils getBoolPref:@"msgs_hide_suggested_chats"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SPKNoSuggestedChatsHooks,
-              IGDirectInboxHeaderSectionController = SPKResolveIGClass(@"IGDirectInboxViewControllerSwift.IGDirectInboxHeaderSectionController", @"IGDirectInboxHeaderSectionController"));
+                       IGDirectInboxHeaderSectionController = SPKResolveIGClass(@"IGDirectInboxViewControllerSwift.IGDirectInboxHeaderSectionController", @"IGDirectInboxHeaderSectionController"));
     });
 }

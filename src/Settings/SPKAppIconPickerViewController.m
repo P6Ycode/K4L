@@ -2,11 +2,11 @@
 
 #import <errno.h>
 
-#import "SPKAppIconCatalog.h"
 #import "../AssetUtils.h"
 #import "../Shared/UI/SPKIGAlertPresenter.h"
 #import "../Shared/UI/SPKNotificationCenter.h"
 #import "../Utils.h"
+#import "SPKAppIconCatalog.h"
 
 @interface SPKAppIconPickerViewController ()
 @property (nonatomic, copy) void (^onSelect)(NSString *identifier);
@@ -39,21 +39,25 @@
 
 #pragma mark - SPKIconPickerViewController
 
-- (SPKIconPickerCellStyle)cellStyle { return SPKIconPickerCellStyleAppIcon; }
-- (NSInteger)columnCountForWidth:(CGFloat)width { return width >= 500.0 ? 4 : 3; }
+- (SPKIconPickerCellStyle)cellStyle {
+    return SPKIconPickerCellStyleAppIcon;
+}
+- (NSInteger)columnCountForWidth:(CGFloat)width {
+    return width >= 500.0 ? 4 : 3;
+}
 
 - (NSArray<SPKIconPickerSection *> *)buildSections {
     NSMutableArray<SPKIconPickerItem *> *items = [NSMutableArray array];
     for (SPKAppIconItem *icon in [SPKAppIconCatalog availableAppIcons]) {
         NSString *search = [NSString stringWithFormat:@"%@ %@ %@",
-                            icon.identifier ?: @"", icon.displayName ?: @"", [icon.iconFiles componentsJoinedByString:@" "]];
+                                                      icon.identifier ?: @"", icon.displayName ?: @"", [icon.iconFiles componentsJoinedByString:@" "]];
         SPKIconPickerItem *item = [SPKIconPickerItem itemWithIdentifier:icon.identifier ?: @""
-                                                                 title:icon.displayName
-                                                            searchText:search];
+                                                                  title:icon.displayName
+                                                             searchText:search];
         item.userInfo = icon;
         [items addObject:item];
     }
-    return @[[SPKIconPickerSection sectionWithTitle:nil items:items]];
+    return @[ [SPKIconPickerSection sectionWithTitle:nil items:items] ];
 }
 
 - (UIImage *)imageForItem:(SPKIconPickerItem *)item {
@@ -64,7 +68,8 @@
 - (void)didSelectItem:(SPKIconPickerItem *)item {
     SPKAppIconItem *appIcon = item.userInfo;
     NSString *identifier = item.identifier ?: @"";
-    if (!appIcon) return;
+    if (!appIcon)
+        return;
 
     if ([identifier isEqualToString:self.selectedIdentifier]) {
         [self.navigationController popViewControllerAnimated:YES];
@@ -81,7 +86,7 @@
     // ("resource temporarily unavailable") failure from setAlternateIconName.
     for (NSString *file in appIcon.iconFiles) {
         NSString *resolved = [NSBundle.mainBundle pathForResource:file ofType:@"png"]
-            ?: [NSBundle.mainBundle pathForResource:file ofType:nil];
+                                 ?: [NSBundle.mainBundle pathForResource:file ofType:nil];
         SPKLog(@"AppIcon", @"[Sparkle]  iconFile '%@' -> %@", file, resolved ?: @"MISSING");
     }
 
@@ -90,31 +95,36 @@
         [SPKIGAlertPresenter presentAlertFromViewController:self
                                                       title:@"App Icons Unavailable"
                                                     message:@"This device or app build does not allow alternate app icons."
-                                                    actions:@[[SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil]]];
+                                                    actions:@[ [SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil] ]];
         return;
     }
 
     NSString *alternateIconName = appIcon.isPrimary ? nil : identifier;
     __weak typeof(self) weakSelf = self;
-    [self spk_setAlternateIconName:alternateIconName attempt:1 maxAttempts:4 completion:^(NSError *error) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
+    [self spk_setAlternateIconName:alternateIconName
+                           attempt:1
+                       maxAttempts:4
+                        completion:^(NSError *error) {
+                            __strong typeof(weakSelf) self = weakSelf;
+                            if (!self)
+                                return;
 
-        if (error) {
-            [SPKIGAlertPresenter presentAlertFromViewController:self
-                                                          title:@"Changing App Icon Failed"
-                                                        message:error.localizedDescription ?: @"Unable to change the app icon."
-                                                        actions:@[[SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil]]];
-            return;
-        }
+                            if (error) {
+                                [SPKIGAlertPresenter presentAlertFromViewController:self
+                                                                              title:@"Changing App Icon Failed"
+                                                                            message:error.localizedDescription ?: @"Unable to change the app icon."
+                                                                            actions:@[ [SPKIGAlertAction actionWithTitle:@"OK" style:SPKIGAlertActionStyleDefault handler:nil] ]];
+                                return;
+                            }
 
-        self.selectedIdentifier = identifier;
-        [SPKAppIconCatalog setStoredSelectedIdentifier:identifier];
-        if (self.onSelect) self.onSelect(identifier);
-        [self refreshSelectionHighlight];
-        SPKNotify(@"settings_app_icon", @"App icon changed", appIcon.displayName, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
-        [self.navigationController popViewControllerAnimated:YES];
-    }];
+                            self.selectedIdentifier = identifier;
+                            [SPKAppIconCatalog setStoredSelectedIdentifier:identifier];
+                            if (self.onSelect)
+                                self.onSelect(identifier);
+                            [self refreshSelectionHighlight];
+                            SPKNotify(@"settings_app_icon", @"App icon changed", appIcon.displayName, @"circle_check_filled", SPKNotificationToneForIconResource(@"circle_check_filled"));
+                            [self.navigationController popViewControllerAnimated:YES];
+                        }];
 }
 
 // `setAlternateIconName:` frequently fails on sideloaded/iOS 26 installs with
@@ -130,28 +140,29 @@
     SPKLog(@"AppIcon", @"[Sparkle] calling setAlternateIconName:'%@' (attempt %ld/%ld)",
            name ?: @"(nil=primary)", (long)attempt, (long)maxAttempts);
     __weak typeof(self) weakSelf = self;
-    [UIApplication.sharedApplication setAlternateIconName:name completionHandler:^(NSError *error) {
-        BOOL isEAGAIN = error
-            && [error.domain isEqualToString:NSPOSIXErrorDomain]
-            && error.code == EAGAIN;
-        SPKLog(@"AppIcon", @"[Sparkle] completion attempt %ld/%ld: domain='%@' code=%ld eagain=%d",
-               (long)attempt, (long)maxAttempts, error.domain ?: @"(none)", (long)error.code, isEAGAIN);
+    [UIApplication.sharedApplication setAlternateIconName:name
+                                        completionHandler:^(NSError *error) {
+                                            BOOL isEAGAIN = error && [error.domain isEqualToString:NSPOSIXErrorDomain] && error.code == EAGAIN;
+                                            SPKLog(@"AppIcon", @"[Sparkle] completion attempt %ld/%ld: domain='%@' code=%ld eagain=%d",
+                                                   (long)attempt, (long)maxAttempts, error.domain ?: @"(none)", (long)error.code, isEAGAIN);
 
-        if (isEAGAIN && attempt < maxAttempts) {
-            NSTimeInterval delay = 0.4 * (NSTimeInterval)attempt;  // 0.4s, 0.8s, 1.2s
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
-                           dispatch_get_main_queue(), ^{
-                __strong typeof(weakSelf) self = weakSelf;
-                if (!self) return;
-                [self spk_setAlternateIconName:name attempt:attempt + 1 maxAttempts:maxAttempts completion:completion];
-            });
-            return;
-        }
+                                            if (isEAGAIN && attempt < maxAttempts) {
+                                                NSTimeInterval delay = 0.4 * (NSTimeInterval)attempt; // 0.4s, 0.8s, 1.2s
+                                                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                                                               dispatch_get_main_queue(), ^{
+                                                                   __strong typeof(weakSelf) self = weakSelf;
+                                                                   if (!self)
+                                                                       return;
+                                                                   [self spk_setAlternateIconName:name attempt:attempt + 1 maxAttempts:maxAttempts completion:completion];
+                                                               });
+                                                return;
+                                            }
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (completion) completion(error);
-        });
-    }];
+                                            dispatch_async(dispatch_get_main_queue(), ^{
+                                                if (completion)
+                                                    completion(error);
+                                            });
+                                        }];
 }
 
 @end

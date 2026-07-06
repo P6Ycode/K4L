@@ -4,19 +4,19 @@
 
 static NSString *SPKGallerySortResourceSymbol(SPKGallerySortMode mode) {
     switch (mode) {
-        case SPKGallerySortModeDateAddedDesc:
-        case SPKGallerySortModeDateAddedAsc:
-            return @"calendar";
-        case SPKGallerySortModeNameAsc:
-        case SPKGallerySortModeNameDesc:
-            return @"text";
-        case SPKGallerySortModeSizeDesc:
-            return @"size_large";
-        case SPKGallerySortModeSizeAsc:
-            return @"size_small";
-        case SPKGallerySortModeTypeAsc:
-        case SPKGallerySortModeTypeDesc:
-            return @"photo_gallery";
+    case SPKGallerySortModeDateAddedDesc:
+    case SPKGallerySortModeDateAddedAsc:
+        return @"calendar";
+    case SPKGallerySortModeNameAsc:
+    case SPKGallerySortModeNameDesc:
+        return @"text";
+    case SPKGallerySortModeSizeDesc:
+        return @"size_large";
+    case SPKGallerySortModeSizeAsc:
+        return @"size_small";
+    case SPKGallerySortModeTypeAsc:
+    case SPKGallerySortModeTypeDesc:
+        return @"photo_gallery";
     }
     return @"sort";
 }
@@ -78,40 +78,47 @@ static NSString *SPKGallerySortResourceSymbol(SPKGallerySortMode mode) {
     }
 
     switch (mode) {
-        case SPKGallerySortModeDateAddedDesc:
-        case SPKGallerySortModeTypeAsc:
-        case SPKGallerySortModeTypeDesc:
-            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
-            break;
-        case SPKGallerySortModeDateAddedAsc:
-            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:YES]];
-            break;
-        case SPKGallerySortModeNameAsc:
-            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:YES selector:@selector(localizedCaseInsensitiveCompare:)]];
-            break;
-        case SPKGallerySortModeNameDesc:
-            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:NO selector:@selector(localizedCaseInsensitiveCompare:)]];
-            break;
-        case SPKGallerySortModeSizeDesc:
-            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:NO]];
-            break;
-        case SPKGallerySortModeSizeAsc:
-            [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:YES]];
-            break;
+    case SPKGallerySortModeDateAddedDesc:
+    case SPKGallerySortModeTypeAsc:
+    case SPKGallerySortModeTypeDesc:
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
+        break;
+    case SPKGallerySortModeDateAddedAsc:
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:YES]];
+        break;
+    case SPKGallerySortModeNameAsc:
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:YES selector:@selector(localizedCaseInsensitiveCompare:)]];
+        break;
+    case SPKGallerySortModeNameDesc:
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:NO selector:@selector(localizedCaseInsensitiveCompare:)]];
+        break;
+    case SPKGallerySortModeSizeDesc:
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:NO]];
+        break;
+    case SPKGallerySortModeSizeAsc:
+        [descriptors addObject:[NSSortDescriptor sortDescriptorWithKey:@"fileSize" ascending:YES]];
+        break;
     }
-    return descriptors.count ? descriptors : @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
+    return descriptors.count ? descriptors : @[ [NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO] ];
 }
 
 + (NSString *)labelForMode:(SPKGallerySortMode)mode {
     switch (mode) {
-        case SPKGallerySortModeDateAddedDesc: return @"Newest first";
-        case SPKGallerySortModeDateAddedAsc:  return @"Oldest first";
-        case SPKGallerySortModeNameAsc:       return @"Name A-Z";
-        case SPKGallerySortModeNameDesc:      return @"Name Z-A";
-        case SPKGallerySortModeSizeDesc:      return @"Largest first";
-        case SPKGallerySortModeSizeAsc:       return @"Smallest first";
-        case SPKGallerySortModeTypeAsc:
-        case SPKGallerySortModeTypeDesc:      return @"Newest first";
+    case SPKGallerySortModeDateAddedDesc:
+        return @"Newest first";
+    case SPKGallerySortModeDateAddedAsc:
+        return @"Oldest first";
+    case SPKGallerySortModeNameAsc:
+        return @"Name A-Z";
+    case SPKGallerySortModeNameDesc:
+        return @"Name Z-A";
+    case SPKGallerySortModeSizeDesc:
+        return @"Largest first";
+    case SPKGallerySortModeSizeAsc:
+        return @"Smallest first";
+    case SPKGallerySortModeTypeAsc:
+    case SPKGallerySortModeTypeDesc:
+        return @"Newest first";
     }
     return @"Newest first";
 }
@@ -145,8 +152,9 @@ static NSString *SPKGallerySortResourceSymbol(SPKGallerySortMode mode) {
     }
     CGFloat innerWidth = MAX(0.0, width - 40.0); // 20pt leading + 20pt trailing
     CGFloat stackHeight = [self.contentStack systemLayoutSizeFittingSize:CGSizeMake(innerWidth, 0.0)
-                                          withHorizontalFittingPriority:UILayoutPriorityRequired
-                                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
+                                           withHorizontalFittingPriority:UILayoutPriorityRequired
+                                                 verticalFittingPriority:UILayoutPriorityFittingSizeLevel]
+                              .height;
     return 14.0 + stackHeight + 12.0;
 }
 
@@ -160,17 +168,21 @@ static NSString *SPKGallerySortResourceSymbol(SPKGallerySortMode mode) {
 
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:safe.topAnchor constant:14],
-        [stack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
-        [stack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
-        [stack.bottomAnchor constraintLessThanOrEqualToAnchor:safe.bottomAnchor constant:-20],
+        [stack.topAnchor constraintEqualToAnchor:safe.topAnchor
+                                        constant:14],
+        [stack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor
+                                            constant:20],
+        [stack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor
+                                             constant:-20],
+        [stack.bottomAnchor constraintLessThanOrEqualToAnchor:safe.bottomAnchor
+                                                     constant:-20],
     ]];
 
     [stack addArrangedSubview:[self sectionTitle:@"Order"]];
     NSArray<NSArray<NSNumber *> *> *rows = @[
-        @[@(SPKGallerySortModeDateAddedDesc), @(SPKGallerySortModeDateAddedAsc)],
-        @[@(SPKGallerySortModeNameAsc),       @(SPKGallerySortModeNameDesc)],
-        @[@(SPKGallerySortModeSizeDesc),      @(SPKGallerySortModeSizeAsc)],
+        @[ @(SPKGallerySortModeDateAddedDesc), @(SPKGallerySortModeDateAddedAsc) ],
+        @[ @(SPKGallerySortModeNameAsc), @(SPKGallerySortModeNameDesc) ],
+        @[ @(SPKGallerySortModeSizeDesc), @(SPKGallerySortModeSizeAsc) ],
     ];
 
     for (NSInteger i = 0; i < rows.count; i++) {
@@ -245,7 +257,8 @@ static NSString *SPKGallerySortResourceSymbol(SPKGallerySortMode mode) {
 
 - (void)chipTapped:(SPKGallerySortChip *)chip {
     self.currentSortMode = chip.mode;
-    for (SPKGallerySortChip *c in self.sortChips) c.selectedChip = (c.mode == chip.mode);
+    for (SPKGallerySortChip *c in self.sortChips)
+        c.selectedChip = (c.mode == chip.mode);
     if ([self.delegate respondsToSelector:@selector(sortController:didSelectSortMode:groupByMediaType:)]) {
         [self.delegate sortController:self didSelectSortMode:self.currentSortMode groupByMediaType:self.currentGroupByMediaType];
     }
@@ -254,7 +267,8 @@ static NSString *SPKGallerySortResourceSymbol(SPKGallerySortMode mode) {
 
 - (void)groupChipTapped:(UIButton *)chip {
     self.currentGroupByMediaType = chip.tag == 1;
-    for (UIButton *c in self.groupChips) [self updateGroupChip:c selected:(c.tag == chip.tag)];
+    for (UIButton *c in self.groupChips)
+        [self updateGroupChip:c selected:(c.tag == chip.tag)];
     if ([self.delegate respondsToSelector:@selector(sortController:didSelectSortMode:groupByMediaType:)]) {
         [self.delegate sortController:self didSelectSortMode:self.currentSortMode groupByMediaType:self.currentGroupByMediaType];
     }

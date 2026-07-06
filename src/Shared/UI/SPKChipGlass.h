@@ -15,6 +15,6 @@ BOOL SPKChipGlassAvailable(void);
 /// Returns YES when glass was applied — the caller should leave the chip's own
 /// `backgroundColor` clear. Returns NO on pre-iOS-26, where the caller keeps its
 /// existing solid fill.
-BOOL SPKChipApplyGlass(UIButton *chip, BOOL selected, CGFloat cornerRadius, UIColor * _Nullable selectedTint);
+BOOL SPKChipApplyGlass(UIButton *chip, BOOL selected, CGFloat cornerRadius, UIColor *_Nullable selectedTint);
 
 NS_ASSUME_NONNULL_END

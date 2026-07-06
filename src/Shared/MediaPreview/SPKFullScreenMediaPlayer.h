@@ -28,16 +28,16 @@ typedef void (^SPKMediaPreviewPlaybackBlock)(void);
 @property (nonatomic, weak, nullable) id<SPKFullScreenMediaPlayerDelegate> delegate;
 
 - (void)playItems:(NSArray<SPKMediaItem *> *)items
-  startingAtIndex:(NSInteger)index
-fromViewController:(UIViewController *)presenter;
+       startingAtIndex:(NSInteger)index
+    fromViewController:(UIViewController *)presenter;
 
 + (void)showFileURL:(NSURL *)fileURL;
 + (void)showFileURL:(NSURL *)fileURL metadata:(nullable SPKGallerySaveMetadata *)metadata;
 + (void)showFileURL:(NSURL *)fileURL fromGallery:(BOOL)fromGallery;
 
 + (void)showGalleryFiles:(NSArray<SPKGalleryFile *> *)files
-       startingAtIndex:(NSInteger)index
-    fromViewController:(UIViewController *)presenter;
+         startingAtIndex:(NSInteger)index
+      fromViewController:(UIViewController *)presenter;
 
 + (void)showPhotoURLs:(NSArray<NSURL *> *)urls initialIndex:(NSInteger)index;
 + (void)showPhotoURLs:(NSArray<NSURL *> *)urls initialIndex:(NSInteger)index metadata:(nullable SPKGallerySaveMetadata *)metadata;
@@ -58,12 +58,12 @@ fromViewController:(UIViewController *)presenter;
 + (void)showImage:(UIImage *)image;
 + (void)showImage:(UIImage *)image metadata:(nullable SPKGallerySaveMetadata *)metadata;
 + (void)showImage:(UIImage *)image
-         metadata:(nullable SPKGallerySaveMetadata *)metadata
-   playbackSource:(SPKFullScreenPlaybackSource)playbackSource
-       sourceView:(nullable UIView *)sourceView
-       controller:(nullable UIViewController *)controller
-    pausePlayback:(nullable SPKMediaPreviewPlaybackBlock)pausePlayback
-   resumePlayback:(nullable SPKMediaPreviewPlaybackBlock)resumePlayback;
+          metadata:(nullable SPKGallerySaveMetadata *)metadata
+    playbackSource:(SPKFullScreenPlaybackSource)playbackSource
+        sourceView:(nullable UIView *)sourceView
+        controller:(nullable UIViewController *)controller
+     pausePlayback:(nullable SPKMediaPreviewPlaybackBlock)pausePlayback
+    resumePlayback:(nullable SPKMediaPreviewPlaybackBlock)resumePlayback;
 + (void)showRemoteImageURL:(NSURL *)url;
 + (void)showRemoteImageURL:(NSURL *)url metadata:(nullable SPKGallerySaveMetadata *)metadata;
 + (void)showRemoteImageURL:(NSURL *)url

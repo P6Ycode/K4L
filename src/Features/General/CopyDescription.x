@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 %group SPKCopyDescriptionHooks
 
@@ -14,40 +14,42 @@
     return;
 }
 %new - (void)addHandleLongPress {
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
-    longPress.minimumPressDuration = 0.5;
-    [self addGestureRecognizer:longPress];
+UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+longPress.minimumPressDuration = 0.5;
+[self addGestureRecognizer:longPress];
 }
 
 %new - (void)handleLongPress:(UILongPressGestureRecognizer *)sender {
-    if (sender.state != UIGestureRecognizerStateBegan) return;
+if (sender.state != UIGestureRecognizerStateBegan)
+    return;
 
-    // Remove hashtags at end of string
-    NSRegularExpression *regex =
+// Remove hashtags at end of string
+NSRegularExpression *regex =
     [NSRegularExpression regularExpressionWithPattern:@"\\s*(?:#[^\\s]+\\s*)+$"
                                               options:0
                                                 error:nil];
 
-    NSString *result = [[regex stringByReplacingMatchesInString:self.text
-                                                        options:0
-                                                          range:NSMakeRange(0, self.text.length)
-                                                   withTemplate:@""]
-          stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+NSString *result = [[regex stringByReplacingMatchesInString:self.text
+                                                    options:0
+                                                      range:NSMakeRange(0, self.text.length)
+                                               withTemplate:@""]
+    stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
-    SPKLog(@"General", @"[Sparkle] Copying description");
+SPKLog(@"General", @"[Sparkle] Copying description");
 
-    // Copy text to system clipboard
-    UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
-    pasteboard.string = result;
+// Copy text to system clipboard
+UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
+pasteboard.string = result;
 
-    SPKNotify(kSPKNotificationCopyDescription, @"Copied text to clipboard", nil, @"circle_check_filled", SPKNotificationToneSuccess);
+SPKNotify(kSPKNotificationCopyDescription, @"Copied text to clipboard", nil, @"circle_check_filled", SPKNotificationToneSuccess);
 }
 %end
 
 %end
 
 void SPKInstallCopyDescriptionHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"general_copy_text"]) return;
+    if (![SPKUtils getBoolPref:@"general_copy_text"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

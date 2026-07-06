@@ -1,13 +1,13 @@
 #import "SPKActionButtonDefaultActionPickerViewController.h"
 
-#import "SPKPreferences.h"
-#import "SPKTopicSettingsSupport.h"
 #import "../AssetUtils.h"
 #import "../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "../Shared/ActionButton/SPKActionDescriptor.h"
 #import "../Utils.h"
+#import "SPKPreferences.h"
+#import "SPKTopicSettingsSupport.h"
 
-static NSString * const kSPKActionDefaultPickerCellIdentifier = @"SPKActionDefaultPickerCell";
+static NSString *const kSPKActionDefaultPickerCellIdentifier = @"SPKActionDefaultPickerCell";
 
 static NSString *SPKActionButtonDefaultActionKeyForSource(SPKActionButtonSource source) {
     return SPKPrefActionButtonDefaultActionKey(SPKActionButtonTopicKeyForSource(source));
@@ -15,11 +15,11 @@ static NSString *SPKActionButtonDefaultActionKeyForSource(SPKActionButtonSource 
 
 static NSDictionary<NSString *, NSString *> *SPKProfileLegacyDefaultActionMap(void) {
     return @{
-        @"copy_info": kSPKActionProfileCopyInfo,
-        @"view_picture": kSPKActionExpand,
-        @"share_picture": kSPKActionDownloadShare,
-        @"save_picture_gallery": kSPKActionDownloadGallery,
-        @"profile_settings": kSPKActionOpenTopicSettings
+        @"copy_info" : kSPKActionProfileCopyInfo,
+        @"view_picture" : kSPKActionExpand,
+        @"share_picture" : kSPKActionDownloadShare,
+        @"save_picture_gallery" : kSPKActionDownloadGallery,
+        @"profile_settings" : kSPKActionOpenTopicSettings
     };
 }
 
@@ -31,16 +31,21 @@ NSString *SPKActionButtonDefaultActionIdentifierForSource(SPKActionButtonSource 
         saved = SPKProfileLegacyDefaultActionMap()[saved] ?: saved;
     }
 
-    if ([saved isEqualToString:kSPKActionNone]) return kSPKActionNone;
-    if ([supportedActions containsObject:saved]) return saved;
-    if (saved.length > 0 || source == SPKActionButtonSourceProfile) return kSPKActionNone;
-    if ([supportedActions containsObject:kSPKActionDownloadLibrary]) return kSPKActionDownloadLibrary;
+    if ([saved isEqualToString:kSPKActionNone])
+        return kSPKActionNone;
+    if ([supportedActions containsObject:saved])
+        return saved;
+    if (saved.length > 0 || source == SPKActionButtonSourceProfile)
+        return kSPKActionNone;
+    if ([supportedActions containsObject:kSPKActionDownloadLibrary])
+        return kSPKActionDownloadLibrary;
     return supportedActions.firstObject ?: kSPKActionNone;
 }
 
 NSString *SPKActionButtonDefaultActionTitleForSource(SPKActionButtonSource source) {
     NSString *identifier = SPKActionButtonDefaultActionIdentifierForSource(source);
-    if ([identifier isEqualToString:kSPKActionNone]) return @"Open Menu";
+    if ([identifier isEqualToString:kSPKActionNone])
+        return @"Open Menu";
     return SPKActionDescriptorDisplayTitle(identifier, SPKActionButtonTopicTitleForSource(source));
 }
 
@@ -52,11 +57,16 @@ NSString *SPKActionButtonDefaultActionIconNameForSource(SPKActionButtonSource so
 static NSArray<NSDictionary *> *SPKActionButtonDefaultActionSections(SPKActionButtonSource source) {
     NSArray<NSString *> *supportedActions = SPKActionButtonSupportedActionsForSource(source);
     NSArray<NSDictionary *> *groups = @[
-        @{@"title": @"Downloads", @"actions": @[kSPKActionDownloadLibrary, kSPKActionDownloadShare, kSPKActionDownloadGallery]},
-        @{@"title": @"Media", @"actions": @[kSPKActionExpand, kSPKActionViewThumbnail, kSPKActionTrimSave, kSPKActionEditSave]},
-        @{@"title": @"Copy", @"actions": @[kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionCopyCaption, kSPKActionProfileCopyInfo]},
-        @{@"title": @"Audio", @"actions": @[kSPKActionDownloadAudio, kSPKActionDownloadAudioShare, kSPKActionDownloadAudioGallery, kSPKActionPlayAudio, kSPKActionCopyAudioURL]},
-        @{@"title": @"Other", @"actions": @[kSPKActionOpenTopicSettings, kSPKActionRepost, kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionDeletedMessagesLog, kSPKActionNone]}
+        @{@"title" : @"Downloads",
+          @"actions" : @[ kSPKActionDownloadLibrary, kSPKActionDownloadShare, kSPKActionDownloadGallery ]},
+        @{@"title" : @"Media",
+          @"actions" : @[ kSPKActionExpand, kSPKActionViewThumbnail, kSPKActionTrimSave, kSPKActionEditSave ]},
+        @{@"title" : @"Copy",
+          @"actions" : @[ kSPKActionCopyDownloadLink, kSPKActionCopyMedia, kSPKActionCopyCaption, kSPKActionProfileCopyInfo ]},
+        @{@"title" : @"Audio",
+          @"actions" : @[ kSPKActionDownloadAudio, kSPKActionDownloadAudioShare, kSPKActionDownloadAudioGallery, kSPKActionPlayAudio, kSPKActionCopyAudioURL ]},
+        @{@"title" : @"Other",
+          @"actions" : @[ kSPKActionOpenTopicSettings, kSPKActionRepost, kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionDeletedMessagesLog, kSPKActionNone ]}
     ];
 
     NSMutableArray<NSDictionary *> *sections = [NSMutableArray array];
@@ -68,7 +78,7 @@ static NSArray<NSDictionary *> *SPKActionButtonDefaultActionSections(SPKActionBu
             }
         }
         if (actions.count > 0) {
-            [sections addObject:@{@"title": group[@"title"], @"actions": [actions copy]}];
+            [sections addObject:@{@"title" : group[@"title"], @"actions" : [actions copy]}];
         }
     }
     return [sections copy];

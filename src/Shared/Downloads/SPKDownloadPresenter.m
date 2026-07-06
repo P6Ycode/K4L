@@ -1,11 +1,11 @@
 #import "SPKDownloadPresenter.h"
 #import "SPKDownloadService.h"
 
-#import "SPKDownloadJob.h"
-#import "SPKDownloadTypes.h"
+#import "../../Utils.h"
 #import "../Gallery/SPKGalleryViewController.h"
 #import "../UI/SPKNotificationCenter.h"
-#import "../../Utils.h"
+#import "SPKDownloadJob.h"
+#import "SPKDownloadTypes.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 static UIViewController *SPKDownloadPresenterHost(SPKDownloadJob *job) {
@@ -15,7 +15,8 @@ static UIViewController *SPKDownloadPresenterHost(SPKDownloadJob *job) {
 static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job) {
     NSMutableArray<NSURL *> *urls = [NSMutableArray array];
     for (SPKDownloadItem *item in job.items) {
-        if (item.state != SPKDownloadStateSucceeded) continue;
+        if (item.state != SPKDownloadStateSucceeded)
+            continue;
         NSString *path = item.finalPath ?: item.stagedPath;
         if (path.length && [[NSFileManager defaultManager] fileExistsAtPath:path]) {
             [urls addObject:[NSURL fileURLWithPath:path]];
@@ -36,14 +37,14 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 
 - (BOOL)itemIsInFlight:(SPKDownloadItem *)item {
     switch (item.state) {
-        case SPKDownloadStatePending:
-        case SPKDownloadStateWaitingForPreflight:
-        case SPKDownloadStateQueued:
-        case SPKDownloadStateRunning:
-        case SPKDownloadStateFinalizing:
-            return YES;
-        default:
-            return NO;
+    case SPKDownloadStatePending:
+    case SPKDownloadStateWaitingForPreflight:
+    case SPKDownloadStateQueued:
+    case SPKDownloadStateRunning:
+    case SPKDownloadStateFinalizing:
+        return YES;
+    default:
+        return NO;
     }
 }
 
@@ -52,7 +53,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
         return YES;
     }
     for (SPKDownloadItem *item in job.items) {
-        if ([self itemIsInFlight:item]) return YES;
+        if ([self itemIsInFlight:item])
+            return YES;
     }
     return NO;
 }
@@ -60,7 +62,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 - (NSUInteger)completedItemCount:(SPKDownloadJob *)job {
     NSUInteger count = 0;
     for (SPKDownloadItem *item in job.items) {
-        if (item.state == SPKDownloadStateSucceeded) count++;
+        if (item.state == SPKDownloadStateSucceeded)
+            count++;
     }
     return count;
 }
@@ -75,16 +78,24 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
         return [NSString stringWithFormat:@"Saving to %@", SPKDownloadDestinationDisplayName(job.request.destination)];
     }
     if (item.detail.length > 0) {
-        if ([item.detail containsString:@"Merging"] || [item.detail containsString:@"Re-encoding"]) return item.detail;
-        if ([item.detail containsString:@"Converting"]) return @"Converting audio";
-        if ([item.detail containsString:@"Downloading video"]) return @"Downloading video";
-        if ([item.detail containsString:@"Downloading audio"]) return @"Downloading audio";
+        if ([item.detail containsString:@"Merging"] || [item.detail containsString:@"Re-encoding"])
+            return item.detail;
+        if ([item.detail containsString:@"Converting"])
+            return @"Converting audio";
+        if ([item.detail containsString:@"Downloading video"])
+            return @"Downloading video";
+        if ([item.detail containsString:@"Downloading audio"])
+            return @"Downloading audio";
     }
     switch (item.mediaKind) {
-        case SPKDownloadMediaKindVideo: return @"Downloading video";
-        case SPKDownloadMediaKindAudio: return @"Downloading audio";
-        case SPKDownloadMediaKindImage: return @"Downloading image";
-        default: return @"Downloading";
+    case SPKDownloadMediaKindVideo:
+        return @"Downloading video";
+    case SPKDownloadMediaKindAudio:
+        return @"Downloading audio";
+    case SPKDownloadMediaKindImage:
+        return @"Downloading image";
+    default:
+        return @"Downloading";
     }
 }
 
@@ -106,7 +117,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
         }
     }
     [activeJobs sortUsingComparator:^NSComparisonResult(SPKDownloadJob *a, SPKDownloadJob *b) {
-        if (a.createdAt == b.createdAt) return NSOrderedSame;
+        if (a.createdAt == b.createdAt)
+            return NSOrderedSame;
         return a.createdAt < b.createdAt ? NSOrderedAscending : NSOrderedDescending;
     }];
     return activeJobs;
@@ -120,7 +132,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 
     // Check style
     NSString *style = [NSUserDefaults.standardUserDefaults stringForKey:kSPKNotificationProgressSubtitleStyleKey];
-    if (style.length == 0) style = @"both";
+    if (style.length == 0)
+        style = @"both";
     if ([style isEqualToString:@"off"]) {
         return nil;
     }
@@ -139,19 +152,22 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
         formatter.includesCount = YES;
         formatter.zeroPadsFractionDigits = NO;
         bytesString = [NSString stringWithFormat:@"%@ of %@",
-                       [formatter stringFromByteCount:bytesWritten],
-                       [formatter stringFromByteCount:totalBytesExpected]];
+                                                 [formatter stringFromByteCount:bytesWritten],
+                                                 [formatter stringFromByteCount:totalBytesExpected]];
     }
 
     NSMutableArray *parts = [NSMutableArray array];
     if ([style isEqualToString:@"percent"]) {
         [parts addObject:percentString];
     } else if ([style isEqualToString:@"bytes"]) {
-        if (bytesString) [parts addObject:bytesString];
-        else [parts addObject:percentString];
+        if (bytesString)
+            [parts addObject:bytesString];
+        else
+            [parts addObject:percentString];
     } else { // @"both" or default
         [parts addObject:percentString];
-        if (bytesString) [parts addObject:bytesString];
+        if (bytesString)
+            [parts addObject:bytesString];
     }
 
     if (activeCount > 1) {
@@ -162,7 +178,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 }
 
 - (void)handleJobSnapshot:(SPKDownloadJob *)job {
-    if (job.request.presentationMode == SPKDownloadPresentationModeQuiet) return;
+    if (job.request.presentationMode == SPKDownloadPresentationModeQuiet)
+        return;
 
     NSArray<SPKDownloadJob *> *activeJobs = [self activeJobsSortedByCreationTime];
 
@@ -176,7 +193,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 
         NSTimeInterval now = NSDate.date.timeIntervalSince1970;
         BOOL throttle = (now - self.lastProgressUpdate < 0.066) && self.activePill;
-        if (!throttle) self.lastProgressUpdate = now;
+        if (!throttle)
+            self.lastProgressUpdate = now;
 
         if (!self.activePill && !self.pillDismissedByUser) {
             __weak typeof(self) weakSelf = self;
@@ -190,7 +208,8 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
                 }
             });
             self.activePill.onTapWhenProgress = ^{
-                if (weakSelf.openHistoryForJobID) weakSelf.openHistoryForJobID(focusedJob.jobID);
+                if (weakSelf.openHistoryForJobID)
+                    weakSelf.openHistoryForJobID(focusedJob.jobID);
             };
             void (^previousDismiss)(void) = [self.activePill.onDidDismiss copy];
             __weak SPKNotificationPillView *weakPill = self.activePill;
@@ -242,9 +261,11 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 
 - (void)presentBatchShareForJob:(SPKDownloadJob *)job {
     NSArray<NSURL *> *urls = SPKDownloadSucceededFileURLsForJob(job);
-    if (urls.count == 0) return;
+    if (urls.count == 0)
+        return;
     UIViewController *host = SPKDownloadPresenterHost(job);
-    if (!host) return;
+    if (!host)
+        return;
     UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:urls applicationActivities:nil];
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         UIView *source = job.request.anchorView ?: host.view;
@@ -256,23 +277,28 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 
 - (void)copyBatchToClipboardForJob:(SPKDownloadJob *)job {
     NSArray<NSURL *> *urls = SPKDownloadSucceededFileURLsForJob(job);
-    if (urls.count == 0) return;
+    if (urls.count == 0)
+        return;
     NSMutableArray *items = [NSMutableArray array];
     for (NSURL *url in urls) {
         NSData *data = [NSData dataWithContentsOfURL:url];
         UTType *type = [UTType typeWithFilenameExtension:url.pathExtension];
-        if (data && type.identifier) [items addObject:@{type.identifier: data}];
+        if (data && type.identifier)
+            [items addObject:@{type.identifier : data}];
     }
-    if (items.count > 0) UIPasteboard.generalPasteboard.items = items;
+    if (items.count > 0)
+        UIPasteboard.generalPasteboard.items = items;
 }
 
 - (void)showTerminalOnActivePillForJob:(SPKDownloadJob *)job {
-    if (!self.activePill) return;
+    if (!self.activePill)
+        return;
     __weak typeof(self) weakSelf = self;
     NSString *title = nil;
     NSString *subtitle = nil;
     void (^openHistory)(void) = ^{
-        if (weakSelf.openHistoryForJobID) weakSelf.openHistoryForJobID(nil);
+        if (weakSelf.openHistoryForJobID)
+            weakSelf.openHistoryForJobID(nil);
     };
 
     if (job.request.finalizeAsBatchShare && job.state == SPKDownloadStateSucceeded) {
@@ -297,61 +323,73 @@ static NSArray<NSURL *> *SPKDownloadSucceededFileURLsForJob(SPKDownloadJob *job)
 
     // Determine terminal title/subtitle/action based on destination
     switch (job.request.destination) {
-        case SPKDownloadDestinationPhotos:
-            title = @"Saved to Photos";
-            subtitle = @"Tap to open Photos";
-            self.activePill.onTapWhenCompleted = ^{ [SPKUtils openPhotosApp]; };
-            break;
-        case SPKDownloadDestinationGallery:
-            title = @"Saved to Gallery";
-            subtitle = @"Tap to open Gallery";
-            self.activePill.onTapWhenCompleted = ^{ [SPKGalleryViewController presentGallery]; };
-            break;
-        case SPKDownloadDestinationShare:
-            if (job.request.finalizeAsBatchShare) {
-                NSUInteger count = [self completedItemCount:job];
-                title = count > 1
-                    ? [NSString stringWithFormat:@"Shared %lu items", (unsigned long)count]
-                    : @"Shared";
-                subtitle = @"Tap to open Downloads";
-                self.activePill.onTapWhenCompleted = openHistory;
-            } else {
-                title = @"Ready to share";
-                subtitle = nil;
-                self.activePill.onTapWhenCompleted = nil;
-            }
-            break;
-        case SPKDownloadDestinationClipboard:
-            if (job.request.finalizeAsBatchClipboard) {
-                NSUInteger count = [self completedItemCount:job];
-                title = count > 1
-                    ? [NSString stringWithFormat:@"Copied %lu items to clipboard", (unsigned long)count]
-                    : @"Copied to clipboard";
-            } else {
-                SPKDownloadItem *first = job.items.firstObject;
-                switch (first.mediaKind) {
-                    case SPKDownloadMediaKindVideo: title = @"Copied video to clipboard"; break;
-                    case SPKDownloadMediaKindAudio: title = @"Copied audio to clipboard"; break;
-                    case SPKDownloadMediaKindImage: title = @"Copied photo to clipboard"; break;
-                    default: title = @"Copied to clipboard"; break;
-                }
-            }
+    case SPKDownloadDestinationPhotos:
+        title = @"Saved to Photos";
+        subtitle = @"Tap to open Photos";
+        self.activePill.onTapWhenCompleted = ^{
+            [SPKUtils openPhotosApp];
+        };
+        break;
+    case SPKDownloadDestinationGallery:
+        title = @"Saved to Gallery";
+        subtitle = @"Tap to open Gallery";
+        self.activePill.onTapWhenCompleted = ^{
+            [SPKGalleryViewController presentGallery];
+        };
+        break;
+    case SPKDownloadDestinationShare:
+        if (job.request.finalizeAsBatchShare) {
+            NSUInteger count = [self completedItemCount:job];
+            title = count > 1
+                        ? [NSString stringWithFormat:@"Shared %lu items", (unsigned long)count]
+                        : @"Shared";
+            subtitle = @"Tap to open Downloads";
+            self.activePill.onTapWhenCompleted = openHistory;
+        } else {
+            title = @"Ready to share";
             subtitle = nil;
             self.activePill.onTapWhenCompleted = nil;
-            break;
-        case SPKDownloadDestinationCacheOnly:
-        default:
-            if (job.items.count > 1) {
-                NSUInteger count = [self completedItemCount:job];
-                title = [NSString stringWithFormat:@"%lu items saved", (unsigned long)count];
-                subtitle = @"Tap to open Downloads";
-                self.activePill.onTapWhenCompleted = openHistory;
-            } else {
-                title = @"Download complete";
-                subtitle = @"Tap to open Downloads";
-                self.activePill.onTapWhenCompleted = openHistory;
+        }
+        break;
+    case SPKDownloadDestinationClipboard:
+        if (job.request.finalizeAsBatchClipboard) {
+            NSUInteger count = [self completedItemCount:job];
+            title = count > 1
+                        ? [NSString stringWithFormat:@"Copied %lu items to clipboard", (unsigned long)count]
+                        : @"Copied to clipboard";
+        } else {
+            SPKDownloadItem *first = job.items.firstObject;
+            switch (first.mediaKind) {
+            case SPKDownloadMediaKindVideo:
+                title = @"Copied video to clipboard";
+                break;
+            case SPKDownloadMediaKindAudio:
+                title = @"Copied audio to clipboard";
+                break;
+            case SPKDownloadMediaKindImage:
+                title = @"Copied photo to clipboard";
+                break;
+            default:
+                title = @"Copied to clipboard";
+                break;
             }
-            break;
+        }
+        subtitle = nil;
+        self.activePill.onTapWhenCompleted = nil;
+        break;
+    case SPKDownloadDestinationCacheOnly:
+    default:
+        if (job.items.count > 1) {
+            NSUInteger count = [self completedItemCount:job];
+            title = [NSString stringWithFormat:@"%lu items saved", (unsigned long)count];
+            subtitle = @"Tap to open Downloads";
+            self.activePill.onTapWhenCompleted = openHistory;
+        } else {
+            title = @"Download complete";
+            subtitle = @"Tap to open Downloads";
+            self.activePill.onTapWhenCompleted = openHistory;
+        }
+        break;
     }
 
     [self.activePill showSuccessWithTitle:title subtitle:subtitle icon:nil];

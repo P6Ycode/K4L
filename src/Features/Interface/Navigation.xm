@@ -2,11 +2,16 @@
 #import <objc/message.h>
 
 static NSString *SPKSelectorForLaunchTabPreference(NSString *preference) {
-    if ([preference isEqualToString:@"feed"]) return @"_timelineButtonPressed";
-    if ([preference isEqualToString:@"reels"]) return @"_discoverVideoButtonPressed";
-    if ([preference isEqualToString:@"inbox"]) return @"_directInboxButtonPressed";
-    if ([preference isEqualToString:@"explore"]) return @"_exploreButtonPressed";
-    if ([preference isEqualToString:@"profile"]) return @"_profileButtonPressed";
+    if ([preference isEqualToString:@"feed"])
+        return @"_timelineButtonPressed";
+    if ([preference isEqualToString:@"reels"])
+        return @"_discoverVideoButtonPressed";
+    if ([preference isEqualToString:@"inbox"])
+        return @"_directInboxButtonPressed";
+    if ([preference isEqualToString:@"explore"])
+        return @"_exploreButtonPressed";
+    if ([preference isEqualToString:@"profile"])
+        return @"_profileButtonPressed";
     return nil;
 }
 
@@ -17,7 +22,7 @@ BOOL isSurfaceShown(IGMainAppSurfaceIntent *surface) {
     if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"FEED"] && [SPKUtils getBoolPref:@"interface_hide_feed_tab"]) {
         isShown = NO;
     }
-    
+
     // Reels
     else if ([[surface tabStringFromSurfaceIntent] isEqualToString:@"CLIPS"] && [SPKUtils getBoolPref:@"interface_hide_reels_tab"]) {
         isShown = NO;
@@ -50,7 +55,8 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     NSMutableArray *filteredSurfaces = [NSMutableArray array];
 
     for (IGMainAppSurfaceIntent *surface in surfaces) {
-        if (![surface isKindOfClass:%c(IGMainAppSurfaceIntent)]) break;
+        if (![surface isKindOfClass:%c(IGMainAppSurfaceIntent)])
+            break;
 
         if (isSurfaceShown(surface)) {
             [filteredSurfaces addObject:surface];
@@ -76,13 +82,14 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     %orig;
 
     static BOOL appliedLaunchTab = NO;
-    if (appliedLaunchTab) return;
+    if (appliedLaunchTab)
+        return;
     appliedLaunchTab = YES;
 
     NSString *selectorName = SPKSelectorForLaunchTabPreference([SPKUtils getStringPref:@"interface_launch_tab"]);
     SEL selector = selectorName.length > 0 ? NSSelectorFromString(selectorName) : nil;
     if (selector && [self respondsToSelector:selector]) {
-        ((void(*)(id, SEL))objc_msgSend)(self, selector);
+        ((void (*)(id, SEL))objc_msgSend)(self, selector);
     }
 }
 
@@ -91,12 +98,12 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     NSArray *_tabBarSurfaces = [SPKUtils getIvarForObj:self name:"_tabBarSurfaces"];
 
     [SPKUtils setIvarForObj:self name:"_tabBarSurfaces" value:filterSurfacesArray(_tabBarSurfaces)];
-    
+
     %orig;
 }
 
 - (id)_buttonForTabBarSurface:(id)surface {
-    // Prevents the button from being added to the tab bar 
+    // Prevents the button from being added to the tab bar
     id button = %orig(surface);
 
     if (!isSurfaceShown(surface)) {
@@ -111,12 +118,14 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 %hook _TtC18IGNavConfiguration18IGNavConfiguration
 - (NSInteger)tabOrdering {
 
-    if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"]) return 0;
-    else if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"standard"]) return 1;
-    else if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"alternate"]) return 2;
+    if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"])
+        return 0;
+    else if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"standard"])
+        return 1;
+    else if ([[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"alternate"])
+        return 2;
 
     return %orig;
-
 }
 - (void)setTabOrdering:(NSInteger)arg1 {
     return;
@@ -124,11 +133,12 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
 
 - (BOOL)isTabSwipingEnabled {
 
-    if ([[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"enabled"]) return YES;
-    else if ([[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"disabled"]) return NO;
+    if ([[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"enabled"])
+        return YES;
+    else if ([[SPKUtils getStringPref:@"interface_swipe_tabs"] isEqualToString:@"disabled"])
+        return NO;
 
     return %orig;
-
 }
 - (void)setIsTabSwipingEnabled:(BOOL)arg1 {
     return;
@@ -144,9 +154,10 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
         // (KVC-safe). `rightButton` is a bare Swift ivar on 436 (KVC throws) but the
         // KVC key on older ObjC builds — resolve via selector first, guard the rest.
         UIView *msgsButton = nil;
-        for (NSString *key in @[@"directButton", @"rightButton"]) {
+        for (NSString *key in @[ @"directButton", @"rightButton" ]) {
             SEL getter = NSSelectorFromString(key);
-            if (![self respondsToSelector:getter]) continue;
+            if (![self respondsToSelector:getter])
+                continue;
             id candidate = ((id (*)(id, SEL))objc_msgSend)(self, getter);
             if ([candidate isKindOfClass:[UIView class]]) {
                 msgsButton = candidate;
@@ -174,11 +185,12 @@ extern "C" void SPKInstallNavigationHooksIfNeeded(void) {
                          [SPKUtils getBoolPref:@"interface_hide_explore_tab"] ||
                          [SPKUtils getBoolPref:@"interface_hide_profile_tab"] ||
                          [SPKUtils getBoolPref:@"interface_hide_create_tab"];
-    if (!shouldInstall) return;
+    if (!shouldInstall)
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SPKNavigationHooks,
-              IGHomeFeedHeaderView = SPKResolveIGClass(@"IGHomeFeedHeader.IGHomeFeedHeaderView", @"IGHomeFeedHeaderView"));
+                       IGHomeFeedHeaderView = SPKResolveIGClass(@"IGHomeFeedHeader.IGHomeFeedHeaderView", @"IGHomeFeedHeaderView"));
     });
 }

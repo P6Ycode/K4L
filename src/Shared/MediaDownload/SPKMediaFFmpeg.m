@@ -1,8 +1,8 @@
 #import "SPKMediaFFmpeg.h"
 
 #import "../../AssetUtils.h"
-#import "../UI/SPKMediaChrome.h"
 #import "../../Utils.h"
+#import "../UI/SPKMediaChrome.h"
 #import <AVFoundation/AVFoundation.h>
 #import <dlfcn.h>
 #import <objc/message.h>
@@ -15,7 +15,7 @@ static NSString *sSPKFFmpegLoadFailureSummary = nil;
 
 static NSString *SPKFFmpegStringPref(NSString *key, NSString *fallback);
 
-static NSString * const kSPKFFmpegLogsDirectoryName = @"SparkleFFmpegLogs";
+static NSString *const kSPKFFmpegLogsDirectoryName = @"SparkleFFmpegLogs";
 
 static NSString *SPKFFmpegDylibDirectory(void) {
     Dl_info info;
@@ -71,8 +71,10 @@ static NSInteger SPKFFmpegConfiguredVideoBitrateKbpsOrZero(void) {
 static NSInteger SPKFFmpegAdvancedDefaultBitrateKbps(NSInteger sourceBitrate) {
     if (sourceBitrate > 0) {
         NSInteger kbps = sourceBitrate / 1000;
-        if (kbps < 2500) kbps = 2500;
-        if (kbps > 50000) kbps = 50000;
+        if (kbps < 2500)
+            kbps = 2500;
+        if (kbps > 50000)
+            kbps = 50000;
         return kbps;
     }
     return 8000;
@@ -88,7 +90,7 @@ static NSString *SPKFFmpegLogsDirectoryPath(void) {
 
 static NSArray<NSString *> *SPKFFmpegSortedLogFiles(void) {
     return [[[NSFileManager defaultManager] contentsOfDirectoryAtPath:SPKFFmpegLogsDirectoryPath() error:nil] ?: @[]
-            sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+        sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
 }
 
 static NSString *SPKFFmpegCombinedLogsString(void) {
@@ -263,15 +265,15 @@ static NSInteger SPKFFmpegIntegerPref(NSString *key, NSInteger fallback) {
 // Maps the user-facing speed setting to an x264 preset name.
 static NSString *SPKFFmpegPresetForSpeed(NSString *speed) {
     NSDictionary<NSString *, NSString *> *map = @{
-        @"ultrafast": @"ultrafast",
-        @"superfast": @"superfast",
-        @"veryfast":  @"veryfast",
-        @"faster":    @"faster",
-        @"fast":      @"faster",   // "fast" is a UI alias for "faster"
-        @"medium":    @"medium",
-        @"slow":      @"slow",
-        @"slower":    @"slower",
-        @"veryslow":  @"veryslow",
+        @"ultrafast" : @"ultrafast",
+        @"superfast" : @"superfast",
+        @"veryfast" : @"veryfast",
+        @"faster" : @"faster",
+        @"fast" : @"faster", // "fast" is a UI alias for "faster"
+        @"medium" : @"medium",
+        @"slow" : @"slow",
+        @"slower" : @"slower",
+        @"veryslow" : @"veryslow",
     };
     NSString *preset = map[speed];
     return preset.length > 0 ? preset : @"medium";
@@ -287,11 +289,11 @@ static NSString *SPKFFmpegPresetForSpeed(NSString *speed) {
 // "Encoding speed" preset, applied separately by the caller.
 static NSArray<NSString *> *SPKFFmpegRateControlTokens(NSInteger sourceBitrate) {
     if (sourceBitrate <= 0) {
-        return @[@"-crf", @"23"];
+        return @[ @"-crf", @"23" ];
     }
     NSInteger maxrate = (NSInteger)llround(sourceBitrate * 1.2);
     return @[
-        @"-b:v",     [NSString stringWithFormat:@"%ld", (long)sourceBitrate],
+        @"-b:v", [NSString stringWithFormat:@"%ld", (long)sourceBitrate],
         @"-maxrate", [NSString stringWithFormat:@"%ld", (long)maxrate],
         @"-bufsize", [NSString stringWithFormat:@"%ld", (long)(sourceBitrate * 2)]
     ];
@@ -310,15 +312,15 @@ static NSArray<NSString *> *SPKFFmpegRateControlTokens(NSInteger sourceBitrate) 
 // Faststart is instead handled by a separate stream-copy pass driven by the
 // merge attempts orchestrator (see `SPKFFmpegFaststartArguments`).
 static NSString *SPKFFmpegDefaultMergeCommand(NSURL *videoFileURL,
-                                               NSURL *audioFileURL,
-                                               NSURL *outputURL,
-                                               NSInteger width,
-                                               NSInteger height,
-                                               NSInteger sourceBitrate) {
+                                              NSURL *audioFileURL,
+                                              NSURL *outputURL,
+                                              NSInteger width,
+                                              NSInteger height,
+                                              NSInteger sourceBitrate) {
     (void)width;
     (void)height;
 
-    NSString *speed  = SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium");
+    NSString *speed = SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     NSString *preset = SPKFFmpegPresetForSpeed(speed);
 
     NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithArray:@[
@@ -374,41 +376,50 @@ static NSArray<NSString *> *SPKFFmpegDefaultMergeArguments(NSURL *videoFileURL,
                                                            NSURL *outputURL,
                                                            NSString *extraVideoFilter,
                                                            NSInteger sourceBitrate) {
-    NSString *speed  = SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium");
+    NSString *speed = SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium");
     NSString *preset = SPKFFmpegPresetForSpeed(speed);
 
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
         @"-y",
         @"-hide_banner",
-        @"-analyzeduration", @"100M",
-        @"-probesize",       @"100M",
-        @"-fflags",          @"+genpts",
-        @"-i",               videoFileURL.path,
+        @"-analyzeduration",
+        @"100M",
+        @"-probesize",
+        @"100M",
+        @"-fflags",
+        @"+genpts",
+        @"-i",
+        videoFileURL.path,
     ]];
 
     if (audioFileURL) {
-        [args addObjectsFromArray:@[@"-i", audioFileURL.path]];
-        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-map", @"1:a:0"]];
+        [args addObjectsFromArray:@[ @"-i", audioFileURL.path ]];
+        [args addObjectsFromArray:@[ @"-map", @"0:v:0", @"-map", @"1:a:0" ]];
     } else {
-        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-an"]];
+        [args addObjectsFromArray:@[ @"-map", @"0:v:0", @"-an" ]];
     }
 
     if (extraVideoFilter.length > 0) {
-        [args addObjectsFromArray:@[@"-vf", extraVideoFilter]];
+        [args addObjectsFromArray:@[ @"-vf", extraVideoFilter ]];
     }
 
     [args addObjectsFromArray:@[
-        @"-c:v",       @"libx264",
-        @"-preset",    preset,
-        @"-pix_fmt",   @"yuv420p",
-        @"-profile:v", @"main",
-        @"-level",     @"4.0",
+        @"-c:v",
+        @"libx264",
+        @"-preset",
+        preset,
+        @"-pix_fmt",
+        @"yuv420p",
+        @"-profile:v",
+        @"main",
+        @"-level",
+        @"4.0",
     ]];
     [args addObjectsFromArray:SPKFFmpegRateControlTokens(sourceBitrate)];
 
     if (audioFileURL) {
         // See SPKFFmpegDefaultMergeCommand for the audio/no-`-shortest` rationale.
-        [args addObjectsFromArray:@[@"-c:a", @"copy"]];
+        [args addObjectsFromArray:@[ @"-c:a", @"copy" ]];
     }
 
     // Faststart is intentionally NOT applied here — it is performed by a
@@ -417,7 +428,6 @@ static NSArray<NSString *> *SPKFFmpegDefaultMergeArguments(NSURL *videoFileURL,
     [args addObject:outputURL.path];
     return args;
 }
-
 
 // Advanced DASH merge arguments. Audio is always copied for DASH merges.
 static NSArray<NSString *> *SPKFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
@@ -430,17 +440,21 @@ static NSArray<NSString *> *SPKFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
                                                             NSString *codecOverride,
                                                             NSString *extraVideoFilter) {
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
-        @"-analyzeduration", @"100M",
-        @"-probesize",       @"100M",
-        @"-fflags",          @"+genpts",
-        @"-i",               videoFileURL.path,
+        @"-analyzeduration",
+        @"100M",
+        @"-probesize",
+        @"100M",
+        @"-fflags",
+        @"+genpts",
+        @"-i",
+        videoFileURL.path,
     ]];
 
     if (audioFileURL) {
-        [args addObjectsFromArray:@[@"-i", audioFileURL.path]];
-        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-map", @"1:a:0"]];
+        [args addObjectsFromArray:@[ @"-i", audioFileURL.path ]];
+        [args addObjectsFromArray:@[ @"-map", @"0:v:0", @"-map", @"1:a:0" ]];
     } else {
-        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-an"]];
+        [args addObjectsFromArray:@[ @"-map", @"0:v:0", @"-an" ]];
     }
 
     // Optional scale filter
@@ -448,12 +462,12 @@ static NSArray<NSString *> *SPKFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
     NSInteger targetMaxResolution = [maxResolution isEqualToString:@"original"] ? 0 : MAX(maxResolution.integerValue, 0);
     if (targetMaxResolution > 0 && width > 0 && height > 0) {
         NSString *scaleFilter = width >= height
-            ? [NSString stringWithFormat:@"scale=%ld:-2", (long)targetMaxResolution]
-            : [NSString stringWithFormat:@"scale=-2:%ld", (long)targetMaxResolution];
+                                    ? [NSString stringWithFormat:@"scale=%ld:-2", (long)targetMaxResolution]
+                                    : [NSString stringWithFormat:@"scale=-2:%ld", (long)targetMaxResolution];
         NSString *combined = extraVideoFilter.length > 0 ? [NSString stringWithFormat:@"%@,%@", scaleFilter, extraVideoFilter] : scaleFilter;
-        [args addObjectsFromArray:@[@"-vf", combined]];
+        [args addObjectsFromArray:@[ @"-vf", combined ]];
     } else if (extraVideoFilter.length > 0) {
-        [args addObjectsFromArray:@[@"-vf", extraVideoFilter]];
+        [args addObjectsFromArray:@[ @"-vf", extraVideoFilter ]];
     }
 
     // Advanced DASH merge path respects the selected video codec.
@@ -469,39 +483,43 @@ static NSArray<NSString *> *SPKFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
         NSString *crf = SPKFFmpegStringPref(@"downloads_encoding_crf", @"");
 
         [args addObjectsFromArray:@[
-            @"-c:v", @"libx264",
-            @"-preset", SPKFFmpegPresetForSpeed(preset),
+            @"-c:v",
+            @"libx264",
+            @"-preset",
+            SPKFFmpegPresetForSpeed(preset),
         ]];
 
         if (crf.length > 0 && crf.integerValue > 0) {
-            [args addObjectsFromArray:@[@"-crf", crf]];
+            [args addObjectsFromArray:@[ @"-crf", crf ]];
         } else {
-            [args addObjectsFromArray:@[@"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate]]];
+            [args addObjectsFromArray:@[ @"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate] ]];
         }
 
         if (profile.length > 0 && ![profile isEqualToString:@"auto"]) {
-            [args addObjectsFromArray:@[@"-profile:v", profile]];
+            [args addObjectsFromArray:@[ @"-profile:v", profile ]];
         }
         if (level.length > 0 && ![level isEqualToString:@"auto"]) {
-            [args addObjectsFromArray:@[@"-level", level]];
+            [args addObjectsFromArray:@[ @"-level", level ]];
         }
     } else {
         [args addObjectsFromArray:@[
-            @"-c:v", @"h264_videotoolbox",
-            @"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate],
+            @"-c:v",
+            @"h264_videotoolbox",
+            @"-b:v",
+            [NSString stringWithFormat:@"%ldk", (long)targetBitrate],
         ]];
         if (SPKFFmpegDashSpeedTierUsesRealtime()) {
-            [args addObjectsFromArray:@[@"-realtime", @"1"]];
+            [args addObjectsFromArray:@[ @"-realtime", @"1" ]];
         }
         if (maxQualityTier) {
-            [args addObjectsFromArray:@[@"-profile:v", @"high", @"-level", @"5.1"]];
+            [args addObjectsFromArray:@[ @"-profile:v", @"high", @"-level", @"5.1" ]];
         }
     }
 
     // Pixel format
     NSString *pixelFormat = SPKFFmpegStringPref(@"downloads_encoding_pixel_format", @"yuv420p");
     if (![pixelFormat isEqualToString:@"default"] && pixelFormat.length > 0) {
-        [args addObjectsFromArray:@[@"-pix_fmt", pixelFormat]];
+        [args addObjectsFromArray:@[ @"-pix_fmt", pixelFormat ]];
     }
 
     // Faststart is handled by a follow-up stream-copy pass; see
@@ -512,13 +530,12 @@ static NSArray<NSString *> *SPKFFmpegAdvancedMergeArguments(NSURL *videoFileURL,
     if (audioFileURL) {
         (void)copyAudio;
         // See SPKFFmpegDefaultMergeCommand for the audio/no-`-shortest` rationale.
-        [args addObjectsFromArray:@[@"-c:a", @"copy"]];
+        [args addObjectsFromArray:@[ @"-c:a", @"copy" ]];
     }
 
     [args addObject:outputURL.path];
     return args;
 }
-
 
 static NSArray<NSString *> *SPKFFmpegNormalizationArguments(NSURL *videoFileURL, NSURL *normalizedVideoURL) {
     return @[
@@ -563,14 +580,14 @@ static NSArray<NSString *> *SPKFFmpegAudioReencodeArguments(NSURL *sourceURL, NS
 
     NSInteger audioBitrate = SPKFFmpegIntegerPref(@"downloads_encoding_audio_bitrate_kbps", 128);
     if (audioBitrate > 0) {
-        [args addObjectsFromArray:@[@"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate]]];
+        [args addObjectsFromArray:@[ @"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate] ]];
     }
 
     NSString *channels = SPKFFmpegStringPref(@"downloads_encoding_audio_channels", @"original").lowercaseString;
     if ([channels isEqualToString:@"mono"]) {
-        [args addObjectsFromArray:@[@"-ac", @"1"]];
+        [args addObjectsFromArray:@[ @"-ac", @"1" ]];
     } else if ([channels isEqualToString:@"stereo"]) {
-        [args addObjectsFromArray:@[@"-ac", @"2"]];
+        [args addObjectsFromArray:@[ @"-ac", @"2" ]];
     }
 
     [args addObject:outputURL.path];
@@ -578,31 +595,31 @@ static NSArray<NSString *> *SPKFFmpegAudioReencodeArguments(NSURL *sourceURL, NS
 }
 
 typedef NS_ENUM(NSInteger, SPKFFmpegTrimAudioMode) {
-    SPKFFmpegTrimAudioAAC = 0,   // re-encode to AAC (normal case)
-    SPKFFmpegTrimAudioCopy = 1,  // stream-copy (xHE-AAC / undecodable sources)
-    SPKFFmpegTrimAudioNone = 2,  // drop audio (last-resort fallback)
+    SPKFFmpegTrimAudioAAC = 0,  // re-encode to AAC (normal case)
+    SPKFFmpegTrimAudioCopy = 1, // stream-copy (xHE-AAC / undecodable sources)
+    SPKFFmpegTrimAudioNone = 2, // drop audio (last-resort fallback)
 };
 
 // Appends the audio encoder options for a trim attempt, honoring the configured
 // bitrate and channel layout in AAC mode.
 static void SPKFFmpegAppendTrimAudioOptions(NSMutableArray<NSString *> *args, SPKFFmpegTrimAudioMode audioMode) {
     if (audioMode == SPKFFmpegTrimAudioCopy) {
-        [args addObjectsFromArray:@[@"-c:a", @"copy"]];
+        [args addObjectsFromArray:@[ @"-c:a", @"copy" ]];
         return;
     }
     if (audioMode != SPKFFmpegTrimAudioAAC) {
-        return;  // None: video-only, no audio options.
+        return; // None: video-only, no audio options.
     }
-    [args addObjectsFromArray:@[@"-c:a", @"aac"]];
+    [args addObjectsFromArray:@[ @"-c:a", @"aac" ]];
     NSInteger audioBitrate = SPKFFmpegIntegerPref(@"downloads_encoding_audio_bitrate_kbps", 128);
     if (audioBitrate > 0) {
-        [args addObjectsFromArray:@[@"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate]]];
+        [args addObjectsFromArray:@[ @"-b:a", [NSString stringWithFormat:@"%ldk", (long)audioBitrate] ]];
     }
     NSString *channels = SPKFFmpegStringPref(@"downloads_encoding_audio_channels", @"original").lowercaseString;
     if ([channels isEqualToString:@"mono"]) {
-        [args addObjectsFromArray:@[@"-ac", @"1"]];
+        [args addObjectsFromArray:@[ @"-ac", @"1" ]];
     } else if ([channels isEqualToString:@"stereo"]) {
-        [args addObjectsFromArray:@[@"-ac", @"2"]];
+        [args addObjectsFromArray:@[ @"-ac", @"2" ]];
     }
 }
 
@@ -621,14 +638,19 @@ static void SPKFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
     if (!useAdvanced) {
         NSString *preset = SPKFFmpegPresetForSpeed(SPKFFmpegStringPref(@"downloads_encoding_speed", @"medium"));
         [args addObjectsFromArray:@[
-            @"-c:v",       @"libx264",
-            @"-preset",    preset,
-            @"-pix_fmt",   @"yuv420p",
-            @"-profile:v", @"main",
-            @"-level",     @"4.0",
+            @"-c:v",
+            @"libx264",
+            @"-preset",
+            preset,
+            @"-pix_fmt",
+            @"yuv420p",
+            @"-profile:v",
+            @"main",
+            @"-level",
+            @"4.0",
         ]];
         if (extraVideoFilter.length > 0) {
-            [args addObjectsFromArray:@[@"-vf", extraVideoFilter]];
+            [args addObjectsFromArray:@[ @"-vf", extraVideoFilter ]];
         }
         return;
     }
@@ -640,15 +662,15 @@ static void SPKFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
     NSInteger targetMaxResolution = [maxResolution isEqualToString:@"original"] ? 0 : MAX(maxResolution.integerValue, 0);
     if (targetMaxResolution > 0 && width > 0 && height > 0) {
         NSString *scaleFilter = width >= height
-            ? [NSString stringWithFormat:@"scale=%ld:-2", (long)targetMaxResolution]
-            : [NSString stringWithFormat:@"scale=-2:%ld", (long)targetMaxResolution];
+                                    ? [NSString stringWithFormat:@"scale=%ld:-2", (long)targetMaxResolution]
+                                    : [NSString stringWithFormat:@"scale=-2:%ld", (long)targetMaxResolution];
         [videoFilters addObject:scaleFilter];
     }
     if (extraVideoFilter.length > 0) {
         [videoFilters addObject:extraVideoFilter];
     }
     if (videoFilters.count > 0) {
-        [args addObjectsFromArray:@[@"-vf", [videoFilters componentsJoinedByString:@","]]];
+        [args addObjectsFromArray:@[ @"-vf", [videoFilters componentsJoinedByString:@","] ]];
     }
 
     NSString *selectedCodec = SPKFFmpegStringPref(@"downloads_encoding_vid_codec", @"videotoolbox");
@@ -661,31 +683,31 @@ static void SPKFFmpegAppendVideoEncodeOptions(NSMutableArray<NSString *> *args,
         NSString *level = SPKFFmpegStringPref(@"downloads_encoding_h264_level", @"auto");
         NSString *crf = SPKFFmpegStringPref(@"downloads_encoding_crf", @"");
 
-        [args addObjectsFromArray:@[@"-c:v", @"libx264", @"-preset", SPKFFmpegPresetForSpeed(preset)]];
+        [args addObjectsFromArray:@[ @"-c:v", @"libx264", @"-preset", SPKFFmpegPresetForSpeed(preset) ]];
         if (crf.length > 0 && crf.integerValue > 0) {
-            [args addObjectsFromArray:@[@"-crf", crf]];
+            [args addObjectsFromArray:@[ @"-crf", crf ]];
         } else {
-            [args addObjectsFromArray:@[@"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate]]];
+            [args addObjectsFromArray:@[ @"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate] ]];
         }
         if (profile.length > 0 && ![profile isEqualToString:@"auto"]) {
-            [args addObjectsFromArray:@[@"-profile:v", profile]];
+            [args addObjectsFromArray:@[ @"-profile:v", profile ]];
         }
         if (level.length > 0 && ![level isEqualToString:@"auto"]) {
-            [args addObjectsFromArray:@[@"-level", level]];
+            [args addObjectsFromArray:@[ @"-level", level ]];
         }
     } else {
-        [args addObjectsFromArray:@[@"-c:v", @"h264_videotoolbox", @"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate]]];
+        [args addObjectsFromArray:@[ @"-c:v", @"h264_videotoolbox", @"-b:v", [NSString stringWithFormat:@"%ldk", (long)targetBitrate] ]];
         if (SPKFFmpegDashSpeedTierUsesRealtime()) {
-            [args addObjectsFromArray:@[@"-realtime", @"1"]];
+            [args addObjectsFromArray:@[ @"-realtime", @"1" ]];
         }
         if (SPKFFmpegDashSpeedTierIsMaxQuality()) {
-            [args addObjectsFromArray:@[@"-profile:v", @"high", @"-level", @"5.1"]];
+            [args addObjectsFromArray:@[ @"-profile:v", @"high", @"-level", @"5.1" ]];
         }
     }
 
     NSString *pixelFormat = SPKFFmpegStringPref(@"downloads_encoding_pixel_format", @"yuv420p");
     if (pixelFormat.length > 0 && ![pixelFormat isEqualToString:@"default"]) {
-        [args addObjectsFromArray:@[@"-pix_fmt", pixelFormat]];
+        [args addObjectsFromArray:@[ @"-pix_fmt", pixelFormat ]];
     }
 }
 
@@ -708,15 +730,18 @@ static NSArray<NSString *> *SPKFFmpegTrimArguments(NSURL *videoFileURL,
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
         @"-y",
         @"-hide_banner",
-        @"-i", videoFileURL.path,
-        @"-ss", [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
-        @"-t", [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
+        @"-i",
+        videoFileURL.path,
+        @"-ss",
+        [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
+        @"-t",
+        [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
     ]];
 
     if (audioMode == SPKFFmpegTrimAudioNone) {
-        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-an"]];
+        [args addObjectsFromArray:@[ @"-map", @"0:v:0", @"-an" ]];
     } else {
-        [args addObjectsFromArray:@[@"-map", @"0:v:0", @"-map", @"0:a:0"]];
+        [args addObjectsFromArray:@[ @"-map", @"0:v:0", @"-map", @"0:a:0" ]];
     }
 
     SPKFFmpegAppendVideoEncodeOptions(args, width, height, sourceBitrate, nil);
@@ -741,11 +766,18 @@ static NSArray<NSString *> *SPKFFmpegTrimMergeArguments(NSString *videoSource,
     NSMutableArray<NSString *> *args = [NSMutableArray arrayWithArray:@[
         @"-y",
         @"-hide_banner",
-        @"-i", videoSource,
-        @"-i", audioSource,
-        @"-ss", [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
-        @"-t", [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
-        @"-map", @"0:v:0", @"-map", @"1:a:0",
+        @"-i",
+        videoSource,
+        @"-i",
+        audioSource,
+        @"-ss",
+        [NSString stringWithFormat:@"%.3f", MAX(0.0, startSeconds)],
+        @"-t",
+        [NSString stringWithFormat:@"%.3f", MAX(0.0, durationSeconds)],
+        @"-map",
+        @"0:v:0",
+        @"-map",
+        @"1:a:0",
     ]];
     SPKFFmpegAppendVideoEncodeOptions(args, width, height, 0, nil);
     SPKFFmpegAppendTrimAudioOptions(args, SPKFFmpegTrimAudioAAC);
@@ -770,7 +802,7 @@ static NSURL *SPKFFmpegNormalizedVideoURL(NSString *basename, NSString *suffix) 
 static NSError *SPKFFmpegError(NSString *description, NSInteger code) {
     return [NSError errorWithDomain:@"Sparkle.MediaFFmpeg"
                                code:code
-                           userInfo:@{NSLocalizedDescriptionKey: description ?: @"FFmpeg failed"}];
+                           userInfo:@{NSLocalizedDescriptionKey : description ?: @"FFmpeg failed"}];
 }
 
 // Pre-convert an arbitrary audio source (including xHE-AAC, which the bundled
@@ -779,19 +811,21 @@ static NSError *SPKFFmpegError(NSString *description, NSInteger code) {
 // something FFmpeg can `-c:a copy` through without ever decoding the original.
 static void SPKFFmpegConvertAudioToAACLCAsync(NSURL *sourceURL,
                                               NSURL *outputURL,
-                                              void (^completion)(NSURL * _Nullable, NSError * _Nullable)) {
+                                              void (^completion)(NSURL *_Nullable, NSError *_Nullable)) {
     [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
 
     AVURLAsset *asset = [AVURLAsset URLAssetWithURL:sourceURL options:nil];
     if (!asset) {
-        if (completion) completion(nil, SPKFFmpegError(@"Audio asset could not be opened", 10));
+        if (completion)
+            completion(nil, SPKFFmpegError(@"Audio asset could not be opened", 10));
         return;
     }
 
     AVAssetExportSession *export = [[AVAssetExportSession alloc] initWithAsset:asset
                                                                     presetName:AVAssetExportPresetAppleM4A];
     if (!export) {
-        if (completion) completion(nil, SPKFFmpegError(@"AVAssetExportSession unavailable", 11));
+        if (completion)
+            completion(nil, SPKFFmpegError(@"AVAssetExportSession unavailable", 11));
         return;
     }
     export.outputURL = outputURL;
@@ -800,36 +834,39 @@ static void SPKFFmpegConvertAudioToAACLCAsync(NSURL *sourceURL,
 
     [export exportAsynchronouslyWithCompletionHandler:^{
         switch (export.status) {
-            case AVAssetExportSessionStatusCompleted: {
-                if ([[NSFileManager defaultManager] fileExistsAtPath:outputURL.path]) {
-                    if (completion) completion(outputURL, nil);
-                } else if (completion) {
-                    completion(nil, SPKFFmpegError(@"Audio conversion produced no output", 12));
-                }
-                break;
+        case AVAssetExportSessionStatusCompleted: {
+            if ([[NSFileManager defaultManager] fileExistsAtPath:outputURL.path]) {
+                if (completion)
+                    completion(outputURL, nil);
+            } else if (completion) {
+                completion(nil, SPKFFmpegError(@"Audio conversion produced no output", 12));
             }
-            case AVAssetExportSessionStatusCancelled:
-                if (completion) completion(nil, SPKFFmpegError(@"Audio conversion cancelled", NSUserCancelledError));
-                break;
-            case AVAssetExportSessionStatusFailed:
-            default: {
-                NSString *desc = export.error.localizedDescription ?: @"Audio conversion failed";
-                if (completion) completion(nil, SPKFFmpegError(desc, 13));
-                break;
-            }
+            break;
+        }
+        case AVAssetExportSessionStatusCancelled:
+            if (completion)
+                completion(nil, SPKFFmpegError(@"Audio conversion cancelled", NSUserCancelledError));
+            break;
+        case AVAssetExportSessionStatusFailed:
+        default: {
+            NSString *desc = export.error.localizedDescription ?: @"Audio conversion failed";
+            if (completion)
+                completion(nil, SPKFFmpegError(desc, 13));
+            break;
+        }
         }
     }];
 }
 
 // Preferred: string-based execution via FFmpegKit.
 static void SPKFFmpegRunAsyncStringCommand(NSString *commandString,
-                                            NSString *identifier,
-                                            NSString *stage,
-                                            NSTimeInterval expectedDuration,
-                                            SPKMediaFFmpegProgressBlock progress,
-                                            SPKMediaFFmpegCompletionBlock completion,
-                                            SPKMediaFFmpegCancelBlockPublisher cancelOut,
-                                            NSURL *successURL);
+                                           NSString *identifier,
+                                           NSString *stage,
+                                           NSTimeInterval expectedDuration,
+                                           SPKMediaFFmpegProgressBlock progress,
+                                           SPKMediaFFmpegCompletionBlock completion,
+                                           SPKMediaFFmpegCancelBlockPublisher cancelOut,
+                                           NSURL *successURL);
 
 // Fallback: array-based execution.
 static void SPKFFmpegRunAsyncCommand(NSArray<NSString *> *arguments,
@@ -843,17 +880,18 @@ static void SPKFFmpegRunAsyncCommand(NSArray<NSString *> *arguments,
 
 // Shared implementation for both entry points.
 static void _SPKFFmpegRunAsyncImpl(id commandOrArgs,
-                                    BOOL isString,
-                                    NSString *identifier,
-                                    NSString *stage,
-                                    NSTimeInterval expectedDuration,
-                                    SPKMediaFFmpegProgressBlock progress,
-                                    SPKMediaFFmpegCompletionBlock completion,
-                                    SPKMediaFFmpegCancelBlockPublisher cancelOut,
-                                    NSURL *successURL) {
+                                   BOOL isString,
+                                   NSString *identifier,
+                                   NSString *stage,
+                                   NSTimeInterval expectedDuration,
+                                   SPKMediaFFmpegProgressBlock progress,
+                                   SPKMediaFFmpegCompletionBlock completion,
+                                   SPKMediaFFmpegCancelBlockPublisher cancelOut,
+                                   NSURL *successURL) {
     SPKFFmpegEnsureLoaded();
     if (!sSPKFFmpegAvailable || !sSPKFFmpegKitClass) {
-        if (completion) completion(nil, SPKFFmpegError(@"FFmpegKit is not available", 1));
+        if (completion)
+            completion(nil, SPKFFmpegError(@"FFmpegKit is not available", 1));
         return;
     }
 
@@ -872,7 +910,8 @@ static void _SPKFFmpegRunAsyncImpl(id commandOrArgs,
         executeSelector = NSSelectorFromString(@"executeWithArgumentsAsync:withCompleteCallback:withLogCallback:withStatisticsCallback:");
     }
     if (![sSPKFFmpegKitClass respondsToSelector:executeSelector]) {
-        if (completion) completion(nil, SPKFFmpegError(@"FFmpegKit async API unavailable", 2));
+        if (completion)
+            completion(nil, SPKFFmpegError(@"FFmpegKit async API unavailable", 2));
         return;
     }
 
@@ -922,43 +961,48 @@ static void _SPKFFmpegRunAsyncImpl(id commandOrArgs,
         NSString *description = cancelled ? @"Cancelled" : (logs.length > 0 ? logs : (success ? @"FFmpeg command succeeded" : @"FFmpeg command failed"));
         SPKFFmpegPersistCommandLog(identifier, cancelled ? @"cancelled" : (success ? @"success" : @"failure"), commandForLog, description);
         if (success && successURL) {
-            if (completion) completion(successURL, nil);
+            if (completion)
+                completion(successURL, nil);
             return;
         }
-        if (completion) completion(nil, SPKFFmpegError(description, cancelled ? NSUserCancelledError : 3));
+        if (completion)
+            completion(nil, SPKFFmpegError(description, cancelled ? NSUserCancelledError : 3));
     };
 
-    id logBlock = ^(__unused id log) {};
+    id logBlock = ^(__unused id log) {
+    };
 
     id statisticsBlock = ^(id statistics) {
-        if (!progress || expectedDuration <= 0.0) return;
+        if (!progress || expectedDuration <= 0.0)
+            return;
         double timeValue = 0.0;
         if ([statistics respondsToSelector:@selector(getTime)])
             timeValue = ((double (*)(id, SEL))objc_msgSend)(statistics, @selector(getTime));
         double normalizedTime = timeValue;
-        if (normalizedTime > expectedDuration * 4.0) normalizedTime /= 1000.0;
+        if (normalizedTime > expectedDuration * 4.0)
+            normalizedTime /= 1000.0;
         double ratio = expectedDuration > 0.0 ? MIN(MAX(normalizedTime / expectedDuration, 0.0), 0.98) : 0.0;
         progress(ratio, stage);
     };
 
     id session = ((id (*)(id, SEL, id, id, id, id))objc_msgSend)(sSPKFFmpegKitClass,
-                                                                  executeSelector,
-                                                                  commandOrArgs,
-                                                                  completeBlock,
-                                                                  logBlock,
-                                                                  statisticsBlock);
+                                                                 executeSelector,
+                                                                 commandOrArgs,
+                                                                 completeBlock,
+                                                                 logBlock,
+                                                                 statisticsBlock);
     if ([session respondsToSelector:@selector(getSessionId)])
         sessionId = ((long (*)(id, SEL))objc_msgSend)(session, @selector(getSessionId));
 }
 
 static void SPKFFmpegRunAsyncStringCommand(NSString *commandString,
-                                            NSString *identifier,
-                                            NSString *stage,
-                                            NSTimeInterval expectedDuration,
-                                            SPKMediaFFmpegProgressBlock progress,
-                                            SPKMediaFFmpegCompletionBlock completion,
-                                            SPKMediaFFmpegCancelBlockPublisher cancelOut,
-                                            NSURL *successURL) {
+                                           NSString *identifier,
+                                           NSString *stage,
+                                           NSTimeInterval expectedDuration,
+                                           SPKMediaFFmpegProgressBlock progress,
+                                           SPKMediaFFmpegCompletionBlock completion,
+                                           SPKMediaFFmpegCancelBlockPublisher cancelOut,
+                                           NSURL *successURL) {
     _SPKFFmpegRunAsyncImpl(commandString, YES, identifier, stage, expectedDuration,
                            progress, completion, cancelOut, successURL);
 }
@@ -979,7 +1023,7 @@ static NSString *SPKFFmpegValidationErrorForOutputURL(NSURL *outputURL,
                                                       BOOL expectsVideo,
                                                       BOOL expectsAudio,
                                                       NSTimeInterval expectedDuration) {
-    NSDictionary<NSString *, id> *options = @{ AVURLAssetPreferPreciseDurationAndTimingKey: @NO };
+    NSDictionary<NSString *, id> *options = @{AVURLAssetPreferPreciseDurationAndTimingKey : @NO};
     AVURLAsset *asset = [AVURLAsset URLAssetWithURL:outputURL options:options];
     if (!asset) {
         return @"Output validation failed: asset could not be opened.";
@@ -1017,13 +1061,13 @@ static NSString *SPKFFmpegValidationErrorForOutputURL(NSURL *outputURL,
 
         if (videoDuration > 0.0 && audioDuration > 0.0 && fabs(videoDuration - audioDuration) > tolerance) {
             return [NSString stringWithFormat:@"Output validation failed: video/audio duration mismatch (video %.3fs, audio %.3fs).",
-                    videoDuration,
-                    audioDuration];
+                                              videoDuration,
+                                              audioDuration];
         }
         if (videoDuration > 0.0 && containerDuration > 0.0 && fabs(videoDuration - containerDuration) > tolerance) {
             return [NSString stringWithFormat:@"Output validation failed: video/container duration mismatch (video %.3fs, container %.3fs).",
-                    videoDuration,
-                    containerDuration];
+                                              videoDuration,
+                                              containerDuration];
         }
     }
 
@@ -1080,14 +1124,15 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         NSString *validationError = SPKFFmpegValidationErrorForOutputURL(finalURL, expectsVideo, expectsAudio, expectedDuration);
         if (validationError.length == 0) {
             cleanupAttemptTemps();
-            if (completion) completion(finalURL, nil);
+            if (completion)
+                completion(finalURL, nil);
             return;
         }
         NSString *loggedCommand = commandString ?: [argumentsArray componentsJoinedByString:@" "];
         SPKFFmpegPersistCommandLog([NSString stringWithFormat:@"%@-validation", attempt[@"identifier"] ?: @"merge"],
-                                 @"validation-failure",
-                                 loggedCommand,
-                                 validationError);
+                                   @"validation-failure",
+                                   loggedCommand,
+                                   validationError);
         cleanupAttemptTemps();
         NSError *invalidOutputError = SPKFFmpegError(validationError, 4);
         SPKFFmpegRunMergeAttempts(attempts, index + 1, outputURL, expectedDuration,
@@ -1096,22 +1141,18 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     };
 
     void (^cancelHandler)(dispatch_block_t) = ^(dispatch_block_t cancelBlock) {
-        if (cancelCapture) cancelCapture(cancelBlock);
+        if (cancelCapture)
+            cancelCapture(cancelBlock);
     };
 
-    void (^completionHandler)(NSURL *, NSError *) = ^(NSURL * _Nullable attemptOutputURL, NSError * _Nullable error) {
+    void (^completionHandler)(NSURL *, NSError *) = ^(NSURL *_Nullable attemptOutputURL, NSError *_Nullable error) {
         if (attemptOutputURL && !error) {
             // If a post-process step is configured (e.g. +faststart relocate),
             // run it now before validating the final output.
             if (postProcessArguments.count > 0) {
                 NSString *postIdentifier = [NSString stringWithFormat:@"%@-faststart", attempt[@"identifier"] ?: @"merge"];
                 [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
-                SPKFFmpegRunAsyncCommand(postProcessArguments,
-                                         postIdentifier,
-                                         @"Finalizing",
-                                         0.0,
-                                         progress,
-                                         ^(NSURL * _Nullable postURL, NSError * _Nullable postError) {
+                SPKFFmpegRunAsyncCommand(postProcessArguments, postIdentifier, @"Finalizing", 0.0, progress, ^(NSURL *_Nullable postURL, NSError *_Nullable postError) {
                     if (postURL && !postError && [[NSFileManager defaultManager] fileExistsAtPath:postURL.path]) {
                         validateAndFinalize(postURL);
                         return;
@@ -1121,8 +1162,7 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                               expectsVideo, expectsAudio, progress, completion,
                                               cancelCapture, postError ?: SPKFFmpegError(@"Faststart relocate failed", 6));
                 },
-                                         cancelHandler,
-                                         outputURL);
+                                         cancelHandler, outputURL);
                 return;
             }
             validateAndFinalize(attemptOutputURL);
@@ -1137,13 +1177,13 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     void (^startMainExecution)(void) = ^{
         if (commandString.length > 0) {
             SPKFFmpegRunAsyncStringCommand(commandString,
-                                            attempt[@"identifier"],
-                                            attempt[@"stage"],
-                                            expectedDuration,
-                                            progress,
-                                            completionHandler,
-                                            cancelHandler,
-                                            mainOutputURL);
+                                           attempt[@"identifier"],
+                                           attempt[@"stage"],
+                                           expectedDuration,
+                                           progress,
+                                           completionHandler,
+                                           cancelHandler,
+                                           mainOutputURL);
         } else {
             SPKFFmpegRunAsyncCommand(argumentsArray,
                                      attempt[@"identifier"],
@@ -1158,7 +1198,7 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
 
     if (prepareCommand.length > 0 || prepareArguments.count > 0) {
         NSString *prepareIdentifier = [NSString stringWithFormat:@"%@-prepare", attempt[@"identifier"] ?: @"merge"];
-        SPKMediaFFmpegCompletionBlock prepareCompletion = ^(NSURL * _Nullable preparedURL, NSError * _Nullable prepareError) {
+        SPKMediaFFmpegCompletionBlock prepareCompletion = ^(NSURL *_Nullable preparedURL, NSError *_Nullable prepareError) {
             if (preparedURL && !prepareError && (!prepareOutputURL || [[NSFileManager defaultManager] fileExistsAtPath:prepareOutputURL.path])) {
                 startMainExecution();
                 return;
@@ -1170,13 +1210,13 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         };
         if (prepareCommand.length > 0) {
             SPKFFmpegRunAsyncStringCommand(prepareCommand,
-                                            prepareIdentifier,
-                                            @"Normalizing video",
-                                            0.0,
-                                            progress,
-                                            prepareCompletion,
-                                            cancelHandler,
-                                            prepareOutputURL);
+                                           prepareIdentifier,
+                                           @"Normalizing video",
+                                           0.0,
+                                           progress,
+                                           prepareCompletion,
+                                           cancelHandler,
+                                           prepareOutputURL);
         } else {
             SPKFFmpegRunAsyncCommand(prepareArguments,
                                      prepareIdentifier,
@@ -1208,7 +1248,8 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
 
 - (instancetype)initWithFileName:(NSString *)fileName {
     self = [super init];
-    if (!self) return nil;
+    if (!self)
+        return nil;
     _fileName = [fileName copy];
     self.title = fileName.stringByDeletingPathExtension ?: @"Log";
     return self;
@@ -1229,10 +1270,14 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     [self.view addSubview:_textView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_textView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
-        [_textView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
-        [_textView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-        [_textView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0]
+        [_textView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
+                                            constant:12.0],
+        [_textView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor
+                                                constant:16.0],
+        [_textView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor
+                                                 constant:-16.0],
+        [_textView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+                                               constant:-12.0]
     ]];
 
     UIBarButtonItem *shareItem = SPKMediaChromeTopBarButtonItem(@"share", self, @selector(shareTapped));
@@ -1272,7 +1317,8 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
 
 - (instancetype)init {
     self = [super initWithStyle:UITableViewStyleInsetGrouped];
-    if (!self) return nil;
+    if (!self)
+        return nil;
     self.title = @"Encoding Logs";
     return self;
 }
@@ -1379,7 +1425,7 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
 @interface SPKMediaFFmpeg (SPKPrivate)
 + (void)_mergePreparedVideoFileURL:(NSURL *)videoFileURL
                       audioFileURL:(nullable NSURL *)audioFileURL
-                    preCleanupURL:(nullable NSURL *)preCleanupURL
+                     preCleanupURL:(nullable NSURL *)preCleanupURL
                  preferredBasename:(NSString *)preferredBasename
                  estimatedDuration:(NSTimeInterval)estimatedDuration
                              width:(NSInteger)width
@@ -1416,10 +1462,10 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
 + (void)mergeVideoFileURL:(NSURL *)videoFileURL
              audioFileURL:(NSURL *)audioFileURL
         preferredBasename:(NSString *)preferredBasename
-         estimatedDuration:(NSTimeInterval)estimatedDuration
+        estimatedDuration:(NSTimeInterval)estimatedDuration
                     width:(NSInteger)width
                    height:(NSInteger)height
-             sourceBitrate:(NSInteger)sourceBitrate
+            sourceBitrate:(NSInteger)sourceBitrate
                  progress:(SPKMediaFFmpegProgressBlock)progress
                completion:(SPKMediaFFmpegCompletionBlock)completion
                 cancelOut:(SPKMediaFFmpegCancelBlockPublisher)cancelOut {
@@ -1431,20 +1477,21 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         // by letting iOS's native audio stack do the decode/transcode.
         // Once converted, the merge happily stream-copies the audio.
         NSURL *convertedAudioURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-audio-aaclc.m4a", basename]]];
-        if (progress) progress(0.0, @"Converting audio");
-        SPKFFmpegConvertAudioToAACLCAsync(audioFileURL, convertedAudioURL, ^(NSURL * _Nullable preparedAudioURL, NSError * _Nullable convertError) {
+        if (progress)
+            progress(0.0, @"Converting audio");
+        SPKFFmpegConvertAudioToAACLCAsync(audioFileURL, convertedAudioURL, ^(NSURL *_Nullable preparedAudioURL, NSError *_Nullable convertError) {
             if (preparedAudioURL && !convertError) {
                 [self _mergePreparedVideoFileURL:videoFileURL
                                     audioFileURL:preparedAudioURL
-                                  preCleanupURL:preparedAudioURL
-                              preferredBasename:basename
-                              estimatedDuration:estimatedDuration
-                                          width:width
-                                         height:height
-                                  sourceBitrate:sourceBitrate
-                                       progress:progress
-                                     completion:completion
-                                      cancelOut:cancelOut];
+                                   preCleanupURL:preparedAudioURL
+                               preferredBasename:basename
+                               estimatedDuration:estimatedDuration
+                                           width:width
+                                          height:height
+                                   sourceBitrate:sourceBitrate
+                                        progress:progress
+                                      completion:completion
+                                       cancelOut:cancelOut];
                 return;
             }
             // Conversion failed — log it, then fall back to the original
@@ -1455,35 +1502,35 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                      convertError.localizedDescription ?: @"unknown");
             [self _mergePreparedVideoFileURL:videoFileURL
                                 audioFileURL:audioFileURL
-                              preCleanupURL:nil
-                          preferredBasename:basename
-                          estimatedDuration:estimatedDuration
-                                      width:width
-                                     height:height
-                              sourceBitrate:sourceBitrate
-                                   progress:progress
-                                 completion:completion
-                                  cancelOut:cancelOut];
+                               preCleanupURL:nil
+                           preferredBasename:basename
+                           estimatedDuration:estimatedDuration
+                                       width:width
+                                      height:height
+                               sourceBitrate:sourceBitrate
+                                    progress:progress
+                                  completion:completion
+                                   cancelOut:cancelOut];
         });
         return;
     }
 
     [self _mergePreparedVideoFileURL:videoFileURL
                         audioFileURL:nil
-                      preCleanupURL:nil
-                  preferredBasename:basename
-                  estimatedDuration:estimatedDuration
-                              width:width
-                             height:height
-                      sourceBitrate:sourceBitrate
-                           progress:progress
-                         completion:completion
-                          cancelOut:cancelOut];
+                       preCleanupURL:nil
+                   preferredBasename:basename
+                   estimatedDuration:estimatedDuration
+                               width:width
+                              height:height
+                       sourceBitrate:sourceBitrate
+                            progress:progress
+                          completion:completion
+                           cancelOut:cancelOut];
 }
 
 + (void)_mergePreparedVideoFileURL:(NSURL *)videoFileURL
                       audioFileURL:(nullable NSURL *)audioFileURL
-                    preCleanupURL:(nullable NSURL *)preCleanupURL
+                     preCleanupURL:(nullable NSURL *)preCleanupURL
                  preferredBasename:(NSString *)preferredBasename
                  estimatedDuration:(NSTimeInterval)estimatedDuration
                              width:(NSInteger)width
@@ -1496,11 +1543,12 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     NSURL *outputURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-merged.mp4", basename]]];
     [[NSFileManager defaultManager] removeItemAtURL:outputURL error:nil];
 
-    SPKMediaFFmpegCompletionBlock wrappedCompletion = ^(NSURL * _Nullable url, NSError * _Nullable err) {
+    SPKMediaFFmpegCompletionBlock wrappedCompletion = ^(NSURL *_Nullable url, NSError *_Nullable err) {
         if (preCleanupURL) {
             [[NSFileManager defaultManager] removeItemAtURL:preCleanupURL error:nil];
         }
-        if (completion) completion(url, err);
+        if (completion)
+            completion(url, err);
     };
 
     NSMutableArray<NSDictionary<NSString *, id> *> *attempts = [NSMutableArray array];
@@ -1529,12 +1577,12 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                         height,
                                                                         sourceBitrate);
         [attempts addObject:@{
-            @"identifier": @"merge",
-            @"stage": mergeStage,
-            @"command": defaultCommandToEncode,
-            @"mainOutputURL": defaultEncodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(defaultEncodeURL, outputURL),
-            @"cleanupPaths": @[defaultEncodeURL.path ?: @""]
+            @"identifier" : @"merge",
+            @"stage" : mergeStage,
+            @"command" : defaultCommandToEncode,
+            @"mainOutputURL" : defaultEncodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(defaultEncodeURL, outputURL),
+            @"cleanupPaths" : @[ defaultEncodeURL.path ?: @"" ]
         }];
 
         NSURL *normalizedVideoURL = SPKFFmpegNormalizedVideoURL(basename, @"default-normalized");
@@ -1547,14 +1595,14 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                              nil,
                                                                              sourceBitrate);
         [attempts addObject:@{
-            @"identifier": @"merge-normalized",
-            @"stage": mergeStage,
-            @"arguments": normalizedArgs,
-            @"prepareArguments": SPKFFmpegNormalizationArguments(videoFileURL, normalizedVideoURL),
-            @"prepareOutputURL": normalizedVideoURL,
-            @"mainOutputURL": normalizedEncodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(normalizedEncodeURL, outputURL),
-            @"cleanupPaths": @[normalizedVideoURL.path ?: @"", normalizedEncodeURL.path ?: @""]
+            @"identifier" : @"merge-normalized",
+            @"stage" : mergeStage,
+            @"arguments" : normalizedArgs,
+            @"prepareArguments" : SPKFFmpegNormalizationArguments(videoFileURL, normalizedVideoURL),
+            @"prepareOutputURL" : normalizedVideoURL,
+            @"mainOutputURL" : normalizedEncodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(normalizedEncodeURL, outputURL),
+            @"cleanupPaths" : @[ normalizedVideoURL.path ?: @"", normalizedEncodeURL.path ?: @"" ]
         }];
 
         NSURL *normalizedSetPTSVideoURL = SPKFFmpegNormalizedVideoURL(basename, @"default-normalized-setpts");
@@ -1567,14 +1615,14 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                                    @"setpts=PTS-STARTPTS",
                                                                                    sourceBitrate);
         [attempts addObject:@{
-            @"identifier": @"merge-normalized-setpts",
-            @"stage": mergeStage,
-            @"arguments": normalizedSetPTSArgs,
-            @"prepareArguments": SPKFFmpegNormalizationArguments(videoFileURL, normalizedSetPTSVideoURL),
-            @"prepareOutputURL": normalizedSetPTSVideoURL,
-            @"mainOutputURL": normalizedSetPTSEncodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(normalizedSetPTSEncodeURL, outputURL),
-            @"cleanupPaths": @[normalizedSetPTSVideoURL.path ?: @"", normalizedSetPTSEncodeURL.path ?: @""]
+            @"identifier" : @"merge-normalized-setpts",
+            @"stage" : mergeStage,
+            @"arguments" : normalizedSetPTSArgs,
+            @"prepareArguments" : SPKFFmpegNormalizationArguments(videoFileURL, normalizedSetPTSVideoURL),
+            @"prepareOutputURL" : normalizedSetPTSVideoURL,
+            @"mainOutputURL" : normalizedSetPTSEncodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(normalizedSetPTSEncodeURL, outputURL),
+            @"cleanupPaths" : @[ normalizedSetPTSVideoURL.path ?: @"", normalizedSetPTSEncodeURL.path ?: @"" ]
         }];
     } else {
         NSString *selectedCodec = SPKFFmpegStringPref(@"downloads_encoding_vid_codec", @"videotoolbox");
@@ -1593,13 +1641,13 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                             nil);
         NSString *advancedCommand = SPKFFmpegCommandStringFromArguments(advancedArgs);
         [attempts addObject:@{
-            @"identifier": isLibx264 ? @"merge-advanced-libx264-direct" : @"merge-advanced-videotoolbox-direct",
-            @"stage": @"Re-encoding video",
-            @"command": advancedCommand,
-            @"arguments": advancedArgs,
-            @"mainOutputURL": advancedEncodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(advancedEncodeURL, outputURL),
-            @"cleanupPaths": @[advancedEncodeURL.path ?: @""]
+            @"identifier" : isLibx264 ? @"merge-advanced-libx264-direct" : @"merge-advanced-videotoolbox-direct",
+            @"stage" : @"Re-encoding video",
+            @"command" : advancedCommand,
+            @"arguments" : advancedArgs,
+            @"mainOutputURL" : advancedEncodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(advancedEncodeURL, outputURL),
+            @"cleanupPaths" : @[ advancedEncodeURL.path ?: @"" ]
         }];
 
         NSURL *normalizedVideoURL = SPKFFmpegNormalizedVideoURL(basename, isLibx264 ? @"advanced-libx264-normalized" : @"advanced-videotoolbox-normalized");
@@ -1616,14 +1664,14 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                               selectedCodec,
                                                                               nil);
         [attempts addObject:@{
-            @"identifier": isLibx264 ? @"merge-advanced-libx264-normalized" : @"merge-advanced-videotoolbox-normalized",
-            @"stage": @"Re-encoding video",
-            @"arguments": normalizedArgs,
-            @"prepareArguments": SPKFFmpegNormalizationArguments(videoFileURL, normalizedVideoURL),
-            @"prepareOutputURL": normalizedVideoURL,
-            @"mainOutputURL": normalizedEncodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(normalizedEncodeURL, outputURL),
-            @"cleanupPaths": @[normalizedVideoURL.path ?: @"", normalizedEncodeURL.path ?: @""]
+            @"identifier" : isLibx264 ? @"merge-advanced-libx264-normalized" : @"merge-advanced-videotoolbox-normalized",
+            @"stage" : @"Re-encoding video",
+            @"arguments" : normalizedArgs,
+            @"prepareArguments" : SPKFFmpegNormalizationArguments(videoFileURL, normalizedVideoURL),
+            @"prepareOutputURL" : normalizedVideoURL,
+            @"mainOutputURL" : normalizedEncodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(normalizedEncodeURL, outputURL),
+            @"cleanupPaths" : @[ normalizedVideoURL.path ?: @"", normalizedEncodeURL.path ?: @"" ]
         }];
 
         NSURL *normalizedSetPTSVideoURL = SPKFFmpegNormalizedVideoURL(basename, isLibx264 ? @"advanced-libx264-setpts" : @"advanced-videotoolbox-setpts");
@@ -1640,14 +1688,14 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                                                                                     selectedCodec,
                                                                                     @"setpts=PTS-STARTPTS");
         [attempts addObject:@{
-            @"identifier": isLibx264 ? @"merge-advanced-libx264-setpts" : @"merge-advanced-videotoolbox-setpts",
-            @"stage": @"Re-encoding video",
-            @"arguments": normalizedSetPTSArgs,
-            @"prepareArguments": SPKFFmpegNormalizationArguments(videoFileURL, normalizedSetPTSVideoURL),
-            @"prepareOutputURL": normalizedSetPTSVideoURL,
-            @"mainOutputURL": normalizedSetPTSEncodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(normalizedSetPTSEncodeURL, outputURL),
-            @"cleanupPaths": @[normalizedSetPTSVideoURL.path ?: @"", normalizedSetPTSEncodeURL.path ?: @""]
+            @"identifier" : isLibx264 ? @"merge-advanced-libx264-setpts" : @"merge-advanced-videotoolbox-setpts",
+            @"stage" : @"Re-encoding video",
+            @"arguments" : normalizedSetPTSArgs,
+            @"prepareArguments" : SPKFFmpegNormalizationArguments(videoFileURL, normalizedSetPTSVideoURL),
+            @"prepareOutputURL" : normalizedSetPTSVideoURL,
+            @"mainOutputURL" : normalizedSetPTSEncodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(normalizedSetPTSEncodeURL, outputURL),
+            @"cleanupPaths" : @[ normalizedSetPTSVideoURL.path ?: @"", normalizedSetPTSEncodeURL.path ?: @"" ]
         }];
     }
 
@@ -1659,15 +1707,7 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
             }
         });
     }
-    SPKFFmpegRunMergeAttempts(attempts,
-                              0,
-                              outputURL,
-                              estimatedDuration,
-                              YES,
-                              (audioFileURL != nil),
-                              progress,
-                              wrappedCompletion,
-                              ^(dispatch_block_t cancelBlock) {
+    SPKFFmpegRunMergeAttempts(attempts, 0, outputURL, estimatedDuration, YES, (audioFileURL != nil), progress, wrappedCompletion, ^(dispatch_block_t cancelBlock) {
         currentCancel = [cancelBlock copy];
     },
                               nil);
@@ -1693,25 +1733,18 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     ];
     NSArray<NSDictionary<NSString *, id> *> *attempts = @[
         @{
-            @"identifier": @"audio-copy",
-            @"arguments": copyArguments
+            @"identifier" : @"audio-copy",
+            @"arguments" : copyArguments
         },
         @{
-            @"identifier": @"audio-reencode-aac",
-            @"arguments": SPKFFmpegAudioReencodeArguments(audioFileURL, outputURL)
+            @"identifier" : @"audio-reencode-aac",
+            @"arguments" : SPKFFmpegAudioReencodeArguments(audioFileURL, outputURL)
         }
     ];
 
-    SPKFFmpegRunMergeAttempts(attempts,
-                              0,
-                              outputURL,
-                              0.0,
-                              NO,
-                              YES,
-                              progress,
-                              completion,
-                              ^(dispatch_block_t cancelBlock) {
-        if (cancelOut) cancelOut(cancelBlock);
+    SPKFFmpegRunMergeAttempts(attempts, 0, outputURL, 0.0, NO, YES, progress, completion, ^(dispatch_block_t cancelBlock) {
+        if (cancelOut)
+            cancelOut(cancelBlock);
     },
                               nil);
 }
@@ -1730,7 +1763,7 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     // Don't demand an audio track on silent clips, and capture the source
     // dimensions so advanced encoding (max-resolution scaling) can use them.
     AVURLAsset *asset = [AVURLAsset URLAssetWithURL:videoFileURL
-                                            options:@{ AVURLAssetPreferPreciseDurationAndTimingKey: @NO }];
+                                            options:@{AVURLAssetPreferPreciseDurationAndTimingKey : @NO}];
     BOOL hasAudio = [asset tracksWithMediaType:AVMediaTypeAudio].count > 0;
 
     NSInteger width = 0;
@@ -1743,8 +1776,8 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     }
 
     NSArray<NSNumber *> *audioModes = hasAudio
-        ? @[ @(SPKFFmpegTrimAudioAAC), @(SPKFFmpegTrimAudioCopy), @(SPKFFmpegTrimAudioNone) ]
-        : @[ @(SPKFFmpegTrimAudioNone) ];
+                                          ? @[ @(SPKFFmpegTrimAudioAAC), @(SPKFFmpegTrimAudioCopy), @(SPKFFmpegTrimAudioNone) ]
+                                          : @[ @(SPKFFmpegTrimAudioNone) ];
 
     NSMutableArray<NSDictionary<NSString *, id> *> *attempts = [NSMutableArray array];
     for (NSNumber *modeValue in audioModes) {
@@ -1754,30 +1787,23 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         [[NSFileManager defaultManager] removeItemAtURL:encodeURL error:nil];
 
         [attempts addObject:@{
-            @"identifier": [NSString stringWithFormat:@"trim-%ld", (long)mode],
-            @"stage": @"Trimming video",
-            @"arguments": SPKFFmpegTrimArguments(videoFileURL, encodeURL, startSeconds, durationSeconds, width, height, 0, mode),
-            @"mainOutputURL": encodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(encodeURL, outputURL),
-            @"cleanupPaths": @[ encodeURL.path ?: @"" ]
+            @"identifier" : [NSString stringWithFormat:@"trim-%ld", (long)mode],
+            @"stage" : @"Trimming video",
+            @"arguments" : SPKFFmpegTrimArguments(videoFileURL, encodeURL, startSeconds, durationSeconds, width, height, 0, mode),
+            @"mainOutputURL" : encodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(encodeURL, outputURL),
+            @"cleanupPaths" : @[ encodeURL.path ?: @"" ]
         }];
     }
 
     __block dispatch_block_t currentCancel = nil;
     if (cancelOut) {
         cancelOut(^{
-            if (currentCancel) currentCancel();
+            if (currentCancel)
+                currentCancel();
         });
     }
-    SPKFFmpegRunMergeAttempts(attempts,
-                              0,
-                              outputURL,
-                              durationSeconds,
-                              YES,
-                              NO,
-                              progress,
-                              completion,
-                              ^(dispatch_block_t cancelBlock) {
+    SPKFFmpegRunMergeAttempts(attempts, 0, outputURL, durationSeconds, YES, NO, progress, completion, ^(dispatch_block_t cancelBlock) {
         currentCancel = [cancelBlock copy];
     },
                               nil);
@@ -1794,7 +1820,8 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
                completion:(SPKMediaFFmpegCompletionBlock)completion
                 cancelOut:(SPKMediaFFmpegCancelBlockPublisher)cancelOut {
     if (!videoURL || !audioURL) {
-        if (completion) completion(nil, SPKFFmpegError(@"Missing video or audio source for trim merge", 20));
+        if (completion)
+            completion(nil, SPKFFmpegError(@"Missing video or audio source for trim merge", 20));
         return;
     }
 
@@ -1809,34 +1836,29 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
         [[NSFileManager defaultManager] removeItemAtURL:encodeURL error:nil];
 
         NSArray<NSDictionary<NSString *, id> *> *attempts = @[ @{
-            @"identifier": @"trim-merge",
-            @"stage": @"Trimming video",
-            @"arguments": SPKFFmpegTrimMergeArguments(videoSource, audioSource, encodeURL, startSeconds, durationSeconds, width, height),
-            @"mainOutputURL": encodeURL,
-            @"postProcessArguments": SPKFFmpegFaststartArguments(encodeURL, outputURL),
-            @"cleanupPaths": @[ encodeURL.path ?: @"" ]
+            @"identifier" : @"trim-merge",
+            @"stage" : @"Trimming video",
+            @"arguments" : SPKFFmpegTrimMergeArguments(videoSource, audioSource, encodeURL, startSeconds, durationSeconds, width, height),
+            @"mainOutputURL" : encodeURL,
+            @"postProcessArguments" : SPKFFmpegFaststartArguments(encodeURL, outputURL),
+            @"cleanupPaths" : @[ encodeURL.path ?: @"" ]
         } ];
 
-        SPKMediaFFmpegCompletionBlock wrapped = ^(NSURL * _Nullable url, NSError * _Nullable err) {
-            if (cleanup) cleanup();
-            if (completion) completion(url, err);
+        SPKMediaFFmpegCompletionBlock wrapped = ^(NSURL *_Nullable url, NSError *_Nullable err) {
+            if (cleanup)
+                cleanup();
+            if (completion)
+                completion(url, err);
         };
 
         __block dispatch_block_t currentCancel = nil;
         if (cancelOut) {
             cancelOut(^{
-                if (currentCancel) currentCancel();
+                if (currentCancel)
+                    currentCancel();
             });
         }
-        SPKFFmpegRunMergeAttempts(attempts,
-                                  0,
-                                  outputURL,
-                                  durationSeconds,
-                                  YES,
-                                  YES,
-                                  progress,
-                                  wrapped,
-                                  ^(dispatch_block_t cancelBlock) {
+        SPKFFmpegRunMergeAttempts(attempts, 0, outputURL, durationSeconds, YES, YES, progress, wrapped, ^(dispatch_block_t cancelBlock) {
             currentCancel = [cancelBlock copy];
         },
                                   nil);
@@ -1847,8 +1869,9 @@ static void SPKFFmpegRunMergeAttempts(NSArray<NSDictionary<NSString *, id> *> *a
     // stack can, so this makes the merge succeed. Falls back to the original
     // audio if conversion fails (works for plain AAC-LC sources).
     NSURL *convertedAudioURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-audio-aaclc.m4a", basename]]];
-    if (progress) progress(0.0, @"Converting audio");
-    SPKFFmpegConvertAudioToAACLCAsync(audioURL, convertedAudioURL, ^(NSURL * _Nullable preparedAudioURL, NSError * _Nullable convertError) {
+    if (progress)
+        progress(0.0, @"Converting audio");
+    SPKFFmpegConvertAudioToAACLCAsync(audioURL, convertedAudioURL, ^(NSURL *_Nullable preparedAudioURL, NSError *_Nullable convertError) {
         if (preparedAudioURL && !convertError) {
             runWithAudioSource(preparedAudioURL.path, ^{
                 [[NSFileManager defaultManager] removeItemAtURL:preparedAudioURL error:nil];

@@ -178,8 +178,8 @@ Class SPKFlexWindowClass(void) {
 static BOOL SPKFlexShouldSuppressDuplicateShow(NSString *trigger) {
     NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
     BOOL duplicateLaunchFocus = [trigger isEqualToString:@"focus"] &&
-        [sSPKFlexLastShowTrigger isEqualToString:@"launch"] &&
-        now - sSPKFlexLastShowAttempt < 2.0;
+                                [sSPKFlexLastShowTrigger isEqualToString:@"launch"] &&
+                                now - sSPKFlexLastShowAttempt < 2.0;
 
     if (!duplicateLaunchFocus) {
         sSPKFlexLastShowAttempt = now;

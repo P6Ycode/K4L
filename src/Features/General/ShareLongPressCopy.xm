@@ -29,10 +29,12 @@ static NSString *SPKShareStringValue(id value) {
 
 static NSString *SPKShareStringForSelectorOrIvar(id object, NSString *name) {
     NSString *value = SPKShareStringValue(SPKObjectForSelector(object, name));
-    if (value.length > 0) return value;
+    if (value.length > 0)
+        return value;
 
     value = SPKShareStringValue(SPKKVCObject(object, name));
-    if (value.length > 0) return value;
+    if (value.length > 0)
+        return value;
 
     NSString *ivarName = [NSString stringWithFormat:@"_%@", name];
     return SPKShareStringValue([SPKUtils getIvarForObj:object name:ivarName.UTF8String]);
@@ -44,7 +46,7 @@ static NSString *SPKShareURLPathForObject(id object) {
         return @"reel";
     }
 
-    for (NSString *selectorName in @[@"productType", @"mediaType", @"mediaSource", @"inventorySource"]) {
+    for (NSString *selectorName in @[ @"productType", @"mediaType", @"mediaSource", @"inventorySource" ]) {
         NSString *value = SPKShareStringForSelectorOrIvar(object, selectorName).lowercaseString;
         if ([value containsString:@"reel"] || [value containsString:@"clips"]) {
             return @"reel";
@@ -54,16 +56,20 @@ static NSString *SPKShareURLPathForObject(id object) {
 }
 
 static NSURL *SPKInstagramPostURLForCode(NSString *code, id object) {
-    if (code.length == 0) return nil;
+    if (code.length == 0)
+        return nil;
     NSString *path = SPKShareURLPathForObject(object);
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/%@/", path, code]];
 }
 
 static BOOL SPKShareObjectCanExposeMediaPK(id object, NSString *selectorName) {
-    if (!object || selectorName.length == 0) return NO;
+    if (!object || selectorName.length == 0)
+        return NO;
     NSString *className = NSStringFromClass([object class]).lowercaseString ?: @"";
-    if ([className containsString:@"user"] || [className containsString:@"session"] || [className containsString:@"account"]) return NO;
-    if ([selectorName isEqualToString:@"currentMediaPK"]) return YES;
+    if ([className containsString:@"user"] || [className containsString:@"session"] || [className containsString:@"account"])
+        return NO;
+    if ([selectorName isEqualToString:@"currentMediaPK"])
+        return YES;
     if ([className containsString:@"media"] || [className containsString:@"feed"] || [className containsString:@"ufi"] ||
         [className containsString:@"reel"] || [className containsString:@"sundial"] || [className containsString:@"clips"] ||
         [className containsString:@"post"]) {
@@ -77,7 +83,8 @@ static NSString *SPKInstagramShortcodeForMediaPK(NSString *mediaPK) {
 }
 
 static NSURL *SPKInstagramPostURLForMediaPK(NSString *mediaPK, id object, NSString *selectorName) {
-    if (!SPKShareObjectCanExposeMediaPK(object, selectorName)) return nil;
+    if (!SPKShareObjectCanExposeMediaPK(object, selectorName))
+        return nil;
     NSString *code = SPKInstagramShortcodeForMediaPK(mediaPK);
     NSURL *url = SPKInstagramPostURLForCode(code, object);
     if (url) {
@@ -88,7 +95,7 @@ static NSURL *SPKInstagramPostURLForMediaPK(NSString *mediaPK, id object, NSStri
 }
 
 static NSString *SPKShareMediaIDFromObject(id object) {
-    for (NSString *selectorName in @[@"pk", @"id", @"mediaID", @"mediaId", @"mediaIdentifier"]) {
+    for (NSString *selectorName in @[ @"pk", @"id", @"mediaID", @"mediaId", @"mediaIdentifier" ]) {
         NSString *identifier = SPKShareStringForSelectorOrIvar(object, selectorName);
         if (identifier.length > 0) {
             NSArray<NSString *> *parts = [identifier componentsSeparatedByString:@"_"];
@@ -102,11 +109,13 @@ static NSString *SPKShareMediaIDFromObject(id object) {
 static NSURL *SPKInstagramStoryURLForMedia(id media) {
     NSString *username = SPKUsernameFromMediaObject(media);
     NSString *identifier = SPKShareMediaIDFromObject(media);
-    if (username.length == 0 || identifier.length == 0) return nil;
+    if (username.length == 0 || identifier.length == 0)
+        return nil;
 
     NSString *encodedUsername = [username stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
     NSString *encodedIdentifier = [identifier stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
-    if (encodedUsername.length == 0 || encodedIdentifier.length == 0) return nil;
+    if (encodedUsername.length == 0 || encodedIdentifier.length == 0)
+        return nil;
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/stories/%@/%@/", encodedUsername, encodedIdentifier]];
 }
 
@@ -121,37 +130,48 @@ static BOOL SPKShareURLIsPostOrReelURL(NSURL *url) {
 }
 
 static BOOL SPKShareObjectLooksStoryLike(id object) {
-    if (!object) return NO;
+    if (!object)
+        return NO;
     NSString *className = NSStringFromClass([object class]).lowercaseString ?: @"";
-    if ([className containsString:@"story"]) return YES;
+    if ([className containsString:@"story"])
+        return YES;
 
-    for (NSString *selectorName in @[@"productType", @"mediaType", @"mediaSource", @"inventorySource", @"mediaSubtype"]) {
+    for (NSString *selectorName in @[ @"productType", @"mediaType", @"mediaSource", @"inventorySource", @"mediaSubtype" ]) {
         NSString *lower = SPKShareStringForSelectorOrIvar(object, selectorName).lowercaseString;
-        if ([lower containsString:@"story"]) return YES;
+        if ([lower containsString:@"story"])
+            return YES;
     }
     return NO;
 }
 
 static BOOL SPKShareViewGraphLooksStoryLike(UIView *view) {
     for (UIView *walker = view; walker; walker = walker.superview) {
-        if (SPKShareObjectLooksStoryLike(walker)) return YES;
+        if (SPKShareObjectLooksStoryLike(walker))
+            return YES;
 
         id delegate = SPKObjectForSelector(walker, @"delegate");
-        if (SPKShareObjectLooksStoryLike(delegate)) return YES;
+        if (SPKShareObjectLooksStoryLike(delegate))
+            return YES;
 
         unsigned int count = 0;
         Ivar *ivars = class_copyIvarList(walker.class, &count);
         for (unsigned int i = 0; i < count; i++) {
             const char *type = ivar_getTypeEncoding(ivars[i]);
-            if (!type || type[0] != '@') continue;
+            if (!type || type[0] != '@')
+                continue;
             id value = nil;
-            @try { value = object_getIvar(walker, ivars[i]); } @catch (__unused NSException *exception) {}
+            @try {
+                value = object_getIvar(walker, ivars[i]);
+            } @catch (__unused NSException *exception) {
+            }
             if (SPKShareObjectLooksStoryLike(value)) {
-                if (ivars) free(ivars);
+                if (ivars)
+                    free(ivars);
                 return YES;
             }
         }
-        if (ivars) free(ivars);
+        if (ivars)
+            free(ivars);
     }
 
     UIViewController *controller = [SPKUtils nearestViewControllerForView:view];
@@ -159,112 +179,142 @@ static BOOL SPKShareViewGraphLooksStoryLike(UIView *view) {
 }
 
 static NSURL *SPKShareCanonicalPostOrReelURLFromObjectAtDepth(id object, NSInteger depth) {
-    if (!object || depth > 3) return nil;
+    if (!object || depth > 3)
+        return nil;
 
-    for (NSString *selectorName in @[@"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl", @"url"]) {
+    for (NSString *selectorName in @[ @"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl", @"url" ]) {
         NSURL *url = SPKURLFromValue(SPKObjectForSelector(object, selectorName));
-        if (!url) url = SPKURLFromValue(SPKKVCObject(object, selectorName));
-        if (SPKShareURLIsPostOrReelURL(url)) return url;
+        if (!url)
+            url = SPKURLFromValue(SPKKVCObject(object, selectorName));
+        if (SPKShareURLIsPostOrReelURL(url))
+            return url;
     }
 
-    for (NSString *selectorName in @[@"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken"]) {
-        if (SPKShareObjectLooksStoryLike(object)) break;
+    for (NSString *selectorName in @[ @"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken" ]) {
+        if (SPKShareObjectLooksStoryLike(object))
+            break;
         NSString *code = SPKShareStringForSelectorOrIvar(object, selectorName);
         NSURL *url = SPKInstagramPostURLForCode(code, object);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
-    for (NSString *selectorName in @[@"currentMediaPK", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"mediaIdentifier", @"pk"]) {
-        if (SPKShareObjectLooksStoryLike(object)) break;
+    for (NSString *selectorName in @[ @"currentMediaPK", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"mediaIdentifier", @"pk" ]) {
+        if (SPKShareObjectLooksStoryLike(object))
+            break;
         NSString *mediaPK = SPKShareStringForSelectorOrIvar(object, selectorName);
         NSURL *url = SPKInstagramPostURLForMediaPK(mediaPK, object, selectorName);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
-    for (NSString *selectorName in @[@"media", @"post", @"story", @"storyItem", @"storyMedia", @"mediaItem", @"reelMediaItem", @"item", @"currentStoryItem", @"visualMessage", @"model"]) {
+    for (NSString *selectorName in @[ @"media", @"post", @"story", @"storyItem", @"storyMedia", @"mediaItem", @"reelMediaItem", @"item", @"currentStoryItem", @"visualMessage", @"model" ]) {
         id nested = SPKObjectForSelector(object, selectorName);
-        if (!nested) nested = SPKKVCObject(object, selectorName);
+        if (!nested)
+            nested = SPKKVCObject(object, selectorName);
         NSURL *url = SPKShareCanonicalPostOrReelURLFromObjectAtDepth(nested, depth + 1);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
     return nil;
 }
 
 static NSURL *SPKShareURLFromObjectAtDepth(id object, NSInteger depth) {
-    if (!object || depth > 3) return nil;
+    if (!object || depth > 3)
+        return nil;
 
-    for (NSString *selectorName in @[@"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl", @"url"]) {
+    for (NSString *selectorName in @[ @"permalink", @"permaLink", @"shareURL", @"shareUrl", @"canonicalURL", @"canonicalUrl", @"permalinkURL", @"instagramURL", @"instagramUrl", @"webURL", @"webUrl", @"url" ]) {
         NSURL *url = SPKURLFromValue(SPKObjectForSelector(object, selectorName));
-        if (url) return url;
+        if (url)
+            return url;
         url = SPKURLFromValue(SPKKVCObject(object, selectorName));
-        if (url) return url;
+        if (url)
+            return url;
     }
 
-    for (NSString *selectorName in @[@"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken"]) {
-        if (SPKShareObjectLooksStoryLike(object)) break;
+    for (NSString *selectorName in @[ @"code", @"shortCode", @"shortcode", @"mediaCode", @"mediaShortcode", @"shortCodeToken" ]) {
+        if (SPKShareObjectLooksStoryLike(object))
+            break;
         NSString *code = SPKShareStringForSelectorOrIvar(object, selectorName);
         NSURL *url = SPKInstagramPostURLForCode(code, object);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
-    for (NSString *selectorName in @[@"currentMediaPK", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"mediaIdentifier", @"pk"]) {
-        if (SPKShareObjectLooksStoryLike(object)) break;
+    for (NSString *selectorName in @[ @"currentMediaPK", @"mediaPK", @"mediaPk", @"mediaID", @"mediaId", @"mediaIdentifier", @"pk" ]) {
+        if (SPKShareObjectLooksStoryLike(object))
+            break;
         NSString *mediaPK = SPKShareStringForSelectorOrIvar(object, selectorName);
         NSURL *url = SPKInstagramPostURLForMediaPK(mediaPK, object, selectorName);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
-    for (NSString *selectorName in @[@"media", @"post", @"story", @"storyItem", @"storyMedia", @"mediaItem", @"reelMediaItem", @"item", @"currentStoryItem", @"visualMessage", @"model"]) {
+    for (NSString *selectorName in @[ @"media", @"post", @"story", @"storyItem", @"storyMedia", @"mediaItem", @"reelMediaItem", @"item", @"currentStoryItem", @"visualMessage", @"model" ]) {
         id nested = SPKObjectForSelector(object, selectorName);
-        if (!nested) nested = SPKKVCObject(object, selectorName);
+        if (!nested)
+            nested = SPKKVCObject(object, selectorName);
         NSURL *url = SPKShareURLFromObjectAtDepth(nested, depth + 1);
-        if (url) return url;
+        if (url)
+            return url;
     }
 
     return nil;
 }
 
 static id SPKShareStorySectionControllerFromOverlay(UIView *overlayView) {
-    NSArray<NSString *> *delegateSelectors = @[@"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate"];
+    NSArray<NSString *> *delegateSelectors = @[ @"mediaOverlayDelegate", @"retryDelegate", @"tappableOverlayDelegate", @"buttonDelegate" ];
     Class sectionControllerClass = NSClassFromString(@"IGStoryFullscreenSectionController");
     for (NSString *selectorName in delegateSelectors) {
         id delegate = SPKObjectForSelector(overlayView, selectorName);
-        if (!delegate) delegate = SPKKVCObject(overlayView, selectorName);
-        if (!delegate) continue;
-        if (!sectionControllerClass || [delegate isKindOfClass:sectionControllerClass]) return delegate;
+        if (!delegate)
+            delegate = SPKKVCObject(overlayView, selectorName);
+        if (!delegate)
+            continue;
+        if (!sectionControllerClass || [delegate isKindOfClass:sectionControllerClass])
+            return delegate;
     }
     return nil;
 }
 
 static id SPKShareStoryMediaFromAnyObject(id object) {
-    if (!object) return nil;
-    for (NSString *selectorName in @[@"media", @"mediaItem", @"storyItem", @"item", @"model"]) {
+    if (!object)
+        return nil;
+    for (NSString *selectorName in @[ @"media", @"mediaItem", @"storyItem", @"item", @"model" ]) {
         id candidate = SPKObjectForSelector(object, selectorName);
-        if (!candidate) candidate = SPKKVCObject(object, selectorName);
-        if (candidate && candidate != object) return candidate;
+        if (!candidate)
+            candidate = SPKKVCObject(object, selectorName);
+        if (candidate && candidate != object)
+            return candidate;
     }
     return object;
 }
 
 static id SPKShareStoryMediaFromOverlay(UIView *overlayView) {
-    if (!overlayView) return nil;
+    if (!overlayView)
+        return nil;
 
     id sectionController = SPKShareStorySectionControllerFromOverlay(overlayView);
     UIViewController *viewerController = [SPKUtils nearestViewControllerForView:overlayView];
     if (!sectionController) {
         sectionController = SPKObjectForSelector(viewerController, @"currentSectionController");
-        if (!sectionController) sectionController = SPKKVCObject(viewerController, @"currentSectionController");
-        if (!sectionController) sectionController = [SPKUtils getIvarForObj:viewerController name:"_currentSectionController"];
+        if (!sectionController)
+            sectionController = SPKKVCObject(viewerController, @"currentSectionController");
+        if (!sectionController)
+            sectionController = [SPKUtils getIvarForObj:viewerController name:"_currentSectionController"];
     }
 
-    for (id object in @[sectionController ?: (id)NSNull.null, viewerController ?: (id)NSNull.null]) {
-        if (object == (id)NSNull.null) continue;
-        for (NSString *selectorName in @[@"currentStoryItem", @"currentItem", @"item"]) {
+    for (id object in @[ sectionController ?: (id)NSNull.null, viewerController ?: (id)NSNull.null ]) {
+        if (object == (id)NSNull.null)
+            continue;
+        for (NSString *selectorName in @[ @"currentStoryItem", @"currentItem", @"item" ]) {
             id media = SPKObjectForSelector(object, selectorName);
-            if (!media) media = SPKKVCObject(object, selectorName);
+            if (!media)
+                media = SPKKVCObject(object, selectorName);
             media = SPKShareStoryMediaFromAnyObject(media);
-            if (media) return media;
+            if (media)
+                return media;
         }
     }
     return nil;
@@ -274,28 +324,35 @@ static NSURL *SPKShareStoryURLFromOverlay(UIView *overlayView) {
     SPKStoryContext *context = SPKStoryContextFromOverlay(overlayView);
     id media = SPKShareStoryMediaFromOverlay(overlayView);
     NSURL *canonicalURL = SPKShareCanonicalPostOrReelURLFromObjectAtDepth(context.media ?: media, 0);
-    if (canonicalURL) return canonicalURL;
+    if (canonicalURL)
+        return canonicalURL;
     NSURL *sharedURL = SPKStoryURLForContext(context);
-    if (sharedURL) return sharedURL;
+    if (sharedURL)
+        return sharedURL;
     NSURL *url = SPKInstagramStoryURLForMedia(media);
-    if (url) return url;
+    if (url)
+        return url;
     return SPKShareURLFromObjectAtDepth(media, 0);
 }
 
 static UIView *SPKShareStoryOverlayAncestorForView(UIView *view) {
     for (UIView *walker = view; walker; walker = walker.superview) {
-        if ([NSStringFromClass(walker.class) containsString:@"IGStoryFullscreenOverlayView"]) return walker;
+        if ([NSStringFromClass(walker.class) containsString:@"IGStoryFullscreenOverlayView"])
+            return walker;
     }
     return nil;
 }
 
 static UIView *SPKShareStoryOverlayForView(UIView *view) {
     UIView *overlay = SPKShareStoryOverlayAncestorForView(view);
-    if (overlay) return overlay;
+    if (overlay)
+        return overlay;
 
     UIView *activeOverlay = SPKStoryActiveOverlay();
-    if (!activeOverlay || !activeOverlay.window || activeOverlay.window != view.window) return nil;
-    if (!SPKShareViewGraphLooksStoryLike(view)) return nil;
+    if (!activeOverlay || !activeOverlay.window || activeOverlay.window != view.window)
+        return nil;
+    if (!SPKShareViewGraphLooksStoryLike(view))
+        return nil;
 
     SPKLog(@"General", @"[Sparkle ShareCopy] Using active story overlay for detached story control view=%@ overlay=%@", SPKShareDebugViewName(view), SPKShareDebugViewName(activeOverlay));
     return activeOverlay;
@@ -305,26 +362,34 @@ static NSURL *SPKShareURLFromViewHierarchy(UIView *view, BOOL canonicalOnly) {
     UIView *walker = view;
     for (NSInteger depth = 0; walker && depth < 24; depth++, walker = walker.superview) {
         NSURL *url = canonicalOnly ? SPKShareCanonicalPostOrReelURLFromObjectAtDepth(walker, 0) : SPKShareURLFromObjectAtDepth(walker, 0);
-        if (url) return url;
+        if (url)
+            return url;
 
         id delegate = SPKObjectForSelector(walker, @"delegate");
         url = canonicalOnly ? SPKShareCanonicalPostOrReelURLFromObjectAtDepth(delegate, 0) : SPKShareURLFromObjectAtDepth(delegate, 0);
-        if (url) return url;
+        if (url)
+            return url;
 
         unsigned int count = 0;
         Ivar *ivars = class_copyIvarList(walker.class, &count);
         for (unsigned int i = 0; i < count; i++) {
             const char *type = ivar_getTypeEncoding(ivars[i]);
-            if (!type || type[0] != '@') continue;
+            if (!type || type[0] != '@')
+                continue;
             id value = nil;
-            @try { value = object_getIvar(walker, ivars[i]); } @catch (__unused NSException *exception) {}
+            @try {
+                value = object_getIvar(walker, ivars[i]);
+            } @catch (__unused NSException *exception) {
+            }
             url = canonicalOnly ? SPKShareCanonicalPostOrReelURLFromObjectAtDepth(value, 0) : SPKShareURLFromObjectAtDepth(value, 0);
             if (url) {
-                if (ivars) free(ivars);
+                if (ivars)
+                    free(ivars);
                 return url;
             }
         }
-        if (ivars) free(ivars);
+        if (ivars)
+            free(ivars);
     }
 
     UIViewController *controller = [SPKUtils nearestViewControllerForView:view];
@@ -365,14 +430,18 @@ static NSURL *SPKShareURLFromView(UIView *view) {
 
 static NSString *SPKCopiedShareLinkTitleForURL(NSURL *url) {
     NSString *path = url.path.lowercaseString ?: @"";
-    if ([path containsString:@"/stories/"]) return @"Copied story link";
-    if ([path containsString:@"/reel/"] || [path containsString:@"/reels/"]) return @"Copied reel link";
-    if ([path containsString:@"/p/"]) return @"Copied post link";
+    if ([path containsString:@"/stories/"])
+        return @"Copied story link";
+    if ([path containsString:@"/reel/"] || [path containsString:@"/reels/"])
+        return @"Copied reel link";
+    if ([path containsString:@"/p/"])
+        return @"Copied post link";
     return @"Copied link";
 }
 
 static void SPKCopyShareURLForView(UIView *view) {
-    if (!SPKShareLongPressCopyEnabled()) return;
+    if (!SPKShareLongPressCopyEnabled())
+        return;
     NSURL *url = SPKShareURLFromView(view);
     if ([SPKUtils getBoolPref:@"general_strip_share_link_tracking"]) {
         NSURL *sanitized = [SPKUtils sanitizedInstagramShareURL:url];
@@ -413,7 +482,8 @@ static BOOL SPKShareViewLooksLikeSendControl(UIView *view) {
     if ([view isKindOfClass:UIControl.class]) {
         UIControl *control = (UIControl *)view;
         if ([SPKUtils control:control hasTapActionContaining:@"send"] ||
-            [SPKUtils control:control hasTapActionContaining:@"share"]) {
+            [SPKUtils control:control
+                hasTapActionContaining:@"share"]) {
             return YES;
         }
     }
@@ -432,9 +502,11 @@ static BOOL SPKShareViewLooksLikeSendControl(UIView *view) {
 }
 
 static NSArray<UIView *> *SPKShareCandidateSubviews(UIView *root, NSInteger maxDepth) {
-    if (!root || maxDepth < 0) return @[];
+    if (!root || maxDepth < 0)
+        return @[];
     NSMutableArray<UIView *> *matches = [NSMutableArray array];
-    NSMutableArray<NSDictionary *> *queue = [NSMutableArray arrayWithObject:@{@"view": root, @"depth": @0}];
+    NSMutableArray<NSDictionary *> *queue = [NSMutableArray arrayWithObject:@{@"view" : root,
+                                                                              @"depth" : @0}];
     while (queue.count > 0) {
         NSDictionary *entry = queue.firstObject;
         [queue removeObjectAtIndex:0];
@@ -443,9 +515,11 @@ static NSArray<UIView *> *SPKShareCandidateSubviews(UIView *root, NSInteger maxD
         if (view != root && SPKShareViewLooksLikeSendControl(view)) {
             [matches addObject:view];
         }
-        if (depth >= maxDepth) continue;
+        if (depth >= maxDepth)
+            continue;
         for (UIView *subview in view.subviews) {
-            [queue addObject:@{@"view": subview, @"depth": @(depth + 1)}];
+            [queue addObject:@{@"view" : subview,
+                               @"depth" : @(depth + 1)}];
         }
     }
     return matches;
@@ -461,7 +535,8 @@ static UIView *SPKShareViewForSelectorOrIvar(id container, NSString *name) {
 }
 
 static void SPKInstallShareLongPressOnView(UIView *view) {
-    if (!view) return;
+    if (!view)
+        return;
     UIGestureRecognizer *existingRecognizer = objc_getAssociatedObject(view, kSPKShareCopyLongPressAssocKey);
     if (existingRecognizer) {
         existingRecognizer.enabled = SPKShareLongPressCopyEnabled();
@@ -498,22 +573,26 @@ static void SPKInstallShareLongPressOnNativeRecognizerHosts(UIView *view, UIView
         if (hasNativeLongPress) {
             SPKInstallShareLongPressOnView(walker);
         }
-        if (walker == container) break;
+        if (walker == container)
+            break;
     }
 }
 
 static void SPKInstallShareLongPressInContainer(UIView *container, NSArray<NSString *> *preferredNames, BOOL includeNativeHosts) {
-    if (!container) return;
+    if (!container)
+        return;
     for (NSString *name in preferredNames) {
         UIView *view = SPKShareViewForSelectorOrIvar(container, name);
         if (view) {
             SPKInstallShareLongPressOnView(view);
-            if (includeNativeHosts) SPKInstallShareLongPressOnNativeRecognizerHosts(view, container);
+            if (includeNativeHosts)
+                SPKInstallShareLongPressOnNativeRecognizerHosts(view, container);
         }
     }
     for (UIView *candidate in SPKShareCandidateSubviews(container, 4)) {
         SPKInstallShareLongPressOnView(candidate);
-        if (includeNativeHosts) SPKInstallShareLongPressOnNativeRecognizerHosts(candidate, container);
+        if (includeNativeHosts)
+            SPKInstallShareLongPressOnNativeRecognizerHosts(candidate, container);
     }
 }
 
@@ -521,29 +600,30 @@ static void SPKInstallShareLongPressInContainer(UIView *container, NSArray<NSStr
 
 %hook UIView
 %new - (void)spk_copyShareLinkLongPressed:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state != UIGestureRecognizerStateBegan) return;
-    SPKCopyShareURLForView((UIView *)self);
+if (gesture.state != UIGestureRecognizerStateBegan)
+    return;
+SPKCopyShareURLForView((UIView *)self);
 }
 %end
 
 %hook IGUFIButtonBarView
 - (void)layoutSubviews {
     %orig;
-    SPKInstallShareLongPressInContainer((UIView *)self, @[@"sendButton", @"shareButton", @"reshareButton"], YES);
+    SPKInstallShareLongPressInContainer((UIView *)self, @[ @"sendButton", @"shareButton", @"reshareButton" ], YES);
 }
 %end
 
 %hook IGUFIInteractionCountsView
 - (void)layoutSubviews {
     %orig;
-    SPKInstallShareLongPressInContainer((UIView *)self, @[@"sendButton", @"shareButton", @"reshareButton"], YES);
+    SPKInstallShareLongPressInContainer((UIView *)self, @[ @"sendButton", @"shareButton", @"reshareButton" ], YES);
 }
 %end
 
 %hook IGSundialViewerVerticalUFI
 - (void)layoutSubviews {
     %orig;
-    SPKInstallShareLongPressInContainer((UIView *)self, @[@"sendButton", @"shareButton", @"reshareButton"], YES);
+    SPKInstallShareLongPressInContainer((UIView *)self, @[ @"sendButton", @"shareButton", @"reshareButton" ], YES);
 }
 %end
 
@@ -551,14 +631,14 @@ static void SPKInstallShareLongPressInContainer(UIView *container, NSArray<NSStr
 - (void)layoutSubviews {
     %orig;
     SPKStorySetActiveOverlay((UIView *)self);
-    SPKInstallShareLongPressInContainer((UIView *)self, @[@"sendButton", @"shareButton", @"reshareButton"], NO);
+    SPKInstallShareLongPressInContainer((UIView *)self, @[ @"sendButton", @"shareButton", @"reshareButton" ], NO);
 }
 %end
 
 %hook IGDirectVisualMessageViewerController
 - (void)viewDidLayoutSubviews {
     %orig;
-    SPKInstallShareLongPressInContainer(((UIViewController *)self).view, @[@"sendButton", @"shareButton"], NO);
+    SPKInstallShareLongPressInContainer(((UIViewController *)self).view, @[ @"sendButton", @"shareButton" ], NO);
 }
 %end
 
@@ -572,9 +652,9 @@ extern "C" void SPKInstallShareLongPressCopyHooksIfNeeded(void) {
                                                           object:nil
                                                            queue:nil
                                                       usingBlock:^(__unused NSNotification *notification) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                SPKUpdateShareLongPressRecognizerStates();
-            });
-        }];
+                                                          dispatch_async(dispatch_get_main_queue(), ^{
+                                                              SPKUpdateShareLongPressRecognizerStates();
+                                                          });
+                                                      }];
     });
 }

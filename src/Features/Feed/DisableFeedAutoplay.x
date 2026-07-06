@@ -1,7 +1,7 @@
 #import "../../Utils.h"
 #import <UIKit/UIKit.h>
-#import <objc/runtime.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
 #import <substrate.h>
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,8 @@
 
 static id (*orig_feedAutoplayInit1)(id, SEL, BOOL);
 static id spk_feedAutoplayInit1(id self, SEL _cmd, BOOL shouldDisable) {
-    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) shouldDisable = YES;
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"])
+        shouldDisable = YES;
     return orig_feedAutoplayInit1(self, _cmd, shouldDisable);
 }
 
@@ -32,19 +33,28 @@ static id spk_feedAutoplayInit1(id self, SEL _cmd, BOOL shouldDisable) {
 // clearing it keeps the manual play alive across the snap.
 static id (*orig_feedAutoplayInit2)(id, SEL, BOOL, BOOL);
 static id spk_feedAutoplayInit2(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale) {
-    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) { shouldDisable = YES; shouldClearStale = NO; }
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) {
+        shouldDisable = YES;
+        shouldClearStale = NO;
+    }
     return orig_feedAutoplayInit2(self, _cmd, shouldDisable, shouldClearStale);
 }
 
 static id (*orig_feedAutoplayInit3)(id, SEL, BOOL, BOOL, BOOL);
 static id spk_feedAutoplayInit3(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover) {
-    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) { shouldDisable = YES; shouldClearStale = NO; }
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) {
+        shouldDisable = YES;
+        shouldClearStale = NO;
+    }
     return orig_feedAutoplayInit3(self, _cmd, shouldDisable, shouldClearStale, bypassForVoiceover);
 }
 
 static id (*orig_feedAutoplayInit5)(id, SEL, BOOL, BOOL, BOOL, BOOL, id);
 static id spk_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shouldClearStale, BOOL bypassForVoiceover, BOOL overrideThresholds, id launcherSet) {
-    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) { shouldDisable = YES; shouldClearStale = NO; }
+    if ([SPKUtils getBoolPref:@"feed_disable_autoplay"]) {
+        shouldDisable = YES;
+        shouldClearStale = NO;
+    }
     return orig_feedAutoplayInit5(self, _cmd, shouldDisable, shouldClearStale, bypassForVoiceover, overrideThresholds, launcherSet);
 }
 
@@ -53,10 +63,13 @@ static id spk_feedAutoplayInit5(id self, SEL _cmd, BOOL shouldDisable, BOOL shou
 // cell sits inside a carousel. Force retryStartPlayback after orig.
 static void (*orig_feedVideoCellSingleTap)(id, SEL, id, id);
 static void spk_feedVideoCellSingleTap(id self, SEL _cmd, id overlay, id recognizer) {
-    if (orig_feedVideoCellSingleTap) orig_feedVideoCellSingleTap(self, _cmd, overlay, recognizer);
-    if (![SPKUtils getBoolPref:@"feed_disable_autoplay"]) return;
+    if (orig_feedVideoCellSingleTap)
+        orig_feedVideoCellSingleTap(self, _cmd, overlay, recognizer);
+    if (![SPKUtils getBoolPref:@"feed_disable_autoplay"])
+        return;
     UIView *superview = [(UIView *)self superview];
-    if (!superview || !strstr(class_getName([superview class]), "Carousel")) return;
+    if (!superview || !strstr(class_getName([superview class]), "Carousel"))
+        return;
     SEL retrySelector = NSSelectorFromString(@"retryStartPlayback");
     if ([self respondsToSelector:retrySelector]) {
         ((void (*)(id, SEL))objc_msgSend)(self, retrySelector);
@@ -65,14 +78,17 @@ static void spk_feedVideoCellSingleTap(id self, SEL _cmd, id overlay, id recogni
 
 static void SPKHookFeedPlaybackStrategy(void) {
     static BOOL hooked = NO;
-    if (hooked) return;
+    if (hooked)
+        return;
     // IGFeedPlaybackStrategy is a Swift class; on a heavy startup the
     // %ctor can run before its metadata is registered, so objc_getClass
     // returns nil here. Guard + retry (see runloop + staged-installer calls
     // below) so we don't silently leave autoplay un-hooked.
     Class cls = objc_getClass("IGFeedPlayback.IGFeedPlaybackStrategy");
-    if (!cls) cls = objc_getClass("_TtC14IGFeedPlayback22IGFeedPlaybackStrategy");
-    if (!cls) return;
+    if (!cls)
+        cls = objc_getClass("_TtC14IGFeedPlayback22IGFeedPlaybackStrategy");
+    if (!cls)
+        return;
     hooked = YES;
 
     SEL s1 = @selector(initWithShouldDisableAutoplay:);
@@ -95,10 +111,13 @@ static void SPKHookFeedPlaybackStrategy(void) {
 
 static void SPKHookFeedVideoCell(void) {
     static BOOL hooked = NO;
-    if (hooked) return;
+    if (hooked)
+        return;
     Class cls = objc_getClass("IGModernFeedVideoCell.IGModernFeedVideoCell");
-    if (!cls) cls = objc_getClass("IGModernFeedVideoCell");
-    if (!cls) return;
+    if (!cls)
+        cls = objc_getClass("IGModernFeedVideoCell");
+    if (!cls)
+        return;
     SEL selector = @selector(videoPlayerOverlayControllerDidSingleTap:gestureRecognizer:);
     if (class_getInstanceMethod(cls, selector)) {
         MSHookMessageEx(cls, selector, (IMP)spk_feedVideoCellSingleTap, (IMP *)&orig_feedVideoCellSingleTap);

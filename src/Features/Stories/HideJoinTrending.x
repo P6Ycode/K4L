@@ -10,25 +10,28 @@
 // The controller class only exists on modern IG (435+/436+); on 410 the stories
 // midcard architecture is different, so the class guard makes this a clean no-op.
 
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 %group SPKHideStoryMidcardsHooks
 
 %hook IGStoriesMidcardsController
 
 - (void)fetchMidcards {
-    if ([SPKUtils getBoolPref:@"stories_hide_join_trending"]) return;
+    if ([SPKUtils getBoolPref:@"stories_hide_join_trending"])
+        return;
     %orig;
 }
 
 - (BOOL)_isEligibleForAYPromo {
-    if ([SPKUtils getBoolPref:@"stories_hide_join_trending"]) return NO;
+    if ([SPKUtils getBoolPref:@"stories_hide_join_trending"])
+        return NO;
     return %orig;
 }
 
 - (BOOL)_isEligibleForSUMidcard {
-    if ([SPKUtils getBoolPref:@"stories_hide_join_trending"]) return NO;
+    if ([SPKUtils getBoolPref:@"stories_hide_join_trending"])
+        return NO;
     return %orig;
 }
 

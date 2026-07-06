@@ -1,16 +1,16 @@
-#import <UIKit/UIKit.h>
-#import <objc/runtime.h>
-#import <objc/message.h>
-#import <substrate.h>
 #import <QuartzCore/QuartzCore.h>
+#import <UIKit/UIKit.h>
+#import <objc/message.h>
+#import <objc/runtime.h>
+#import <substrate.h>
 
-#import "../../Utils.h"
 #import "../../AssetUtils.h"
 #import "../../Shared/Audio/SPKAudioDownloadCoordinator.h"
 #import "../../Shared/Audio/SPKAudioItem.h"
 #import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
 #import "../../Shared/UI/SPKIGAlertPresenter.h"
 #import "../../Shared/UI/SPKNotificationCenter.h"
+#import "../../Utils.h"
 
 // Long-press actions on Direct notes (the tray bubbles above the inbox):
 //   * Download Audio  — for music / original-audio / listening-now notes.
@@ -27,11 +27,13 @@
 #pragma mark - Reflection helpers
 
 static id SPKNotesIvarValue(id object, const char *name) {
-    if (!object || !name) return nil;
+    if (!object || !name)
+        return nil;
     @try {
         for (Class cls = [object class]; cls && cls != NSObject.class; cls = class_getSuperclass(cls)) {
             Ivar ivar = class_getInstanceVariable(cls, name);
-            if (ivar) return object_getIvar(object, ivar);
+            if (ivar)
+                return object_getIvar(object, ivar);
         }
     } @catch (__unused NSException *exception) {
     }
@@ -39,9 +41,11 @@ static id SPKNotesIvarValue(id object, const char *name) {
 }
 
 static id SPKNotesCall(id object, NSString *selectorName) {
-    if (!object || selectorName.length == 0) return nil;
+    if (!object || selectorName.length == 0)
+        return nil;
     SEL selector = NSSelectorFromString(selectorName);
-    if (![object respondsToSelector:selector]) return nil;
+    if (![object respondsToSelector:selector])
+        return nil;
     @try {
         return ((id (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -50,9 +54,11 @@ static id SPKNotesCall(id object, NSString *selectorName) {
 }
 
 static BOOL SPKNotesBoolCall(id object, NSString *selectorName) {
-    if (!object || selectorName.length == 0) return NO;
+    if (!object || selectorName.length == 0)
+        return NO;
     SEL selector = NSSelectorFromString(selectorName);
-    if (![object respondsToSelector:selector]) return NO;
+    if (![object respondsToSelector:selector])
+        return NO;
     @try {
         return ((BOOL (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -67,15 +73,18 @@ static NSString *SPKNotesTrimmedString(id value) {
     } else if ([value isKindOfClass:NSAttributedString.class]) {
         string = [(NSAttributedString *)value string];
     }
-    if (!string.length) return nil;
+    if (!string.length)
+        return nil;
     NSString *trimmed = [string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     return trimmed.length > 0 ? trimmed : nil;
 }
 
 static BOOL SPKNotesLooksLikeNoteModel(id object) {
-    if (!object) return NO;
+    if (!object)
+        return NO;
     NSString *name = NSStringFromClass([object class]);
-    if (![name containsString:@"Note"]) return NO;
+    if (![name containsString:@"Note"])
+        return NO;
     return [object respondsToSelector:@selector(text)] &&
            ([object respondsToSelector:NSSelectorFromString(@"pk")] ||
             [object respondsToSelector:NSSelectorFromString(@"noteMusicInfo")] ||
@@ -83,11 +92,14 @@ static BOOL SPKNotesLooksLikeNoteModel(id object) {
 }
 
 static id SPKNotesResolveNoteModel(id root, NSUInteger depth, NSMutableSet<NSValue *> *visited) {
-    if (!root || depth > 4) return nil;
-    if (SPKNotesLooksLikeNoteModel(root)) return root;
+    if (!root || depth > 4)
+        return nil;
+    if (SPKNotesLooksLikeNoteModel(root))
+        return root;
 
     NSValue *identity = [NSValue valueWithNonretainedObject:root];
-    if ([visited containsObject:identity]) return nil;
+    if ([visited containsObject:identity])
+        return nil;
     [visited addObject:identity];
 
     for (NSString *selectorName in @[ @"note", @"noteModel", @"trayItem", @"noteTrayItem",
@@ -95,7 +107,8 @@ static id SPKNotesResolveNoteModel(id root, NSUInteger depth, NSMutableSet<NSVal
         id nested = SPKNotesCall(root, selectorName);
         if (nested && nested != root) {
             id model = SPKNotesResolveNoteModel(nested, depth + 1, visited);
-            if (model) return model;
+            if (model)
+                return model;
         }
     }
     return nil;
@@ -103,7 +116,8 @@ static id SPKNotesResolveNoteModel(id root, NSUInteger depth, NSMutableSet<NSVal
 
 static NSString *SPKNotesTextForNoteModel(id noteModel, id trayViewModel) {
     NSString *text = SPKNotesTrimmedString(SPKNotesCall(noteModel, @"text"));
-    if (text) return text;
+    if (text)
+        return text;
     return SPKNotesTrimmedString(SPKNotesCall(trayViewModel, @"notesAttributedText"));
 }
 
@@ -120,7 +134,8 @@ static BOOL SPKNotesHasAudio(id noteModel, id trayViewModel) {
 static NSString *SPKNotesAuthorUsername(id noteModel) {
     id user = SPKNotesCall(noteModel, @"user");
     NSString *username = SPKNotesTrimmedString(SPKNotesCall(user, @"username"));
-    if (username) return username;
+    if (username)
+        return username;
     return SPKNotesTrimmedString(SPKNotesCall(noteModel, @"artistNameForMusicInfo"));
 }
 
@@ -128,7 +143,8 @@ static NSString *SPKNotesAuthorUsername(id noteModel) {
 // -audioTrackWithUserMap:launcherSet: (nil user map, session launcher set);
 // keep the note's music-info accessors as fallbacks for the download coordinator.
 static NSArray *SPKNotesAudioCandidates(id trayViewModel, id noteModel) {
-    if (!SPKNotesHasAudio(noteModel, trayViewModel)) return nil;
+    if (!SPKNotesHasAudio(noteModel, trayViewModel))
+        return nil;
 
     NSMutableArray *candidates = [NSMutableArray array];
 
@@ -143,24 +159,29 @@ static NSArray *SPKNotesAudioCandidates(id trayViewModel, id noteModel) {
         } else if ([trayViewModel respondsToSelector:oneArg]) {
             track = ((id (*)(id, SEL, id))objc_msgSend)(trayViewModel, oneArg, nil);
         }
-        if (track) [candidates addObject:track];
+        if (track)
+            [candidates addObject:track];
     } @catch (__unused NSException *exception) {
     }
 
     for (NSString *selectorName in @[ @"musicInfoFromMusicOrListeningNow", @"noteMusicInfo",
                                       @"noteListeningNowMusicInfo" ]) {
         id info = SPKNotesCall(noteModel, selectorName);
-        if (info) [candidates addObject:info];
+        if (info)
+            [candidates addObject:info];
     }
-    if (noteModel) [candidates addObject:noteModel];
-    if (trayViewModel && trayViewModel != noteModel) [candidates addObject:trayViewModel];
+    if (noteModel)
+        [candidates addObject:noteModel];
+    if (trayViewModel && trayViewModel != noteModel)
+        [candidates addObject:trayViewModel];
     return candidates.count > 0 ? candidates : nil;
 }
 
 #pragma mark - Actions
 
 static void SPKNotesCopyText(NSString *text) {
-    if (!text.length) return;
+    if (!text.length)
+        return;
     [UIPasteboard generalPasteboard].string = text;
     SPKNotify(kSPKNotificationCopyNoteText, @"Copied note text", nil, @"circle_check_filled", SPKNotificationToneSuccess);
 }
@@ -169,9 +190,11 @@ static void SPKNotesPresentAudioActions(NSArray *audioCandidates, id noteModel,
                                         UIViewController *presenter, UIView *sourceView) {
     SPKAudioItem *item = nil;
     for (id candidate in audioCandidates) {
-        if (!candidate) continue;
+        if (!candidate)
+            continue;
         item = [SPKAudioDownloadCoordinator audioItemFromMediaObject:candidate source:SPKAudioSourceDMNotes];
-        if (item) break;
+        if (item)
+            break;
     }
     if (!item) {
         SPKNotify(kSPKNotificationDownloadShare,
@@ -183,7 +206,8 @@ static void SPKNotesPresentAudioActions(NSArray *audioCandidates, id noteModel,
     }
 
     NSString *username = SPKNotesAuthorUsername(noteModel);
-    if (username.length > 0 && !item.artist.length) item.artist = username;
+    if (username.length > 0 && !item.artist.length)
+        item.artist = username;
 
     SPKGallerySaveMetadata *metadata = [[SPKGallerySaveMetadata alloc] init];
     metadata.source = (int16_t)[item gallerySource];
@@ -196,23 +220,35 @@ static void SPKNotesPresentAudioActions(NSArray *audioCandidates, id noteModel,
                                                         title:@"Note Audio"
                                                       message:nil
                                                       actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Save to Files" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKAudioDownloadCoordinator performAction:SPKAudioActionSaveToFiles item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudio];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Share" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKAudioDownloadCoordinator performAction:SPKAudioActionConvertAndShare item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudioShare];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Save to Gallery" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKAudioDownloadCoordinator performAction:SPKAudioActionConvertAndSaveToGallery item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudioGallery];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Play" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKAudioDownloadCoordinator performAction:SPKAudioActionPlay item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationPlayAudio];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Copy Download URL" style:SPKIGAlertActionStyleDefault handler:^{
-            [SPKAudioDownloadCoordinator performAction:SPKAudioActionCopyURL item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationCopyAudioURL];
-        }],
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]
-    ]];
+                                                          [SPKIGAlertAction actionWithTitle:@"Save to Files"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [SPKAudioDownloadCoordinator performAction:SPKAudioActionSaveToFiles item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudio];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Share"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [SPKAudioDownloadCoordinator performAction:SPKAudioActionConvertAndShare item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudioShare];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Save to Gallery"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [SPKAudioDownloadCoordinator performAction:SPKAudioActionConvertAndSaveToGallery item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudioGallery];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Play"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [SPKAudioDownloadCoordinator performAction:SPKAudioActionPlay item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationPlayAudio];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Copy Download URL"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [SPKAudioDownloadCoordinator performAction:SPKAudioActionCopyURL item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationCopyAudioURL];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                      style:SPKIGAlertActionStyleCancel
+                                                                                    handler:nil]
+                                                      ]];
 }
 
 // Resolves the note's available actions from its tray view model, appending a
@@ -229,13 +265,17 @@ static void SPKNotesBuildActionLists(id trayViewModel, NSMutableArray<NSString *
     if (text) {
         NSString *capturedText = text;
         [titles addObject:@"Copy text"];
-        [handlers addObject:[^{ SPKNotesCopyText(capturedText); } copy]];
+        [handlers addObject:[^{
+                      SPKNotesCopyText(capturedText);
+                  } copy]];
     }
     if (audioCandidates) {
         NSArray *capturedAudio = audioCandidates;
         id capturedNote = noteModel;
         [titles addObject:@"Save audio"];
-        [handlers addObject:[^{ SPKNotesPresentAudioActions(capturedAudio, capturedNote, topMostController(), nil); } copy]];
+        [handlers addObject:[^{
+                      SPKNotesPresentAudioActions(capturedAudio, capturedNote, topMostController(), nil);
+                  } copy]];
     }
 }
 
@@ -278,14 +318,15 @@ static void SPKNotesConsumeStash(void) {
     [menuView removeFromSuperview];
     window.hidden = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (handler) handler();
+        if (handler)
+            handler();
     });
 }
 
 // Recognize alongside IG's own menu gestures (otherwise they swallow our tap), but
 // only for touches that land on our injected row.
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
-        shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
     return YES;
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
@@ -295,8 +336,10 @@ static void SPKNotesConsumeStash(void) {
 
 static Class SPKNotesResolveClass(NSString *dotted, NSString *mangled) {
     Class cls = objc_getClass(dotted.UTF8String);
-    if (!cls && mangled) cls = objc_getClass(mangled.UTF8String);
-    if (!cls) cls = NSClassFromString(dotted);
+    if (!cls && mangled)
+        cls = objc_getClass(mangled.UTF8String);
+    if (!cls)
+        cls = NSClassFromString(dotted);
     return cls;
 }
 
@@ -305,13 +348,16 @@ static Class SPKNotesResolveClass(NSString *dotted, NSString *mangled) {
 static UIControl *SPKNotesBuildRow(Class builderClass, Class itemViewClass, UIView *menuView,
                                    NSString *title, BOOL edrEnabled, CGRect frame, void (^handler)(void)) {
     id builder = ((id (*)(id, SEL, id))objc_msgSend)([builderClass alloc], @selector(initWithTitle:), title);
-    builder = ((id (*)(id, SEL, id))objc_msgSend)(builder, @selector(withHandler:), ^{});
+    builder = ((id (*)(id, SEL, id))objc_msgSend)(builder, @selector(withHandler:), ^{
+                                                           });
     id menuItem = ((id (*)(id, SEL))objc_msgSend)(builder, @selector(build));
-    if (!menuItem) return nil;
+    if (!menuItem)
+        return nil;
 
     UIView *itemView = ((id (*)(id, SEL, id, BOOL, BOOL, BOOL))objc_msgSend)(
         [itemViewClass alloc], @selector(initWithMenuItem:edrEnabled:isHeader:isSubmenu:), menuItem, edrEnabled, NO, NO);
-    if (!itemView) return nil;
+    if (!itemView)
+        return nil;
 
     UIControl *wrapper = [[UIControl alloc] initWithFrame:frame];
     itemView.frame = wrapper.bounds;
@@ -332,28 +378,36 @@ static UIControl *SPKNotesBuildRow(Class builderClass, Class itemViewClass, UIVi
 }
 
 static void SPKNotesPrismLayout(id self, SEL _cmd) {
-    if (orig_SPKNotesPrismLayout) orig_SPKNotesPrismLayout(self, _cmd);
+    if (orig_SPKNotesPrismLayout)
+        orig_SPKNotesPrismLayout(self, _cmd);
 
-    if (objc_getAssociatedObject(self, kSPKNotesWrapperKey)) return;  // already injected
+    if (objc_getAssociatedObject(self, kSPKNotesWrapperKey))
+        return; // already injected
     BOOL audioEnabled = [SPKUtils getBoolPref:@"msgs_download_notes_audio"] &&
                         [SPKUtils getBoolPref:@"downloads_audio_enabled"];
     BOOL copyEnabled = [SPKUtils getBoolPref:@"msgs_copy_note_text"];
-    if (!audioEnabled && !copyEnabled) return;
+    if (!audioEnabled && !copyEnabled)
+        return;
 
     id viewModel = sSPKNotesTrayViewModel;
-    if (!viewModel) return;
-    if (CACurrentMediaTime() - sSPKNotesLongPressTime > 3.0) return;  // stale / not a note menu
+    if (!viewModel)
+        return;
+    if (CACurrentMediaTime() - sSPKNotesLongPressTime > 3.0)
+        return; // stale / not a note menu
 
     id elementViews = SPKNotesIvarValue(self, "menuElementViews");
-    if (![elementViews isKindOfClass:NSArray.class] || [(NSArray *)elementViews count] == 0) return;
+    if (![elementViews isKindOfClass:NSArray.class] || [(NSArray *)elementViews count] == 0)
+        return;
     UIView *lastItem = [(NSArray *)elementViews lastObject];
     UIView *container = lastItem.superview;
-    if (!lastItem || !container) return;
+    if (!lastItem || !container)
+        return;
 
     Class builderClass = NSClassFromString(@"IGDSPrismMenuItemBuilder");
     Class itemViewClass = SPKNotesResolveClass(@"IGDSPrismMenu.IGDSPrismMenuItemView",
                                                @"_TtC13IGDSPrismMenu21IGDSPrismMenuItemView");
-    if (!builderClass || !itemViewClass) return;
+    if (!builderClass || !itemViewClass)
+        return;
     if (![builderClass instancesRespondToSelector:@selector(initWithTitle:)] ||
         ![builderClass instancesRespondToSelector:@selector(withHandler:)] ||
         ![builderClass instancesRespondToSelector:@selector(build)] ||
@@ -365,11 +419,13 @@ static void SPKNotesPrismLayout(id self, SEL _cmd) {
     NSMutableArray<NSString *> *titles = [NSMutableArray array];
     NSMutableArray *handlers = [NSMutableArray array];
     SPKNotesBuildActionLists(viewModel, titles, handlers);
-    if (titles.count == 0) return;
+    if (titles.count == 0)
+        return;
 
     BOOL edrEnabled = NO;
     Ivar edrIvar = class_getInstanceVariable([lastItem class], "edrEnabled");
-    if (edrIvar) edrEnabled = ((char *)(__bridge void *)lastItem)[ivar_getOffset(edrIvar)] & 1;
+    if (edrIvar)
+        edrEnabled = ((char *)(__bridge void *)lastItem)[ivar_getOffset(edrIvar)] & 1;
 
     CGRect lastFrame = lastItem.frame;
     CGFloat rowHeight = lastFrame.size.height;
@@ -380,12 +436,14 @@ static void SPKNotesPrismLayout(id self, SEL _cmd) {
         void (^handler)(void) = handlers[i];
         UIControl *wrapper = SPKNotesBuildRow(builderClass, itemViewClass, (UIView *)self,
                                               titles[i], edrEnabled, frame, handler);
-        if (!wrapper) continue;
+        if (!wrapper)
+            continue;
         [container addSubview:wrapper];
         [wrappers addObject:wrapper];
         y += rowHeight;
     }
-    if (wrappers.count == 0) return;
+    if (wrappers.count == 0)
+        return;
 
     // Grow the menu (and every ancestor up to it) to fit the extra rows, and stop
     // them clipping the additions.
@@ -412,18 +470,21 @@ static void SPKNotesPrismLayout(id self, SEL _cmd) {
 static CGSize SPKNotesPrismSizeThatFits(id self, SEL _cmd, CGSize size) {
     CGSize fitted = orig_SPKNotesPrismSizeThatFits ? orig_SPKNotesPrismSizeThatFits(self, _cmd, size) : size;
     NSNumber *extra = objc_getAssociatedObject(self, kSPKNotesExtraHeightKey);
-    if (extra) fitted.height += extra.doubleValue;
+    if (extra)
+        fitted.height += extra.doubleValue;
     return fitted;
 }
 
 static void SPKNotesPrismWillMoveToWindow(id self, SEL _cmd, id window) {
     if (!window) {
         NSArray<UIView *> *wrappers = objc_getAssociatedObject(self, kSPKNotesWrapperKey);
-        for (UIView *wrapper in wrappers) [wrapper removeFromSuperview];
+        for (UIView *wrapper in wrappers)
+            [wrapper removeFromSuperview];
         objc_setAssociatedObject(self, kSPKNotesWrapperKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         objc_setAssociatedObject(self, kSPKNotesExtraHeightKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-    if (orig_SPKNotesPrismWillMoveToWindow) orig_SPKNotesPrismWillMoveToWindow(self, _cmd, window);
+    if (orig_SPKNotesPrismWillMoveToWindow)
+        orig_SPKNotesPrismWillMoveToWindow(self, _cmd, window);
 }
 
 // IGDirectNotesTrayCellInteractionHelper long-tap delegate callback (arg2 = view
@@ -437,7 +498,8 @@ static void SPKNotesDidLongTap(id self, SEL _cmd, id sectionController, id viewM
         sSPKNotesPogCell = [cell isKindOfClass:UIView.class] ? (UIView *)cell : nil;
         sSPKNotesLongPressTime = CACurrentMediaTime();
     }
-    if (orig_SPKNotesDidLongTap4) orig_SPKNotesDidLongTap4(self, _cmd, sectionController, viewModel, cell, position);
+    if (orig_SPKNotesDidLongTap4)
+        orig_SPKNotesDidLongTap4(self, _cmd, sectionController, viewModel, cell, position);
 }
 
 #pragma mark - Install
@@ -445,7 +507,8 @@ static void SPKNotesDidLongTap(id self, SEL _cmd, id sectionController, id viewM
 static void SPKNotesInstallPrismViewHooks(void) {
     Class prismViewClass = SPKNotesResolveClass(@"IGDSPrismMenu.IGDSPrismMenuView",
                                                 @"_TtC13IGDSPrismMenu17IGDSPrismMenuView");
-    if (!prismViewClass) return;
+    if (!prismViewClass)
+        return;
     MSHookMessageEx(prismViewClass, @selector(layoutSubviews), (IMP)SPKNotesPrismLayout, (IMP *)&orig_SPKNotesPrismLayout);
     MSHookMessageEx(prismViewClass, @selector(sizeThatFits:), (IMP)SPKNotesPrismSizeThatFits, (IMP *)&orig_SPKNotesPrismSizeThatFits);
     MSHookMessageEx(prismViewClass, @selector(willMoveToWindow:), (IMP)SPKNotesPrismWillMoveToWindow, (IMP *)&orig_SPKNotesPrismWillMoveToWindow);
@@ -455,7 +518,8 @@ extern "C" void SPKInstallNotesActionsHooksIfEnabled(void) {
     BOOL audioEnabled = [SPKUtils getBoolPref:@"msgs_download_notes_audio"] &&
                         [SPKUtils getBoolPref:@"downloads_audio_enabled"];
     BOOL copyEnabled = [SPKUtils getBoolPref:@"msgs_copy_note_text"];
-    if (!audioEnabled && !copyEnabled) return;
+    if (!audioEnabled && !copyEnabled)
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

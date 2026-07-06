@@ -2,16 +2,16 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
-#import "../../Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
+#import "../../AssetUtils.h"
+#import "../../Shared/ActionButton/ActionButtonCore.h"
+#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "../../Shared/Gallery/SPKGalleryFile.h"
 #import "../../Shared/Gallery/SPKGalleryOriginController.h"
 #import "../../Shared/Gallery/SPKGallerySaveMetadata.h"
-#import "../../Shared/ActionButton/ActionButtonCore.h"
-#import "../../Shared/ActionButton/SPKActionButtonConfiguration.h"
-#import "../../AssetUtils.h"
+#import "../../Shared/MediaPreview/SPKFullScreenMediaPlayer.h"
 
 static CGFloat const kSPKProfileActionButtonWidth = 44.0;
 static CGFloat const kSPKProfileActionButtonHeight = 44.0;
@@ -23,7 +23,8 @@ static const void *kSPKProfileTitleIsCenteredKey = &kSPKProfileTitleIsCenteredKe
 static NSInteger const kSPKProfileActionButtonMaxInstallAttempts = 6;
 
 static id SPKProfileSafeValue(id target, NSString *key) {
-    if (!target || key.length == 0) return nil;
+    if (!target || key.length == 0)
+        return nil;
     @try {
         return [target valueForKey:key];
     } @catch (__unused NSException *exception) {
@@ -32,8 +33,10 @@ static id SPKProfileSafeValue(id target, NSString *key) {
 }
 
 static NSString *SPKProfileStringValue(id value) {
-    if (!value) return nil;
-    if ([value isKindOfClass:[NSString class]]) return [(NSString *)value length] > 0 ? value : nil;
+    if (!value)
+        return nil;
+    if ([value isKindOfClass:[NSString class]])
+        return [(NSString *)value length] > 0 ? value : nil;
     if ([value respondsToSelector:@selector(stringValue)]) {
         NSString *stringValue = [value stringValue];
         return stringValue.length > 0 ? stringValue : nil;
@@ -42,35 +45,42 @@ static NSString *SPKProfileStringValue(id value) {
 }
 
 static NSNumber *SPKProfileNumberValue(id value) {
-    if (!value) return nil;
-    if ([value isKindOfClass:[NSNumber class]]) return value;
-    if ([value respondsToSelector:@selector(integerValue)]) return @([value integerValue]);
+    if (!value)
+        return nil;
+    if ([value isKindOfClass:[NSNumber class]])
+        return value;
+    if ([value respondsToSelector:@selector(integerValue)])
+        return @([value integerValue]);
     return nil;
 }
 
 static id SPKProfileResolvedUserFromObject(id object, NSInteger depth) {
-    if (!object || depth > 3) return nil;
+    if (!object || depth > 3)
+        return nil;
 
-    for (NSString *key in @[@"userGQL", @"profileUser", @"profileController.userGQL", @"profileController.profileUser", @"profileController.user", @"user"]) {
+    for (NSString *key in @[ @"userGQL", @"profileUser", @"profileController.userGQL", @"profileController.profileUser", @"profileController.user", @"user" ]) {
         id value = nil;
         if ([key containsString:@"."]) {
             id current = object;
             for (NSString *part in [key componentsSeparatedByString:@"."]) {
                 current = SPKProfileSafeValue(current, part);
-                if (!current) break;
+                if (!current)
+                    break;
             }
             value = current;
         } else {
             value = SPKProfileSafeValue(object, key);
         }
-        if (value) return value;
+        if (value)
+            return value;
     }
 
-    for (NSString *key in @[@"delegate", @"viewController", @"_viewController", @"nextResponder"]) {
+    for (NSString *key in @[ @"delegate", @"viewController", @"_viewController", @"nextResponder" ]) {
         id nested = SPKProfileSafeValue(object, key);
         if (nested && nested != object) {
             id resolved = SPKProfileResolvedUserFromObject(nested, depth + 1);
-            if (resolved) return resolved;
+            if (resolved)
+                return resolved;
         }
     }
 
@@ -78,7 +88,8 @@ static id SPKProfileResolvedUserFromObject(id object, NSInteger depth) {
         UIViewController *controller = [SPKUtils nearestViewControllerForView:(UIView *)object];
         if (controller && controller != object) {
             id resolved = SPKProfileResolvedUserFromObject(controller, depth + 1);
-            if (resolved) return resolved;
+            if (resolved)
+                return resolved;
         }
     }
 
@@ -91,29 +102,36 @@ static NSString *SPKProfileUsername(id user) {
 
 static NSString *SPKProfileUserPK(id user) {
     NSString *pk = SPKProfileStringValue(SPKProfileSafeValue(user, @"pk"));
-    if (pk.length == 0) pk = SPKProfileStringValue(SPKProfileSafeValue(user, @"id"));
-    if (pk.length == 0) pk = [SPKUtils pkFromIGUser:user];
+    if (pk.length == 0)
+        pk = SPKProfileStringValue(SPKProfileSafeValue(user, @"id"));
+    if (pk.length == 0)
+        pk = [SPKUtils pkFromIGUser:user];
     return pk;
 }
 
 static NSString *SPKProfileFullName(id user) {
     NSString *name = SPKProfileStringValue(SPKProfileSafeValue(user, @"fullName"));
-    if (name.length == 0) name = SPKProfileStringValue(SPKProfileSafeValue(user, @"full_name"));
-    if (name.length == 0) name = SPKProfileStringValue(SPKProfileSafeValue(user, @"name"));
+    if (name.length == 0)
+        name = SPKProfileStringValue(SPKProfileSafeValue(user, @"full_name"));
+    if (name.length == 0)
+        name = SPKProfileStringValue(SPKProfileSafeValue(user, @"name"));
     return name;
 }
 
 static NSString *SPKProfileBiography(id user) {
     NSString *bio = SPKProfileStringValue(SPKProfileSafeValue(user, @"biography"));
-    if (bio.length == 0) bio = SPKProfileStringValue(SPKProfileSafeValue(user, @"bio"));
+    if (bio.length == 0)
+        bio = SPKProfileStringValue(SPKProfileSafeValue(user, @"bio"));
     return bio;
 }
 
 static NSURL *SPKProfileURL(id user) {
     NSString *username = SPKProfileUsername(user);
-    if (username.length == 0) return nil;
+    if (username.length == 0)
+        return nil;
     NSString *encoded = [username stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
-    if (encoded.length == 0) return nil;
+    if (encoded.length == 0)
+        return nil;
     return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.instagram.com/%@/", encoded]];
 }
 
@@ -193,7 +211,8 @@ static void SPKProfileUpdateGlass(SPKProfileHeaderActionButton *button, UIView *
 }
 
 - (void)spkStartGlassSync {
-    if (self.spkGlassUnavailable || self.spkGlassSyncLink) return;
+    if (self.spkGlassUnavailable || self.spkGlassSyncLink)
+        return;
     CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(spkGlassSyncTick:)];
     [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     self.spkGlassSyncLink = link;
@@ -246,7 +265,7 @@ static SPKActionButtonContext *SPKProfileActionContext(SPKProfileHeaderActionBut
     context.controller = SPKProfileSourceController(button.sourceObject ?: button, button);
     context.settingsTitle = SPKActionButtonTopicTitleForSource(SPKActionButtonSourceProfile);
     context.supportedActions = SPKActionButtonSupportedActionsForSource(SPKActionButtonSourceProfile);
-    context.mediaResolver = ^id (__unused SPKActionButtonContext *resolvedContext) {
+    context.mediaResolver = ^id(__unused SPKActionButtonContext *resolvedContext) {
         SPKProfileHeaderActionButton *strongButton = weakButton;
         id user = SPKProfileResolvedUserFromObject(strongButton.sourceObject ?: strongButton, 0);
         if (!user && strongButton.fallbackToCurrentUser) {
@@ -259,15 +278,18 @@ static SPKActionButtonContext *SPKProfileActionContext(SPKProfileHeaderActionBut
                                        __unused id media,
                                        NSArray *entries,
                                        __unused NSInteger currentIndex) {
-        if ([identifier isEqualToString:kSPKActionProfileCopyInfo]) return YES;
-        if ([identifier isEqualToString:kSPKActionOpenTopicSettings]) return YES;
+        if ([identifier isEqualToString:kSPKActionProfileCopyInfo])
+            return YES;
+        if ([identifier isEqualToString:kSPKActionOpenTopicSettings])
+            return YES;
         return entries.count > 0;
     };
     return context;
 }
 
 static void SPKConfigureProfileActionButton(SPKProfileHeaderActionButton *button) {
-    if (!button) return;
+    if (!button)
+        return;
 
     id user = SPKProfileResolvedUserFromObject(button.sourceObject ?: button, 0);
     if (!user && button.fallbackToCurrentUser) {
@@ -285,8 +307,8 @@ static void SPKConfigureProfileActionButton(SPKProfileHeaderActionButton *button
 
 static SPKProfileHeaderActionButton *SPKProfileBuildHeaderActionButton(id sourceObject) {
     SPKProfileHeaderActionButton *button = [[SPKProfileHeaderActionButton alloc] initWithSymbol:@""
-                                                                                       pointSize:kSPKProfileActionIconPointSize
-                                                                                        diameter:kSPKProfileActionButtonWidth];
+                                                                                      pointSize:kSPKProfileActionIconPointSize
+                                                                                       diameter:kSPKProfileActionButtonWidth];
     button.accessibilityIdentifier = @"sparkle-profile-action-button";
     button.translatesAutoresizingMaskIntoConstraints = YES;
     button.frame = CGRectMake(0.0, 0.0, kSPKProfileActionButtonWidth, kSPKProfileActionButtonHeight);
@@ -316,9 +338,12 @@ static SPKProfileHeaderActionButton *SPKProfileGetOrCreateActionButton(UIView *h
 }
 
 static void SPKProfileCollectTrailingControls(UIView *view, UIView *headerView, NSMutableArray<NSValue *> *out) {
-    if (!view || !headerView) return;
-    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"]) return;
-    if (view.hidden) return;
+    if (!view || !headerView)
+        return;
+    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"])
+        return;
+    if (view.hidden)
+        return;
 
     UIView *titleView = objc_getAssociatedObject(headerView, kSPKProfileHeaderTitleViewKey);
     if (titleView && (view == titleView || [view isDescendantOfView:titleView])) {
@@ -376,11 +401,13 @@ static void SPKProfileCollectTrailingControls(UIView *view, UIView *headerView, 
 // re-centered title, etc.) are rejected so the button always tracks the real
 // "..." / bell trailing buttons.
 static CGRect SPKProfileGetTrailingAnchorFrame(UIView *headerView) {
-    if (!headerView) return CGRectZero;
+    if (!headerView)
+        return CGRectZero;
 
     NSMutableArray<NSValue *> *frames = [NSMutableArray array];
     SPKProfileCollectTrailingControls(headerView, headerView, frames);
-    if (frames.count == 0) return CGRectZero;
+    if (frames.count == 0)
+        return CGRectZero;
 
     CGFloat trailingEdge = -CGFLOAT_MAX;
     for (NSValue *value in frames) {
@@ -391,7 +418,8 @@ static CGRect SPKProfileGetTrailingAnchorFrame(UIView *headerView) {
     CGRect anchor = CGRectZero;
     for (NSValue *value in frames) {
         CGRect rect = value.CGRectValue;
-        if (CGRectGetMaxX(rect) < trailingEdge - clusterWidth) continue;
+        if (CGRectGetMaxX(rect) < trailingEdge - clusterWidth)
+            continue;
         if (CGRectIsEmpty(anchor) || rect.origin.x < anchor.origin.x) {
             anchor = rect;
         }
@@ -400,9 +428,12 @@ static CGRect SPKProfileGetTrailingAnchorFrame(UIView *headerView) {
 }
 
 static CGRect SPKProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRect currentFrame) {
-    if (!view || !headerView) return currentFrame;
-    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"]) return currentFrame;
-    if (view.hidden || view.alpha <= 0.01) return currentFrame;
+    if (!view || !headerView)
+        return currentFrame;
+    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"])
+        return currentFrame;
+    if (view.hidden || view.alpha <= 0.01)
+        return currentFrame;
 
     UIView *titleView = objc_getAssociatedObject(headerView, kSPKProfileHeaderTitleViewKey);
     if (titleView && (view == titleView || [view isDescendantOfView:titleView])) {
@@ -424,14 +455,16 @@ static CGRect SPKProfileGetAnyButtonFrame(UIView *view, UIView *headerView, CGRe
 
     for (UIView *subview in view.subviews) {
         CGRect found = SPKProfileGetAnyButtonFrame(subview, headerView, currentFrame);
-        if (!CGRectIsEmpty(found)) return found;
+        if (!CGRectIsEmpty(found))
+            return found;
     }
     return currentFrame;
 }
 
 static BOOL SPKProfileIsOwnProfile(id headerView) {
     id user = SPKProfileResolvedUserFromObject(headerView, 0);
-    if (!user) return NO;
+    if (!user)
+        return NO;
     NSString *profilePK = SPKProfileUserPK(user);
     NSString *currentUserPK = [SPKUtils currentUserPK];
     if (profilePK.length > 0 && currentUserPK.length > 0 && [profilePK isEqualToString:currentUserPK]) {
@@ -447,10 +480,12 @@ static BOOL SPKProfileIsOwnProfile(id headerView) {
 // IGLiquidGlass *TouchForwardingVisualEffectView*. We mirror its alpha so our
 // overlay button matches. Returns < 0 when no glass exists (iOS < 26 / flush).
 static void SPKProfileAccumulateGlassAlpha(UIView *view, CGFloat *maxAlpha) {
-    if (!view) return;
+    if (!view)
+        return;
     if ([NSStringFromClass([view class]) containsString:@"TouchForwardingVisualEffectView"]) {
         CGFloat alpha = view.alpha;
-        if (alpha > *maxAlpha) *maxAlpha = alpha;
+        if (alpha > *maxAlpha)
+            *maxAlpha = alpha;
     }
     for (UIView *subview in view.subviews) {
         SPKProfileAccumulateGlassAlpha(subview, maxAlpha);
@@ -468,7 +503,8 @@ static CGFloat SPKProfileHeaderGlassProgress(UIView *headerView) {
 // return nil (the button stays a bare icon, which already matches pre-26 IG).
 static UIVisualEffectView *SPKProfileMakeGlassBackground(void) {
     Class glassEffectClass = NSClassFromString(@"UIGlassEffect");
-    if (!glassEffectClass) return nil;
+    if (!glassEffectClass)
+        return nil;
 
     UIVisualEffect *effect = nil;
     @try {
@@ -490,7 +526,8 @@ static UIVisualEffectView *SPKProfileMakeGlassBackground(void) {
         [effect setValue:tint forKey:@"tintColor"];
     } @catch (__unused NSException *exception) {
     }
-    if (![effect isKindOfClass:[UIVisualEffect class]]) return nil;
+    if (![effect isKindOfClass:[UIVisualEffect class]])
+        return nil;
 
     UIVisualEffectView *glassView = [[UIVisualEffectView alloc] initWithEffect:effect];
     glassView.userInteractionEnabled = NO;
@@ -501,7 +538,8 @@ static UIVisualEffectView *SPKProfileMakeGlassBackground(void) {
 }
 
 static void SPKProfileUpdateGlass(SPKProfileHeaderActionButton *button, UIView *headerView) {
-    if (!button || button.spkGlassUnavailable) return;
+    if (!button || button.spkGlassUnavailable)
+        return;
 
     UIVisualEffectView *glassView = button.spkGlassView;
     if (!glassView) {
@@ -533,13 +571,15 @@ static void SPKProfileUpdateGlass(SPKProfileHeaderActionButton *button, UIView *
 // MARK: - Long-username overlap
 
 static UIView *SPKProfileFindTitleView(UIView *view) {
-    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"]) return nil;
+    if ([view.accessibilityIdentifier isEqualToString:@"sparkle-profile-action-button"])
+        return nil;
     if ([NSStringFromClass([view class]) containsString:@"TitleView"]) {
         return view;
     }
     for (UIView *subview in view.subviews) {
         UIView *found = SPKProfileFindTitleView(subview);
-        if (found) return found;
+        if (found)
+            return found;
     }
     return nil;
 }
@@ -550,7 +590,8 @@ static UILabel *SPKProfileFindUsernameLabel(UIView *view) {
     }
     for (UIView *subview in view.subviews) {
         UILabel *found = SPKProfileFindUsernameLabel(subview);
-        if (found) return found;
+        if (found)
+            return found;
     }
     return nil;
 }
@@ -561,14 +602,17 @@ static UILabel *SPKProfileFindUsernameLabel(UIView *view) {
 // mirroring IG's native behaviour when a trailing button is present. Runs after
 // IG's own layout each pass, so short names are left untouched / auto-reset.
 static void SPKProfileClampTitleToButton(UIView *headerView, SPKProfileHeaderActionButton *button) {
-    if (!headerView || !button || button.hidden) return;
+    if (!headerView || !button || button.hidden)
+        return;
 
     CGRect buttonInHeader = [button convertRect:button.bounds toView:headerView];
-    if (CGRectGetMinX(buttonInHeader) <= 1.0) return; // not positioned yet
+    if (CGRectGetMinX(buttonInHeader) <= 1.0)
+        return;                                           // not positioned yet
     CGFloat limitX = CGRectGetMinX(buttonInHeader) - 8.0; // clean gap before our button
 
     UIView *titleView = SPKProfileFindTitleView(headerView);
-    if (!titleView) return;
+    if (!titleView)
+        return;
 
     CGRect titleInHeader = [titleView convertRect:titleView.bounds toView:headerView];
     CGFloat titleOverflow = CGRectGetMaxX(titleInHeader) - limitX;
@@ -648,7 +692,8 @@ static void SPKProfilePlaceActionButton(UIView *headerView, BOOL titleIsCentered
 
     CGFloat w = CGRectGetWidth(headerView.bounds);
     CGFloat h = CGRectGetHeight(headerView.bounds);
-    if (w < 60.0 || h < 20.0) return;
+    if (w < 60.0 || h < 20.0)
+        return;
 
     CGFloat btnW = kSPKProfileActionButtonWidth;
     CGFloat btnH = kSPKProfileActionButtonHeight;
@@ -727,7 +772,7 @@ static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, i
                 [modifiedLeftButtons addObject:button];
                 leftButtons = [modifiedLeftButtons copy];
             } else if (leftButtons == nil) {
-                leftButtons = @[button];
+                leftButtons = @[ button ];
             }
         }
     }
@@ -747,7 +792,8 @@ static void hooked_configureProfileHeaderView(id self, SEL _cmd, id titleView, i
 }
 
 static void SPKProfileReplaceActionButtonFromHeader(id headerSelf) {
-    if (![headerSelf isKindOfClass:[UIView class]]) return;
+    if (![headerSelf isKindOfClass:[UIView class]])
+        return;
     // Use saved titleIsCentered state from configure hook
     NSNumber *savedTitleIsCentered = objc_getAssociatedObject(headerSelf, kSPKProfileTitleIsCenteredKey);
     BOOL titleIsCentered = savedTitleIsCentered ? savedTitleIsCentered.boolValue : NO;
@@ -757,7 +803,8 @@ static void SPKProfileReplaceActionButtonFromHeader(id headerSelf) {
 static void (*orig_profileHeaderLayoutSubviews)(id, SEL);
 
 static void hooked_profileHeaderLayoutSubviews(id self, SEL _cmd) {
-    if (orig_profileHeaderLayoutSubviews) orig_profileHeaderLayoutSubviews(self, _cmd);
+    if (orig_profileHeaderLayoutSubviews)
+        orig_profileHeaderLayoutSubviews(self, _cmd);
     SPKProfileReplaceActionButtonFromHeader(self);
 }
 
@@ -766,27 +813,31 @@ static BOOL retryScheduled = NO;
 static NSInteger installAttempts = 0;
 
 extern "C" void SPKInstallProfileActionButtonHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"profile_action_btn"]) return;
+    if (![SPKUtils getBoolPref:@"profile_action_btn"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        if (hooksInstalled) return;
+        if (hooksInstalled)
+            return;
 
         installAttempts += 1;
         Class headerClass = objc_getClass("IGProfileNavigationSwift.IGProfileNavigationHeaderView");
-        if (!headerClass) headerClass = objc_getClass("_TtC24IGProfileNavigationSwift29IGProfileNavigationHeaderView");
-        if (!headerClass) headerClass = objc_getClass("IGProfileNavigationHeaderView");
+        if (!headerClass)
+            headerClass = objc_getClass("_TtC24IGProfileNavigationSwift29IGProfileNavigationHeaderView");
+        if (!headerClass)
+            headerClass = objc_getClass("IGProfileNavigationHeaderView");
         if (!headerClass) {
             SPKLog(@"ProfileBtn", @"Install target unavailable attempt=%ld", (long)installAttempts);
             if (!retryScheduled && installAttempts < kSPKProfileActionButtonMaxInstallAttempts) {
                 retryScheduled = YES;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.75 * NSEC_PER_SEC)),
                                dispatch_get_main_queue(), ^{
-                    @synchronized([SPKProfileHeaderActionButton class]) {
-                        retryScheduled = NO;
-                    }
-                    SPKInstallProfileActionButtonHooksIfEnabled();
-                });
+                                   @synchronized([SPKProfileHeaderActionButton class]) {
+                                       retryScheduled = NO;
+                                   }
+                                   SPKInstallProfileActionButtonHooksIfEnabled();
+                               });
             }
             return;
         }

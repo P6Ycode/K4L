@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
 
-#import "SPKDownloadTypes.h"
-#import "SPKDownloadRequest.h"
 #import "SPKDownloadJob.h"
+#import "SPKDownloadRequest.h"
+#import "SPKDownloadTypes.h"
 
 @class SPKDownloadPresenter;
 @class SPKDownloadStore;
@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<SPKDownloadJob *> *)allJobs;
 - (nullable SPKDownloadJob *)jobWithID:(NSString *)jobID;
 
-- (void)submitRequest:(SPKDownloadRequest *)request completion:(void (^ _Nullable)(NSString * _Nullable jobID, NSError * _Nullable error))completion;
+- (void)submitRequest:(SPKDownloadRequest *)request completion:(void (^_Nullable)(NSString *_Nullable jobID, NSError *_Nullable error))completion;
 - (void)cancelJobID:(NSString *)jobID;
 - (void)cancelItemID:(NSString *)itemID inJobID:(NSString *)jobID;
 - (void)retryJobID:(NSString *)jobID;

@@ -1,5 +1,5 @@
-#import <UIKit/UIKit.h>
 #import "../Shared/ActionButton/ActionButtonCore.h"
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -7,9 +7,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithTitle:(NSString *)title
                        source:(SPKActionButtonSource)source
-              supportedActions:(NSArray<NSString *> *)supportedActions
-               configuredActions:(NSArray<NSString *> *)configuredActions
-                        onSave:(void (^)(NSArray<NSString *> *actions))onSave;
+             supportedActions:(NSArray<NSString *> *)supportedActions
+            configuredActions:(NSArray<NSString *> *)configuredActions
+                       onSave:(void (^)(NSArray<NSString *> *actions))onSave;
 
 @end
 

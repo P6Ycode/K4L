@@ -50,7 +50,7 @@
         _listSubtitle.numberOfLines = 1;
         _listSubtitle.lineBreakMode = NSLineBreakByTruncatingTail;
 
-        _textStack = [[UIStackView alloc] initWithArrangedSubviews:@[_listTitle, _listSubtitle]];
+        _textStack = [[UIStackView alloc] initWithArrangedSubviews:@[ _listTitle, _listSubtitle ]];
         _textStack.translatesAutoresizingMaskIntoConstraints = NO;
         _textStack.axis = UILayoutConstraintAxisVertical;
         _textStack.alignment = UIStackViewAlignmentFill;
@@ -58,7 +58,7 @@
         [_textStack setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
         [_textStack setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
-        _listStack = [[UIStackView alloc] initWithArrangedSubviews:@[_listIcon, _textStack, _listChevron]];
+        _listStack = [[UIStackView alloc] initWithArrangedSubviews:@[ _listIcon, _textStack, _listChevron ]];
         _listStack.translatesAutoresizingMaskIntoConstraints = NO;
         _listStack.axis = UILayoutConstraintAxisHorizontal;
         _listStack.alignment = UIStackViewAlignmentCenter;
@@ -84,7 +84,8 @@
             [_listChevron.widthAnchor constraintEqualToConstant:12],
             [_listChevron.heightAnchor constraintEqualToConstant:20],
 
-            [sep.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:60],
+            [sep.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                              constant:60],
             [sep.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
             [sep.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
             [sep.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],

@@ -1,14 +1,14 @@
-#import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 /// How to resolve an imported file that already exists on the device under a
 /// *different* account (only possible during a "this account" re-map import).
 typedef NS_ENUM(NSInteger, SPKGalleryImportConflictStrategy) {
-    SPKGalleryImportConflictStrategySkip = 0,       ///< Leave the existing file untouched.
-    SPKGalleryImportConflictStrategyClaim = 1,      ///< Re-assign it to the importing account (moves it).
-    SPKGalleryImportConflictStrategyDuplicate = 2,  ///< Add a separate copy owned by the importing account.
+    SPKGalleryImportConflictStrategySkip = 0,      ///< Leave the existing file untouched.
+    SPKGalleryImportConflictStrategyClaim = 1,     ///< Re-assign it to the importing account (moves it).
+    SPKGalleryImportConflictStrategyDuplicate = 2, ///< Add a separate copy owned by the importing account.
 };
 
 @interface SPKGalleryCoreDataStack : NSObject
@@ -35,7 +35,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportConflictStrategy) {
                                     ownerUsername:(nullable NSString *)ownerUsername
                                  conflictStrategy:(SPKGalleryImportConflictStrategy)conflictStrategy
                                   progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
-                                            error:(NSError * _Nullable * _Nullable)error;
+                                            error:(NSError *_Nullable *_Nullable)error;
 
 /// Number of files in the bundle that already exist on the device but are owned by an
 /// account other than `ownerAccountPK` (i.e. the conflicts a "this account" import must
@@ -49,7 +49,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryImportConflictStrategy) {
 - (BOOL)exportGalleryFilesToBundleDirectory:(NSString *)bundleGalleryDirectory
                              ownerAccountPK:(nullable NSString *)ownerAccountPK
                             progressHandler:(nullable void (^)(NSInteger done, NSInteger total))progressHandler
-                                      error:(NSError * _Nullable * _Nullable)error;
+                                      error:(NSError *_Nullable *_Nullable)error;
 
 @end
 

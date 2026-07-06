@@ -1,7 +1,7 @@
 #import "SPKStartupHooks.h"
 
-#import "SPKStabilityGuard.h"
 #import "../Utils.h"
+#import "SPKStabilityGuard.h"
 
 FOUNDATION_EXPORT void SPKInstallLiquidGlassHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallProgressiveBlurHooksIfEnabled(void);

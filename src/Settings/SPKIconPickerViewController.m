@@ -3,8 +3,8 @@
 #import "../AssetUtils.h"
 #import "../Utils.h"
 
-static NSString * const kSPKIconPickerCellIdentifier = @"SPKIconPickerCell";
-static NSString * const kSPKIconPickerHeaderIdentifier = @"SPKIconPickerHeader";
+static NSString *const kSPKIconPickerCellIdentifier = @"SPKIconPickerCell";
+static NSString *const kSPKIconPickerHeaderIdentifier = @"SPKIconPickerHeader";
 
 #pragma mark - Model
 
@@ -15,7 +15,8 @@ static NSString * const kSPKIconPickerHeaderIdentifier = @"SPKIconPickerHeader";
     SPKIconPickerItem *item = [[self alloc] init];
     item.identifier = identifier ?: @"";
     item.title = title;
-    item.searchText = [(searchText ?: title ?: identifier) lowercaseString];
+    item.searchText = [(searchText ?: title ?
+                                            : identifier) lowercaseString];
     return item;
 }
 @end
@@ -85,7 +86,8 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (!self) return nil;
+    if (!self)
+        return nil;
 
     self.contentView.backgroundColor = [SPKUtils SPKColor_InstagramSecondaryBackground];
     self.contentView.layer.cornerRadius = 8.0;
@@ -108,16 +110,23 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
     [self.contentView addSubview:_checkmarkView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_iconView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:13.0],
+        [_iconView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                            constant:13.0],
         [_iconView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
 
-        [_titleLabel.topAnchor constraintEqualToAnchor:_iconView.bottomAnchor constant:7.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6.0],
-        [_titleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
+        [_titleLabel.topAnchor constraintEqualToAnchor:_iconView.bottomAnchor
+                                              constant:7.0],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                  constant:6.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                   constant:-6.0],
+        [_titleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor
+                                                           constant:-8.0],
 
-        [_checkmarkView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
-        [_checkmarkView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6.0],
+        [_checkmarkView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor
+                                                 constant:6.0],
+        [_checkmarkView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                      constant:-6.0],
         [_checkmarkView.widthAnchor constraintEqualToConstant:18.0],
         [_checkmarkView.heightAnchor constraintEqualToConstant:18.0]
     ]];
@@ -162,11 +171,12 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
 
 - (void)applySelected:(BOOL)selected {
     self.checkmarkView.hidden = !selected;
-    if (selected) self.contentView.layer.borderColor = [SPKUtils SPKColor_InstagramBlue].CGColor;
+    if (selected)
+        self.contentView.layer.borderColor = [SPKUtils SPKColor_InstagramBlue].CGColor;
     self.contentView.layer.borderWidth = selected ? 2.0 : 0.0;
     self.contentView.backgroundColor = selected
-        ? [[SPKUtils SPKColor_InstagramBlue] colorWithAlphaComponent:0.12]
-        : [SPKUtils SPKColor_InstagramSecondaryBackground];
+                                           ? [[SPKUtils SPKColor_InstagramBlue] colorWithAlphaComponent:0.12]
+                                           : [SPKUtils SPKColor_InstagramSecondaryBackground];
     if (_style == SPKIconPickerCellStyleGlyph) {
         self.iconView.tintColor = selected ? [SPKUtils SPKColor_InstagramBlue] : [SPKUtils SPKColor_InstagramPrimaryText];
     }
@@ -190,16 +200,20 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
 @implementation SPKIconPickerHeaderView
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (!self) return nil;
+    if (!self)
+        return nil;
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
     _titleLabel.textColor = [SPKUtils SPKColor_InstagramPrimaryText];
     [self addSubview:_titleLabel];
     [NSLayoutConstraint activateConstraints:@[
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14.0],
-        [_titleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8.0]
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor
+                                                  constant:14.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor
+                                                   constant:-14.0],
+        [_titleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor
+                                                 constant:-8.0]
     ]];
     return self;
 }
@@ -227,13 +241,29 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
 
 #pragma mark Defaults for hooks
 
-- (NSArray<SPKIconPickerSection *> *)buildSections { return @[]; }
-- (UIImage *)imageForItem:(SPKIconPickerItem *)item { (void)item; return nil; }
-- (void)didSelectItem:(SPKIconPickerItem *)item { (void)item; }
-- (SPKIconPickerCellStyle)cellStyle { return SPKIconPickerCellStyleGlyph; }
-- (NSInteger)columnCountForWidth:(CGFloat)width { (void)width; return 3; }
-- (CGFloat)itemHeight { return [self cellStyle] == SPKIconPickerCellStyleAppIcon ? 124.0 : 96.0; }
-- (NSString *)searchPlaceholder { return @"Search Icons"; }
+- (NSArray<SPKIconPickerSection *> *)buildSections {
+    return @[];
+}
+- (UIImage *)imageForItem:(SPKIconPickerItem *)item {
+    (void)item;
+    return nil;
+}
+- (void)didSelectItem:(SPKIconPickerItem *)item {
+    (void)item;
+}
+- (SPKIconPickerCellStyle)cellStyle {
+    return SPKIconPickerCellStyleGlyph;
+}
+- (NSInteger)columnCountForWidth:(CGFloat)width {
+    (void)width;
+    return 3;
+}
+- (CGFloat)itemHeight {
+    return [self cellStyle] == SPKIconPickerCellStyleAppIcon ? 124.0 : 96.0;
+}
+- (NSString *)searchPlaceholder {
+    return @"Search Icons";
+}
 - (BOOL)isSelectedItem:(SPKIconPickerItem *)item {
     return self.selectedIdentifier.length > 0 && [item.identifier isEqualToString:self.selectedIdentifier];
 }
@@ -307,9 +337,11 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
 - (UIImage *)cachedImageForItem:(SPKIconPickerItem *)item {
     NSString *key = item.identifier ?: @"";
     UIImage *cached = [self.imageCache objectForKey:key];
-    if (cached) return cached;
+    if (cached)
+        return cached;
     UIImage *image = [self imageForItem:item];
-    if (image) [self.imageCache setObject:image forKey:key];
+    if (image)
+        [self.imageCache setObject:image forKey:key];
     return image;
 }
 
@@ -319,7 +351,8 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
     for (NSUInteger s = 0; s < self.filteredSections.count; s++) {
         NSArray<SPKIconPickerItem *> *items = self.filteredSections[s].items;
         NSUInteger index = [items indexOfObjectPassingTest:^BOOL(SPKIconPickerItem *item, NSUInteger idx, BOOL *stop) {
-            (void)idx; (void)stop;
+            (void)idx;
+            (void)stop;
             return [self isSelectedItem:item];
         }];
         if (index != NSNotFound) {
@@ -338,7 +371,8 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
     NSArray<NSString *> *parts = [normalized componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSMutableArray<NSString *> *tokens = [NSMutableArray array];
     for (NSString *part in parts) {
-        if (part.length > 0) [tokens addObject:part];
+        if (part.length > 0)
+            [tokens addObject:part];
     }
     return tokens;
 }
@@ -361,7 +395,8 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
                     break;
                 }
             }
-            if (matchesAll) [matches addObject:item];
+            if (matchesAll)
+                [matches addObject:item];
         }
         if (matches.count > 0) {
             [filtered addObject:[SPKIconPickerSection sectionWithTitle:section.title items:matches]];
@@ -401,16 +436,17 @@ static NSString *SPKIconPickerWrappedTitle(NSString *title) {
            viewForSupplementaryElementOfKind:(NSString *)kind
                                  atIndexPath:(NSIndexPath *)indexPath {
     SPKIconPickerHeaderView *header = [collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                                                        withReuseIdentifier:kSPKIconPickerHeaderIdentifier
-                                                                               forIndexPath:indexPath];
+                                                                         withReuseIdentifier:kSPKIconPickerHeaderIdentifier
+                                                                                forIndexPath:indexPath];
     header.titleLabel.text = self.filteredSections[indexPath.section].title;
     return header;
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
-                  layout:(UICollectionViewLayout *)collectionViewLayout
-referenceSizeForHeaderInSection:(NSInteger)section {
-    (void)collectionView; (void)collectionViewLayout;
+                             layout:(UICollectionViewLayout *)collectionViewLayout
+    referenceSizeForHeaderInSection:(NSInteger)section {
+    (void)collectionView;
+    (void)collectionViewLayout;
     NSString *title = self.filteredSections[section].title;
     return title.length > 0 ? CGSizeMake(1.0, 42.0) : CGSizeZero;
 }

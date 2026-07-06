@@ -1,11 +1,11 @@
 #import "SPKDownloadsSettingsProvider.h"
 #import <UIKit/UIKit.h>
 
-#import "../SPKTopicSettingsSupport.h"
-#import "../SPKSetting.h"
-#import "../../Utils.h"
 #import "../../Shared/Downloads/SPKDownloadsHistoryViewController.h"
 #import "../../Shared/Downloads/SPKDownloadsSettingsViewController.h"
+#import "../../Utils.h"
+#import "../SPKSetting.h"
+#import "../SPKTopicSettingsSupport.h"
 
 @implementation SPKDownloadsSettingsProvider
 
@@ -18,7 +18,7 @@
                                                          icon:SPKSettingsIcon(@"download")
                                                viewController:[SPKDownloadsHistoryViewController new]];
     setting.searchKeywords = @"downloads history queue retry cancel duplicate parallel concurrent quality encoding ffmpeg audio resolution";
-    setting.searchSectionsProvider = ^NSArray *{
+    setting.searchSectionsProvider = ^NSArray * {
         return [SPKDownloadsSettingsViewController searchSections];
     };
     return SPKSettingApplyIconTint(setting, [SPKUtils SPKColor_InstagramPrimaryText]);

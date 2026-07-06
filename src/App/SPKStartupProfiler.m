@@ -13,8 +13,7 @@ static BOOL SPKStartupProfilingEnabled(void) {
     return override == nil || [defaults boolForKey:@"app_startup_profiling"];
 }
 
-__attribute__((constructor))
-static void SPKStartupProfilerConstructor(void) {
+__attribute__((constructor)) static void SPKStartupProfilerConstructor(void) {
     sSPKStartupStartTime = CFAbsoluteTimeGetCurrent();
     if (SPKStartupProfilingEnabled()) {
         SPKLog(@"General", @"[Sparkle][startup] +0.000s constructor entry");

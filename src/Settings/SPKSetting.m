@@ -26,13 +26,11 @@
     return self;
 }
 
-
 // MARK: - + staticCellWithTitle
 
 + (instancetype)staticCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
-                               icon:(nullable UIImage *)icon
-{
+                               icon:(nullable UIImage *)icon {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellStatic];
 
     setting.title = title;
@@ -47,8 +45,7 @@
 + (instancetype)linkCellWithTitle:(NSString *)title
                          subtitle:(NSString *)subtitle
                              icon:(nullable UIImage *)icon
-                              url:(NSString *)url
-{
+                              url:(NSString *)url {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellLink];
 
     setting.title = title;
@@ -62,8 +59,7 @@
 + (instancetype)linkCellWithTitle:(NSString *)title
                          subtitle:(NSString *)subtitle
                          imageUrl:(NSString *)imageUrl
-                              url:(NSString *)url
-{
+                              url:(NSString *)url {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellLink];
 
     setting.title = title;
@@ -78,30 +74,26 @@
 // MARK: - + switchCellWithTitle
 
 + (instancetype)switchCellWithTitle:(NSString *)title
-                        defaultsKey:(NSString *)defaultsKey
-{
+                        defaultsKey:(NSString *)defaultsKey {
     return [self switchCellWithTitle:title subtitle:@"" icon:nil defaultsKey:defaultsKey];
 }
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                         defaultsKey:(NSString *)defaultsKey
-                    requiresRestart:(BOOL)requiresRestart
-{
+                    requiresRestart:(BOOL)requiresRestart {
     return [self switchCellWithTitle:title subtitle:@"" defaultsKey:defaultsKey requiresRestart:requiresRestart];
 }
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                                icon:(nullable UIImage *)icon
-                        defaultsKey:(NSString *)defaultsKey
-{
+                        defaultsKey:(NSString *)defaultsKey {
     return [self switchCellWithTitle:title subtitle:@"" icon:icon defaultsKey:defaultsKey];
 }
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                                icon:(nullable UIImage *)icon
                         defaultsKey:(NSString *)defaultsKey
-                    requiresRestart:(BOOL)requiresRestart
-{
+                    requiresRestart:(BOOL)requiresRestart {
     SPKSetting *setting = [self switchCellWithTitle:title subtitle:@"" icon:icon defaultsKey:defaultsKey];
     setting.requiresRestart = requiresRestart;
     return setting;
@@ -109,16 +101,14 @@
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
-                        defaultsKey:(NSString *)defaultsKey
-{
+                        defaultsKey:(NSString *)defaultsKey {
     return [self switchCellWithTitle:title subtitle:subtitle icon:nil defaultsKey:defaultsKey];
 }
 
 + (instancetype)switchCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
                                icon:(UIImage *)icon
-                        defaultsKey:(NSString *)defaultsKey
-{
+                        defaultsKey:(NSString *)defaultsKey {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellSwitch];
 
     setting.title = title;
@@ -132,8 +122,7 @@
 + (instancetype)switchCellWithTitle:(NSString *)title
                            subtitle:(NSString *)subtitle
                         defaultsKey:(NSString *)defaultsKey
-                    requiresRestart:(BOOL)requiresRestart
-{
+                    requiresRestart:(BOOL)requiresRestart {
     return [self switchCellWithTitle:title
                             subtitle:subtitle
                          defaultsKey:defaultsKey
@@ -145,8 +134,7 @@
                            subtitle:(NSString *)subtitle
                         defaultsKey:(NSString *)defaultsKey
                     requiresRestart:(BOOL)requiresRestart
-       mutuallyExclusiveDefaultsKey:(NSString *)exclusiveDefaultsKey
-{
+       mutuallyExclusiveDefaultsKey:(NSString *)exclusiveDefaultsKey {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellSwitch];
 
     setting.title = title;
@@ -167,8 +155,7 @@
                                  max:(double)max
                                 step:(double)step
                                label:(NSString *)label
-                       singularLabel:(NSString *)singularLabel
-{
+                       singularLabel:(NSString *)singularLabel {
     return [self stepperCellWithTitle:title
                              subtitle:subtitle
                                  icon:nil
@@ -188,8 +175,7 @@
                                  max:(double)max
                                 step:(double)step
                                label:(NSString *)label
-                       singularLabel:(NSString *)singularLabel
-{
+                       singularLabel:(NSString *)singularLabel {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellStepper];
 
     setting.title = title;
@@ -211,8 +197,7 @@
 + (instancetype)buttonCellWithTitle:(NSString *)title
                            subtitle:(nullable NSString *)subtitle
                                icon:(nullable UIImage *)icon
-                             action:(void (^)(void))action
-{
+                             action:(void (^)(void))action {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellButton];
 
     setting.title = title;
@@ -224,12 +209,11 @@
     return setting;
 }
 
-# pragma mark + menuCellWithTitle
+#pragma mark + menuCellWithTitle
 
 + (instancetype)menuCellWithTitle:(NSString *)title
                          subtitle:(nullable NSString *)subtitle
-                             menu:(UIMenu *)menu
-{
+                             menu:(UIMenu *)menu {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellMenu];
 
     setting.title = title;
@@ -242,16 +226,14 @@
 
 + (instancetype)menuCellWithTitle:(NSString *)title
                              icon:(nullable UIImage *)icon
-                             menu:(UIMenu *)menu
-{
+                             menu:(UIMenu *)menu {
     return [self menuCellWithTitle:title subtitle:@"" icon:icon menu:menu];
 }
 
 + (instancetype)menuCellWithTitle:(NSString *)title
                          subtitle:(nullable NSString *)subtitle
                              icon:(nullable UIImage *)icon
-                             menu:(UIMenu *)menu
-{
+                             menu:(UIMenu *)menu {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellMenu];
 
     setting.title = title;
@@ -268,8 +250,7 @@
 + (instancetype)navigationCellWithTitle:(NSString *)title
                                subtitle:(nullable NSString *)subtitle
                                    icon:(nullable UIImage *)icon
-                            navSections:(NSArray *)navSections
-{
+                            navSections:(NSArray *)navSections {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellNavigation];
 
     setting.title = title;
@@ -284,8 +265,7 @@
 + (instancetype)navigationCellWithTitle:(NSString *)title
                                subtitle:(nullable NSString *)subtitle
                                    icon:(nullable UIImage *)icon
-                         viewController:(UIViewController *)viewController
-{
+                         viewController:(UIViewController *)viewController {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellNavigation];
 
     setting.title = title;
@@ -300,8 +280,7 @@
 + (instancetype)textFieldCellWithTitle:(NSString *)title
                            placeholder:(nullable NSString *)placeholder
                           keyboardType:(UIKeyboardType)keyboardType
-                           defaultsKey:(NSString *)defaultsKey
-{
+                           defaultsKey:(NSString *)defaultsKey {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellTextField];
 
     setting.title = title;
@@ -314,8 +293,7 @@
 
 + (instancetype)valueCellWithTitle:(NSString *)title
                           subtitle:(nullable NSString *)subtitle
-                              icon:(nullable UIImage *)icon
-{
+                              icon:(nullable UIImage *)icon {
     SPKSetting *setting = [[self alloc] initWithType:SPKTableCellValue];
 
     setting.title = title;
@@ -325,14 +303,13 @@
     return setting;
 }
 
-
 // MARK: -  Instance methods
 
 - (UIMenu *)menuForButton:(UIButton *)button {
     return [self submenuForButton:button submenu:self.baseMenu];
 }
 
-- (UIMenu *)submenuForButton:(UIButton *)button submenu:(UIMenu*)submenu {
+- (UIMenu *)submenuForButton:(UIButton *)button submenu:(UIMenu *)submenu {
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
 
     for (id obj in submenu.children) {
@@ -340,8 +317,7 @@
         if ([obj isKindOfClass:[UIMenu class]]) {
             [children addObject:[self submenuForButton:button submenu:(UIMenu *)obj]];
             continue;
-        }
-        else if (![obj isKindOfClass:[UICommand class]]) {
+        } else if (![obj isKindOfClass:[UICommand class]]) {
             continue;
         }
 
@@ -351,7 +327,7 @@
         NSString *effectiveKey = SPKEffectivePreferenceKey(defaultsKey);
         NSString *saved = [[NSUserDefaults standardUserDefaults] stringForKey:effectiveKey];
         if (saved == nil && ![effectiveKey isEqualToString:defaultsKey]) {
-            saved = [[NSUserDefaults standardUserDefaults] stringForKey:defaultsKey];  // inherit global
+            saved = [[NSUserDefaults standardUserDefaults] stringForKey:defaultsKey]; // inherit global
         }
 
         UICommand *command = [UICommand commandWithTitle:child.title
@@ -363,8 +339,7 @@
             command.state = YES;
 
             [button setTitle:command.title forState:UIControlStateNormal];
-        }
-        else {
+        } else {
             command.state = NO;
         }
 

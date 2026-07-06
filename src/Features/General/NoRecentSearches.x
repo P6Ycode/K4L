@@ -2,8 +2,8 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 // Disable logging of searches.
 //
@@ -93,20 +93,24 @@ static BOOL replaced_directIsEmpty(id self, SEL _cmd) {
 static Class SPKResolveClass(NSArray<NSString *> *candidateNames) {
     for (NSString *name in candidateNames) {
         Class cls = NSClassFromString(name);
-        if (cls) return cls;
+        if (cls)
+            return cls;
     }
     return Nil;
 }
 
 static void SPKHookIfPresent(Class cls, NSString *selectorName, IMP replacement, void *origStore) {
-    if (!cls) return;
+    if (!cls)
+        return;
     SEL selector = NSSelectorFromString(selectorName);
-    if (!class_getInstanceMethod(cls, selector)) return;
+    if (!class_getInstanceMethod(cls, selector))
+        return;
     MSHookMessageEx(cls, selector, replacement, (IMP *)origStore);
 }
 
 void SPKInstallNoRecentSearchesHooksIfEnabled(void) {
-    if (!SPKNoRecentSearchesEnabled()) return;
+    if (!SPKNoRecentSearchesEnabled())
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

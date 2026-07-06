@@ -1,19 +1,21 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 ////////////////////////////////////////////////////////
 
-#define CONFIRMFOLLOW(orig)                            \
-    if ([SPKUtils getBoolPref:@"profile_confirm_follow"]) {             \
-        SPKLog(@"General", @"[Sparkle] Confirm follow triggered");  \
-                                                       \
-        [SPKUtils showConfirmation:^(void) { orig; }   \
-                                 title:@"Confirm Follow"     \
-                               message:@"Are you sure you want to follow this account?"]; \
-    }                                                  \
-    else {                                             \
-        return orig;                                   \
-    }                                                  \
+#define CONFIRMFOLLOW(orig)                                                     \
+    if ([SPKUtils getBoolPref:@"profile_confirm_follow"]) {                     \
+        SPKLog(@"General", @"[Sparkle] Confirm follow triggered");              \
+                                                                                \
+        [SPKUtils                                                               \
+            showConfirmation:^(void) {                                          \
+                orig;                                                           \
+            }                                                                   \
+                       title:@"Confirm Follow"                                  \
+                     message:@"Are you sure you want to follow this account?"]; \
+    } else {                                                                    \
+        return orig;                                                            \
+    }
 
 ////////////////////////////////////////////////////////
 
@@ -28,8 +30,7 @@
     // Only show confirm dialog if user is not following
     if (UserFollowStatus == 2) {
         CONFIRMFOLLOW(%orig);
-    }
-    else {
+    } else {
         return %orig;
     }
 }
@@ -37,9 +38,12 @@
 // Unfollow from profile action sheet
 - (void)_performUnfollow {
     if ([SPKUtils getBoolPref:@"profile_confirm_unfollow"]) {
-        [SPKUtils showConfirmation:^(void) { %orig; }
-                                 title:@"Confirm Unfollow"
-                               message:@"Are you sure you want to unfollow this account?"];
+        [SPKUtils
+            showConfirmation:^(void) {
+                %orig;
+            }
+                       title:@"Confirm Unfollow"
+                     message:@"Are you sure you want to unfollow this account?"];
     } else {
         %orig;
     }
@@ -75,7 +79,7 @@
 }
 %end
 
-// Follow text on profile (when collapsed into top bar) 
+// Follow text on profile (when collapsed into top bar)
 %hook IGProfileViewController
 - (void)navigationItemsControllerDidTapHeaderFollowButton:(id)arg1 {
     CONFIRMFOLLOW(%orig);
@@ -95,10 +99,12 @@ static void (*orig_listSectionController)(id, SEL, id, id);
 static void hooked_listSectionController(id self, SEL _cmd, id arg1, id arg2) {
     if ([SPKUtils getBoolPref:@"profile_confirm_follow"]) {
 
-        [SPKUtils showConfirmation:^{
-            orig_listSectionController(self, _cmd, arg1, arg2);
-        } title:@"Confirm Follow All"
-          message:@"Are you sure you want to follow everyone in this list?"];
+        [SPKUtils
+            showConfirmation:^{
+                orig_listSectionController(self, _cmd, arg1, arg2);
+            }
+                       title:@"Confirm Follow All"
+                     message:@"Are you sure you want to follow everyone in this list?"];
 
         return;
     }
@@ -110,22 +116,23 @@ static void hooked_listSectionController(id self, SEL _cmd, id arg1, id arg2) {
 
 static void SPKInstallFollowAllConfirmHook(void) {
     Class cls = objc_getClass("IGDirectDetailMembersKit.IGDirectThreadDetailsMembersListViewController");
-    if (!cls) return;
+    if (!cls)
+        return;
 
     MSHookMessageEx(
         cls,
         @selector(listSectionController:didTapHeaderButtonWithViewModel:),
         (IMP)hooked_listSectionController,
-        (IMP *)&orig_listSectionController
-    );
+        (IMP *)&orig_listSectionController);
 }
 
 void SPKInstallFollowConfirmHooksIfNeeded(void) {
-    if (![SPKUtils getBoolPref:@"profile_confirm_follow"] && ![SPKUtils getBoolPref:@"profile_confirm_unfollow"]) return;
+    if (![SPKUtils getBoolPref:@"profile_confirm_follow"] && ![SPKUtils getBoolPref:@"profile_confirm_unfollow"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-    %init(SPKFollowConfirmHooks);
-    SPKInstallFollowAllConfirmHook();
+        %init(SPKFollowConfirmHooks);
+        SPKInstallFollowAllConfirmHook();
     });
 }

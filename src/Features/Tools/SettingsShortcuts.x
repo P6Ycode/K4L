@@ -2,9 +2,9 @@
 #import <substrate.h>
 
 #import "../../InstagramHeaders.h"
-#import "../../Utils.h"
 #import "../../Settings/SPKSettingsViewController.h"
 #import "../../Shared/Gallery/SPKGalleryViewController.h"
+#import "../../Utils.h"
 
 static const void *kSPKHomeTabSettingsLongPressAssocKey = &kSPKHomeTabSettingsLongPressAssocKey;
 static const void *kSPKGalleryTabLongPressAssocKey = &kSPKGalleryTabLongPressAssocKey;
@@ -13,7 +13,7 @@ static const NSTimeInterval kSPKHomeTabLongPressDuration = 0.5;
 static const NSTimeInterval kSPKGalleryTabLongPressDuration = 0.65;
 static const NSTimeInterval kSPKProfileMoreSettingsLongPressDuration = 0.5;
 static NSInteger const kSPKProfileMoreShortcutMaxInstallAttempts = 6;
-static NSString * const kSPKGalleryQuickAccessDisabledValue = @"none";
+static NSString *const kSPKGalleryQuickAccessDisabledValue = @"none";
 
 @interface IGTabBarButton (SPKQuickActions)
 - (void)spk_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration;
@@ -38,7 +38,8 @@ static NSString * const kSPKGalleryQuickAccessDisabledValue = @"none";
 }
 
 - (void)handleProfileMoreLongPress:(UILongPressGestureRecognizer *)sender {
-    if (sender.state != UIGestureRecognizerStateBegan) return;
+    if (sender.state != UIGestureRecognizerStateBegan)
+        return;
 
     SPKLog(@"General", @"[Sparkle] Tweak settings gesture activated");
     [SPKUtils showSettingsVC:sender.view.window];
@@ -50,9 +51,11 @@ static BOOL SPKIsProfileMoreButton(UIView *view) {
 }
 
 static void SPKAddProfileSettingsLongPressToView(UIView *view) {
-    if (!view) return;
+    if (!view)
+        return;
     for (UIGestureRecognizer *gesture in view.gestureRecognizers) {
-        if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
+        if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]])
+            continue;
         if (objc_getAssociatedObject(gesture, kSPKProfileMoreSettingsLongPressAssocKey)) {
             return;
         }
@@ -80,7 +83,8 @@ static void SPKAddProfileSettingsLongPressToView(UIView *view) {
 
 static void (*orig_spkProfileMoreDidMoveToWindow)(id, SEL);
 static void SPKHookedProfileMoreDidMoveToWindow(id self, SEL _cmd) {
-    if (orig_spkProfileMoreDidMoveToWindow) orig_spkProfileMoreDidMoveToWindow(self, _cmd);
+    if (orig_spkProfileMoreDidMoveToWindow)
+        orig_spkProfileMoreDidMoveToWindow(self, _cmd);
     if ([self isKindOfClass:[UIView class]] && SPKIsProfileMoreButton((UIView *)self)) {
         SPKAddProfileSettingsLongPressToView((UIView *)self);
     }
@@ -88,7 +92,8 @@ static void SPKHookedProfileMoreDidMoveToWindow(id self, SEL _cmd) {
 
 static void (*orig_spkProfileMoreLayoutSubviews)(id, SEL);
 static void SPKHookedProfileMoreLayoutSubviews(id self, SEL _cmd) {
-    if (orig_spkProfileMoreLayoutSubviews) orig_spkProfileMoreLayoutSubviews(self, _cmd);
+    if (orig_spkProfileMoreLayoutSubviews)
+        orig_spkProfileMoreLayoutSubviews(self, _cmd);
     if ([self isKindOfClass:[UIView class]] && SPKIsProfileMoreButton((UIView *)self)) {
         SPKAddProfileSettingsLongPressToView((UIView *)self);
     }
@@ -99,12 +104,15 @@ static BOOL SPKProfileMoreShortcutRetryScheduled = NO;
 static NSInteger SPKProfileMoreShortcutInstallAttempts = 0;
 
 static void SPKInstallProfileMoreShortcutHooks(void) {
-    if (SPKProfileMoreShortcutHooksInstalled) return;
+    if (SPKProfileMoreShortcutHooksInstalled)
+        return;
 
     SPKProfileMoreShortcutInstallAttempts += 1;
     Class buttonClass = objc_getClass("IGProfileNavigation.IGBadgedNavigationButton");
-    if (!buttonClass) buttonClass = objc_getClass("_TtC19IGProfileNavigation24IGBadgedNavigationButton");
-    if (!buttonClass) buttonClass = objc_getClass("IGBadgedNavigationButton");
+    if (!buttonClass)
+        buttonClass = objc_getClass("_TtC19IGProfileNavigation24IGBadgedNavigationButton");
+    if (!buttonClass)
+        buttonClass = objc_getClass("IGBadgedNavigationButton");
     if (!buttonClass) {
         SPKLog(@"General", @"[Sparkle] Profile more settings shortcut hook target unavailable attempt=%ld",
                (long)SPKProfileMoreShortcutInstallAttempts);
@@ -131,29 +139,40 @@ static NSString *SPKGalleryShortcutTabIdentifier(void) {
     if (identifier.length == 0) {
         identifier = kSPKGalleryQuickAccessDisabledValue;
     }
-    if ([identifier isEqualToString:kSPKGalleryQuickAccessDisabledValue]) return identifier;
+    if ([identifier isEqualToString:kSPKGalleryQuickAccessDisabledValue])
+        return identifier;
 
     NSString *target = identifier;
     BOOL usesClassicTabOrdering = [[[NSUserDefaults standardUserDefaults] stringForKey:@"interface_nav_order"] isEqualToString:@"classic"];
-    if (usesClassicTabOrdering && [target isEqualToString:@"direct-inbox-tab"]) return @"camera-tab";
-    if (!usesClassicTabOrdering && [target isEqualToString:@"camera-tab"]) return @"direct-inbox-tab";
+    if (usesClassicTabOrdering && [target isEqualToString:@"direct-inbox-tab"])
+        return @"camera-tab";
+    if (!usesClassicTabOrdering && [target isEqualToString:@"camera-tab"])
+        return @"direct-inbox-tab";
     return target;
 }
 
 static BOOL SPKTabButtonMatchesTarget(NSString *identifier, NSString *label, NSString *target) {
-    if (target.length == 0 || [target isEqualToString:kSPKGalleryQuickAccessDisabledValue]) return NO;
+    if (target.length == 0 || [target isEqualToString:kSPKGalleryQuickAccessDisabledValue])
+        return NO;
 
     NSString *candidate = [NSString stringWithFormat:@"%@ %@", identifier ?: @"", label ?: @""].lowercaseString;
-    if ([identifier isEqualToString:target]) return YES;
-    if ([target isEqualToString:@"mainfeed-tab"] && ([candidate containsString:@"mainfeed"] || [candidate containsString:@"home"])) return YES;
-    if ([target isEqualToString:@"reels-tab"] && ([candidate containsString:@"clips"] || [candidate containsString:@"reels"])) return YES;
-    if ([target isEqualToString:@"camera-tab"] && [candidate containsString:@"create"]) return YES;
-    if ([target isEqualToString:@"explore-tab"] && ([candidate containsString:@"explore"] || [candidate containsString:@"search"])) return YES;
+    if ([identifier isEqualToString:target])
+        return YES;
+    if ([target isEqualToString:@"mainfeed-tab"] && ([candidate containsString:@"mainfeed"] || [candidate containsString:@"home"]))
+        return YES;
+    if ([target isEqualToString:@"reels-tab"] && ([candidate containsString:@"clips"] || [candidate containsString:@"reels"]))
+        return YES;
+    if ([target isEqualToString:@"camera-tab"] && [candidate containsString:@"create"])
+        return YES;
+    if ([target isEqualToString:@"explore-tab"] && ([candidate containsString:@"explore"] || [candidate containsString:@"search"]))
+        return YES;
     if ([target isEqualToString:@"direct-inbox-tab"] && ([candidate containsString:@"direct"] ||
                                                          [candidate containsString:@"inbox"] ||
-                                                         [candidate containsString:@"message"])) return YES;
+                                                         [candidate containsString:@"message"]))
+        return YES;
     if ([target isEqualToString:@"profile-tab"] && ([candidate containsString:@"profile"] ||
-                                                    [candidate containsString:@"tab_avatar"])) return YES;
+                                                    [candidate containsString:@"tab_avatar"]))
+        return YES;
     return NO;
 }
 
@@ -164,12 +183,18 @@ static BOOL SPKTabIdentifierMatchesGalleryShortcut(NSString *identifier, NSStrin
 // Maps a canonical tab identifier to its "Hide Tabs" preference so we can tell,
 // up front, whether that tab's button will exist in the bar at all.
 static BOOL SPKTabHiddenForIdentifier(NSString *identifier) {
-    if ([identifier isEqualToString:@"mainfeed-tab"]) return [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
-    if ([identifier isEqualToString:@"reels-tab"]) return [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
-    if ([identifier isEqualToString:@"direct-inbox-tab"]) return [SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
-    if ([identifier isEqualToString:@"camera-tab"]) return [SPKUtils getBoolPref:@"interface_hide_create_tab"];
-    if ([identifier isEqualToString:@"explore-tab"]) return [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
-    if ([identifier isEqualToString:@"profile-tab"]) return [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
+    if ([identifier isEqualToString:@"mainfeed-tab"])
+        return [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+    if ([identifier isEqualToString:@"reels-tab"])
+        return [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
+    if ([identifier isEqualToString:@"direct-inbox-tab"])
+        return [SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+    if ([identifier isEqualToString:@"camera-tab"])
+        return [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+    if ([identifier isEqualToString:@"explore-tab"])
+        return [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
+    if ([identifier isEqualToString:@"profile-tab"])
+        return [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
     return NO;
 }
 
@@ -182,18 +207,22 @@ static BOOL SPKTabHiddenForIdentifier(NSString *identifier) {
 // left. As an absolute last resort (only one tab visible and the Gallery
 // shortcut wants it) Settings wins, since lockout is the worse outcome.
 static NSString *SPKResolvedSettingsShortcutTabIdentifier(void) {
-    if (![SPKUtils getBoolPref:@"tools_settings_shortcut"]) return nil;
+    if (![SPKUtils getBoolPref:@"tools_settings_shortcut"])
+        return nil;
 
-    NSArray<NSString *> *priority = @[@"mainfeed-tab", @"reels-tab", @"direct-inbox-tab", @"camera-tab", @"explore-tab", @"profile-tab"];
+    NSArray<NSString *> *priority = @[ @"mainfeed-tab", @"reels-tab", @"direct-inbox-tab", @"camera-tab", @"explore-tab", @"profile-tab" ];
     NSString *galleryTarget = SPKGalleryShortcutTabIdentifier();
 
     for (NSString *identifier in priority) {
-        if (SPKTabHiddenForIdentifier(identifier)) continue;
-        if ([identifier isEqualToString:galleryTarget]) continue;
+        if (SPKTabHiddenForIdentifier(identifier))
+            continue;
+        if ([identifier isEqualToString:galleryTarget])
+            continue;
         return identifier;
     }
     for (NSString *identifier in priority) {
-        if (SPKTabHiddenForIdentifier(identifier)) continue;
+        if (SPKTabHiddenForIdentifier(identifier))
+            continue;
         return identifier;
     }
     return nil;
@@ -206,9 +235,9 @@ static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 }
 
 // Show Sparkle tweak settings by holding on the settings/more icon under profile for ~1 second
-	%group SPKSettingsShortcutsHooks
+%group SPKSettingsShortcutsHooks
 
-	// Quick access to tweak settings by holding on home tab button
+// Quick access to tweak settings by holding on home tab button
 %hook IGTabBarButton
 - (void)didMoveToSuperview {
     %orig;
@@ -236,59 +265,65 @@ static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 }
 
 %new - (void)spk_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration {
-    for (UIGestureRecognizer *gesture in self.gestureRecognizers) {
-        if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
-        if (objc_getAssociatedObject(gesture, marker)) {
-            return;
-        }
+for (UIGestureRecognizer *gesture in self.gestureRecognizers) {
+    if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]])
+        continue;
+    if (objc_getAssociatedObject(gesture, marker)) {
+        return;
     }
+}
 
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:action];
-    longPress.minimumPressDuration = minimumDuration;
-    BOOL shouldCancel = (marker == kSPKGalleryTabLongPressAssocKey || marker == kSPKHomeTabSettingsLongPressAssocKey);
-    longPress.cancelsTouchesInView = shouldCancel;
-    longPress.delaysTouchesBegan = shouldCancel;
-    longPress.delaysTouchesEnded = shouldCancel;
+UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:action];
+longPress.minimumPressDuration = minimumDuration;
+BOOL shouldCancel = (marker == kSPKGalleryTabLongPressAssocKey || marker == kSPKHomeTabSettingsLongPressAssocKey);
+longPress.cancelsTouchesInView = shouldCancel;
+longPress.delaysTouchesBegan = shouldCancel;
+longPress.delaysTouchesEnded = shouldCancel;
 
-    for (UIGestureRecognizer *existing in self.gestureRecognizers) {
-        [existing requireGestureRecognizerToFail:longPress];
-    }
+for (UIGestureRecognizer *existing in self.gestureRecognizers) {
+    [existing requireGestureRecognizerToFail:longPress];
+}
 
-    [self addGestureRecognizer:longPress];
-    objc_setAssociatedObject(longPress, marker, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+[self addGestureRecognizer:longPress];
+objc_setAssociatedObject(longPress, marker, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 %new - (void)spk_removeProfileAccountPickerLongPressIfNeeded {
-    for (UIGestureRecognizer *gesture in [self.gestureRecognizers copy]) {
-        if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]]) continue;
-        if (objc_getAssociatedObject(gesture, kSPKGalleryTabLongPressAssocKey)) continue;
+for (UIGestureRecognizer *gesture in [self.gestureRecognizers copy]) {
+    if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]])
+        continue;
+    if (objc_getAssociatedObject(gesture, kSPKGalleryTabLongPressAssocKey))
+        continue;
 
-        UILongPressGestureRecognizer *longPress = (UILongPressGestureRecognizer *)gesture;
-        if (fabs(longPress.minimumPressDuration - 0.5) > 0.01) continue;
+    UILongPressGestureRecognizer *longPress = (UILongPressGestureRecognizer *)gesture;
+    if (fabs(longPress.minimumPressDuration - 0.5) > 0.01)
+        continue;
 
-        [self removeGestureRecognizer:gesture];
-    }
+    [self removeGestureRecognizer:gesture];
+}
 }
 
 %new - (void)handleHomeTabLongPress:(UILongPressGestureRecognizer *)sender {
-    if (sender.state != UIGestureRecognizerStateBegan) return;
+if (sender.state != UIGestureRecognizerStateBegan)
+    return;
 
-    [SPKUtils showSettingsVC:[self window]];
+[SPKUtils showSettingsVC:[self window]];
 }
 
 %new - (void)handleDirectInboxTabLongPress:(UILongPressGestureRecognizer *)sender {
-    if (sender.state != UIGestureRecognizerStateBegan) return;
+if (sender.state != UIGestureRecognizerStateBegan)
+    return;
 
-    [SPKGalleryViewController presentGallery];
+[SPKGalleryViewController presentGallery];
 }
 %end
 
 %end
 
-	void SPKInstallSettingsShortcutsHooksIfNeeded(void) {
-	    static dispatch_once_t onceToken;
-	    dispatch_once(&onceToken, ^{
-	        %init(SPKSettingsShortcutsHooks);
-            SPKInstallProfileMoreShortcutHooks();
-	    });
-	}
+void SPKInstallSettingsShortcutsHooksIfNeeded(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        %init(SPKSettingsShortcutsHooks);
+        SPKInstallProfileMoreShortcutHooks();
+    });
+}

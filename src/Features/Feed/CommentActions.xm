@@ -10,13 +10,15 @@
 #import "../../Shared/UI/SPKNotificationCenter.h"
 #import "../../Utils.h"
 
-static NSString * const kSPKCommentCopyTextPref = @"general_comments_copy_text";
-static NSString * const kSPKCommentMediaActionsPref = @"general_comments_media_actions";
+static NSString *const kSPKCommentCopyTextPref = @"general_comments_copy_text";
+static NSString *const kSPKCommentMediaActionsPref = @"general_comments_media_actions";
 
 static id SPKCommentObjectForSelector(id object, NSString *selectorName) {
-    if (!object || selectorName.length == 0) return nil;
+    if (!object || selectorName.length == 0)
+        return nil;
     SEL selector = NSSelectorFromString(selectorName);
-    if (![object respondsToSelector:selector]) return nil;
+    if (![object respondsToSelector:selector])
+        return nil;
     @try {
         return ((id (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -25,9 +27,11 @@ static id SPKCommentObjectForSelector(id object, NSString *selectorName) {
 }
 
 static BOOL SPKCommentBoolForSelector(id object, NSString *selectorName) {
-    if (!object || selectorName.length == 0) return NO;
+    if (!object || selectorName.length == 0)
+        return NO;
     SEL selector = NSSelectorFromString(selectorName);
-    if (![object respondsToSelector:selector]) return NO;
+    if (![object respondsToSelector:selector])
+        return NO;
     @try {
         return ((BOOL (*)(id, SEL))objc_msgSend)(object, selector);
     } @catch (__unused NSException *exception) {
@@ -36,15 +40,19 @@ static BOOL SPKCommentBoolForSelector(id object, NSString *selectorName) {
 }
 
 static id SPKCommentObjectForIvar(id object, NSString *ivarName) {
-    if (!object || ivarName.length == 0) return nil;
+    if (!object || ivarName.length == 0)
+        return nil;
     Ivar ivar = class_getInstanceVariable([object class], ivarName.UTF8String);
     return ivar ? object_getIvar(object, ivar) : nil;
 }
 
 static NSString *SPKCommentStringValue(id value) {
-    if ([value isKindOfClass:NSString.class]) return value;
-    if ([value isKindOfClass:NSURL.class]) return [(NSURL *)value absoluteString];
-    if ([value respondsToSelector:@selector(stringValue)]) return [value stringValue];
+    if ([value isKindOfClass:NSString.class])
+        return value;
+    if ([value isKindOfClass:NSURL.class])
+        return [(NSURL *)value absoluteString];
+    if ([value respondsToSelector:@selector(stringValue)])
+        return [value stringValue];
     return nil;
 }
 
@@ -62,8 +70,10 @@ static id SPKCommentLongPressedComment(id controller) {
 
 static NSString *SPKCommentAttachmentURLString(id comment) {
     id attachment = SPKCommentObjectForSelector(comment, @"commentAttachment");
-    if (!attachment) attachment = SPKCommentObjectForIvar(comment, @"_commentAttachment");
-    if (!attachment) return nil;
+    if (!attachment)
+        attachment = SPKCommentObjectForIvar(comment, @"_commentAttachment");
+    if (!attachment)
+        return nil;
 
     NSString *urlString = SPKCommentStringForSelector(attachment, @"imageURL");
     if (urlString.length == 0) {
@@ -80,14 +90,17 @@ static NSString *SPKCommentPhotoURLString(id comment) {
         NSURL *url = [SPKUtils getPhotoUrlForMedia:media];
         if (!url) {
             id photoObject = SPKCommentObjectForSelector(media, @"photo");
-            if (photoObject) url = [SPKUtils getPhotoUrl:photoObject];
+            if (photoObject)
+                url = [SPKUtils getPhotoUrl:photoObject];
         }
         if (!url) {
             id imageSpecifier = SPKCommentObjectForSelector(media, @"imageSpecifier");
             NSString *specURLString = SPKCommentStringForSelector(imageSpecifier, @"url");
-            if (specURLString.length > 0) url = [NSURL URLWithString:specURLString];
+            if (specURLString.length > 0)
+                url = [NSURL URLWithString:specURLString];
         }
-        if (url) return url.absoluteString;
+        if (url)
+            return url.absoluteString;
     }
 
     return SPKCommentAttachmentURLString(comment);
@@ -111,28 +124,31 @@ static SPKGallerySaveMetadata *SPKCommentMediaMetadata(id comment, NSString *med
 }
 
 static void SPKCommentDownloadMediaURL(NSURL *url, NSString *extension, SPKGallerySaveMetadata *metadata, SPKDownloadDestination destination) {
-    if (!url) return;
+    if (!url)
+        return;
     [SPKDownloadHelpers downloadURL:url
-                                extension:extension
-                            destination:destination
-                                 metadata:metadata
-                         notificationID:kSPKNotificationDownloadGallery
-                                presenter:nil
-                             sourceSurface:SPKDownloadSourceSurfaceComments];
+                          extension:extension
+                        destination:destination
+                           metadata:metadata
+                     notificationID:kSPKNotificationDownloadGallery
+                          presenter:nil
+                      sourceSurface:SPKDownloadSourceSurfaceComments];
 }
 
 static void SPKCommentDownloadLocalImage(UIImage *image, SPKGallerySaveMetadata *metadata, SPKDownloadDestination destination) {
-    if (!image) return;
+    if (!image)
+        return;
     NSString *stagedPath = [SPKDownloadHelpers stageImageForDownload:image];
-    if (!stagedPath) return;
+    if (!stagedPath)
+        return;
     [SPKDownloadHelpers submitLocalFileURL:[NSURL fileURLWithPath:stagedPath]
-                                  extension:@"png"
-                                destination:destination
-                                   metadata:metadata
-                             notificationID:kSPKNotificationDownloadGallery
-                                  presenter:nil
-                                 anchorView:nil
-                              sourceSurface:SPKDownloadSourceSurfaceComments];
+                                 extension:@"png"
+                               destination:destination
+                                  metadata:metadata
+                            notificationID:kSPKNotificationDownloadGallery
+                                 presenter:nil
+                                anchorView:nil
+                             sourceSurface:SPKDownloadSourceSurfaceComments];
 }
 
 static UIAction *SPKCommentAction(NSString *title, NSString *iconName, void (^handler)(void)) {
@@ -140,8 +156,9 @@ static UIAction *SPKCommentAction(NSString *title, NSString *iconName, void (^ha
                                image:SPKCommentIcon(iconName)
                           identifier:nil
                              handler:^(__unused UIAction *action) {
-        if (handler) handler();
-    }];
+                                 if (handler)
+                                     handler();
+                             }];
 }
 
 static NSArray<UIMenuElement *> *SPKCommentMediaActionItems(id comment, NSURL *url, NSString *extension, UIImage *localImage, NSString *mediaID, NSString *copyLinkTitle, NSString *linkURLString, NSString *copyLinkToastMessage) {
@@ -156,23 +173,23 @@ static NSArray<UIMenuElement *> *SPKCommentMediaActionItems(id comment, NSURL *u
 
     NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
     [actions addObject:SPKCommentAction(@"Save to Photos", @"download", ^{
-        performDownload(SPKDownloadDestinationPhotos);
-    })];
+                 performDownload(SPKDownloadDestinationPhotos);
+             })];
     [actions addObject:SPKCommentAction(@"Share", @"share", ^{
-        performDownload(SPKDownloadDestinationShare);
-    })];
+                 performDownload(SPKDownloadDestinationShare);
+             })];
     [actions addObject:SPKCommentAction(@"Save to Gallery", @"sparkle_gallery", ^{
-        performDownload(SPKDownloadDestinationGallery);
-    })];
+                 performDownload(SPKDownloadDestinationGallery);
+             })];
     [actions addObject:SPKCommentAction(@"Copy", @"copy", ^{
-        performDownload(SPKDownloadDestinationClipboard);
-    })];
+                 performDownload(SPKDownloadDestinationClipboard);
+             })];
 
     if (linkURLString.length > 0) {
         [actions addObject:SPKCommentAction(copyLinkTitle, @"link", ^{
-            UIPasteboard.generalPasteboard.string = linkURLString;
-            SPKNotify(kSPKNotificationCopyGIFLink, copyLinkToastMessage, nil, @"copy_filled", SPKNotificationToneSuccess);
-        })];
+                     UIPasteboard.generalPasteboard.string = linkURLString;
+                     SPKNotify(kSPKNotificationCopyGIFLink, copyLinkToastMessage, nil, @"copy_filled", SPKNotificationToneSuccess);
+                 })];
     }
 
     return actions;
@@ -182,7 +199,8 @@ static id (*SPKOriginalCommentContextMenu)(id, SEL, id, id, CGPoint);
 
 static id SPKCommentContextMenu(id self, SEL _cmd, id collectionView, id indexPath, CGPoint point) {
     UIContextMenuConfiguration *configuration = SPKOriginalCommentContextMenu(self, _cmd, collectionView, indexPath, point);
-    if (!configuration) return nil;
+    if (!configuration)
+        return nil;
 
     id comment = SPKCommentLongPressedComment(self);
     NSString *text = SPKCommentStringForSelector(comment, @"text");
@@ -205,7 +223,8 @@ static id SPKCommentContextMenu(id self, SEL _cmd, id collectionView, id indexPa
     }
 
     BOOL offersCopyText = text.length > 0 && [SPKUtils getBoolPref:kSPKCommentCopyTextPref];
-    if (!offersCopyText && !offersGIFActions && !offersPhotoActions) return configuration;
+    if (!offersCopyText && !offersGIFActions && !offersPhotoActions)
+        return configuration;
 
     UIContextMenuActionProvider originalProvider = [configuration valueForKey:@"actionProvider"];
     id<NSCopying> identifier = [configuration valueForKey:@"identifier"];
@@ -216,9 +235,9 @@ static id SPKCommentContextMenu(id self, SEL _cmd, id collectionView, id indexPa
 
         if (offersCopyText) {
             [extraActions addObject:SPKCommentAction(@"Copy Comment", @"copy", ^{
-                UIPasteboard.generalPasteboard.string = text;
-                SPKNotify(kSPKNotificationCopyComment, @"Comment copied", nil, @"copy_filled", SPKNotificationToneSuccess);
-            })];
+                              UIPasteboard.generalPasteboard.string = text;
+                              SPKNotify(kSPKNotificationCopyComment, @"Comment copied", nil, @"copy_filled", SPKNotificationToneSuccess);
+                          })];
         }
 
         if (offersGIFActions) {
@@ -226,27 +245,28 @@ static id SPKCommentContextMenu(id self, SEL _cmd, id collectionView, id indexPa
             NSString *pageURLString = gifID.length > 0 ? [NSString stringWithFormat:@"https://giphy.com/gifs/%@", gifID] : gifURLString;
             NSArray<UIMenuElement *> *gifActions = SPKCommentMediaActionItems(comment, gifURL, @"gif", nil, gifID, @"Copy GIF Link", pageURLString, @"GIF link copied");
             [extraActions addObject:[UIMenu menuWithTitle:@"GIF Actions"
-                                                     image:SPKCommentIcon(@"action")
-                                                identifier:nil
-                                                   options:0
-                                                  children:gifActions]];
+                                                    image:SPKCommentIcon(@"action")
+                                               identifier:nil
+                                                  options:0
+                                                 children:gifActions]];
         } else if (offersPhotoActions) {
             NSURL *photoURL = photoURLString.length > 0 ? [NSURL URLWithString:photoURLString] : nil;
             NSString *extension = photoURL.pathExtension.length > 0 ? photoURL.pathExtension : @"jpg";
             NSArray<UIMenuElement *> *photoActions = SPKCommentMediaActionItems(comment, photoURL, extension, photoLocalImage, nil, @"Copy Download URL", photoURLString, @"Download URL copied");
             [extraActions addObject:[UIMenu menuWithTitle:@"Photo Actions"
-                                                     image:SPKCommentIcon(@"action")
-                                                identifier:nil
-                                                   options:0
-                                                  children:photoActions]];
+                                                    image:SPKCommentIcon(@"action")
+                                               identifier:nil
+                                                  options:0
+                                                 children:photoActions]];
         }
 
-        if (extraActions.count == 0) return baseMenu;
+        if (extraActions.count == 0)
+            return baseMenu;
         UIMenu *inlineMenu = [UIMenu menuWithTitle:@""
-                                            image:nil
-                                       identifier:nil
-                                          options:UIMenuOptionsDisplayInline
-                                         children:extraActions];
+                                             image:nil
+                                        identifier:nil
+                                           options:UIMenuOptionsDisplayInline
+                                          children:extraActions];
         NSMutableArray<UIMenuElement *> *children = [baseMenu.children mutableCopy] ?: [NSMutableArray array];
         NSUInteger insertionIndex = children.count > 0 ? children.count - 1 : 0;
         [children insertObject:inlineMenu atIndex:insertionIndex];

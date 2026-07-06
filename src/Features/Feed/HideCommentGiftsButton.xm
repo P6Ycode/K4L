@@ -1,56 +1,65 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 #import <objc/message.h>
 
-static NSString * const kSPKHideCommentGiftsButtonPref = @"general_comments_hide_gifts_button";
+static NSString *const kSPKHideCommentGiftsButtonPref = @"general_comments_hide_gifts_button";
 
 static inline BOOL SPKHideCommentGiftsButtonEnabled(void) {
     return [SPKUtils getBoolPref:kSPKHideCommentGiftsButtonPref];
 }
 
 static BOOL SPKViewMatchesCommentGiftButton(UIView *view) {
-    if (![view isKindOfClass:[UIControl class]]) return NO;
+    if (![view isKindOfClass:[UIControl class]])
+        return NO;
 
     // Language-independent signals first: a gift tap action or the gift glyph asset
     // name. accessibilityLabel ("Gifts button") is localized, so it's the fallback.
     // The primary code path finds this button via the composer's _giftButton /
     // _lazyGiftButton ivar; this matcher only gates the subtree-search fallback.
-    if ([SPKUtils control:(UIControl *)view hasTapActionContaining:@"gift"]) return YES;
+    if ([SPKUtils control:(UIControl *)view hasTapActionContaining:@"gift"])
+        return YES;
     if ([view isKindOfClass:UIButton.class]) {
         NSString *iconName = [SPKUtils igImageNameForImage:((UIButton *)view).currentImage];
-        if ([iconName containsString:@"gift"]) return YES;
+        if ([iconName containsString:@"gift"])
+            return YES;
     }
 
     return [view.accessibilityLabel isEqualToString:@"Gifts button"];
 }
 
 static UIView *SPKCommentGiftButtonInView(UIView *view, NSUInteger depth) {
-    if (!view || depth > 8) return nil;
-    if (SPKViewMatchesCommentGiftButton(view)) return view;
+    if (!view || depth > 8)
+        return nil;
+    if (SPKViewMatchesCommentGiftButton(view))
+        return view;
 
     for (UIView *subview in view.subviews) {
         UIView *candidate = SPKCommentGiftButtonInView(subview, depth + 1);
-        if (candidate) return candidate;
+        if (candidate)
+            return candidate;
     }
 
     return nil;
 }
 
 static UIView *SPKCommentGiftButtonFromCandidate(id candidate) {
-    if (![candidate isKindOfClass:[UIView class]]) return nil;
+    if (![candidate isKindOfClass:[UIView class]])
+        return nil;
 
     UIView *view = (UIView *)candidate;
-    if (SPKViewMatchesCommentGiftButton(view)) return view;
+    if (SPKViewMatchesCommentGiftButton(view))
+        return view;
 
     UIView *nested = SPKCommentGiftButtonInView(view, 0);
     return nested ?: view;
 }
 
 static UIView *SPKCommentComposerGiftButton(UIView *composerView) {
-    for (NSString *ivarName in @[@"_lazyGiftButton", @"_giftButton"]) {
+    for (NSString *ivarName in @[ @"_lazyGiftButton", @"_giftButton" ]) {
         UIView *candidate = SPKCommentGiftButtonFromCandidate([SPKUtils getIvarForObj:composerView name:ivarName.UTF8String]);
-        if (candidate) return candidate;
+        if (candidate)
+            return candidate;
     }
 
     return SPKCommentGiftButtonInView(composerView, 0);
@@ -64,12 +73,14 @@ static void SPKSetCommentComposerGiftButtonEnabled(id composerView, BOOL enabled
 }
 
 static void SPKHideCommentComposerGiftButton(UIView *composerView) {
-    if (!SPKHideCommentGiftsButtonEnabled()) return;
+    if (!SPKHideCommentGiftsButtonEnabled())
+        return;
 
     SPKSetCommentComposerGiftButtonEnabled(composerView, NO);
 
     UIView *giftButton = SPKCommentComposerGiftButton(composerView);
-    if (!giftButton) return;
+    if (!giftButton)
+        return;
 
     CGRect giftFrame = [giftButton.superview convertRect:giftButton.frame toView:composerView];
     giftButton.hidden = YES;
@@ -78,12 +89,15 @@ static void SPKHideCommentComposerGiftButton(UIView *composerView) {
 
     UIView *textView = [SPKUtils getIvarForObj:composerView name:"_growingTextView"];
     UIView *backgroundView = [SPKUtils getIvarForObj:composerView name:"_roundedBackgroundImageView"];
-    if (![textView isKindOfClass:[UIView class]]) return;
+    if (![textView isKindOfClass:[UIView class]])
+        return;
 
     CGRect textFrame = [textView.superview convertRect:textView.frame toView:composerView];
     CGFloat trailingTarget = CGRectGetMaxX(giftFrame);
-    if (trailingTarget <= CGRectGetMaxX(textFrame) + 1.0) return;
-    if (CGRectGetMinX(giftFrame) < CGRectGetMaxX(textFrame) - 2.0) return;
+    if (trailingTarget <= CGRectGetMaxX(textFrame) + 1.0)
+        return;
+    if (CGRectGetMinX(giftFrame) < CGRectGetMaxX(textFrame) - 2.0)
+        return;
 
     CGRect expandedTextFrame = textFrame;
     expandedTextFrame.size.width = trailingTarget - CGRectGetMinX(textFrame);
@@ -108,7 +122,8 @@ static void SPKHideCommentComposerGiftButton(UIView *composerView) {
 }
 
 - (BOOL)giftButtonEnabled {
-    if (SPKHideCommentGiftsButtonEnabled()) return NO;
+    if (SPKHideCommentGiftsButtonEnabled())
+        return NO;
     return %orig;
 }
 

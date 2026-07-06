@@ -13,13 +13,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable NSURL *)cachedFileURLForRemoteURL:(NSURL *)url;
 
 - (void)fetchLocalFileURLForItem:(SPKMediaItem *)item
-                      completion:(void (^)(NSURL * _Nullable localURL, NSError * _Nullable error))completion;
+                      completion:(void (^)(NSURL *_Nullable localURL, NSError *_Nullable error))completion;
 
 - (void)loadImageForItem:(SPKMediaItem *)item
-              completion:(void (^)(UIImage * _Nullable image, NSError * _Nullable error))completion;
+              completion:(void (^)(UIImage *_Nullable image, NSError *_Nullable error))completion;
 
 - (void)loadThumbnailForVideoItem:(SPKMediaItem *)item
-                       completion:(void (^)(UIImage * _Nullable image))completion;
+                       completion:(void (^)(UIImage *_Nullable image))completion;
 
 - (void)prefetchItem:(SPKMediaItem *)item;
 

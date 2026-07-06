@@ -1,7 +1,7 @@
 #import "SPKAppIconCatalog.h"
 
-static NSString * const kSPKAppIconPrimaryIdentifier = @"";
-static NSString * const kSPKAppIconSelectionDefaultsKey = @"general_app_icon_identifier";
+static NSString *const kSPKAppIconPrimaryIdentifier = @"";
+static NSString *const kSPKAppIconSelectionDefaultsKey = @"general_app_icon_identifier";
 
 @implementation SPKAppIconItem
 @end
@@ -32,7 +32,8 @@ static NSArray<NSString *> *SPKAppIconFilesFromDictionary(NSDictionary *dictiona
     }
 
     for (id value in files) {
-        if (![value isKindOfClass:[NSString class]]) continue;
+        if (![value isKindOfClass:[NSString class]])
+            continue;
         NSString *file = [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if (file.length > 0 && ![iconFiles containsObject:file]) {
             [iconFiles addObject:file];
@@ -66,7 +67,8 @@ static NSArray<NSDictionary *> *SPKAppIconIconDictionaries(void) {
 }
 
 static UIImage *SPKAppIconImageNamed(NSString *name) {
-    if (name.length == 0) return nil;
+    if (name.length == 0)
+        return nil;
 
     NSMutableArray<NSString *> *candidates = [NSMutableArray arrayWithObject:name];
     if ([name.pathExtension caseInsensitiveCompare:@"png"] != NSOrderedSame) {
@@ -75,14 +77,16 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
 
     for (NSString *candidate in candidates) {
         UIImage *image = [UIImage imageNamed:candidate inBundle:NSBundle.mainBundle compatibleWithTraitCollection:nil];
-        if (image) return image;
+        if (image)
+            return image;
 
         NSString *resourceName = candidate.stringByDeletingPathExtension;
         NSString *extension = candidate.pathExtension.length > 0 ? candidate.pathExtension : nil;
         NSString *path = [NSBundle.mainBundle pathForResource:resourceName ofType:extension];
         if (path.length > 0) {
             image = [UIImage imageWithContentsOfFile:path];
-            if (image) return image;
+            if (image)
+                return image;
         }
     }
 
@@ -102,7 +106,7 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
         SPKAppIconItem *fallback = [[SPKAppIconItem alloc] init];
         fallback.identifier = kSPKAppIconPrimaryIdentifier;
         fallback.displayName = @"Default";
-        fallback.iconFiles = @[@"Prod60x60", @"Icon-60-Prod", @"Prod"];
+        fallback.iconFiles = @[ @"Prod60x60", @"Icon-60-Prod", @"Prod" ];
         fallback.isPrimary = YES;
         [items addObject:fallback];
     }
@@ -110,10 +114,12 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
     NSMutableDictionary<NSString *, NSDictionary *> *mergedAlternates = [NSMutableDictionary dictionary];
     for (NSDictionary *icons in iconDictionaries) {
         NSDictionary *alternates = icons[@"CFBundleAlternateIcons"];
-        if (![alternates isKindOfClass:[NSDictionary class]]) continue;
+        if (![alternates isKindOfClass:[NSDictionary class]])
+            continue;
         for (NSString *identifier in alternates) {
             NSDictionary *dictionary = alternates[identifier];
-            if (![dictionary isKindOfClass:[NSDictionary class]]) continue;
+            if (![dictionary isKindOfClass:[NSDictionary class]])
+                continue;
             if (!mergedAlternates[identifier]) {
                 mergedAlternates[identifier] = dictionary;
             }
@@ -161,10 +167,12 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
 }
 
 + (void)applyStoredIconIfNeeded {
-    if (!UIApplication.sharedApplication.supportsAlternateIcons) return;
+    if (!UIApplication.sharedApplication.supportsAlternateIcons)
+        return;
 
     NSString *stored = [self storedSelectedIdentifier];
-    if (stored == nil) return;  // nothing imported / never chosen
+    if (stored == nil)
+        return; // nothing imported / never chosen
 
     // Resolve whether the stored identifier is the primary icon (which maps to
     // a nil alternate name). Fall back to the primary-identifier constant if the
@@ -175,9 +183,10 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
 
     NSString *currentAlternateName = UIApplication.sharedApplication.alternateIconName;
     BOOL alreadyApplied = (desiredAlternateName == nil)
-        ? (currentAlternateName.length == 0)
-        : [desiredAlternateName isEqualToString:currentAlternateName];
-    if (alreadyApplied) return;
+                              ? (currentAlternateName.length == 0)
+                              : [desiredAlternateName isEqualToString:currentAlternateName];
+    if (alreadyApplied)
+        return;
 
     dispatch_async(dispatch_get_main_queue(), ^{
         // Best-effort: if the alternate icon can't be applied (e.g. the icon
@@ -201,13 +210,15 @@ static UIImage *SPKAppIconImageNamed(NSString *name) {
     NSArray *files = item.iconFiles;
     for (NSString *file in [files reverseObjectEnumerator]) {
         UIImage *image = SPKAppIconImageNamed(file);
-        if (image) return image;
+        if (image)
+            return image;
     }
 
     if (item.isPrimary) {
-        for (NSString *fallback in @[@"Prod", @"Prod60x60", @"Icon-60-Prod"]) {
+        for (NSString *fallback in @[ @"Prod", @"Prod60x60", @"Icon-60-Prod" ]) {
             UIImage *image = SPKAppIconImageNamed(fallback);
-            if (image) return image;
+            if (image)
+                return image;
         }
     }
 

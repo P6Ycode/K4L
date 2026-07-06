@@ -1,6 +1,6 @@
-#import <UIKit/UIKit.h>
-#import <AVKit/AVKit.h>
 #import "SPKFullScreenImageViewController.h"
+#import <AVKit/AVKit.h>
+#import <UIKit/UIKit.h>
 
 @class SPKMediaItem;
 

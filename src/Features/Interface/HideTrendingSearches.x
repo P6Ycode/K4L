@@ -1,5 +1,5 @@
-#import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Utils.h"
 
 %group SPKHideTrendingSearchesHooks
 
@@ -20,7 +20,8 @@
 %end
 
 void SPKInstallHideTrendingSearchesHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"interface_hide_trending_searches"]) return;
+    if (![SPKUtils getBoolPref:@"interface_hide_trending_searches"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

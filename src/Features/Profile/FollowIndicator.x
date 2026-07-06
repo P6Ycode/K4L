@@ -1,8 +1,8 @@
 // Shows whether the current profile user follows you.
 
 #import "../../InstagramHeaders.h"
-#import "../../Utils.h"
 #import "../../Networking/SPKInstagramAPI.h"
+#import "../../Utils.h"
 #import "../General/CaptureHiding.h"
 #import <objc/runtime.h>
 
@@ -10,12 +10,14 @@ static NSInteger const kSPKFollowBadgeTag = 99788;
 static const void *kSPKFollowStatusAssocKey = &kSPKFollowStatusAssocKey;
 
 static NSString *SPKPKFromUserObject(id userObject) {
-    if (!userObject) return nil;
+    if (!userObject)
+        return nil;
     Ivar pkIvar = NULL;
     for (Class cls = [userObject class]; cls && !pkIvar; cls = class_getSuperclass(cls)) {
         pkIvar = class_getInstanceVariable(cls, "_pk");
     }
-    if (!pkIvar) return nil;
+    if (!pkIvar)
+        return nil;
     id pk = object_getIvar(userObject, pkIvar);
     return pk ? [pk description] : nil;
 }
@@ -23,14 +25,18 @@ static NSString *SPKPKFromUserObject(id userObject) {
 static NSString *SPKCurrentUserPK(void) {
     @try {
         for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
-            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            if (![scene isKindOfClass:[UIWindowScene class]])
+                continue;
             for (UIWindow *window in scene.windows) {
                 id session = [window valueForKey:@"userSession"];
-                if (!session) continue;
+                if (!session)
+                    continue;
                 id user = [session valueForKey:@"user"];
-                if (!user) continue;
+                if (!user)
+                    continue;
                 NSString *pk = SPKPKFromUserObject(user);
-                if (pk.length > 0) return pk;
+                if (pk.length > 0)
+                    return pk;
             }
         }
     } @catch (__unused NSException *exception) {
@@ -47,7 +53,8 @@ static void SPKSetFollowStatusForController(id controller, NSNumber *status) {
 }
 
 static UIView *SPKProfileStatContainer(UIViewController *controller) {
-    if (!controller.view) return nil;
+    if (!controller.view)
+        return nil;
 
     NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:controller.view];
     while (stack.count > 0) {
@@ -65,15 +72,18 @@ static UIView *SPKProfileStatContainer(UIViewController *controller) {
 
 static void SPKRenderFollowBadge(UIViewController *controller) {
     NSNumber *status = SPKGetFollowStatusForController(controller);
-    if (!status) return;
+    if (!status)
+        return;
 
     UIView *container = SPKProfileStatContainer(controller);
-    if (!container) return;
+    if (!container)
+        return;
 
     // Remove our previous wrapper (direct child only; the capture canvas may
     // have re-parented the inner label, so match on the wrapper's tag).
     for (UIView *sub in [container.subviews copy]) {
-        if (sub.tag == kSPKCaptureFollowIndicatorTag) [sub removeFromSuperview];
+        if (sub.tag == kSPKCaptureFollowIndicatorTag)
+            [sub removeFromSuperview];
     }
 
     BOOL followsYou = status.boolValue;
@@ -82,8 +92,8 @@ static void SPKRenderFollowBadge(UIViewController *controller) {
     badge.text = followsYou ? @"FOLLOWING YOU" : @"NOT FOLLOWING YOU";
     badge.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     badge.textColor = followsYou
-        ? [UIColor colorWithRed:0.30 green:0.75 blue:0.40 alpha:1.0]
-        : [UIColor colorWithRed:0.85 green:0.30 blue:0.30 alpha:1.0];
+                          ? [UIColor colorWithRed:0.30 green:0.75 blue:0.40 alpha:1.0]
+                          : [UIColor colorWithRed:0.85 green:0.30 blue:0.30 alpha:1.0];
     [badge sizeToFit];
 
     CGFloat xOrigin = 0.0;
@@ -104,9 +114,9 @@ static void SPKRenderFollowBadge(UIViewController *controller) {
     // UILabel's own text can't be hidden that way. When the pref is off the
     // wrapper is a plain passthrough.
     UIView *wrapper = [[UIView alloc] initWithFrame:CGRectMake(xOrigin,
-                             CGRectGetHeight(container.bounds) - badgeHeight - 2.0,
-                             badgeWidth,
-                             badgeHeight)];
+                                                               CGRectGetHeight(container.bounds) - badgeHeight - 2.0,
+                                                               badgeWidth,
+                                                               badgeHeight)];
     wrapper.tag = kSPKCaptureFollowIndicatorTag;
     [wrapper addSubview:badge];
     [container addSubview:wrapper];
@@ -118,7 +128,8 @@ static void SPKRenderFollowBadge(UIViewController *controller) {
 
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    if (![SPKUtils getBoolPref:@"profile_follow_indicator"]) return;
+    if (![SPKUtils getBoolPref:@"profile_follow_indicator"])
+        return;
 
     NSNumber *cachedStatus = SPKGetFollowStatusForController(self);
     if (cachedStatus) {
@@ -131,7 +142,8 @@ static void SPKRenderFollowBadge(UIViewController *controller) {
         profileUser = [(id)self valueForKey:@"user"];
     } @catch (__unused NSException *exception) {
     }
-    if (!profileUser) return;
+    if (!profileUser)
+        return;
 
     NSString *profilePK = SPKPKFromUserObject(profileUser);
     NSString *currentUserPK = SPKCurrentUserPK();
@@ -141,16 +153,21 @@ static void SPKRenderFollowBadge(UIViewController *controller) {
 
     NSString *path = [NSString stringWithFormat:@"friendships/show/%@/", profilePK];
     __weak UIViewController *weakController = (UIViewController *)self;
-    [SPKInstagramAPI sendRequestWithMethod:@"GET" path:path body:nil completion:^(NSDictionary *response, NSError *error) {
-        if (error || !response) return;
-        BOOL followsYou = [response[@"followed_by"] boolValue];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            UIViewController *strongController = weakController;
-            if (!strongController) return;
-            SPKSetFollowStatusForController(strongController, @(followsYou));
-            SPKRenderFollowBadge(strongController);
-        });
-    }];
+    [SPKInstagramAPI sendRequestWithMethod:@"GET"
+                                      path:path
+                                      body:nil
+                                completion:^(NSDictionary *response, NSError *error) {
+                                    if (error || !response)
+                                        return;
+                                    BOOL followsYou = [response[@"followed_by"] boolValue];
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                        UIViewController *strongController = weakController;
+                                        if (!strongController)
+                                            return;
+                                        SPKSetFollowStatusForController(strongController, @(followsYou));
+                                        SPKRenderFollowBadge(strongController);
+                                    });
+                                }];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -165,7 +182,8 @@ static void SPKRenderFollowBadge(UIViewController *controller) {
 %end
 
 void SPKInstallFollowIndicatorHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"profile_follow_indicator"]) return;
+    if (![SPKUtils getBoolPref:@"profile_follow_indicator"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

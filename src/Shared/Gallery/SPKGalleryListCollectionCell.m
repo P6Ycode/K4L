@@ -1,7 +1,7 @@
 #import "SPKGalleryListCollectionCell.h"
-#import "SPKGalleryFile.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "SPKGalleryFile.h"
 
 @interface SPKGalleryListCollectionCell ()
 
@@ -162,7 +162,8 @@
         [self.highlightOverlay.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.highlightOverlay.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [self.selectionIndicator.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
+        [self.selectionIndicator.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                              constant:16],
         [self.selectionIndicator.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
         [self.selectionIndicator.widthAnchor constraintEqualToConstant:20],
         [self.selectionIndicator.heightAnchor constraintEqualToConstant:20],
@@ -172,55 +173,77 @@
         [self.thumbnailView.widthAnchor constraintEqualToConstant:52],
         [self.thumbnailView.heightAnchor constraintEqualToConstant:52],
 
-        [self.moreButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8],
+        [self.moreButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                       constant:-8],
         [self.moreButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
         [self.moreButton.widthAnchor constraintEqualToConstant:40],
         [self.moreButton.heightAnchor constraintEqualToConstant:40],
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.thumbnailView.trailingAnchor constant:12],
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.thumbnailView.topAnchor constant:-1],
-        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.favoriteIcon.leadingAnchor constant:-4],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.thumbnailView.trailingAnchor
+                                                      constant:12],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.thumbnailView.topAnchor
+                                                  constant:-1],
+        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.favoriteIcon.leadingAnchor
+                                                                 constant:-4],
 
         [self.rowTypeIcon.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.rowTypeIcon.centerYAnchor constraintEqualToAnchor:self.technicalLabel.centerYAnchor],
         [self.rowTypeIcon.widthAnchor constraintEqualToConstant:14],
         [self.rowTypeIcon.heightAnchor constraintEqualToConstant:14],
 
-        [self.technicalLabel.leadingAnchor constraintEqualToAnchor:self.rowTypeIcon.trailingAnchor constant:4],
-        [self.technicalLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3],
-        [self.technicalLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor constant:-8],
+        [self.technicalLabel.leadingAnchor constraintEqualToAnchor:self.rowTypeIcon.trailingAnchor
+                                                          constant:4],
+        [self.technicalLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor
+                                                      constant:3],
+        [self.technicalLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor
+                                                                     constant:-8],
 
         [self.pillBackground.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.pillBackground.topAnchor constraintEqualToAnchor:self.technicalLabel.bottomAnchor constant:4],
-        [self.pillLabel.leadingAnchor constraintEqualToAnchor:self.pillBackground.leadingAnchor constant:8],
-        [self.pillLabel.trailingAnchor constraintEqualToAnchor:self.pillBackground.trailingAnchor constant:-8],
-        [self.pillLabel.topAnchor constraintEqualToAnchor:self.pillBackground.topAnchor constant:3],
-        [self.pillLabel.bottomAnchor constraintEqualToAnchor:self.pillBackground.bottomAnchor constant:-3],
+        [self.pillBackground.topAnchor constraintEqualToAnchor:self.technicalLabel.bottomAnchor
+                                                      constant:4],
+        [self.pillLabel.leadingAnchor constraintEqualToAnchor:self.pillBackground.leadingAnchor
+                                                     constant:8],
+        [self.pillLabel.trailingAnchor constraintEqualToAnchor:self.pillBackground.trailingAnchor
+                                                      constant:-8],
+        [self.pillLabel.topAnchor constraintEqualToAnchor:self.pillBackground.topAnchor
+                                                 constant:3],
+        [self.pillLabel.bottomAnchor constraintEqualToAnchor:self.pillBackground.bottomAnchor
+                                                    constant:-3],
 
-        [self.dateLabel.leadingAnchor constraintEqualToAnchor:self.pillBackground.trailingAnchor constant:8],
+        [self.dateLabel.leadingAnchor constraintEqualToAnchor:self.pillBackground.trailingAnchor
+                                                     constant:8],
         [self.dateLabel.centerYAnchor constraintEqualToAnchor:self.pillBackground.centerYAnchor],
-        [self.dateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor constant:-8],
+        [self.dateLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor
+                                                                constant:-8],
 
         self.folderContextChipLeadingConstraint,
         [self.folderContextChip.centerYAnchor constraintEqualToAnchor:self.pillBackground.centerYAnchor],
-        [self.folderContextChip.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor constant:-8],
+        [self.folderContextChip.trailingAnchor constraintLessThanOrEqualToAnchor:self.moreButton.leadingAnchor
+                                                                        constant:-8],
 
-        [self.folderContextIcon.leadingAnchor constraintEqualToAnchor:self.folderContextChip.leadingAnchor constant:7],
+        [self.folderContextIcon.leadingAnchor constraintEqualToAnchor:self.folderContextChip.leadingAnchor
+                                                             constant:7],
         [self.folderContextIcon.centerYAnchor constraintEqualToAnchor:self.folderContextChip.centerYAnchor],
         [self.folderContextIcon.widthAnchor constraintEqualToConstant:12],
         [self.folderContextIcon.heightAnchor constraintEqualToConstant:12],
 
-        [self.folderContextLabel.leadingAnchor constraintEqualToAnchor:self.folderContextIcon.trailingAnchor constant:3],
-        [self.folderContextLabel.trailingAnchor constraintEqualToAnchor:self.folderContextChip.trailingAnchor constant:-8],
-        [self.folderContextLabel.topAnchor constraintEqualToAnchor:self.folderContextChip.topAnchor constant:3],
-        [self.folderContextLabel.bottomAnchor constraintEqualToAnchor:self.folderContextChip.bottomAnchor constant:-3],
+        [self.folderContextLabel.leadingAnchor constraintEqualToAnchor:self.folderContextIcon.trailingAnchor
+                                                              constant:3],
+        [self.folderContextLabel.trailingAnchor constraintEqualToAnchor:self.folderContextChip.trailingAnchor
+                                                               constant:-8],
+        [self.folderContextLabel.topAnchor constraintEqualToAnchor:self.folderContextChip.topAnchor
+                                                          constant:3],
+        [self.folderContextLabel.bottomAnchor constraintEqualToAnchor:self.folderContextChip.bottomAnchor
+                                                             constant:-3],
 
-        [self.favoriteIcon.trailingAnchor constraintEqualToAnchor:self.moreButton.leadingAnchor constant:-6],
+        [self.favoriteIcon.trailingAnchor constraintEqualToAnchor:self.moreButton.leadingAnchor
+                                                         constant:-6],
         [self.favoriteIcon.centerYAnchor constraintEqualToAnchor:self.titleLabel.centerYAnchor],
         [self.favoriteIcon.widthAnchor constraintEqualToConstant:14],
         [self.favoriteIcon.heightAnchor constraintEqualToConstant:14],
 
-        [self.separator.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:80],
+        [self.separator.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                     constant:80],
         [self.separator.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.separator.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
         [self.separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
@@ -273,8 +296,8 @@
 }
 
 - (void)configureWithGalleryFile:(SPKGalleryFile *)file
-                 selectionMode:(BOOL)selectionMode
-                      selected:(BOOL)selected {
+                   selectionMode:(BOOL)selectionMode
+                        selected:(BOOL)selected {
     self.file = file;
     self.titleLabel.text = [file listPrimaryTitle];
     self.technicalLabel.text = [file listTechnicalLine];
@@ -297,12 +320,16 @@
         self.thumbnailView.image = thumb;
     } else {
         __weak typeof(self) weakSelf = self;
-        [SPKGalleryFile generateThumbnailForFile:file completion:^(BOOL ok) {
-            if (!ok) return;
-            if (weakSelf.file != file) return;
-            UIImage *img = [SPKGalleryFile loadThumbnailForFile:file];
-            if (img) weakSelf.thumbnailView.image = img;
-        }];
+        [SPKGalleryFile generateThumbnailForFile:file
+                                      completion:^(BOOL ok) {
+                                          if (!ok)
+                                              return;
+                                          if (weakSelf.file != file)
+                                              return;
+                                          UIImage *img = [SPKGalleryFile loadThumbnailForFile:file];
+                                          if (img)
+                                              weakSelf.thumbnailView.image = img;
+                                      }];
     }
 }
 
@@ -333,8 +360,8 @@
                             options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:applyState
                          completion:^(__unused BOOL finished) {
-            finishState();
-        }];
+                             finishState();
+                         }];
     } else {
         applyState();
         finishState();

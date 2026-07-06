@@ -1,9 +1,9 @@
 #import "SPKGalleryDeleteViewController.h"
-#import "SPKGalleryCoreDataStack.h"
-#import "SPKGalleryFile.h"
-#import "../UI/SPKIGAlertPresenter.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../UI/SPKIGAlertPresenter.h"
+#import "SPKGalleryCoreDataStack.h"
+#import "SPKGalleryFile.h"
 
 typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
     SPKGalleryDeleteSectionGlobal = 0,
@@ -75,9 +75,9 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
 }
 
 - (SPKGalleryDeleteAction *)actionWithTitle:(NSString *)title
-                                 iconName:(NSString *)iconName
-                                predicate:(nullable NSPredicate *)predicate
-                             successTitle:(nullable NSString *)successTitle {
+                                   iconName:(NSString *)iconName
+                                  predicate:(nullable NSPredicate *)predicate
+                               successTitle:(nullable NSString *)successTitle {
     SPKGalleryDeleteAction *action = [SPKGalleryDeleteAction new];
     action.title = title;
     action.iconName = iconName;
@@ -93,22 +93,58 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
     }
 
     self.sections = @[
-        @[[self actionWithTitle:@"Delete All Files" iconName:@"trash" predicate:nil successTitle:@"All files deleted"]],
+        @[ [self actionWithTitle:@"Delete All Files" iconName:@"trash" predicate:nil successTitle:@"All files deleted"] ],
         @[
-            [self actionWithTitle:@"Delete All Images" iconName:@"photo" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SPKGalleryMediaTypeImage] successTitle:@"Images deleted"],
-            [self actionWithTitle:@"Delete All Videos" iconName:@"video" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SPKGalleryMediaTypeVideo] successTitle:@"Videos deleted"],
-            [self actionWithTitle:@"Delete All Audio" iconName:@"audio" predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SPKGalleryMediaTypeAudio] successTitle:@"Audio deleted"]
+            [self actionWithTitle:@"Delete All Images"
+                         iconName:@"photo"
+                        predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SPKGalleryMediaTypeImage]
+                     successTitle:@"Images deleted"],
+            [self actionWithTitle:@"Delete All Videos"
+                         iconName:@"video"
+                        predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SPKGalleryMediaTypeVideo]
+                     successTitle:@"Videos deleted"],
+            [self actionWithTitle:@"Delete All Audio"
+                         iconName:@"audio"
+                        predicate:[NSPredicate predicateWithFormat:@"mediaType == %d", SPKGalleryMediaTypeAudio]
+                     successTitle:@"Audio deleted"]
         ],
         @[
-            [self actionWithTitle:@"Delete Feed Posts" iconName:@"feed" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceFeed] successTitle:@"Feed posts deleted"],
-            [self actionWithTitle:@"Delete Stories" iconName:@"story" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceStories] successTitle:@"Stories deleted"],
-            [self actionWithTitle:@"Delete Reels" iconName:@"reels" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceReels] successTitle:@"Reels deleted"],
-            [self actionWithTitle:@"Delete Thumbnails" iconName:@"photo_gallery" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceThumbnail] successTitle:@"Thumbnails deleted"],
-            [self actionWithTitle:@"Delete DM Media" iconName:@"messages" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceDMs] successTitle:@"DM media deleted"],
-            [self actionWithTitle:@"Delete Profile Pictures" iconName:@"user_circle" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceProfile] successTitle:@"Profile pictures deleted"],
-            [self actionWithTitle:@"Delete Instants" iconName:@"instants" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceInstants] successTitle:@"Instants deleted"],
-            [self actionWithTitle:@"Delete Audio Page Media" iconName:@"audio_page" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceAudioPage] successTitle:@"Audio page media deleted"],
-            [self actionWithTitle:@"Delete Comment Media" iconName:@"comment" predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceComments] successTitle:@"Comment media deleted"]
+            [self actionWithTitle:@"Delete Feed Posts"
+                         iconName:@"feed"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceFeed]
+                     successTitle:@"Feed posts deleted"],
+            [self actionWithTitle:@"Delete Stories"
+                         iconName:@"story"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceStories]
+                     successTitle:@"Stories deleted"],
+            [self actionWithTitle:@"Delete Reels"
+                         iconName:@"reels"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceReels]
+                     successTitle:@"Reels deleted"],
+            [self actionWithTitle:@"Delete Thumbnails"
+                         iconName:@"photo_gallery"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceThumbnail]
+                     successTitle:@"Thumbnails deleted"],
+            [self actionWithTitle:@"Delete DM Media"
+                         iconName:@"messages"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceDMs]
+                     successTitle:@"DM media deleted"],
+            [self actionWithTitle:@"Delete Profile Pictures"
+                         iconName:@"user_circle"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceProfile]
+                     successTitle:@"Profile pictures deleted"],
+            [self actionWithTitle:@"Delete Instants"
+                         iconName:@"instants"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceInstants]
+                     successTitle:@"Instants deleted"],
+            [self actionWithTitle:@"Delete Audio Page Media"
+                         iconName:@"audio_page"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceAudioPage]
+                     successTitle:@"Audio page media deleted"],
+            [self actionWithTitle:@"Delete Comment Media"
+                         iconName:@"comment"
+                        predicate:[NSPredicate predicateWithFormat:@"source == %d", SPKGallerySourceComments]
+                     successTitle:@"Comment media deleted"]
         ],
         @[]
     ];
@@ -119,7 +155,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
         self.sections[0],
         self.sections[1],
         self.sections[2],
-        @[usersAction]
+        @[ usersAction ]
     ];
 
     [self rebuildCountCache];
@@ -142,7 +178,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
 
     NSFetchRequest *distinctReq = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     distinctReq.resultType = NSDictionaryResultType;
-    distinctReq.propertiesToFetch = @[@"sourceUsername"];
+    distinctReq.propertiesToFetch = @[ @"sourceUsername" ];
     distinctReq.returnsDistinctResults = YES;
     NSArray<NSDictionary *> *rows = [ctx executeFetchRequest:distinctReq error:nil] ?: @[];
     NSInteger userCount = 0;
@@ -182,10 +218,14 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
         return nil;
     }
     switch (section) {
-        case SPKGalleryDeleteSectionGlobal: return nil;
-        case SPKGalleryDeleteSectionType: return @"Delete by Type";
-        case SPKGalleryDeleteSectionSource: return @"Delete by Source";
-        case SPKGalleryDeleteSectionUser: return @"Delete by User";
+    case SPKGalleryDeleteSectionGlobal:
+        return nil;
+    case SPKGalleryDeleteSectionType:
+        return @"Delete by Type";
+    case SPKGalleryDeleteSectionSource:
+        return @"Delete by Source";
+    case SPKGalleryDeleteSectionUser:
+        return @"Delete by User";
     }
     return nil;
 }
@@ -239,8 +279,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
     if (self.mode == SPKGalleryDeletePageModeUsers) {
         SPKGalleryDeleteUserItem *item = self.users[indexPath.row];
         NSPredicate *predicate = item.username.length > 0
-            ? [NSPredicate predicateWithFormat:@"sourceUsername == %@", item.username]
-            : [NSPredicate predicateWithFormat:@"sourceUsername == nil OR sourceUsername == ''"];
+                                     ? [NSPredicate predicateWithFormat:@"sourceUsername == %@", item.username]
+                                     : [NSPredicate predicateWithFormat:@"sourceUsername == nil OR sourceUsername == ''"];
         NSString *title = [NSString stringWithFormat:@"Delete %@?", item.displayName];
         [self confirmDeleteWithTitle:title predicate:predicate successTitle:@"User files deleted"];
         return;
@@ -272,29 +312,33 @@ typedef NS_ENUM(NSInteger, SPKGalleryDeleteSection) {
                                                   title:title
                                                 message:message
                                                 actions:@[
-        [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
-        [SPKIGAlertAction actionWithTitle:@"Delete" style:SPKIGAlertActionStyleDestructive handler:^{
-        NSFileManager *fm = [NSFileManager defaultManager];
-        for (SPKGalleryFile *file in files) {
-            NSString *filePath = file.filePath;
-            if ([fm fileExistsAtPath:filePath]) {
-                [fm removeItemAtPath:filePath error:nil];
-            }
-            NSString *thumbPath = file.thumbnailPath;
-            if ([fm fileExistsAtPath:thumbPath]) {
-                [fm removeItemAtPath:thumbPath error:nil];
-            }
-            [ctx deleteObject:file];
-        }
-        [ctx save:nil];
-        [self reloadDataModel];
-        [self.tableView reloadData];
-        if (self.onDidDelete) {
-            self.onDidDelete();
-        }
-        SPKNotify(kSPKNotificationGalleryBulkDelete, successTitle, nil, @"circle_check_filled", SPKNotificationToneSuccess);
-    }],
-    ]];
+                                                    [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                style:SPKIGAlertActionStyleCancel
+                                                                              handler:nil],
+                                                    [SPKIGAlertAction actionWithTitle:@"Delete"
+                                                                                style:SPKIGAlertActionStyleDestructive
+                                                                              handler:^{
+                                                                                  NSFileManager *fm = [NSFileManager defaultManager];
+                                                                                  for (SPKGalleryFile *file in files) {
+                                                                                      NSString *filePath = file.filePath;
+                                                                                      if ([fm fileExistsAtPath:filePath]) {
+                                                                                          [fm removeItemAtPath:filePath error:nil];
+                                                                                      }
+                                                                                      NSString *thumbPath = file.thumbnailPath;
+                                                                                      if ([fm fileExistsAtPath:thumbPath]) {
+                                                                                          [fm removeItemAtPath:thumbPath error:nil];
+                                                                                      }
+                                                                                      [ctx deleteObject:file];
+                                                                                  }
+                                                                                  [ctx save:nil];
+                                                                                  [self reloadDataModel];
+                                                                                  [self.tableView reloadData];
+                                                                                  if (self.onDidDelete) {
+                                                                                      self.onDidDelete();
+                                                                                  }
+                                                                                  SPKNotify(kSPKNotificationGalleryBulkDelete, successTitle, nil, @"circle_check_filled", SPKNotificationToneSuccess);
+                                                                              }],
+                                                ]];
 }
 
 @end

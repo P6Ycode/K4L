@@ -23,12 +23,13 @@ void SPKMarkDirectThreadSeenAfterReaction(id source);
         return;
     }
 
-    [SPKUtils showConfirmation:^{
-        %orig;
-        SPKMarkDirectThreadSeenAfterReaction(self);
-    }
-                         title:@"Confirm Message Double Tap"
-                       message:@"Are you sure you want to double tap this message?"];
+    [SPKUtils
+        showConfirmation:^{
+            %orig;
+            SPKMarkDirectThreadSeenAfterReaction(self);
+        }
+                   title:@"Confirm Message Double Tap"
+                 message:@"Are you sure you want to double tap this message?"];
 }
 
 %end
@@ -55,12 +56,13 @@ void SPKMarkDirectThreadSeenAfterReaction(id source);
         return;
     }
 
-    [SPKUtils showConfirmation:^{
-        %orig;
-        SPKMarkDirectThreadSeenAfterReaction(self);
-    }
-                         title:@"Confirm Message Reaction"
-                       message:@"Are you sure you want to react to this message?"];
+    [SPKUtils
+        showConfirmation:^{
+            %orig;
+            SPKMarkDirectThreadSeenAfterReaction(self);
+        }
+                   title:@"Confirm Message Reaction"
+                 message:@"Are you sure you want to react to this message?"];
 }
 
 %end

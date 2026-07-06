@@ -4,7 +4,8 @@
 @implementation SPKDownloadItem
 
 - (instancetype)initWithRequest:(SPKDownloadItemRequest *)request {
-    if (!(self = [super init])) return nil;
+    if (!(self = [super init]))
+        return nil;
     _request = [request copy];
     _itemID = [_request.itemID copy];
     _index = request.index;
@@ -40,26 +41,33 @@
     d[@"progress"] = @(self.progress);
     d[@"bytesWritten"] = @(self.bytesWritten);
     d[@"totalBytesExpected"] = @(self.totalBytesExpected);
-    if (self.stagedPath) d[@"stagedPath"] = self.stagedPath;
-    if (self.finalPath) d[@"finalPath"] = self.finalPath;
-    if (self.photosAssetIdentifier) d[@"photosAssetIdentifier"] = self.photosAssetIdentifier;
+    if (self.stagedPath)
+        d[@"stagedPath"] = self.stagedPath;
+    if (self.finalPath)
+        d[@"finalPath"] = self.finalPath;
+    if (self.photosAssetIdentifier)
+        d[@"photosAssetIdentifier"] = self.photosAssetIdentifier;
     if (self.error) {
         d[@"errorDomain"] = self.error.domain;
         d[@"errorCode"] = @(self.error.code);
         d[@"errorDescription"] = self.error.localizedDescription;
     }
     d[@"mediaKind"] = @(self.mediaKind);
-    if (self.linkString) d[@"linkString"] = self.linkString;
+    if (self.linkString)
+        d[@"linkString"] = self.linkString;
     d[@"retryable"] = @(self.retryable);
-    if (self.detail) d[@"detail"] = self.detail;
+    if (self.detail)
+        d[@"detail"] = self.detail;
     d[@"request"] = [self.request dictionaryRepresentation];
     return d;
 }
 
 + (instancetype)fromDictionary:(NSDictionary *)dict request:(SPKDownloadItemRequest *)request {
-    if (![dict isKindOfClass:NSDictionary.class]) return nil;
+    if (![dict isKindOfClass:NSDictionary.class])
+        return nil;
     SPKDownloadItemRequest *resolvedRequest = request ?: [SPKDownloadItemRequest fromDictionary:dict[@"request"]];
-    if (!resolvedRequest) return nil;
+    if (!resolvedRequest)
+        return nil;
     SPKDownloadItem *item = [[self alloc] initWithRequest:resolvedRequest];
     item.state = [dict[@"state"] integerValue];
     item.progress = [dict[@"progress"] doubleValue];
@@ -70,7 +78,7 @@
     item.photosAssetIdentifier = dict[@"photosAssetIdentifier"];
     if (dict[@"errorDescription"]) {
         NSString *domain = dict[@"errorDomain"] ?: SPKDownloadErrorDomain;
-        item.error = [NSError errorWithDomain:domain code:[dict[@"errorCode"] integerValue] userInfo:@{NSLocalizedDescriptionKey: dict[@"errorDescription"]}];
+        item.error = [NSError errorWithDomain:domain code:[dict[@"errorCode"] integerValue] userInfo:@{NSLocalizedDescriptionKey : dict[@"errorDescription"]}];
     }
     item.mediaKind = [dict[@"mediaKind"] integerValue];
     item.linkString = dict[@"linkString"];

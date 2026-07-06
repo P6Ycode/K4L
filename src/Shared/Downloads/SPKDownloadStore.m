@@ -1,8 +1,8 @@
 #import "SPKDownloadStore.h"
 
+#import "../SPKStoragePaths.h"
 #import "SPKDownloadJob.h"
 #import "SPKDownloadTypes.h"
-#import "../SPKStoragePaths.h"
 
 @interface SPKDownloadStore ()
 @property (nonatomic, strong, nullable) NSTimer *debounceTimer;
@@ -39,14 +39,18 @@
 - (NSArray<SPKDownloadJob *> *)loadJobsMarkingInterrupted:(BOOL)markInterrupted {
     [self ensureDirectories];
     NSData *data = [NSData dataWithContentsOfFile:[SPKDownloadStore historyFilePath]];
-    if (data.length == 0) return @[];
+    if (data.length == 0)
+        return @[];
     NSDictionary *root = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-    if (![root isKindOfClass:NSDictionary.class]) return @[];
-    if ([root[@"schemaVersion"] integerValue] != SPKDownloadStoreSchemaVersion) return @[];
+    if (![root isKindOfClass:NSDictionary.class])
+        return @[];
+    if ([root[@"schemaVersion"] integerValue] != SPKDownloadStoreSchemaVersion)
+        return @[];
     NSMutableArray<SPKDownloadJob *> *jobs = [NSMutableArray array];
     for (NSDictionary *entry in root[@"jobs"] ?: @[]) {
         SPKDownloadJob *job = [SPKDownloadJob fromDictionary:entry];
-        if (!job) continue;
+        if (!job)
+            continue;
         if (markInterrupted) {
             [job markActiveItemsInterrupted];
         }
@@ -67,11 +71,12 @@
         [serialized addObject:[job dictionaryRepresentation]];
     }
     NSDictionary *root = @{
-        @"schemaVersion": @(SPKDownloadStoreSchemaVersion),
-        @"jobs": serialized,
+        @"schemaVersion" : @(SPKDownloadStoreSchemaVersion),
+        @"jobs" : serialized,
     };
     NSData *data = [NSJSONSerialization dataWithJSONObject:root options:NSJSONWritingPrettyPrinted error:nil];
-    if (!data) return;
+    if (!data)
+        return;
     NSString *path = [SPKDownloadStore historyFilePath];
     NSString *tmp = [path stringByAppendingString:@".tmp"];
     if ([data writeToFile:tmp atomically:YES]) {
@@ -84,13 +89,16 @@
     self.pendingJobs = jobs;
     [self.debounceTimer invalidate];
     __weak typeof(self) weakSelf = self;
-    self.debounceTimer = [NSTimer scheduledTimerWithTimeInterval:0.35 repeats:NO block:^(NSTimer *timer) {
-        (void)timer;
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf.pendingJobs) return;
-        [strongSelf persistJobs:strongSelf.pendingJobs immediately:YES];
-        strongSelf.pendingJobs = nil;
-    }];
+    self.debounceTimer = [NSTimer scheduledTimerWithTimeInterval:0.35
+                                                         repeats:NO
+                                                           block:^(NSTimer *timer) {
+                                                               (void)timer;
+                                                               __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                               if (!strongSelf.pendingJobs)
+                                                                   return;
+                                                               [strongSelf persistJobs:strongSelf.pendingJobs immediately:YES];
+                                                               strongSelf.pendingJobs = nil;
+                                                           }];
 }
 
 @end

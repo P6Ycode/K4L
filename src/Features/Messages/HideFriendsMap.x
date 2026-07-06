@@ -2,7 +2,8 @@
 #import <objc/message.h>
 
 static id SPKValueForSelectorOrKey(id object, NSString *name) {
-    if (!object || name.length == 0) return nil;
+    if (!object || name.length == 0)
+        return nil;
 
     SEL selector = NSSelectorFromString(name);
     if ([object respondsToSelector:selector]) {
@@ -21,10 +22,12 @@ static Class SPKFriendMapSectionControllerClass(void) {
 }
 
 static BOOL SPKShouldHideFriendsMapObject(id object) {
-    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"]) return NO;
+    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"])
+        return NO;
 
     NSString *className = NSStringFromClass([object class]);
-    if ([className containsString:@"FriendMap"]) return YES;
+    if ([className containsString:@"FriendMap"])
+        return YES;
 
     // IG 436+ : the friend-map entry is an opaque IGDirectNotesTrayUserViewModel
     // (IGDevirtualizedValueObject), so the class name no longer says "FriendMap".
@@ -38,7 +41,8 @@ static BOOL SPKShouldHideFriendsMapObject(id object) {
 }
 
 static NSArray *SPKFilterFriendsMapObjects(NSArray *originalObjs) {
-    if (![originalObjs isKindOfClass:[NSArray class]]) return originalObjs;
+    if (![originalObjs isKindOfClass:[NSArray class]])
+        return originalObjs;
 
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
     for (id obj in originalObjs) {
@@ -58,13 +62,15 @@ static NSArray *SPKFilterFriendsMapObjects(NSArray *originalObjs) {
 // IGDirectNotesTrayFriendMapSectionController — true regardless of the (now
 // opaque) view-model's class or note PK. Filter those out of the objects array.
 static NSArray *SPKFilterFriendsMapObjectsForDataSource(id dataSource, id adapter, NSArray *originalObjs) {
-    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"]) return originalObjs;
-    if (![originalObjs isKindOfClass:[NSArray class]]) return originalObjs;
+    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"])
+        return originalObjs;
+    if (![originalObjs isKindOfClass:[NSArray class]])
+        return originalObjs;
 
     Class friendMapSection = SPKFriendMapSectionControllerClass();
     SEL scSelector = @selector(listAdapter:sectionControllerForObject:);
     BOOL canResolveSection = friendMapSection && adapter &&
-        [dataSource respondsToSelector:scSelector];
+                             [dataSource respondsToSelector:scSelector];
 
     NSMutableArray *filteredObjs = [NSMutableArray arrayWithCapacity:[originalObjs count]];
     for (id obj in originalObjs) {
@@ -79,7 +85,8 @@ static NSArray *SPKFilterFriendsMapObjectsForDataSource(id dataSource, id adapte
                     SPKLog(@"General", @"[Sparkle] Hiding friends map (section match)");
                     continue;
                 }
-            } @catch (__unused NSException *exception) {}
+            } @catch (__unused NSException *exception) {
+            }
         }
         [filteredObjs addObject:obj];
     }
@@ -114,11 +121,12 @@ static NSArray *SPKFilterFriendsMapObjectsForDataSource(id dataSource, id adapte
 %end
 
 void SPKInstallHideFriendsMapHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"]) return;
+    if (![SPKUtils getBoolPref:@"msgs_hide_friends_map"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         %init(SPKHideFriendsMapHooks,
-              IGDirectNotesTrayRowCell = SPKResolveIGClass(@"IGDirectNotesTrayUISwift.IGDirectNotesTrayRowCell", @"IGDirectNotesTrayRowCell"));
+                       IGDirectNotesTrayRowCell = SPKResolveIGClass(@"IGDirectNotesTrayUISwift.IGDirectNotesTrayRowCell", @"IGDirectNotesTrayRowCell"));
     });
 }

@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
-#include <objc/NSObject.h>
 #import <UIKit/UIKit.h>
+#include <objc/NSObject.h>
 
 #ifdef __cplusplus
 #define _Bool bool
@@ -24,7 +24,7 @@
 @interface IGRootViewController : UIViewController
 - (IGActionableConfirmationToastPresenter *)toastPresenter;
 
-- (void)addHandleLongPress; // new
+- (void)addHandleLongPress;                                     // new
 - (void)handleLongPress:(UILongPressGestureRecognizer *)sender; // new
 @end
 
@@ -46,13 +46,13 @@
 - (NSString *)ig_imageName;
 @end
 
-@interface IGProfileMenuSheetViewController :  IGViewController
+@interface IGProfileMenuSheetViewController : IGViewController
 @end
 
-@interface IGTabBar: UIView
+@interface IGTabBar : UIView
 - (instancetype)initWithFrame:(CGRect)frame
                 defaultConfig:(id)defaultConfig
-            immersiveConfig:(id)immersiveConfig
+              immersiveConfig:(id)immersiveConfig
                backgroundView:(id)backgroundView
                   launcherSet:(id)launcherSet;
 @end
@@ -68,7 +68,7 @@
 - (void)_exploreButtonLongPressed:(id)gesture;
 @end
 
-@interface IGTableViewCell: UITableViewCell
+@interface IGTableViewCell : UITableViewCell
 - (id)initWithReuseIdentifier:(NSString *)identifier;
 @end
 
@@ -79,17 +79,17 @@
 @end
 
 @interface UIView (RCTViewUnmounting)
-@property(retain, nonatomic) UIViewController *viewController;
+@property (retain, nonatomic) UIViewController *viewController;
 - (UIView *)_rootView;
 @end
 
 @interface IGImageSpecifier : NSObject
-@property(readonly, nonatomic) NSURL *url;
+@property (readonly, nonatomic) NSURL *url;
 @end
 
 @interface IGVideo : NSObject
 - (id)sortedVideoURLsBySize; // Before Instagram v398
-- (id)allVideoURLs; // After Instagram v398
+- (id)allVideoURLs;          // After Instagram v398
 @end
 
 @interface IGPhoto : NSObject
@@ -101,32 +101,32 @@
 @end
 
 @interface IGMedia : IGBaseMedia
-@property(readonly) IGVideo *video;
-@property(readonly) IGPhoto *photo;
+@property (readonly) IGVideo *video;
+@property (readonly) IGPhoto *photo;
 - (BOOL)isClipsMedia;
 - (BOOL)isIGTVMedia;
 - (BOOL)isFeedPost;
 @end
 
 @interface IGPostItem : NSObject
-@property(readonly) IGVideo *video;
-@property(readonly) IGPhoto *photo;
+@property (readonly) IGVideo *video;
+@property (readonly) IGPhoto *photo;
 @end
 
 @interface IGPageMediaView : UIView
-@property(readonly) NSMutableArray <IGPostItem *> *items;
+@property (readonly) NSMutableArray<IGPostItem *> *items;
 - (IGPostItem *)currentMediaItem;
 @end
 
 @interface IGFeedItem : NSObject
 @property long long likeCount;
-@property(readonly) IGVideo *video;
+@property (readonly) IGVideo *video;
 - (BOOL)isSponsored;
 - (BOOL)isSponsoredApp;
 @end
 
 @interface IGImageView : UIImageView
-@property(retain, nonatomic) IGImageSpecifier *imageSpecifier;
+@property (retain, nonatomic) IGImageSpecifier *imageSpecifier;
 @end
 
 @interface IGFeedItemPagePhotoCell : UICollectionViewCell
@@ -134,16 +134,15 @@
 @property (nonatomic, strong) IGPostItem *pagePhotoPost;
 @end
 
-@interface IGProfilePicturePreviewViewController : UIViewController
-{
+@interface IGProfilePicturePreviewViewController : UIViewController {
     IGImageView *_profilePictureView;
 }
-- (void)addHandleLongPress; // new
+- (void)addHandleLongPress;                                     // new
 - (void)handleLongPress:(UILongPressGestureRecognizer *)sender; // new
 @end
 
 @interface IGFeedItemMediaCell : UICollectionViewCell
-@property(retain, nonatomic) IGMedia *post;
+@property (retain, nonatomic) IGMedia *post;
 - (UIImage *)mediaCellCurrentlyDisplayedImage;
 @end
 
@@ -166,7 +165,7 @@
 @end
 
 @interface IGSundialViewerVideoCell : UIView
-@property(readonly, nonatomic) IGMedia *video;
+@property (readonly, nonatomic) IGMedia *video;
 @end
 
 @interface IGSundialViewerPhotoCell : UIView
@@ -179,7 +178,7 @@
 @end
 
 @interface IGImageProgressView : UIView
-@property(retain, nonatomic) IGImageSpecifier *imageSpecifier;
+@property (retain, nonatomic) IGImageSpecifier *imageSpecifier;
 @end
 
 @interface IGStatefulVideoPlayer : NSObject
@@ -224,17 +223,17 @@
 
 @interface IGUser : NSObject
 @property NSInteger followStatus;
-@property(copy) NSString *username;
+@property (copy) NSString *username;
 @property BOOL followsCurrentUser;
 @end
 
-@interface IGFollowController : NSObject 
+@interface IGFollowController : NSObject
 @property IGUser *user;
 @end
 
 @interface IGCoreTextView : UIView
-@property(nonatomic, strong) NSString *text;
-- (void)addHandleLongPress; // new
+@property (nonatomic, strong) NSString *text;
+- (void)addHandleLongPress;                                     // new
 - (void)handleLongPress:(UILongPressGestureRecognizer *)sender; // new
 @end
 
@@ -300,7 +299,7 @@
 @end
 
 @interface IGImageWithAccessoryButton : IGTapButton
-- (void)addLongPressGestureRecognizer; // new
+- (void)addLongPressGestureRecognizer;                      // new
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gr; // new
 @end
 
@@ -409,7 +408,7 @@
 @end
 
 @interface _TtC27IGGalleryDestinationToolbar31IGGalleryDestinationToolbarView : UIView
-@property(nonatomic, copy, readwrite) NSArray *tools;
+@property (nonatomic, copy, readwrite) NSArray *tools;
 @end
 
 @interface IGUFIInteractionCountsView : UIView
@@ -522,11 +521,7 @@
 @interface IGDirectMessageContentMutation : NSObject
 @end
 
-
-
 /////////////////////////////////////////////////////////////////////////////
-
-
 
 static BOOL is_iPad() {
     if ([(NSString *)[UIDevice currentDevice].model hasPrefix:@"iPad"]) {
@@ -535,13 +530,9 @@ static BOOL is_iPad() {
     return NO;
 }
 
-
-
 /////////////////////////////////////////////////////////////////////////////
 
-
-
-static UIViewController * _Nullable _topMostController(UIViewController * _Nonnull cont) {
+static UIViewController *_Nullable _topMostController(UIViewController *_Nonnull cont) {
     UIViewController *topController = cont;
     while (topController.presentedViewController) {
         topController = topController.presentedViewController;
@@ -554,7 +545,7 @@ static UIViewController * _Nullable _topMostController(UIViewController * _Nonnu
     }
     return (topController != cont ? topController : nil);
 }
-static UIViewController * _Nonnull topMostController() {
+static UIViewController *_Nonnull topMostController() {
     UIViewController *topController = [UIApplication sharedApplication].keyWindow.rootViewController;
     UIViewController *next = nil;
     while ((next = _topMostController(topController)) != nil) {
@@ -567,19 +558,19 @@ static UIViewController * _Nonnull topMostController() {
 
 typedef void (^FLEXAlertReveal)(void);
 typedef void (^FLEXAlertBuilder)(FLEXAlert *make);
-typedef FLEXAlert * _Nonnull (^FLEXAlertStringProperty)(NSString * _Nullable);
-typedef FLEXAlert * _Nonnull (^FLEXAlertStringArg)(NSString * _Nullable);
-typedef FLEXAlert * _Nonnull (^FLEXAlertTextField)(void(^configurationHandler)(UITextField *textField));
-typedef FLEXAlertAction * _Nonnull (^FLEXAlertAddAction)(NSString *title);
-typedef FLEXAlertAction * _Nonnull (^FLEXAlertActionStringProperty)(NSString * _Nullable);
-typedef FLEXAlertAction * _Nonnull (^FLEXAlertActionProperty)(void);
-typedef FLEXAlertAction * _Nonnull (^FLEXAlertActionBOOLProperty)(BOOL);
-typedef FLEXAlertAction * _Nonnull (^FLEXAlertActionHandler)(void(^handler)(NSArray<NSString *> *strings));
+typedef FLEXAlert *_Nonnull (^FLEXAlertStringProperty)(NSString *_Nullable);
+typedef FLEXAlert *_Nonnull (^FLEXAlertStringArg)(NSString *_Nullable);
+typedef FLEXAlert *_Nonnull (^FLEXAlertTextField)(void (^configurationHandler)(UITextField *textField));
+typedef FLEXAlertAction *_Nonnull (^FLEXAlertAddAction)(NSString *title);
+typedef FLEXAlertAction *_Nonnull (^FLEXAlertActionStringProperty)(NSString *_Nullable);
+typedef FLEXAlertAction *_Nonnull (^FLEXAlertActionProperty)(void);
+typedef FLEXAlertAction *_Nonnull (^FLEXAlertActionBOOLProperty)(BOOL);
+typedef FLEXAlertAction *_Nonnull (^FLEXAlertActionHandler)(void (^handler)(NSArray<NSString *> *strings));
 
 @interface FLEXAlert : NSObject
 
 // Shows a simple alert with one button which says "Dismiss"
-+ (void)showAlert:(NSString * _Nullable)title message:(NSString * _Nullable)message from:(UIViewController *)viewController;
++ (void)showAlert:(NSString *_Nullable)title message:(NSString *_Nullable)message from:(UIViewController *)viewController;
 
 // Shows a simple alert with no buttons and only a title, for half a second
 + (void)showQuickAlert:(NSString *)title from:(UIViewController *)viewController;

@@ -12,8 +12,10 @@ static void SPKPollClipboardAndSanitize(NSInteger countBefore, int polls, double
     __block BOOL done = NO;
     for (int i = 0; i < polls; i++) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((interval + (i * interval)) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            if (done) return;
-            if ([UIPasteboard generalPasteboard].changeCount == countBefore) return;
+            if (done)
+                return;
+            if ([UIPasteboard generalPasteboard].changeCount == countBefore)
+                return;
 
             NSString *string = [UIPasteboard generalPasteboard].string;
             NSURL *url = string.length > 0 ? [NSURL URLWithString:string] : nil;
@@ -57,13 +59,13 @@ static void replaced_shareTo(id self, SEL _cmd, long long shareType) {
 // through. All the public setters above `setString:`/`setItems:options:` (and
 // the private `_setItemsAndSave:options:...` family some of them funnel
 // through) need covering since different call sites favor different ones.
-#define SPK_HOOK_PASTEBOARD_WRITE_BODY(name, call) \
-    if (!SPKShouldSanitizeCopiedShareLinks()) { \
-        call; \
-        return; \
-    } \
+#define SPK_HOOK_PASTEBOARD_WRITE_BODY(name, call)                        \
+    if (!SPKShouldSanitizeCopiedShareLinks()) {                           \
+        call;                                                             \
+        return;                                                           \
+    }                                                                     \
     NSInteger countBefore = [UIPasteboard generalPasteboard].changeCount; \
-    call; \
+    call;                                                                 \
     SPKPollClipboardAndSanitize(countBefore, 30, 0.05);
 
 static void (*orig_setString)(id, SEL, NSString *);
@@ -144,7 +146,8 @@ static void replaced_setItemsAndSaveOptionsCoerceDataOwner(id self, SEL _cmd, NS
 #undef SPK_HOOK_PASTEBOARD_WRITE_BODY
 
 extern "C" void SPKInstallSharedLinkCleanupHooksIfEnabled(void) {
-    if (!SPKShouldSanitizeCopiedShareLinks()) return;
+    if (!SPKShouldSanitizeCopiedShareLinks())
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -159,16 +162,18 @@ extern "C" void SPKInstallSharedLinkCleanupHooksIfEnabled(void) {
         // no-op against it. Fall back to the base class for older iOS where
         // it doesn't exist.
         Class pasteboardCls = NSClassFromString(@"_UIConcretePasteboard");
-        if (!pasteboardCls) pasteboardCls = [UIPasteboard class];
-        if (!pasteboardCls) return;
+        if (!pasteboardCls)
+            pasteboardCls = [UIPasteboard class];
+        if (!pasteboardCls)
+            return;
 
-#define SPK_INSTALL_PASTEBOARD_HOOK(sel, name) \
-        do { \
-            SEL selector = sel; \
-            if (class_getInstanceMethod(pasteboardCls, selector)) { \
-                MSHookMessageEx(pasteboardCls, selector, (IMP)replaced_##name, (IMP *)&orig_##name); \
-            } \
-        } while (0)
+#define SPK_INSTALL_PASTEBOARD_HOOK(sel, name)                                                   \
+    do {                                                                                         \
+        SEL selector = sel;                                                                      \
+        if (class_getInstanceMethod(pasteboardCls, selector)) {                                  \
+            MSHookMessageEx(pasteboardCls, selector, (IMP)replaced_##name, (IMP *)&orig_##name); \
+        }                                                                                        \
+    } while (0)
 
         SPK_INSTALL_PASTEBOARD_HOOK(@selector(setString:), setString);
         SPK_INSTALL_PASTEBOARD_HOOK(@selector(setURL:), setURL);

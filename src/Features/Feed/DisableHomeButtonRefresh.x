@@ -57,7 +57,8 @@ static BOOL spkScrollViewToTopWithoutRefresh(UIScrollView *scrollView) {
 %end
 
 void SPKInstallDisableHomeButtonRefreshHooksIfEnabled(void) {
-    if (![SPKUtils getBoolPref:@"feed_disable_home_refresh"]) return;
+    if (![SPKUtils getBoolPref:@"feed_disable_home_refresh"])
+        return;
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

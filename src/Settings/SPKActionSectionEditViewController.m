@@ -1,8 +1,8 @@
 #import "SPKActionSectionEditViewController.h"
+#import "../Shared/UI/SPKSwitch.h"
 #import "SPKActionSectionIconPickerViewController.h"
 #import "SPKInstagramIconCatalog.h"
 #import "SPKTopicSettingsSupport.h"
-#import "../Shared/UI/SPKSwitch.h"
 
 #import "../AssetUtils.h"
 #import "../Shared/ActionButton/SPKActionDescriptor.h"
@@ -39,25 +39,28 @@ static char kSPKSectionEditSwitchAssocKey;
 
 - (void)showIconPicker {
     SPKActionMenuSection *section = [self currentSection];
-    if (!section) return;
+    if (!section)
+        return;
 
     __weak typeof(self) weakSelf = self;
-    SPKActionSectionIconPickerViewController *controller = [[SPKActionSectionIconPickerViewController alloc] initWithSelectedIconName:section.iconName onSelect:^(NSString *iconName) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        SPKActionMenuSection *strongSection = [strongSelf currentSection];
-        strongSection.iconName = iconName;
-        [strongSelf.configuration save];
-        if (strongSelf.onChange) strongSelf.onChange();
-        [strongSelf.tableView reloadData];
-    }];
+    SPKActionSectionIconPickerViewController *controller = [[SPKActionSectionIconPickerViewController alloc] initWithSelectedIconName:section.iconName
+                                                                                                                             onSelect:^(NSString *iconName) {
+                                                                                                                                 __strong typeof(weakSelf) strongSelf = weakSelf;
+                                                                                                                                 if (!strongSelf)
+                                                                                                                                     return;
+                                                                                                                                 SPKActionMenuSection *strongSection = [strongSelf currentSection];
+                                                                                                                                 strongSection.iconName = iconName;
+                                                                                                                                 [strongSelf.configuration save];
+                                                                                                                                 if (strongSelf.onChange)
+                                                                                                                                     strongSelf.onChange();
+                                                                                                                                 [strongSelf.tableView reloadData];
+                                                                                                                             }];
     [self.navigationController pushViewController:controller animated:YES];
 }
 
 - (instancetype)initWithConfiguration:(SPKActionButtonConfiguration *)configuration
                     sectionIdentifier:(NSString *)sectionIdentifier
-                             onChange:(dispatch_block_t)onChange
-{
+                             onChange:(dispatch_block_t)onChange {
     self = [super init];
     if (self) {
         _configuration = configuration;
@@ -101,14 +104,18 @@ static char kSPKSectionEditSwitchAssocKey;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) return 3;
-    if (section == 1) return [self currentSection].actions.count;
+    if (section == 0)
+        return 3;
+    if (section == 1)
+        return [self currentSection].actions.count;
     return self.configuration.supportedActions.count;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) return @"Section";
-    if (section == 1) return @"Actions in This Section";
+    if (section == 0)
+        return @"Section";
+    if (section == 1)
+        return @"Actions in This Section";
     return @"Available Actions";
 }
 
@@ -116,8 +123,10 @@ static char kSPKSectionEditSwitchAssocKey;
     if ([self isBulkSection]) {
         return section == 0 ? @"Bulk shows Download All / Copy All / Select Media on carousels. Its actions and order are derived from your single-item Download and Copy actions.\nReorder or rename this section to control where Bulk appears in the menu." : nil;
     }
-    if (section == 1) return @"Drag to reorder actions in this section. Remove an action to send it to the unassigned bucket.";
-    if (section == 2) return @"Tap an action to assign it here. If it is already in another section, it will move.";
+    if (section == 1)
+        return @"Drag to reorder actions in this section. Remove an action to send it to the unassigned bucket.";
+    if (section == 2)
+        return @"Tap an action to assign it here. If it is already in another section, it will move.";
     return nil;
 }
 
@@ -218,11 +227,12 @@ static char kSPKSectionEditSwitchAssocKey;
 }
 
 - (NSArray<UIDragItem *> *)tableView:(UITableView *)tableView itemsForBeginningDragSession:(id<UIDragSession>)session atIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section != 1) return @[];
+    if (indexPath.section != 1)
+        return @[];
     NSString *identifier = [self currentSection].actions[indexPath.row];
     UIDragItem *item = [[UIDragItem alloc] initWithItemProvider:[[NSItemProvider alloc] initWithObject:identifier]];
     item.localObject = identifier;
-    return @[item];
+    return @[ item ];
 }
 
 - (BOOL)tableView:(UITableView *)tableView dragSessionAllowsMoveOperation:(id<UIDragSession>)session {
@@ -244,18 +254,22 @@ static char kSPKSectionEditSwitchAssocKey;
     NSIndexPath *destinationIndexPath = coordinator.destinationIndexPath;
     id<UITableViewDropItem> dropItem = coordinator.items.firstObject;
     NSIndexPath *sourceIndexPath = dropItem.sourceIndexPath;
-    if (!destinationIndexPath || !sourceIndexPath || sourceIndexPath.section != 1 || destinationIndexPath.section != 1) return;
+    if (!destinationIndexPath || !sourceIndexPath || sourceIndexPath.section != 1 || destinationIndexPath.section != 1)
+        return;
 
     NSInteger rowCount = [self currentSection].actions.count;
     NSInteger destinationRow = MIN(MAX(0, destinationIndexPath.row), MAX(0, rowCount - 1));
     NSIndexPath *target = [NSIndexPath indexPathForRow:destinationRow inSection:1];
 
-    [tableView performBatchUpdates:^{
-        [self.configuration moveActionInSectionIdentifier:self.sectionIdentifier fromIndex:sourceIndexPath.row toIndex:target.row];
-        [self.configuration save];
-        if (self.onChange) self.onChange();
-        [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:target];
-    } completion:nil];
+    [tableView
+        performBatchUpdates:^{
+            [self.configuration moveActionInSectionIdentifier:self.sectionIdentifier fromIndex:sourceIndexPath.row toIndex:target.row];
+            [self.configuration save];
+            if (self.onChange)
+                self.onChange();
+            [tableView moveRowAtIndexPath:sourceIndexPath toIndexPath:target];
+        }
+                 completion:nil];
     [coordinator dropItem:dropItem.dragItem toRowAtIndexPath:target];
 }
 
@@ -266,7 +280,8 @@ static char kSPKSectionEditSwitchAssocKey;
         NSString *identifier = [self currentSection].actions[indexPath.row];
         [self.configuration setAction:identifier assignedToSectionIdentifier:nil];
         [self.configuration save];
-        if (self.onChange) self.onChange();
+        if (self.onChange)
+            self.onChange();
         [self.tableView reloadData];
     } else if (indexPath.section == 2) {
         NSString *identifier = self.configuration.supportedActions[indexPath.row];
@@ -277,7 +292,8 @@ static char kSPKSectionEditSwitchAssocKey;
             [self.configuration setAction:identifier assignedToSectionIdentifier:self.sectionIdentifier];
         }
         [self.configuration save];
-        if (self.onChange) self.onChange();
+        if (self.onChange)
+            self.onChange();
         [self.tableView reloadData];
     }
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -287,14 +303,16 @@ static char kSPKSectionEditSwitchAssocKey;
     SPKActionMenuSection *section = [self currentSection];
     section.title = sender.text.length > 0 ? sender.text : @"Section";
     [self.configuration save];
-    if (self.onChange) self.onChange();
+    if (self.onChange)
+        self.onChange();
 }
 
 - (void)collapsibleSwitchChanged:(UISwitch *)sender {
     SPKActionMenuSection *section = [self currentSection];
     section.collapsible = sender.isOn;
     [self.configuration save];
-    if (self.onChange) self.onChange();
+    if (self.onChange)
+        self.onChange();
 }
 
 - (void)setEditing:(BOOL)editing animated:(BOOL)animated {

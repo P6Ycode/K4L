@@ -1,8 +1,8 @@
 #import "SPKDeletedMessagesSenderCell.h"
+#import "../../../AssetUtils.h"
+#import "../../../Utils.h"
 #import "SPKDeletedMessagesAvatarView.h"
 #import "SPKDeletedMessagesDate.h"
-#import "../../../Utils.h"
-#import "../../../AssetUtils.h"
 
 NSString *const SPKDeletedMessagesSenderCellReuseID = @"SPKDeletedMessagesSenderCell";
 
@@ -46,7 +46,7 @@ static NSString *SPKDeletedMessagesSenderPreview(SPKDeletedMessageGroup *group);
         _pinBadge.hidden = YES;
         [_pinBadge setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
-        UIStackView *nameRow = [[UIStackView alloc] initWithArrangedSubviews:@[_nameLabel, _pinBadge]];
+        UIStackView *nameRow = [[UIStackView alloc] initWithArrangedSubviews:@[ _nameLabel, _pinBadge ]];
         nameRow.translatesAutoresizingMaskIntoConstraints = NO;
         nameRow.axis = UILayoutConstraintAxisHorizontal;
         nameRow.alignment = UIStackViewAlignmentCenter;
@@ -68,7 +68,7 @@ static NSString *SPKDeletedMessagesSenderPreview(SPKDeletedMessageGroup *group);
         _previewLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
         _previewLabel.textColor = [SPKUtils SPKColor_InstagramSecondaryText];
 
-        _previewRow = [[UIStackView alloc] initWithArrangedSubviews:@[_previewIcon, _previewLabel]];
+        _previewRow = [[UIStackView alloc] initWithArrangedSubviews:@[ _previewIcon, _previewLabel ]];
         _previewRow.translatesAutoresizingMaskIntoConstraints = NO;
         _previewRow.axis = UILayoutConstraintAxisHorizontal;
         _previewRow.alignment = UIStackViewAlignmentCenter;
@@ -85,20 +85,27 @@ static NSString *SPKDeletedMessagesSenderPreview(SPKDeletedMessageGroup *group);
         [self.contentView addSubview:_timeLabel];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
+            [_avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor
+                                                      constant:16.0],
             [_avatarView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [_avatarView.widthAnchor constraintEqualToConstant:kSPKAvatarSize],
             [_avatarView.heightAnchor constraintEqualToConstant:kSPKAvatarSize],
 
-            [nameRow.leadingAnchor constraintEqualToAnchor:_avatarView.trailingAnchor constant:12.0],
-            [nameRow.topAnchor constraintEqualToAnchor:_avatarView.topAnchor constant:4.0],
-            [nameRow.trailingAnchor constraintLessThanOrEqualToAnchor:_timeLabel.leadingAnchor constant:-8.0],
+            [nameRow.leadingAnchor constraintEqualToAnchor:_avatarView.trailingAnchor
+                                                  constant:12.0],
+            [nameRow.topAnchor constraintEqualToAnchor:_avatarView.topAnchor
+                                              constant:4.0],
+            [nameRow.trailingAnchor constraintLessThanOrEqualToAnchor:_timeLabel.leadingAnchor
+                                                             constant:-8.0],
 
             [_previewRow.leadingAnchor constraintEqualToAnchor:nameRow.leadingAnchor],
-            [_previewRow.topAnchor constraintEqualToAnchor:nameRow.bottomAnchor constant:3.0],
-            [_previewRow.trailingAnchor constraintLessThanOrEqualToAnchor:_timeLabel.leadingAnchor constant:-8.0],
+            [_previewRow.topAnchor constraintEqualToAnchor:nameRow.bottomAnchor
+                                                  constant:3.0],
+            [_previewRow.trailingAnchor constraintLessThanOrEqualToAnchor:_timeLabel.leadingAnchor
+                                                                 constant:-8.0],
 
-            [_timeLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
+            [_timeLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor
+                                                      constant:-16.0],
             [_timeLabel.topAnchor constraintEqualToAnchor:nameRow.topAnchor],
         ]];
     }
@@ -116,11 +123,11 @@ static NSString *SPKDeletedMessagesSenderPreview(SPKDeletedMessageGroup *group);
 
     SPKDeletedMessage *latest = group.latest;
     NSString *previewSymbol = latest.kind == SPKDeletedMessageKindShare
-        ? SPKDeletedMessageShareSubtypeSymbol(latest.shareSubtype)
-        : SPKDeletedMessageKindSymbolFilled(latest.kind, YES);
+                                  ? SPKDeletedMessageShareSubtypeSymbol(latest.shareSubtype)
+                                  : SPKDeletedMessageKindSymbolFilled(latest.kind, YES);
     self.previewIcon.image = [SPKAssetUtils instagramIconNamed:previewSymbol
-                                                      pointSize:14.0
-                                                  renderingMode:UIImageRenderingModeAlwaysTemplate];
+                                                     pointSize:14.0
+                                                 renderingMode:UIImageRenderingModeAlwaysTemplate];
     self.previewLabel.text = SPKDeletedMessagesSenderPreview(group);
     self.timeLabel.text = [SPKDeletedMessagesDate stringForDate:group.lastDeletedAt];
 
@@ -144,12 +151,14 @@ static NSString *SPKDeletedMessagesSenderPreview(SPKDeletedMessageGroup *group) 
         // "Reel • @author" / "Post • caption" so shares read by type at a glance.
         NSString *type = SPKDeletedMessageShareSubtypeName(latest.shareSubtype);
         NSString *detail = latest.shareAuthor.length ? latest.shareAuthor
-                         : (latest.text.length ? latest.text : latest.previewText);
+                                                     : (latest.text.length ? latest.text : latest.previewText);
         body = detail.length ? [NSString stringWithFormat:@"%@ • %@", type, detail] : type;
-    }
-    else if (latest.text.length) body = latest.text;
-    else if (latest.previewText.length) body = latest.previewText;
-    else body = SPKDeletedMessageKindLocalizedName(latest.kind);
+    } else if (latest.text.length)
+        body = latest.text;
+    else if (latest.previewText.length)
+        body = latest.previewText;
+    else
+        body = SPKDeletedMessageKindLocalizedName(latest.kind);
 
     body = [body stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
 
@@ -157,7 +166,8 @@ static NSString *SPKDeletedMessagesSenderPreview(SPKDeletedMessageGroup *group) 
     if (group.isGroup) {
         NSString *who = latest.senderUsername.length ? latest.senderUsername
                                                      : (latest.senderFullName.length ? latest.senderFullName : nil);
-        if (who.length) body = [NSString stringWithFormat:@"%@: %@", who, body];
+        if (who.length)
+            body = [NSString stringWithFormat:@"%@: %@", who, body];
     }
 
     if (group.count > 1) {

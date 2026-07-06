@@ -2,23 +2,23 @@
 
 #import <CoreData/CoreData.h>
 
-#import "SPKGalleryCoreDataStack.h"
-#import "SPKGalleryFile.h"
-#import "SPKGalleryGridCell.h"
-#import "SPKGalleryListCollectionCell.h"
-#import "SPKGalleryFolderChipBar.h"
-#import "SPKGalleryGridDensity.h"
-#import "SPKGalleryManager.h"
-#import "SPKGalleryLockViewController.h"
-#import "SPKGalleryHiddenSources.h"
-#import "../UI/SPKMediaChrome.h"
 #import "../../AssetUtils.h"
 #import "../../Utils.h"
+#import "../UI/SPKMediaChrome.h"
+#import "SPKGalleryCoreDataStack.h"
+#import "SPKGalleryFile.h"
+#import "SPKGalleryFolderChipBar.h"
+#import "SPKGalleryGridCell.h"
+#import "SPKGalleryGridDensity.h"
+#import "SPKGalleryHiddenSources.h"
+#import "SPKGalleryListCollectionCell.h"
+#import "SPKGalleryLockViewController.h"
+#import "SPKGalleryManager.h"
 
-static NSString * const kSPKGalleryPickerListCellID = @"SPKGalleryPickerListCell";
-static NSString * const kSPKGalleryPickerGridCellID = @"SPKGalleryPickerGridCell";
-static NSString * const kSPKGalleryPickerFolderChipHeaderID = @"SPKGalleryPickerFolderChipHeader";
-static NSString * const kSPKGalleryPickerViewModeKey = @"gallery_picker_view_mode"; // 0 = grid, 1 = list
+static NSString *const kSPKGalleryPickerListCellID = @"SPKGalleryPickerListCell";
+static NSString *const kSPKGalleryPickerGridCellID = @"SPKGalleryPickerGridCell";
+static NSString *const kSPKGalleryPickerFolderChipHeaderID = @"SPKGalleryPickerFolderChipHeader";
+static NSString *const kSPKGalleryPickerViewModeKey = @"gallery_picker_view_mode"; // 0 = grid, 1 = list
 static CGFloat const kSPKGalleryPickerGridSpacing = 2.0;
 
 typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
@@ -27,10 +27,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 };
 
 @interface SPKGalleryPickerViewController () <UICollectionViewDataSource,
-                                             UICollectionViewDelegate,
-                                             UICollectionViewDelegateFlowLayout,
-                                             UIAdaptivePresentationControllerDelegate,
-                                             UISearchResultsUpdating>
+                                              UICollectionViewDelegate,
+                                              UICollectionViewDelegateFlowLayout,
+                                              UIAdaptivePresentationControllerDelegate,
+                                              UISearchResultsUpdating>
 @property (nonatomic, copy, nullable) NSString *folderPath;
 @property (nonatomic, copy) NSString *pickerTitle;
 @property (nonatomic, strong, nullable) NSSet<NSNumber *> *allowedMediaTypes;
@@ -53,15 +53,18 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 + (BOOL)hasSelectableFilesForAllowedMediaTypes:(NSSet<NSNumber *> *)allowedMediaTypes {
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     NSMutableArray *predicates = [NSMutableArray array];
-    if (allowedMediaTypes.count > 0) [predicates addObject:[NSPredicate predicateWithFormat:@"mediaType IN %@", allowedMediaTypes.allObjects]];
+    if (allowedMediaTypes.count > 0)
+        [predicates addObject:[NSPredicate predicateWithFormat:@"mediaType IN %@", allowedMediaTypes.allObjects]];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
-    if (visibleSources) [predicates addObject:visibleSources];
+    if (visibleSources)
+        [predicates addObject:visibleSources];
     request.predicate = predicates.count > 0 ? [NSCompoundPredicate andPredicateWithSubpredicates:predicates] : nil;
     request.fetchLimit = 50;
-    request.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO]];
+    request.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO] ];
     NSArray<SPKGalleryFile *> *files = [[SPKGalleryCoreDataStack shared].viewContext executeFetchRequest:request error:nil] ?: @[];
     for (SPKGalleryFile *file in files) {
-        if ([file fileExists]) return YES;
+        if ([file fileExists])
+            return YES;
     }
     return NO;
 }
@@ -71,7 +74,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
                 allowedMediaTypes:(NSSet<NSNumber *> *)allowedMediaTypes
           allowsMultipleSelection:(BOOL)allowsMultipleSelection
                        completion:(SPKGalleryPickerCompletion)completion {
-    if (!presenter || !completion) return;
+    if (!presenter || !completion)
+        return;
 
     SPKGalleryManager *mgr = [SPKGalleryManager sharedManager];
 
@@ -88,9 +92,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     if (mgr.isLockEnabled && !mgr.isUnlocked) {
         [SPKGalleryLockViewController presentUnlockFromViewController:presenter
                                                            completion:^(BOOL success) {
-            if (!success) return;
-            presentPicker();
-        }];
+                                                               if (!success)
+                                                                   return;
+                                                               presentPicker();
+                                                           }];
     } else {
         presentPicker();
     }
@@ -108,10 +113,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 }
 
 - (instancetype)initWithFolderPath:(NSString *)folderPath
-                              title:(NSString *)title
-                  allowedMediaTypes:(NSSet<NSNumber *> *)allowedMediaTypes
-            allowsMultipleSelection:(BOOL)allowsMultipleSelection
-                         completion:(SPKGalleryPickerCompletion)completion {
+                             title:(NSString *)title
+                 allowedMediaTypes:(NSSet<NSNumber *> *)allowedMediaTypes
+           allowsMultipleSelection:(BOOL)allowsMultipleSelection
+                        completion:(SPKGalleryPickerCompletion)completion {
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _folderPath = [folderPath copy];
@@ -172,8 +177,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
         [self.collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [self.emptyLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
-        [self.emptyLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
+        [self.emptyLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor
+                                                      constant:24.0],
+        [self.emptyLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor
+                                                       constant:-24.0],
         [self.emptyLabel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
     ]];
 
@@ -221,8 +228,10 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    if (self.navigationController.viewControllers.firstObject != self) return;
-    if (self.isMovingFromParentViewController) return;
+    if (self.navigationController.viewControllers.firstObject != self)
+        return;
+    if (self.isMovingFromParentViewController)
+        return;
     if (self.isBeingDismissed || self.navigationController.isBeingDismissed) {
         if ([SPKGalleryManager sharedManager].isLockEnabled) {
             [[SPKGalleryManager sharedManager] lockGallery];
@@ -247,13 +256,14 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
         [predicates addObject:[NSPredicate predicateWithFormat:@"mediaType IN %@", allowed]];
     }
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
-    if (visibleSources) [predicates addObject:visibleSources];
+    if (visibleSources)
+        [predicates addObject:visibleSources];
 
     if (folderPath.length > 0) {
         if (includeDescendants) {
             [predicates addObject:[NSPredicate predicateWithFormat:@"folderPath == %@ OR folderPath BEGINSWITH %@",
-                                   folderPath,
-                                   [folderPath stringByAppendingString:@"/"]]];
+                                                                   folderPath,
+                                                                   [folderPath stringByAppendingString:@"/"]]];
         } else {
             [predicates addObject:[NSPredicate predicateWithFormat:@"folderPath == %@", folderPath]];
         }
@@ -264,7 +274,7 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     NSString *query = [self.searchQuery stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (query.length > 0) {
         [predicates addObject:[NSPredicate predicateWithFormat:@"sourceUsername CONTAINS[cd] %@ OR customName CONTAINS[cd] %@ OR relativePath CONTAINS[cd] %@",
-                               query, query, query]];
+                                                               query, query, query]];
     }
 
     return predicates.count > 0 ? [NSCompoundPredicate andPredicateWithSubpredicates:predicates] : nil;
@@ -274,13 +284,17 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     request.predicate = [self filePredicateForFolderPath:self.folderPath includeDescendants:NO];
     request.sortDescriptors = @[
-        [NSSortDescriptor sortDescriptorWithKey:@"dateAdded" ascending:NO],
-        [NSSortDescriptor sortDescriptorWithKey:@"relativePath" ascending:YES selector:@selector(localizedStandardCompare:)]
+        [NSSortDescriptor sortDescriptorWithKey:@"dateAdded"
+                                      ascending:NO],
+        [NSSortDescriptor sortDescriptorWithKey:@"relativePath"
+                                      ascending:YES
+                                       selector:@selector(localizedStandardCompare:)]
     ];
     NSArray<SPKGalleryFile *> *fetched = [[SPKGalleryCoreDataStack shared].viewContext executeFetchRequest:request error:nil] ?: @[];
     NSMutableArray<SPKGalleryFile *> *existing = [NSMutableArray arrayWithCapacity:fetched.count];
     for (SPKGalleryFile *file in fetched) {
-        if ([file fileExists]) [existing addObject:file];
+        if ([file fileExists])
+            [existing addObject:file];
     }
     return existing;
 }
@@ -292,12 +306,13 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 }
 
 - (NSArray<NSString *> *)fetchSubfolders {
-    if (self.searchQuery.length > 0) return @[];
+    if (self.searchQuery.length > 0)
+        return @[];
 
     NSManagedObjectContext *context = [SPKGalleryCoreDataStack shared].viewContext;
     NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
     request.resultType = NSDictionaryResultType;
-    request.propertiesToFetch = @[@"folderPath"];
+    request.propertiesToFetch = @[ @"folderPath" ];
     request.returnsDistinctResults = YES;
 
     NSString *base = self.folderPath ?: @"";
@@ -305,18 +320,20 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     NSPredicate *folderPredicate = [NSPredicate predicateWithFormat:@"folderPath BEGINSWITH %@", prefix];
     NSPredicate *visibleSources = SPKGalleryVisibleSourcesPredicate();
     request.predicate = visibleSources
-        ? [NSCompoundPredicate andPredicateWithSubpredicates:@[folderPredicate, visibleSources]]
-        : folderPredicate;
+                            ? [NSCompoundPredicate andPredicateWithSubpredicates:@[ folderPredicate, visibleSources ]]
+                            : folderPredicate;
 
     NSArray<NSDictionary *> *rows = [context executeFetchRequest:request error:nil] ?: @[];
     NSMutableSet<NSString *> *folders = [NSMutableSet set];
     for (NSDictionary *row in rows) {
         NSString *path = row[@"folderPath"];
-        if (path.length <= prefix.length) continue;
+        if (path.length <= prefix.length)
+            continue;
         NSString *rest = [path substringFromIndex:prefix.length];
         NSRange slash = [rest rangeOfString:@"/"];
         NSString *folderName = slash.location == NSNotFound ? rest : [rest substringToIndex:slash.location];
-        if (folderName.length == 0) continue;
+        if (folderName.length == 0)
+            continue;
         NSString *folderPath = [prefix stringByAppendingString:folderName];
         if ([self eligibleFileCountForFolderPath:folderPath] > 0) {
             [folders addObject:folderPath];
@@ -349,7 +366,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 
 - (void)setGridColumns:(NSInteger)gridColumns {
     NSInteger clamped = MAX(kSPKGalleryGridColumnsMin, MIN(kSPKGalleryGridColumnsMax, gridColumns));
-    if (clamped == _gridColumns) return;
+    if (clamped == _gridColumns)
+        return;
     _gridColumns = clamped;
     SPKGalleryGridSetColumns(clamped);
 }
@@ -372,9 +390,9 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
                                                                    target:self
                                                                    action:@selector(doneTapped)];
         addItem.enabled = self.selectedIDs.count > 0;
-        self.navigationItem.rightBarButtonItems = @[addItem, toggleItem];
+        self.navigationItem.rightBarButtonItems = @[ addItem, toggleItem ];
     } else {
-        self.navigationItem.rightBarButtonItems = @[toggleItem];
+        self.navigationItem.rightBarButtonItems = @[ toggleItem ];
     }
 }
 
@@ -387,9 +405,12 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 }
 
 - (void)handleGridPinch:(UIPinchGestureRecognizer *)pinch {
-    if (self.viewMode != SPKGalleryPickerViewModeGrid) return;
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryGridPinchDisabledKey]) return;
-    if (pinch.state != UIGestureRecognizerStateChanged) return;
+    if (self.viewMode != SPKGalleryPickerViewModeGrid)
+        return;
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:kSPKGalleryGridPinchDisabledKey])
+        return;
+    if (pinch.state != UIGestureRecognizerStateChanged)
+        return;
     CGFloat threshold = 0.30;
     if (pinch.scale > 1.0 + threshold && self.gridColumns > kSPKGalleryGridColumnsMin) {
         self.gridColumns = SPKGalleryGridColumnsAdjacent(self.gridColumns, YES);
@@ -409,7 +430,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 }
 
 - (void)updateDoneButton {
-    if (!self.allowsMultipleSelection) return;
+    if (!self.allowsMultipleSelection)
+        return;
     [self refreshNavigationRightItems];
 }
 
@@ -425,11 +447,13 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     NSMutableArray<SPKGalleryFile *> *files = [NSMutableArray arrayWithCapacity:self.selectedIDs.count];
     for (NSString *identifier in self.selectedIDs) {
         SPKGalleryFile *file = self.selectedFilesByID[identifier];
-        if (file) [files addObject:file];
+        if (file)
+            [files addObject:file];
     }
     SPKGalleryPickerCompletion completion = [self.completion copy];
     [self dismissPickerWithCompletion:^{
-        if (completion) completion(files);
+        if (completion)
+            completion(files);
     }];
 }
 
@@ -462,8 +486,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 
     SPKGalleryListCollectionCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kSPKGalleryPickerListCellID forIndexPath:indexPath];
     [cell configureWithGalleryFile:file
-                   selectionMode:self.allowsMultipleSelection
-                        selected:[self.selectedIDs containsObject:file.identifier]];
+                     selectionMode:self.allowsMultipleSelection
+                          selected:[self.selectedIDs containsObject:file.identifier]];
     [cell setMoreActionsMenu:nil];
     return cell;
 }
@@ -493,28 +517,29 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
     [header configureWithFolderNames:names
                               counts:counts
                             onSelect:^(NSInteger index) {
-        [weakSelf openSubfolderAtIndex:index];
-    }
+                                [weakSelf openSubfolderAtIndex:index];
+                            }
                         menuProvider:nil];
     return header;
 }
 
 - (void)openSubfolderAtIndex:(NSInteger)index {
-    if (index < 0 || index >= (NSInteger)self.subfolders.count) return;
+    if (index < 0 || index >= (NSInteger)self.subfolders.count)
+        return;
     NSString *folder = self.subfolders[index];
     SPKGalleryPickerViewController *child = [[SPKGalleryPickerViewController alloc] initWithFolderPath:folder
-                                                                                                title:self.pickerTitle
-                                                                                    allowedMediaTypes:self.allowedMediaTypes
-                                                                              allowsMultipleSelection:self.allowsMultipleSelection
-                                                                                           completion:self.completion];
+                                                                                                 title:self.pickerTitle
+                                                                                     allowedMediaTypes:self.allowedMediaTypes
+                                                                               allowsMultipleSelection:self.allowsMultipleSelection
+                                                                                            completion:self.completion];
     child.selectedIDs = self.selectedIDs;
     child.selectedFilesByID = self.selectedFilesByID;
     [self.navigationController pushViewController:child animated:YES];
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
-                  layout:(UICollectionViewLayout *)layout
-  sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+                    layout:(UICollectionViewLayout *)layout
+    sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat width = collectionView.bounds.size.width;
     if (self.viewMode == SPKGalleryPickerViewModeGrid) {
         NSInteger columns = MAX(kSPKGalleryGridColumnsMin, MIN(kSPKGalleryGridColumnsMax, self.gridColumns));
@@ -526,8 +551,8 @@ typedef NS_ENUM(NSInteger, SPKGalleryPickerViewMode) {
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
-                  layout:(UICollectionViewLayout *)layout
-referenceSizeForHeaderInSection:(NSInteger)section {
+                             layout:(UICollectionViewLayout *)layout
+    referenceSizeForHeaderInSection:(NSInteger)section {
     if (section == 0 && [self showsFolderChips]) {
         return CGSizeMake(collectionView.bounds.size.width, [SPKGalleryFolderChipBar preferredHeight]);
     }
@@ -546,14 +571,15 @@ referenceSizeForHeaderInSection:(NSInteger)section {
             [self.selectedIDs addObject:file.identifier];
             self.selectedFilesByID[file.identifier] = file;
         }
-        [self.collectionView reloadItemsAtIndexPaths:@[indexPath]];
+        [self.collectionView reloadItemsAtIndexPaths:@[ indexPath ]];
         [self updateDoneButton];
         return;
     }
 
     SPKGalleryPickerCompletion completion = [self.completion copy];
     [self dismissPickerWithCompletion:^{
-        if (completion) completion(@[file]);
+        if (completion)
+            completion(@[ file ]);
     }];
 }
 
