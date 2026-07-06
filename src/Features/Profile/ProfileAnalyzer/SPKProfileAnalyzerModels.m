@@ -289,3 +289,76 @@ static NSArray *spkIntersect(NSArray *a, NSSet *bSet) {
 }
 
 @end
+
+#pragma mark - Change event
+
+@implementation SPKProfileAnalyzerChangeEvent
+
+- (NSString *)eventID {
+    return [NSString stringWithFormat:@"%ld|%@|%.0f",
+            (long)self.type, self.user.pk ?: @"", [self.date timeIntervalSince1970]];
+}
+
+- (SPKProfileAnalyzerProfileChange *)asProfileChange {
+    if (self.type != SPKPAChangeTypeProfileUpdate || !self.previousUser) return nil;
+    SPKProfileAnalyzerProfileChange *ch = [SPKProfileAnalyzerProfileChange new];
+    ch.previous = self.previousUser;
+    ch.current = self.user;
+    return ch;
+}
+
++ (instancetype)eventFromJSONDict:(NSDictionary *)d {
+    if (![d isKindOfClass:[NSDictionary class]]) return nil;
+    SPKProfileAnalyzerUser *u = [SPKProfileAnalyzerUser userFromJSONDict:d[@"user"]];
+    if (!u) return nil;
+    SPKProfileAnalyzerChangeEvent *e = [self new];
+    e.type = [d[@"type"] integerValue];
+    e.user = u;
+    e.previousUser = [SPKProfileAnalyzerUser userFromJSONDict:d[@"previous_user"]]; // nil-safe
+    e.date = [NSDate dateWithTimeIntervalSince1970:[d[@"date"] doubleValue]];
+    e.seen = [d[@"seen"] boolValue];
+    return e;
+}
+
+- (NSDictionary *)toJSONDict {
+    NSMutableDictionary *d = [NSMutableDictionary dictionary];
+    d[@"type"] = @(self.type);
+    d[@"user"] = [self.user toJSONDict];
+    if (self.previousUser) d[@"previous_user"] = [self.previousUser toJSONDict];
+    d[@"date"] = @([self.date timeIntervalSince1970]);
+    d[@"seen"] = @(self.seen);
+    return d;
+}
+
++ (SPKProfileAnalyzerChangeEvent *)eventOfType:(SPKPAChangeType)type
+                                          user:(SPKProfileAnalyzerUser *)user
+                                          date:(NSDate *)date {
+    SPKProfileAnalyzerChangeEvent *e = [self new];
+    e.type = type;
+    e.user = user;
+    e.date = date;
+    e.seen = NO;
+    return e;
+}
+
++ (NSArray<SPKProfileAnalyzerChangeEvent *> *)eventsFromReport:(SPKProfileAnalyzerReport *)report
+                                                         date:(NSDate *)date {
+    if (!date) date = [NSDate date];
+    NSMutableArray<SPKProfileAnalyzerChangeEvent *> *out = [NSMutableArray array];
+    for (SPKProfileAnalyzerUser *u in report.recentFollowers)
+        [out addObject:[self eventOfType:SPKPAChangeTypeNewFollower user:u date:date]];
+    for (SPKProfileAnalyzerUser *u in report.lostFollowers)
+        [out addObject:[self eventOfType:SPKPAChangeTypeLostFollower user:u date:date]];
+    for (SPKProfileAnalyzerUser *u in report.youStartedFollowing)
+        [out addObject:[self eventOfType:SPKPAChangeTypeStartedFollowing user:u date:date]];
+    for (SPKProfileAnalyzerUser *u in report.youUnfollowed)
+        [out addObject:[self eventOfType:SPKPAChangeTypeUnfollowed user:u date:date]];
+    for (SPKProfileAnalyzerProfileChange *ch in report.profileUpdates) {
+        SPKProfileAnalyzerChangeEvent *e = [self eventOfType:SPKPAChangeTypeProfileUpdate user:ch.current date:date];
+        e.previousUser = ch.previous;
+        [out addObject:e];
+    }
+    return out;
+}
+
+@end

@@ -16,6 +16,20 @@ static dispatch_queue_t spkVisitQueue(void) {
     return q;
 }
 
+// Serial queue for change-log reads + writes — keeps run-time appends from
+// racing mark-seen writes.
+static dispatch_queue_t spkChangeLogQueue(void) {
+    static dispatch_queue_t q;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        q = dispatch_queue_create("com.sparkle.profileanalyzer.changelog", DISPATCH_QUEUE_SERIAL);
+    });
+    return q;
+}
+
+// Hard cap on stored events to bound disk use on very active accounts.
+static const NSUInteger kSPKPAChangeLogCap = 3000;
+
 // Strip NSNull recursively — NSJSONSerialization rejects it and IG payloads carry it.
 static id spkStripNull(id obj) {
     if ([obj isKindOfClass:[NSDictionary class]]) {
@@ -104,12 +118,23 @@ static BOOL spkWriteJSON(NSString *path, NSDictionary *dict) {
     NSString *cur = spkPath(userPK, @"current");
     NSString *prev = spkPath(userPK, @"previous");
     NSFileManager *fm = [NSFileManager defaultManager];
+    // Capture the outgoing snapshot before it rotates out so we can diff it against
+    // the incoming one and append the delta to the durable change log — the
+    // current/previous pair only spans a single run, the log keeps the history.
+    SPKProfileAnalyzerSnapshot *outgoing = [self currentSnapshotForUserPK:userPK];
     if ([fm fileExistsAtPath:cur]) {
         [fm removeItemAtPath:prev error:nil];
         [fm moveItemAtPath:cur toPath:prev error:nil];
     }
     BOOL ok = spkWriteJSON(cur, [snapshot toJSONDict]);
-    if (ok) spkPostDataChanged(userPK);
+    if (ok) {
+        if (outgoing) {
+            SPKProfileAnalyzerReport *rep = [SPKProfileAnalyzerReport reportFromCurrent:snapshot previous:outgoing];
+            [self appendChangeEvents:[SPKProfileAnalyzerChangeEvent eventsFromReport:rep date:snapshot.scanDate]
+                           forUserPK:userPK];
+        }
+        spkPostDataChanged(userPK);
+    }
     return ok;
 }
 
@@ -122,7 +147,7 @@ static BOOL spkWriteJSON(NSString *path, NSDictionary *dict) {
 
 + (void)resetForUserPK:(NSString *)userPK {
     NSFileManager *fm = [NSFileManager defaultManager];
-    for (NSString *slot in @[@"current", @"previous", @"baseline", @"header", @"visits"]) {
+    for (NSString *slot in @[@"current", @"previous", @"baseline", @"header", @"visits", @"changelog"]) {
         [fm removeItemAtPath:spkPath(userPK, slot) error:nil];
     }
     spkPostDataChanged(userPK);
@@ -131,6 +156,90 @@ static BOOL spkWriteJSON(NSString *path, NSDictionary *dict) {
 + (void)resetAll {
     [[NSFileManager defaultManager] removeItemAtPath:spkStorageDir() error:nil];
     spkPostDataChanged(nil);
+}
+
+#pragma mark - Change log
+
++ (NSArray<SPKProfileAnalyzerChangeEvent *> *)changeEventsForUserPK:(NSString *)userPK {
+    __block NSArray *result = @[];
+    dispatch_sync(spkChangeLogQueue(), ^{
+        NSArray *list = spkReadJSON(spkPath(userPK, @"changelog"))[@"events"];
+        if (![list isKindOfClass:[NSArray class]]) return;
+        NSMutableArray *out = [NSMutableArray arrayWithCapacity:list.count];
+        for (NSDictionary *d in list) {
+            SPKProfileAnalyzerChangeEvent *e = [SPKProfileAnalyzerChangeEvent eventFromJSONDict:d];
+            if (e) [out addObject:e];
+        }
+        result = out;   // stored newest-first
+    });
+    return result;
+}
+
++ (void)appendChangeEvents:(NSArray<SPKProfileAnalyzerChangeEvent *> *)events forUserPK:(NSString *)userPK {
+    if (!events.count) return;
+    dispatch_sync(spkChangeLogQueue(), ^{
+        NSArray *existing = spkReadJSON(spkPath(userPK, @"changelog"))[@"events"];
+        NSMutableArray *list = [NSMutableArray array];
+        NSMutableSet *ids = [NSMutableSet set];
+        // Newest run on top, then the existing log; de-dup by eventID.
+        for (SPKProfileAnalyzerChangeEvent *e in events) {
+            if ([ids containsObject:e.eventID]) continue;
+            [ids addObject:e.eventID];
+            [list addObject:[e toJSONDict]];
+        }
+        if ([existing isKindOfClass:[NSArray class]]) {
+            for (NSDictionary *d in existing) {
+                SPKProfileAnalyzerChangeEvent *e = [SPKProfileAnalyzerChangeEvent eventFromJSONDict:d];
+                if (!e || [ids containsObject:e.eventID]) continue;
+                [ids addObject:e.eventID];
+                [list addObject:d];
+            }
+        }
+        if (list.count > kSPKPAChangeLogCap) {
+            [list removeObjectsInRange:NSMakeRange(kSPKPAChangeLogCap, list.count - kSPKPAChangeLogCap)];
+        }
+        spkWriteJSON(spkPath(userPK, @"changelog"), @{ @"events": list });
+    });
+    spkPostDataChanged(userPK);
+}
+
++ (NSDictionary<NSNumber *, NSNumber *> *)unseenChangeCountsForUserPK:(NSString *)userPK {
+    NSMutableDictionary<NSNumber *, NSNumber *> *counts = [NSMutableDictionary dictionary];
+    for (SPKProfileAnalyzerChangeEvent *e in [self changeEventsForUserPK:userPK]) {
+        if (e.seen) continue;
+        NSNumber *k = @(e.type);
+        counts[k] = @([counts[k] integerValue] + 1);
+    }
+    return counts;
+}
+
++ (void)markChangeEventsSeenForType:(SPKPAChangeType)type forUserPK:(NSString *)userPK {
+    __block BOOL changed = NO;
+    dispatch_sync(spkChangeLogQueue(), ^{
+        NSArray *existing = spkReadJSON(spkPath(userPK, @"changelog"))[@"events"];
+        if (![existing isKindOfClass:[NSArray class]]) return;
+        NSMutableArray *list = [NSMutableArray arrayWithCapacity:existing.count];
+        for (NSDictionary *d in existing) {
+            if ([d isKindOfClass:[NSDictionary class]] &&
+                [d[@"type"] integerValue] == type && ![d[@"seen"] boolValue]) {
+                NSMutableDictionary *m = [d mutableCopy];
+                m[@"seen"] = @YES;
+                [list addObject:m];
+                changed = YES;
+            } else {
+                [list addObject:d];
+            }
+        }
+        if (changed) spkWriteJSON(spkPath(userPK, @"changelog"), @{ @"events": list });
+    });
+    if (changed) spkPostDataChanged(userPK);
+}
+
++ (void)clearChangeLogForUserPK:(NSString *)userPK {
+    dispatch_sync(spkChangeLogQueue(), ^{
+        [[NSFileManager defaultManager] removeItemAtPath:spkPath(userPK, @"changelog") error:nil];
+    });
+    spkPostDataChanged(userPK);
 }
 
 #pragma mark - Header cache
@@ -263,7 +372,7 @@ static NSInteger spkVisitIndexForPK(NSArray *list, NSString *pk) {
 + (unsigned long long)storageSizeBytesForUserPK:(NSString *)userPK {
     unsigned long long total = 0;
     NSFileManager *fm = [NSFileManager defaultManager];
-    for (NSString *slot in @[@"current", @"previous", @"baseline", @"header", @"visits"]) {
+    for (NSString *slot in @[@"current", @"previous", @"baseline", @"header", @"visits", @"changelog"]) {
         NSDictionary *attrs = [fm attributesOfItemAtPath:spkPath(userPK, slot) error:nil];
         if ([attrs[NSFileType] isEqualToString:NSFileTypeRegular]) {
             total += [attrs[NSFileSize] unsignedLongLongValue];
@@ -295,7 +404,7 @@ static NSInteger spkVisitIndexForPK(NSArray *list, NSString *pk) {
     if (!entries) return -1;
 
     // Distinct account PKs present in the archive ("<pk>.<slot>.json").
-    NSArray<NSString *> *slots = @[@"current", @"previous", @"baseline", @"header", @"visits"];
+    NSArray<NSString *> *slots = @[@"current", @"previous", @"baseline", @"header", @"visits", @"changelog"];
     NSMutableSet<NSString *> *pks = [NSMutableSet set];
     for (NSString *entry in entries) {
         for (NSString *slot in slots) {
@@ -343,6 +452,48 @@ static NSInteger spkVisitIndexForPK(NSArray *list, NSString *pk) {
                 spkWriteJSON(spkPath(safePK, @"visits"), @{ @"visits": liveList });
                 spkPostDataChanged(safePK);
             }
+        });
+
+        // Change log: union by eventID, keeping local entries. If either side
+        // marked an event seen, it stays seen. Sorted newest-first afterwards.
+        NSString *srcLog = [sourcePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.changelog.json", safePK]];
+        if (![fm fileExistsAtPath:srcLog]) continue;
+        dispatch_sync(spkChangeLogQueue(), ^{
+            NSArray *srcList = spkReadJSON(srcLog)[@"events"];
+            if (![srcList isKindOfClass:[NSArray class]] || !srcList.count) return;
+            NSArray *liveRaw = spkReadJSON(spkPath(safePK, @"changelog"))[@"events"];
+            NSMutableArray *merged = [NSMutableArray array];
+            NSMutableDictionary<NSString *, NSNumber *> *idxByID = [NSMutableDictionary dictionary];
+            void (^absorb)(NSArray *) = ^(NSArray *entries) {
+                for (NSDictionary *d in entries) {
+                    SPKProfileAnalyzerChangeEvent *e = [SPKProfileAnalyzerChangeEvent eventFromJSONDict:d];
+                    if (!e) continue;
+                    NSNumber *at = idxByID[e.eventID];
+                    if (at) { // seen wins across duplicates
+                        if ([d[@"seen"] boolValue]) {
+                            NSMutableDictionary *m = [merged[at.unsignedIntegerValue] mutableCopy];
+                            m[@"seen"] = @YES;
+                            merged[at.unsignedIntegerValue] = m;
+                        }
+                    } else {
+                        idxByID[e.eventID] = @(merged.count);
+                        [merged addObject:d];
+                    }
+                }
+            };
+            absorb([liveRaw isKindOfClass:[NSArray class]] ? liveRaw : @[]);
+            absorb(srcList);
+            [merged sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+                double la = [a[@"date"] doubleValue], lb = [b[@"date"] doubleValue];
+                if (la > lb) return NSOrderedAscending;   // newest-first
+                if (la < lb) return NSOrderedDescending;
+                return NSOrderedSame;
+            }];
+            if (merged.count > kSPKPAChangeLogCap) {
+                [merged removeObjectsInRange:NSMakeRange(kSPKPAChangeLogCap, merged.count - kSPKPAChangeLogCap)];
+            }
+            spkWriteJSON(spkPath(safePK, @"changelog"), @{ @"events": merged });
+            spkPostDataChanged(safePK);
         });
     }
     return added;

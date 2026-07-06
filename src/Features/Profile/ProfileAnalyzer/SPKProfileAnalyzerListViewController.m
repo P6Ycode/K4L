@@ -60,6 +60,8 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 @property (nonatomic, strong) UIActivityIndicatorView *actionSpinner;
 @property (nonatomic, strong) NSLayoutConstraint *nameTrailingToButton;
 @property (nonatomic, strong) NSLayoutConstraint *nameTrailingToEdge;
+@property (nonatomic, strong) NSLayoutConstraint *nameTopConstraint;     // active when a subtitle is shown
+@property (nonatomic, strong) NSLayoutConstraint *nameCenterConstraint;  // active when the name stands alone
 @property (nonatomic, copy) NSString *boundPK;
 @property (nonatomic, copy) void(^onActionTap)(SPKPAUserCell *);
 @end
@@ -123,6 +125,8 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 
     _nameTrailingToButton = [nameRow.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor constant:-10.0];
     _nameTrailingToEdge = [nameRow.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16.0];
+    _nameTopConstraint = [nameRow.topAnchor constraintEqualToAnchor:_avatarView.topAnchor constant:4.0];
+    _nameCenterConstraint = [nameRow.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor];
 
     [NSLayoutConstraint activateConstraints:@[
         [_avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
@@ -131,7 +135,6 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
         [_avatarView.heightAnchor constraintEqualToConstant:kSPKPAAvatarSize],
 
         [nameRow.leadingAnchor constraintEqualToAnchor:_avatarView.trailingAnchor constant:12.0],
-        [nameRow.topAnchor constraintEqualToAnchor:_avatarView.topAnchor constant:4.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:nameRow.leadingAnchor],
         [_subtitleLabel.topAnchor constraintEqualToAnchor:nameRow.bottomAnchor constant:3.0],
@@ -144,6 +147,7 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
         [_actionSpinner.centerYAnchor constraintEqualToAnchor:_actionButton.centerYAnchor],
     ]];
     _nameTrailingToButton.active = YES;
+    _nameTopConstraint.active = YES;
     return self;
 }
 
@@ -151,6 +155,14 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     self.actionButton.hidden = !visible;
     self.nameTrailingToButton.active = visible;
     self.nameTrailingToEdge.active = !visible;
+}
+
+// With no subtitle, drop the top-alignment and vertically center the username
+// so it doesn't sit high with empty space beneath it.
+- (void)setSubtitleShown:(BOOL)shown {
+    self.subtitleLabel.hidden = !shown;
+    self.nameCenterConstraint.active = !shown;
+    self.nameTopConstraint.active = shown;
 }
 
 - (void)onAction { if (self.onActionTap) self.onActionTap(self); }
@@ -163,14 +175,31 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     self.onActionTap = nil;
     [self.actionSpinner stopAnimating];
     self.actionButton.hidden = YES;
+    self.subtitleLabel.hidden = NO;
+    self.nameCenterConstraint.active = NO;
+    self.nameTopConstraint.active = YES;
 }
 
+@end
+
+#pragma mark - Grouped section
+
+// A titled group of rows (users or profile-change objects) for the Latest /
+// Previous split. Only used when `grouped` is set.
+@interface SPKPAListSection : NSObject
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSArray *items;   // users or profile-changes, per kind
+@end
+@implementation SPKPAListSection
 @end
 
 #pragma mark - List VC
 
 @interface SPKProfileAnalyzerListViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating>
 @property (nonatomic, assign) SPKPAListKind kind;
+@property (nonatomic, assign) BOOL grouped;
+@property (nonatomic, copy) NSArray<SPKPAListSection *> *baseSections;    // unfiltered
+@property (nonatomic, copy) NSArray<SPKPAListSection *> *shownSections;   // filtered + sorted
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerUser *> *allUsers;
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerProfileChange *> *allUpdates;
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerVisit *> *allVisits;
@@ -209,6 +238,44 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
         self.title = title;
         _kind = SPKPAListKindProfileUpdate;
         _allUpdates = [updates copy] ?: @[];
+        _sortMode = SPKPASortModeDefault;
+    }
+    return self;
+}
+
+- (NSArray<SPKPAListSection *> *)sectionsFromLatest:(NSArray *)latest previous:(NSArray *)previous {
+    NSMutableArray<SPKPAListSection *> *out = [NSMutableArray array];
+    if (latest.count) {
+        SPKPAListSection *s = [SPKPAListSection new]; s.title = @"Latest"; s.items = latest; [out addObject:s];
+    }
+    if (previous.count) {
+        SPKPAListSection *s = [SPKPAListSection new]; s.title = @"Previous"; s.items = previous; [out addObject:s];
+    }
+    return out;
+}
+
+- (instancetype)initWithTitle:(NSString *)title
+                  latestUsers:(NSArray<SPKProfileAnalyzerUser *> *)latestUsers
+                previousUsers:(NSArray<SPKProfileAnalyzerUser *> *)previousUsers
+                         kind:(SPKPAListKind)kind {
+    if ((self = [super init])) {
+        self.title = title;
+        _kind = kind;
+        _grouped = YES;
+        _baseSections = [self sectionsFromLatest:(latestUsers ?: @[]) previous:(previousUsers ?: @[])];
+        _sortMode = SPKPASortModeDefault;
+    }
+    return self;
+}
+
+- (instancetype)initWithTitle:(NSString *)title
+         latestProfileUpdates:(NSArray<SPKProfileAnalyzerProfileChange *> *)latestUpdates
+       previousProfileUpdates:(NSArray<SPKProfileAnalyzerProfileChange *> *)previousUpdates {
+    if ((self = [super init])) {
+        self.title = title;
+        _kind = SPKPAListKindProfileUpdate;
+        _grouped = YES;
+        _baseSections = [self sectionsFromLatest:(latestUpdates ?: @[]) previous:(previousUpdates ?: @[])];
         _sortMode = SPKPASortModeDefault;
     }
     return self;
@@ -395,6 +462,33 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
     NSString *q = self.searchText.lowercaseString;
     BOOL hasQuery = q.length > 0;
 
+    if (self.grouped) {
+        NSMutableArray<SPKPAListSection *> *shown = [NSMutableArray array];
+        for (SPKPAListSection *base in self.baseSections) {
+            NSArray *items = base.items;
+            if (hasQuery) {
+                NSMutableArray *out = [NSMutableArray array];
+                for (id item in items) {
+                    SPKProfileAnalyzerUser *u = [self userForItem:item];
+                    if (u && [[self haystackForUser:u] containsString:q]) [out addObject:item];
+                }
+                items = out;
+            }
+            // Sort only user lists; profile-update groups stay in chronological order.
+            if (self.kind != SPKPAListKindProfileUpdate) items = [self sortUsers:items];
+            if (items.count) {
+                SPKPAListSection *s = [SPKPAListSection new];
+                s.title = base.title;
+                s.items = items;
+                [shown addObject:s];
+            }
+        }
+        self.shownSections = shown;
+        [self.tableView reloadData];
+        [self updateEmptyState];
+        return;
+    }
+
     if (self.kind == SPKPAListKindProfileUpdate) {
         self.shownUpdates = self.allUpdates;
     } else if (self.kind == SPKPAListKindVisited) {
@@ -420,7 +514,12 @@ typedef NS_ENUM(NSInteger, SPKPASortMode) {
 }
 
 - (void)updateEmptyState {
-    NSInteger count = [self.tableView numberOfRowsInSection:0];
+    NSInteger count = 0;
+    if (self.grouped) {
+        for (SPKPAListSection *s in self.shownSections) count += s.items.count;
+    } else {
+        count = [self.tableView numberOfRowsInSection:0];
+    }
     BOOL isEmpty = count == 0;
     self.emptyStateView.hidden = !isEmpty;
     self.tableView.hidden = isEmpty;
@@ -456,7 +555,28 @@ static NSString *SPKPARelativeDate(NSDate *date) {
     return [df stringFromDate:date];
 }
 
+// Extracts the displayable user from a section item (a user, or a profile-change's current side).
+- (SPKProfileAnalyzerUser *)userForItem:(id)item {
+    if ([item isKindOfClass:[SPKProfileAnalyzerProfileChange class]]) return ((SPKProfileAnalyzerProfileChange *)item).current;
+    return [item isKindOfClass:[SPKProfileAnalyzerUser class]] ? item : nil;
+}
+
+- (id)itemAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section >= (NSInteger)self.shownSections.count) return nil;
+    NSArray *items = self.shownSections[indexPath.section].items;
+    return indexPath.row < (NSInteger)items.count ? items[indexPath.row] : nil;
+}
+
+- (SPKProfileAnalyzerProfileChange *)updateAtIndexPath:(NSIndexPath *)indexPath {
+    if (self.grouped) {
+        id item = [self itemAtIndexPath:indexPath];
+        return [item isKindOfClass:[SPKProfileAnalyzerProfileChange class]] ? item : nil;
+    }
+    return indexPath.row < (NSInteger)self.shownUpdates.count ? self.shownUpdates[indexPath.row] : nil;
+}
+
 - (SPKProfileAnalyzerUser *)userAtIndexPath:(NSIndexPath *)indexPath {
+    if (self.grouped) return [self userForItem:[self itemAtIndexPath:indexPath]];
     switch (self.kind) {
         case SPKPAListKindVisited:
             return indexPath.row < (NSInteger)self.shownVisits.count ? self.shownVisits[indexPath.row].user : nil;
@@ -469,12 +589,45 @@ static NSString *SPKPARelativeDate(NSDate *date) {
 
 #pragma mark - Table
 
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    return self.grouped ? self.shownSections.count : 1;
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    if (self.grouped) {
+        return section < (NSInteger)self.shownSections.count ? (NSInteger)self.shownSections[section].items.count : 0;
+    }
     switch (self.kind) {
         case SPKPAListKindVisited:        return self.shownVisits.count;
         case SPKPAListKindProfileUpdate:  return self.shownUpdates.count;
         default:                          return self.shownUsers.count;
     }
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    // Always label the groups — the same user can appear in both Latest and Previous.
+    return (self.grouped && section < (NSInteger)self.shownSections.count) ? 34.0 : 0.0;
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+    if (!self.grouped || section >= (NSInteger)self.shownSections.count) return nil;
+    SPKPAListSection *s = self.shownSections[section];
+
+    UIView *container = [UIView new];
+    container.backgroundColor = [UIColor clearColor];
+
+    UILabel *label = [UILabel new];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    label.textColor = [SPKUtils SPKColor_InstagramSecondaryText];
+    label.text = [NSString stringWithFormat:@"%@  ·  %lu", s.title, (unsigned long)s.items.count];
+    [container addSubview:label];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
+        [label.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-6.0],
+    ]];
+    return container;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -489,11 +642,13 @@ static NSString *SPKPARelativeDate(NSDate *date) {
         SPKProfileAnalyzerVisit *v = self.shownVisits[indexPath.row];
         NSString *count = v.visitCount > 1 ? [NSString stringWithFormat:@"  •  %ld visits", (long)v.visitCount] : @"";
         cell.subtitleLabel.text = [NSString stringWithFormat:@"%@%@", SPKPARelativeDate(v.lastSeen), count];
-    } else if (self.kind == SPKPAListKindProfileUpdate && indexPath.row < (NSInteger)self.shownUpdates.count) {
-        cell.subtitleLabel.text = [self changeSummaryForUpdate:self.shownUpdates[indexPath.row]];
+    } else if (self.kind == SPKPAListKindProfileUpdate) {
+        SPKProfileAnalyzerProfileChange *ch = [self updateAtIndexPath:indexPath];
+        cell.subtitleLabel.text = ch ? [self changeSummaryForUpdate:ch] : @"";
     } else {
         cell.subtitleLabel.text = user.fullName.length ? user.fullName : @"";
     }
+    [cell setSubtitleShown:cell.subtitleLabel.text.length > 0];
 
     BOOL wantsButton = (self.kind == SPKPAListKindFollow || self.kind == SPKPAListKindUnfollow);
     [cell setActionButtonVisible:wantsButton];

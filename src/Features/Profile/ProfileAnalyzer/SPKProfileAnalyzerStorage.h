@@ -15,6 +15,7 @@ extern NSNotificationName const SPKProfileAnalyzerDataDidChangeNotification;
 //   <pk>.baseline.json  — optional user-pinned reference snapshot
 //   <pk>.header.json    — cached self-profile header info
 //   <pk>.visits.json    — visited-profiles log (newest-first)
+//   <pk>.changelog.json — durable follower/following change log (newest-first)
 @interface SPKProfileAnalyzerStorage : NSObject
 
 #pragma mark - Snapshots
@@ -32,6 +33,18 @@ extern NSNotificationName const SPKProfileAnalyzerDataDidChangeNotification;
 
 + (void)resetForUserPK:(NSString *)userPK;
 + (void)resetAll;
+
+#pragma mark - Change log
+
+// All change events for an account, newest-first.
++ (NSArray<SPKProfileAnalyzerChangeEvent *> *)changeEventsForUserPK:(NSString *)userPK;
+// Appends newly-detected events (dedup by eventID), caps the log, persists.
++ (void)appendChangeEvents:(NSArray<SPKProfileAnalyzerChangeEvent *> *)events forUserPK:(NSString *)userPK;
+// Unseen event count per type: @{ @(SPKPAChangeType): @(count) }. Single read.
++ (NSDictionary<NSNumber *, NSNumber *> *)unseenChangeCountsForUserPK:(NSString *)userPK;
+// Marks every event of `type` as seen (clears that category's badge).
++ (void)markChangeEventsSeenForType:(SPKPAChangeType)type forUserPK:(NSString *)userPK;
++ (void)clearChangeLogForUserPK:(NSString *)userPK;
 
 #pragma mark - Header cache
 

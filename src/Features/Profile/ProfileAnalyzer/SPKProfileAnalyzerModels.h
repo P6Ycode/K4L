@@ -86,4 +86,43 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+#pragma mark - Change log
+
+// The five change categories that accumulate across runs. Ordering matches the
+// dashboard's "Changes" section rows.
+typedef NS_ENUM(NSInteger, SPKPAChangeType) {
+    SPKPAChangeTypeNewFollower = 0,
+    SPKPAChangeTypeLostFollower,
+    SPKPAChangeTypeStartedFollowing,
+    SPKPAChangeTypeUnfollowed,
+    SPKPAChangeTypeProfileUpdate,
+};
+
+// One dated, durable change detected between two consecutive snapshots. Unlike
+// the rotating current/previous snapshots, change events are appended to a log
+// that is never clobbered, so the full history survives re-runs. Each event
+// carries a `seen` flag so the UI can badge what's new since the user last
+// opened the category.
+@interface SPKProfileAnalyzerChangeEvent : NSObject
+
+@property (nonatomic, assign) SPKPAChangeType type;
+@property (nonatomic, strong) SPKProfileAnalyzerUser *user;              // subject (state at detection)
+@property (nonatomic, strong, nullable) SPKProfileAnalyzerUser *previousUser; // ProfileUpdate: prior state
+@property (nonatomic, strong) NSDate *date;                             // scan date it was detected
+@property (nonatomic, assign) BOOL seen;
+
+// Stable identity (type + subject pk + date) used to de-dup on import/merge.
+@property (nonatomic, readonly) NSString *eventID;
+// ProfileUpdate only: rebuilds a change object for the detail row's diff summary.
+@property (nonatomic, readonly, nullable) SPKProfileAnalyzerProfileChange *asProfileChange;
+
++ (nullable instancetype)eventFromJSONDict:(NSDictionary *)dict;
+- (NSDictionary *)toJSONDict;
+
+// Mints the (unseen) events implied by a run's delta report, dated `date`.
++ (NSArray<SPKProfileAnalyzerChangeEvent *> *)eventsFromReport:(SPKProfileAnalyzerReport *)report
+                                                         date:(NSDate *)date;
+
+@end
+
 NS_ASSUME_NONNULL_END

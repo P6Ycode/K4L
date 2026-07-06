@@ -30,6 +30,7 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, copy) NSString *iconName;
 @property (nonatomic, assign) NSInteger count;
+@property (nonatomic, assign) NSInteger unseenCount;   // change rows: unseen "new" badge
 @end
 @implementation SPKPACategoryRow @end
 
@@ -259,8 +260,9 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @property (nonatomic, strong) SPKPAIdentityHeader *header;
 @property (nonatomic, strong) SPKProfileAnalyzerReport *report;
 @property (nonatomic, strong) NSArray<SPKProfileAnalyzerVisit *> *visits;
+@property (nonatomic, copy) NSArray<SPKProfileAnalyzerChangeEvent *> *changeEvents; // durable change log, newest-first
 @property (nonatomic, copy) NSArray<SPKPACategoryRow *> *currentRows;   // section: current snapshot
-@property (nonatomic, copy) NSArray<SPKPACategoryRow *> *changeRows;    // section: changes vs previous
+@property (nonatomic, copy) NSArray<SPKPACategoryRow *> *changeRows;    // section: accumulated changes
 @property (nonatomic, copy) NSString *selfPK;
 @property (nonatomic, assign) BOOL trackVisits;
 @end
@@ -431,6 +433,7 @@ static NSString *SPKPACompact(NSInteger n) {
     SPKProfileAnalyzerSnapshot *prev = [SPKProfileAnalyzerStorage previousSnapshotForUserPK:self.selfPK];
     self.report = [SPKProfileAnalyzerReport reportFromCurrent:cur previous:prev];
     self.visits = [SPKProfileAnalyzerStorage visitedProfilesForUserPK:self.selfPK];
+    self.changeEvents = [SPKProfileAnalyzerStorage changeEventsForUserPK:self.selfPK];
     [self rebuildRows];
     [self.tableView reloadData];
 }
@@ -438,6 +441,28 @@ static NSString *SPKPACompact(NSInteger n) {
 - (SPKPACategoryRow *)row:(SPKPACategory)cat title:(NSString *)title icon:(NSString *)icon count:(NSInteger)count {
     SPKPACategoryRow *r = [SPKPACategoryRow new];
     r.category = cat; r.title = title; r.iconName = icon; r.count = count;
+    return r;
+}
+
+// Maps a change category to its change-log type. Returns NO for current-state categories.
+- (BOOL)changeType:(SPKPAChangeType *)outType forCategory:(SPKPACategory)cat {
+    switch (cat) {
+        case SPKPACategoryNewFollowers:        if (outType) *outType = SPKPAChangeTypeNewFollower;     return YES;
+        case SPKPACategoryLostFollowers:       if (outType) *outType = SPKPAChangeTypeLostFollower;    return YES;
+        case SPKPACategoryYouStartedFollowing: if (outType) *outType = SPKPAChangeTypeStartedFollowing; return YES;
+        case SPKPACategoryYouUnfollowed:       if (outType) *outType = SPKPAChangeTypeUnfollowed;      return YES;
+        case SPKPACategoryProfileUpdates:      if (outType) *outType = SPKPAChangeTypeProfileUpdate;   return YES;
+        default: return NO;
+    }
+}
+
+- (SPKPACategoryRow *)changeRow:(SPKPACategory)cat title:(NSString *)title icon:(NSString *)icon
+                          total:(NSDictionary<NSNumber *, NSNumber *> *)total
+                         unseen:(NSDictionary<NSNumber *, NSNumber *> *)unseen {
+    SPKPAChangeType type = SPKPAChangeTypeNewFollower;
+    [self changeType:&type forCategory:cat];
+    SPKPACategoryRow *r = [self row:cat title:title icon:icon count:total[@(type)].integerValue];
+    r.unseenCount = unseen[@(type)].integerValue;
     return r;
 }
 
@@ -450,12 +475,23 @@ static NSString *SPKPACompact(NSInteger n) {
         [current addObject:[self row:SPKPACategoryNotFollowingBack title:@"Not Following You Back" icon:@"user_unfollow" count:rep.notFollowingYouBack.count]];
         [current addObject:[self row:SPKPACategoryDontFollowBack title:@"You Don't Follow Back" icon:@"user_follow" count:rep.youDontFollowBack.count]];
     }
-    if (rep.previous) {
-        [changes addObject:[self row:SPKPACategoryNewFollowers title:@"New Followers" icon:@"face_happy" count:rep.recentFollowers.count]];
-        [changes addObject:[self row:SPKPACategoryLostFollowers title:@"Lost Followers" icon:@"face_sad" count:rep.lostFollowers.count]];
-        [changes addObject:[self row:SPKPACategoryYouStartedFollowing title:@"You Started Following" icon:@"user_follow" count:rep.youStartedFollowing.count]];
-        [changes addObject:[self row:SPKPACategoryYouUnfollowed title:@"You Unfollowed" icon:@"user_unfollow" count:rep.youUnfollowed.count]];
-        [changes addObject:[self row:SPKPACategoryProfileUpdates title:@"Profile Updates" icon:@"edit" count:rep.profileUpdates.count]];
+
+    // Change rows are driven by the durable change log (accumulated across runs),
+    // not the rotating previous snapshot — so re-running never wipes the history.
+    // `count` is the cumulative total; `unseenCount` badges what's new.
+    NSMutableDictionary<NSNumber *, NSNumber *> *total = [NSMutableDictionary dictionary];
+    NSMutableDictionary<NSNumber *, NSNumber *> *unseen = [NSMutableDictionary dictionary];
+    for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
+        NSNumber *k = @(e.type);
+        total[k] = @(total[k].integerValue + 1);
+        if (!e.seen) unseen[k] = @(unseen[k].integerValue + 1);
+    }
+    if (self.changeEvents.count > 0) {
+        [changes addObject:[self changeRow:SPKPACategoryNewFollowers title:@"New Followers" icon:@"face_happy" total:total unseen:unseen]];
+        [changes addObject:[self changeRow:SPKPACategoryLostFollowers title:@"Lost Followers" icon:@"face_sad" total:total unseen:unseen]];
+        [changes addObject:[self changeRow:SPKPACategoryYouStartedFollowing title:@"You Started Following" icon:@"user_follow" total:total unseen:unseen]];
+        [changes addObject:[self changeRow:SPKPACategoryYouUnfollowed title:@"You Unfollowed" icon:@"user_unfollow" total:total unseen:unseen]];
+        [changes addObject:[self changeRow:SPKPACategoryProfileUpdates title:@"Profile Updates" icon:@"edit" total:total unseen:unseen]];
     }
     self.currentRows = current;
     self.changeRows = changes;
@@ -603,7 +639,7 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     switch ([self kindForSection:section]) {
         case SPKPASectionEmpty:    return nil;
         case SPKPASectionCurrent:  return @"This Scan";
-        case SPKPASectionChanges:  return @"Since Last Scan";
+        case SPKPASectionChanges:  return @"Changes";
         case SPKPASectionOptions:  return @"Options";
         case SPKPASectionReset:    return nil;
     }
@@ -677,14 +713,48 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     content.image = [SPKAssetUtils instagramIconNamed:r.iconName pointSize:24.0 renderingMode:UIImageRenderingModeAlwaysTemplate];
     content.imageProperties.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
 
-    // Count shown as a side-by-side secondary value, matching settings' accessory text.
-    content.secondaryText = [NSString stringWithFormat:@"%ld", (long)r.count];
     content.prefersSideBySideTextAndSecondaryText = YES;
     content.secondaryTextProperties.font = [UIFont systemFontOfSize:[UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize weight:UIFontWeightMedium];
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+
+    // With unseen changes the count is badged (blue pill) and shows how many are
+    // NEW; opening the category marks them seen and the number reverts to the plain
+    // cumulative total.
+    if (r.unseenCount > 0) {
+        content.secondaryText = nil;
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        cell.accessoryView = [self badgeAccessoryWithCount:r.unseenCount];
+    } else {
+        content.secondaryText = [NSString stringWithFormat:@"%ld", (long)r.count];
+        cell.accessoryView = nil;
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
 
     cell.contentConfiguration = content;
     return cell;
+}
+
+// A blue badge showing the (unseen) count, followed by a disclosure chevron.
+- (UIView *)badgeAccessoryWithCount:(NSInteger)count {
+    UILabel *pill = [UILabel new];
+    pill.text = [NSString stringWithFormat:@"%ld", (long)count];
+    pill.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    pill.textColor = [UIColor whiteColor];
+    pill.textAlignment = NSTextAlignmentCenter;
+    pill.backgroundColor = [SPKUtils SPKColor_InstagramBlue] ?: [UIColor systemBlueColor];
+    pill.layer.cornerRadius = 11.0;
+    pill.layer.masksToBounds = YES;
+    CGFloat pillW = MAX(22.0, [pill sizeThatFits:CGSizeMake(CGFLOAT_MAX, 22.0)].width + 14.0);
+    pill.frame = CGRectMake(0.0, 0.0, pillW, 22.0);
+
+    UIImageView *chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
+    chevron.tintColor = [SPKUtils SPKColor_InstagramTertiaryText];
+    chevron.contentMode = UIViewContentModeScaleAspectFit;
+    chevron.frame = CGRectMake(pillW + 8.0, 3.0, 8.0, 16.0);
+
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, pillW + 8.0 + 8.0, 22.0)];
+    [container addSubview:pill];
+    [container addSubview:chevron];
+    return container;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -724,10 +794,11 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     NSString *message =
         @"Profile Analyzer fetches your full followers and following lists and stores them on-device. "
         @"Each analysis is compared to the previous one to surface new and lost followers, who you started "
-        @"following or unfollowed, and profile changes.\n\n"
+        @"following or unfollowed, and profile changes. These changes accumulate into a history that isn't "
+        @"cleared by re-running. Anything you haven't looked at yet is badged and grouped under “Latest.”\n\n"
         @"Because Instagram limits how many requests can be made in a short window, accounts with more than "
-        @"13,000 total connections (followers + following) can't be analyzed. Analysis runs in the background — "
-        @"you'll get a notification when it finishes.\n\n"
+        @"13,000 total connections (followers + following) can't be analyzed.\n\n"
+        @"Analysis runs in the background; you'll get a notification when it finishes.\n\n"
         @"All data stays on your device and is never uploaded.";
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:@"About Profile Analyzer"
@@ -740,7 +811,7 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
 - (void)confirmReset {
     [SPKIGAlertPresenter presentAlertFromViewController:self
                                                   title:@"Reset Profile Analyzer"
-                                                message:@"This deletes all stored snapshots, visited-profile history and cached avatars. This cannot be undone."
+                                                message:@"This deletes all stored snapshots, the change history, visited-profile history and cached avatars. This cannot be undone."
                                                 actions:@[
         [SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil],
         [SPKIGAlertAction actionWithTitle:@"Reset" style:SPKIGAlertActionStyleDestructive handler:^{
@@ -762,30 +833,66 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     [self.navigationController pushViewController:vc animated:YES];
 }
 
+// Follow-button behaviour for each change list, mirroring the current-state lists.
+- (SPKPAListKind)listKindForChangeType:(SPKPAChangeType)type {
+    switch (type) {
+        case SPKPAChangeTypeNewFollower:     return SPKPAListKindFollow;    // may not follow them back
+        case SPKPAChangeTypeStartedFollowing: return SPKPAListKindUnfollow;  // you follow them
+        case SPKPAChangeTypeUnfollowed:      return SPKPAListKindFollow;    // you don't follow them
+        case SPKPAChangeTypeLostFollower:    return SPKPAListKindFollow;    // live-resolved either way
+        case SPKPAChangeTypeProfileUpdate:   return SPKPAListKindProfileUpdate;
+    }
+}
+
 - (void)openCategory:(SPKPACategory)cat title:(NSString *)title {
+    SPKPAChangeType type = SPKPAChangeTypeNewFollower;
+    if ([self changeType:&type forCategory:cat]) {
+        [self openChangeCategory:type title:title];
+        return;
+    }
+
+    // Current-state categories still come straight from the latest snapshot report.
     SPKProfileAnalyzerReport *r = self.report;
     NSArray<SPKProfileAnalyzerUser *> *users = nil;
     SPKPAListKind kind = SPKPAListKindPlain;
-
     switch (cat) {
-        case SPKPACategoryMutual:              users = r.mutualFollowers;      kind = SPKPAListKindUnfollow; break;
-        case SPKPACategoryNotFollowingBack:    users = r.notFollowingYouBack;  kind = SPKPAListKindUnfollow; break;
-        case SPKPACategoryDontFollowBack:      users = r.youDontFollowBack;    kind = SPKPAListKindFollow;   break;
-        case SPKPACategoryNewFollowers:        users = r.recentFollowers;      kind = SPKPAListKindFollow;   break;
-        case SPKPACategoryLostFollowers:       users = r.lostFollowers;        kind = SPKPAListKindPlain;    break;
-        case SPKPACategoryYouStartedFollowing: users = r.youStartedFollowing;  kind = SPKPAListKindUnfollow; break;
-        case SPKPACategoryYouUnfollowed:       users = r.youUnfollowed;        kind = SPKPAListKindFollow;   break;
-        case SPKPACategoryProfileUpdates: {
-            SPKProfileAnalyzerListViewController *vc =
-                [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title profileUpdates:r.profileUpdates];
-            [self.navigationController pushViewController:vc animated:YES];
-            return;
-        }
+        case SPKPACategoryMutual:           users = r.mutualFollowers;     kind = SPKPAListKindUnfollow; break;
+        case SPKPACategoryNotFollowingBack: users = r.notFollowingYouBack; kind = SPKPAListKindUnfollow; break;
+        case SPKPACategoryDontFollowBack:   users = r.youDontFollowBack;   kind = SPKPAListKindFollow;   break;
+        default: return;
     }
-
     SPKProfileAnalyzerListViewController *vc =
         [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title users:users kind:kind];
     [self.navigationController pushViewController:vc animated:YES];
+}
+
+// Splits a change category's events into Latest (unseen) / Previous (seen),
+// pushes a grouped list, then marks the category seen to clear its badge.
+- (void)openChangeCategory:(SPKPAChangeType)type title:(NSString *)title {
+    SPKProfileAnalyzerListViewController *vc;
+    if (type == SPKPAChangeTypeProfileUpdate) {
+        NSMutableArray *latest = [NSMutableArray array], *previous = [NSMutableArray array];
+        for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
+            if (e.type != type) continue;
+            SPKProfileAnalyzerProfileChange *ch = e.asProfileChange;
+            if (ch) [(e.seen ? previous : latest) addObject:ch];
+        }
+        vc = [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
+                                                   latestProfileUpdates:latest
+                                                 previousProfileUpdates:previous];
+    } else {
+        NSMutableArray *latest = [NSMutableArray array], *previous = [NSMutableArray array];
+        for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
+            if (e.type != type) continue;
+            [(e.seen ? previous : latest) addObject:e.user];
+        }
+        vc = [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
+                                                            latestUsers:latest
+                                                          previousUsers:previous
+                                                                   kind:[self listKindForChangeType:type]];
+    }
+    [self.navigationController pushViewController:vc animated:YES];
+    [SPKProfileAnalyzerStorage markChangeEventsSeenForType:type forUserPK:self.selfPK];
 }
 
 @end

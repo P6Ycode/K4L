@@ -20,6 +20,17 @@ typedef NS_ENUM(NSInteger, SPKPAListKind) {
 - (instancetype)initWithTitle:(NSString *)title
                profileUpdates:(NSArray<SPKProfileAnalyzerProfileChange *> *)updates;
 
+// Grouped variants — split a change category into "Latest" (unseen) above
+// "Previous" (seen). Empty groups are omitted.
+- (instancetype)initWithTitle:(NSString *)title
+                  latestUsers:(NSArray<SPKProfileAnalyzerUser *> *)latestUsers
+                previousUsers:(NSArray<SPKProfileAnalyzerUser *> *)previousUsers
+                         kind:(SPKPAListKind)kind;
+
+- (instancetype)initWithTitle:(NSString *)title
+         latestProfileUpdates:(NSArray<SPKProfileAnalyzerProfileChange *> *)latestUpdates
+       previousProfileUpdates:(NSArray<SPKProfileAnalyzerProfileChange *> *)previousUpdates;
+
 - (instancetype)initVisitedListWithTitle:(NSString *)title
                                   visits:(NSArray<SPKProfileAnalyzerVisit *> *)visits;
 
