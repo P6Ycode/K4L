@@ -230,8 +230,8 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
         kSPKActionDownloadLibrary,
         kSPKActionDownloadShare,
         kSPKActionDownloadGallery,
-        kSPKActionTrimSave,
-        kSPKActionEditSave
+        kSPKActionEditSave,
+        kSPKActionTrimSave
     ];
     NSArray<NSString *> *audioActions = (source == SPKActionButtonSourceFeed ||
                                          source == SPKActionButtonSourceReels ||
@@ -277,7 +277,7 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
     if (audioActions.count > 0) {
         [sections addObject:[SPKActionMenuSection sectionWithIdentifier:@"audio"
                                                                   title:@"Audio"
-                                                               iconName:@"audio_download"
+                                                               iconName:@"audio_upload"
                                                             collapsible:YES
                                                                 actions:audioActions]];
     }

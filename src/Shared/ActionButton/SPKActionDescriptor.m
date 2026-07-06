@@ -40,19 +40,19 @@
                                                     title:@"Edit & Save"
                                                  iconName:@"crop"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAudio
-                                                    title:@"Save to Files"
+                                                    title:@"Save Audio to Files"
                                                  iconName:@"audio_download"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAudioShare
-                                                    title:@"Share"
+                                                    title:@"Share Audio"
                                                  iconName:@"share"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAudioGallery
-                                                    title:@"Save to Gallery"
+                                                    title:@"Save Audio to Gallery"
                                                  iconName:@"sparkle_gallery"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionPlayAudio
-                                                    title:@"Play"
+                                                    title:@"Play Audio"
                                                  iconName:@"play"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionCopyAudioURL
-                                                    title:@"Copy Download URL"
+                                                    title:@"Copy Audio URL"
                                                  iconName:@"link"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAllLibrary
                                                     title:@"Save All to Photos"
