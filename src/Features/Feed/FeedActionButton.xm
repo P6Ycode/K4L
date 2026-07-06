@@ -15,6 +15,9 @@ extern "C" void MSHookMessageEx(Class cls, SEL sel, IMP replacement, IMP *result
 static NSInteger const kSPKFeedActionButtonTag = 921341;
 static const void *kSPKFeedExpandLongPressMarkerAssocKey = &kSPKFeedExpandLongPressMarkerAssocKey;
 static const void *kSPKFeedExpandLongPressDelegateAssocKey = &kSPKFeedExpandLongPressDelegateAssocKey;
+// Tracks which post the button was last configured for, so a recycled bar
+// showing a NEW post triggers a reconfigure even though its layout is unchanged.
+static const void *kSPKFeedConfiguredMediaAssocKey = &kSPKFeedConfiguredMediaAssocKey;
 
 @interface IGFeedItemPageVideoCell : UICollectionViewCell
 @end
@@ -126,6 +129,22 @@ static id SPKFeedMediaFromBarView(UIView *barView) {
     if (SPKActionButtonCarouselChildren(media).count > 0)
         return media;
     return media ?: hierarchyMedia;
+}
+
+// Cheap, allocation-free proxy for "which post is this bar showing" — the
+// delegate's `_media` pointer. Used only for identity comparison (never
+// dereferenced), so a recycled bar that swaps to a new post is detected without
+// paying for the full media/entries resolution on every layout pass.
+static id SPKFeedBarMediaSignal(UIView *barView) {
+    if (!barView)
+        return nil;
+    id delegate = SPKObjectForSelector(barView, @"delegate");
+    id nestedDelegate = SPKObjectForSelector(delegate, @"delegate");
+    id target = nestedDelegate ?: delegate;
+    id media = [SPKUtils getIvarForObj:target name:"_media"];
+    if (!media)
+        media = SPKObjectForSelector(target, @"media");
+    return media;
 }
 
 static UIView *SPKFeedAnyButtonFromBarView(UIView *barView) {
@@ -485,7 +504,15 @@ static SPKActionButtonContext *SPKFeedActionContext(UIView *barView) {
         return SPKFeedMediaFromBarView(resolvedContext.view);
     };
     context.currentIndexResolver = ^NSInteger(SPKActionButtonContext *resolvedContext) {
-        return SPKFeedCurrentIndexFromBarView(resolvedContext.view);
+        // Prefer the carousel's scroll-offset page index — the same signal the
+        // Expand path uses, which reliably tracks the visible slide. Fall back to
+        // the bar/page-control state only when the scroll index is 0 (either
+        // genuinely page 0 or no inner carousel found).
+        NSInteger scrollIndex = SPKFeedCarouselPageIndexFromView(resolvedContext.view);
+        if (scrollIndex > 0)
+            return scrollIndex;
+        NSInteger barIndex = SPKFeedCurrentIndexFromBarView(resolvedContext.view);
+        return barIndex >= 0 ? barIndex : scrollIndex;
     };
     context.captionResolver = ^NSString *(SPKActionButtonContext *resolvedContext, id media, NSArray *entries, NSInteger currentIndex) {
         return SPKFeedCaptionForContext(resolvedContext, media, entries, currentIndex);
@@ -546,12 +573,21 @@ static void SPKInstallFeedActionButton(UIView *barView) {
                                    width,
                                    CGRectGetHeight(anyColumnFrame));
     }
-    if (SPKFeedActionFrameMatches(button, expectedFrame))
+    // Reconfigure when EITHER the layout OR the resolved post changed. Gating on
+    // the frame alone left a recycled bar (same layout, new post) showing the
+    // previous post's menu — the actual cause of "video shows photo actions": the
+    // menu was simply never rebuilt for the new item. The post-change check is a
+    // cheap pointer compare; SPKConfigureActionButton still has its own
+    // signature short-circuit for the genuinely-unchanged case.
+    id barMedia = SPKFeedBarMediaSignal(barView);
+    id lastConfiguredMedia = objc_getAssociatedObject(button, kSPKFeedConfiguredMediaAssocKey);
+    if (button && SPKFeedActionFrameMatches(button, expectedFrame) && barMedia == lastConfiguredMedia)
         return;
 
     button = SPKActionButtonWithTag(barView, kSPKFeedActionButtonTag);
     button.translatesAutoresizingMaskIntoConstraints = YES;
     SPKConfigureActionButton(button, SPKFeedActionContext(barView));
+    objc_setAssociatedObject(button, kSPKFeedConfiguredMediaAssocKey, barMedia, OBJC_ASSOCIATION_ASSIGN);
     if (button.hidden)
         return;
 

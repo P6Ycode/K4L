@@ -3199,35 +3199,16 @@ static NSArray<UIMenuElement *> *SPKBuildBulkMenuChildren(SPKActionButtonConfigu
     return section ? @[ section ] : @[];
 }
 
-void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context) {
-    if (!button || !context)
-        return;
-    BOOL legacyDiagnostics = SPKActionButtonLegacyDiagnosticsEnabled(context.source);
-    if (legacyDiagnostics) {
-        SPKLog(@"ActionButton", @"Configuring feed action button class=%@ view=%@ iOS=%@",
-               NSStringFromClass(button.class),
-               NSStringFromClass(context.view.class),
-               [UIDevice currentDevice].systemVersion);
-    }
-
-    if (!objc_getAssociatedObject(button, kSPKActionButtonConfigurationObserverAssocKey)) {
-        __weak UIButton *weakObservedButton = button;
-        id token = [[NSNotificationCenter defaultCenter] addObserverForName:SPKActionButtonConfigurationDidChangeNotification
-                                                                     object:nil
-                                                                      queue:nil
-                                                                 usingBlock:^(__unused NSNotification *note) {
-                                                                     dispatch_async(dispatch_get_main_queue(), ^{
-                                                                         UIButton *strongButton = weakObservedButton;
-                                                                         SPKActionButtonContext *storedContext = SPKActionButtonContextFromButton(strongButton);
-                                                                         if (!strongButton || !storedContext)
-                                                                             return;
-                                                                         objc_setAssociatedObject(strongButton, kSPKActionButtonMenuSignatureAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
-                                                                         SPKConfigureActionButton(strongButton, storedContext);
-                                                                     });
-                                                                 }];
-        objc_setAssociatedObject(button, kSPKActionButtonConfigurationObserverAssocKey, token, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    }
-
+// Builds the ordered section menu elements from a FRESH resolve of the current
+// media / carousel slide. Extracted so the feed menu can re-run it lazily at
+// open time (via a UIDeferredMenuElement) — this is what makes a mixed carousel
+// track the CURRENT slide: video-only actions (Trim, View Thumbnail, audio)
+// reflect the visible item instead of whatever slide 0 was when the button was
+// first configured. Non-feed surfaces call it once (their menus are built
+// eagerly, as before).
+static NSArray<UIMenuElement *> *SPKBuildActionMenuElements(SPKActionButtonContext *context,
+                                                            SPKActionButtonConfiguration *configuration,
+                                                            __weak UIButton *weakButton) {
     id media = SPKResolveMediaForContext(context);
     NSArray<SPKResolvedMediaEntry *> *entries = SPKEntriesFromMedia(media);
     NSInteger currentIndex = SPKResolveCurrentIndexForContext(context);
@@ -3236,86 +3217,8 @@ void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context)
         currentEntry = entries[SPKClampedIndex(currentIndex, (NSInteger)entries.count)];
     }
     NSArray<NSString *> *visibleActions = SPKVisibleActionsForContext(context, media, entries, currentIndex);
-    if (legacyDiagnostics) {
-        SPKLog(@"ActionButton", @"Feed action button resolved visibleActions=%lu entries=%lu currentIndex=%ld",
-               (unsigned long)visibleActions.count,
-               (unsigned long)entries.count,
-               (long)currentIndex);
-    }
-
-    if (visibleActions.count == 0) {
-        button.hidden = YES;
-        button.menu = nil;
-        if (legacyDiagnostics) {
-            SPKLog(@"ActionButton", @"Feed action button hidden: no visible actions");
-        }
-        return;
-    }
-
-    button.hidden = NO;
-
-    NSString *defaultIdentifier = SPKResolvedDefaultActionIdentifier(visibleActions, context.source);
-    UIImage *defaultImage = SPKButtonDefaultImage(defaultIdentifier, context.source, context);
-    SPKSetButtonVisualImage(button, defaultImage, context.source, defaultIdentifier);
-    BOOL shouldOpenMenuOnTap = [defaultIdentifier isEqualToString:kSPKActionNone];
-    SPKActionButtonConfiguration *configuration = [SPKActionButtonConfiguration configurationForSource:context.source
-                                                                                            topicTitle:context.settingsTitle ?: SPKActionButtonTopicTitleForSource(context.source)
-                                                                                      supportedActions:context.supportedActions ?: SPKActionButtonSupportedActionsForSource(context.source)
-                                                                                       defaultSections:SPKActionButtonDefaultSectionsForSource(context.source)];
-    id bulkMedia = SPKResolveBulkMediaForContext(context);
-    NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(bulkMedia));
-    NSString *menuSignature = SPKActionButtonMenuSignature(context, configuration, visibleActions, defaultIdentifier, bulkEntries.count);
-    NSString *existingSignature = objc_getAssociatedObject(button, kSPKActionButtonMenuSignatureAssocKey);
-    if ([existingSignature isEqualToString:menuSignature] && button.menu != nil) {
-        button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
-        objc_setAssociatedObject(button, kSPKActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        if (legacyDiagnostics) {
-            SPKLog(@"ActionButton", @"Feed action button reused menu default=%@ opensMenu=%@",
-                   defaultIdentifier ?: @"(nil)",
-                   shouldOpenMenuOnTap ? @"YES" : @"NO");
-        }
-        return;
-    }
-
-    __weak UIButton *weakButton = button;
-    // No bespoke touch-down haptic: the resolved action emits its own completion haptic
-    // (via SPKNotify, which already respects general_disable_haptics), and the menu-open
-    // (None) path uses the system context-menu haptic. A selection haptic on touch-down
-    // stacked a second, wrong-feeling tick on top of those. Clear any stale one left on a
-    // reused button by an earlier configure pass.
-    UIAction *oldHapticAction = objc_getAssociatedObject(button, kSPKActionButtonHapticActionAssocKey);
-    if (oldHapticAction) {
-        [button removeAction:oldHapticAction forControlEvents:UIControlEventTouchDown];
-        objc_setAssociatedObject(button, kSPKActionButtonHapticActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    }
-
-    UIAction *oldTapAction = objc_getAssociatedObject(button, kSPKActionButtonTapActionAssocKey);
-    if (oldTapAction)
-        [button removeAction:oldTapAction forControlEvents:UIControlEventTouchUpInside];
-
-    if (shouldOpenMenuOnTap) {
-        objc_setAssociatedObject(button, kSPKActionButtonTapActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    } else {
-        UIAction *newTapAction = [UIAction actionWithHandler:^(__unused UIAction *action) {
-            UIButton *strongButton = weakButton;
-            SPKActionButtonContext *strongContext = SPKActionButtonContextFromButton(strongButton);
-            if (!strongContext)
-                return;
-
-            id tapMedia = SPKResolveMediaForContext(strongContext);
-            NSArray<SPKResolvedMediaEntry *> *tapEntries = SPKEntriesFromMedia(tapMedia);
-            NSArray<NSString *> *tapVisibleActions = SPKVisibleActionsForContext(strongContext, tapMedia, tapEntries, SPKResolveCurrentIndexForContext(strongContext));
-            NSString *tapIdentifier = SPKResolvedDefaultActionIdentifier(tapVisibleActions, strongContext.source);
-            SPKExecuteActionIdentifier(tapIdentifier, strongContext, YES);
-        }];
-        [button addAction:newTapAction forControlEvents:UIControlEventTouchUpInside];
-        objc_setAssociatedObject(button, kSPKActionButtonTapActionAssocKey, newTapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    }
 
     NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray array];
-    // Iterate the configured section order. Non-bulk sections render from their
-    // visible (enabled) actions; the "bulk" section renders the derived carousel
-    // actions lazily so it tracks the live carousel — both honor the user's order.
     NSArray<SPKActionMenuSection *> *visibleSectionsList = [configuration visibleSections];
     NSMutableDictionary<NSString *, SPKActionMenuSection *> *visibleSectionsByID = [NSMutableDictionary dictionary];
     for (SPKActionMenuSection *visibleSection in visibleSectionsList) {
@@ -3451,14 +3354,137 @@ void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context)
         }
     }
 
-    UIMenu *fullMenu = [UIMenu menuWithTitle:@"" children:menuElements];
+    return menuElements;
+}
+
+void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context) {
+    if (!button || !context)
+        return;
+    BOOL legacyDiagnostics = SPKActionButtonLegacyDiagnosticsEnabled(context.source);
+    if (legacyDiagnostics) {
+        SPKLog(@"ActionButton", @"Configuring feed action button class=%@ view=%@ iOS=%@",
+               NSStringFromClass(button.class),
+               NSStringFromClass(context.view.class),
+               [UIDevice currentDevice].systemVersion);
+    }
+
+    if (!objc_getAssociatedObject(button, kSPKActionButtonConfigurationObserverAssocKey)) {
+        __weak UIButton *weakObservedButton = button;
+        id token = [[NSNotificationCenter defaultCenter] addObserverForName:SPKActionButtonConfigurationDidChangeNotification
+                                                                     object:nil
+                                                                      queue:nil
+                                                                 usingBlock:^(__unused NSNotification *note) {
+                                                                     dispatch_async(dispatch_get_main_queue(), ^{
+                                                                         UIButton *strongButton = weakObservedButton;
+                                                                         SPKActionButtonContext *storedContext = SPKActionButtonContextFromButton(strongButton);
+                                                                         if (!strongButton || !storedContext)
+                                                                             return;
+                                                                         objc_setAssociatedObject(strongButton, kSPKActionButtonMenuSignatureAssocKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+                                                                         SPKConfigureActionButton(strongButton, storedContext);
+                                                                     });
+                                                                 }];
+        objc_setAssociatedObject(button, kSPKActionButtonConfigurationObserverAssocKey, token, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    id media = SPKResolveMediaForContext(context);
+    NSArray<SPKResolvedMediaEntry *> *entries = SPKEntriesFromMedia(media);
+    NSInteger currentIndex = SPKResolveCurrentIndexForContext(context);
+    NSArray<NSString *> *visibleActions = SPKVisibleActionsForContext(context, media, entries, currentIndex);
+    if (legacyDiagnostics) {
+        SPKLog(@"ActionButton", @"Feed action button resolved visibleActions=%lu entries=%lu currentIndex=%ld",
+               (unsigned long)visibleActions.count,
+               (unsigned long)entries.count,
+               (long)currentIndex);
+    }
+
+    if (visibleActions.count == 0) {
+        button.hidden = YES;
+        button.menu = nil;
+        if (legacyDiagnostics) {
+            SPKLog(@"ActionButton", @"Feed action button hidden: no visible actions");
+        }
+        return;
+    }
+
+    button.hidden = NO;
+
+    NSString *defaultIdentifier = SPKResolvedDefaultActionIdentifier(visibleActions, context.source);
+    UIImage *defaultImage = SPKButtonDefaultImage(defaultIdentifier, context.source, context);
+    SPKSetButtonVisualImage(button, defaultImage, context.source, defaultIdentifier);
+    BOOL shouldOpenMenuOnTap = [defaultIdentifier isEqualToString:kSPKActionNone];
+    SPKActionButtonConfiguration *configuration = [SPKActionButtonConfiguration configurationForSource:context.source
+                                                                                            topicTitle:context.settingsTitle ?: SPKActionButtonTopicTitleForSource(context.source)
+                                                                                      supportedActions:context.supportedActions ?: SPKActionButtonSupportedActionsForSource(context.source)
+                                                                                       defaultSections:SPKActionButtonDefaultSectionsForSource(context.source)];
+    id bulkMedia = SPKResolveBulkMediaForContext(context);
+    NSArray<SPKResolvedMediaEntry *> *bulkEntries = SPKDownloadableEntries(SPKEntriesFromMedia(bulkMedia));
+    NSString *menuSignature = SPKActionButtonMenuSignature(context, configuration, visibleActions, defaultIdentifier, bulkEntries.count);
+    NSString *existingSignature = objc_getAssociatedObject(button, kSPKActionButtonMenuSignatureAssocKey);
+    if ([existingSignature isEqualToString:menuSignature] && button.menu != nil) {
+        button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
+        objc_setAssociatedObject(button, kSPKActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        if (legacyDiagnostics) {
+            SPKLog(@"ActionButton", @"Feed action button reused menu default=%@ opensMenu=%@",
+                   defaultIdentifier ?: @"(nil)",
+                   shouldOpenMenuOnTap ? @"YES" : @"NO");
+        }
+        return;
+    }
+
+    __weak UIButton *weakButton = button;
+    // No bespoke touch-down haptic: the resolved action emits its own completion haptic
+    // (via SPKNotify, which already respects general_disable_haptics), and the menu-open
+    // (None) path uses the system context-menu haptic. A selection haptic on touch-down
+    // stacked a second, wrong-feeling tick on top of those. Clear any stale one left on a
+    // reused button by an earlier configure pass.
+    UIAction *oldHapticAction = objc_getAssociatedObject(button, kSPKActionButtonHapticActionAssocKey);
+    if (oldHapticAction) {
+        [button removeAction:oldHapticAction forControlEvents:UIControlEventTouchDown];
+        objc_setAssociatedObject(button, kSPKActionButtonHapticActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    UIAction *oldTapAction = objc_getAssociatedObject(button, kSPKActionButtonTapActionAssocKey);
+    if (oldTapAction)
+        [button removeAction:oldTapAction forControlEvents:UIControlEventTouchUpInside];
+
+    if (shouldOpenMenuOnTap) {
+        objc_setAssociatedObject(button, kSPKActionButtonTapActionAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } else {
+        UIAction *newTapAction = [UIAction actionWithHandler:^(__unused UIAction *action) {
+            UIButton *strongButton = weakButton;
+            SPKActionButtonContext *strongContext = SPKActionButtonContextFromButton(strongButton);
+            if (!strongContext)
+                return;
+
+            id tapMedia = SPKResolveMediaForContext(strongContext);
+            NSArray<SPKResolvedMediaEntry *> *tapEntries = SPKEntriesFromMedia(tapMedia);
+            NSArray<NSString *> *tapVisibleActions = SPKVisibleActionsForContext(strongContext, tapMedia, tapEntries, SPKResolveCurrentIndexForContext(strongContext));
+            NSString *tapIdentifier = SPKResolvedDefaultActionIdentifier(tapVisibleActions, strongContext.source);
+            SPKExecuteActionIdentifier(tapIdentifier, strongContext, YES);
+        }];
+        [button addAction:newTapAction forControlEvents:UIControlEventTouchUpInside];
+        objc_setAssociatedObject(button, kSPKActionButtonTapActionAssocKey, newTapAction, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    // Feed items are the only surface with in-line, laterally-swipeable mixed
+    // carousels whose current slide changes WITHOUT the bar re-laying-out, so its
+    // menu is resolved lazily at open time (video-only actions track the visible
+    // slide). Other surfaces build eagerly — same behavior as before.
+    UIMenu *fullMenu;
+    if (context.source == SPKActionButtonSourceFeed) {
+        UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+            completion(SPKBuildActionMenuElements(context, configuration, weakButton));
+        }];
+        fullMenu = [UIMenu menuWithTitle:@"" children:@[ deferred ]];
+    } else {
+        fullMenu = [UIMenu menuWithTitle:@"" children:SPKBuildActionMenuElements(context, configuration, weakButton)];
+    }
     button.menu = fullMenu;
     button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;
     objc_setAssociatedObject(button, kSPKActionButtonContextAssocKey, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(button, kSPKActionButtonMenuSignatureAssocKey, menuSignature, OBJC_ASSOCIATION_COPY_NONATOMIC);
     if (legacyDiagnostics) {
-        SPKLog(@"ActionButton", @"Feed action button menu complete elements=%lu default=%@ opensMenu=%@",
-               (unsigned long)menuElements.count,
+        SPKLog(@"ActionButton", @"Feed action button menu complete default=%@ opensMenu=%@",
                defaultIdentifier ?: @"(nil)",
                shouldOpenMenuOnTap ? @"YES" : @"NO");
     }
