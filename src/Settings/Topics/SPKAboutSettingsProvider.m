@@ -44,6 +44,13 @@
                                       url:@"https://github.com/efibalogh/sparkle-ig"]
         ],
                         nil),
+        SPKTopicSection(@"Community", @[
+            [SPKSetting linkCellWithTitle:@"Telegram Channel"
+                                 subtitle:@"Join the community for updates and support"
+                                 imageUrl:@"https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/960px-Telegram_logo.svg.png"
+                                      url:@"https://t.me/sparkle_ig"]
+        ],
+                        nil),
         SPKTopicSection(@"Credits", @[
             [SPKSetting linkCellWithTitle:@"SoCuul • SCInsta"
                                  subtitle:@"Base project Sparkle is built on"

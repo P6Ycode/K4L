@@ -394,7 +394,7 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
 
 // After the file is converted to a voice-note-compatible m4a, optionally let the
 // user trim it first (pref-gated so it can be turned off). "Send" uses the file
-// as-is; "Trim & Send…" opens the audio trim editor and sends the rendered cut.
+// as-is; "Trim & Send" opens the audio trim editor and sends the rendered cut.
 - (void)offerTrimThenSendURL:(NSURL *)url duration:(NSTimeInterval)duration {
     if (![SPKUtils getBoolPref:@"msgs_audio_upload_trim"]) {
         [self updateUploadProgress:0.85f title:@"Sending audio" subtitle:nil];
@@ -423,7 +423,7 @@ static void SPKAudioDMNotify(NSString *title, NSString *message, BOOL success) {
                                                                                         [weakSelf beginUploadProgressWithTitle:@"Sending audio" subtitle:nil];
                                                                                         [weakSelf sendConvertedURL:url duration:duration];
                                                                                     }],
-                                                          [SPKIGAlertAction actionWithTitle:@"Trim & Send…"
+                                                          [SPKIGAlertAction actionWithTitle:@"Trim & Send"
                                                                                       style:SPKIGAlertActionStyleDefault
                                                                                     handler:^{
                                                                                         [weakSelf presentAudioTrimForURL:url];

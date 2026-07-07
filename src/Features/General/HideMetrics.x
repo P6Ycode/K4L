@@ -3,7 +3,7 @@
 #import <objc/runtime.h>
 
 // IG 436+ : the reels vertical UFI no longer drives the visible counts through
-// its setNumLikes:/setNumComments:/… setters. Counts are rendered by per-type
+// its setNumLikes:/setNumComments:/... setters. Counts are rendered by per-type
 // lazy count buttons (IGSundialLikeCountButton / IGSundialUFIButtonWithCount)
 // that the UFI configures from an immutable IGSundialViewerUFIViewModel. We can't
 // mutate that value object, so instead we reach the type-specific buttons after

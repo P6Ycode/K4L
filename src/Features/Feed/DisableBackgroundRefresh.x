@@ -81,7 +81,7 @@ static void SPKInstallRefreshUtilityHooks(void) {
 
 // MARK: - Background refresh network source hooks
 // NOTE: On IG 437+ this initializer and the interval getters are gone (init is
-// now initWithPosts:…). Kept for older IG (≤410) compatibility; harmless when
+// now initWithPosts:...). Kept for older IG (≤410) compatibility; harmless when
 // the selector is absent. The real gate on modern IG is the refresh-utility
 // class methods above.
 

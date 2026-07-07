@@ -118,7 +118,7 @@
     };
     master.reloadsTableOnSwitchChange = YES; // grey out / re-enable the dependents live
 
-    SPKSetting *pageButton = [SPKSetting switchCellWithTitle:@"Audio Page Button" icon:SPKSettingsIcon(@"audio_page") defaultsKey:@"downloads_audio_page_button" requiresRestart:YES];
+    SPKSetting *pageButton = [SPKSetting switchCellWithTitle:@"Audio Page Button" icon:SPKSettingsIcon(@"audio_page") defaultsKey:@"downloads_audio_page_button"];
     pageButton.enabledProvider = audioEnabled;
 
     SPKSetting *pageDefault = SPKSettingApplySelectedMenuIcon([SPKSetting menuCellWithTitle:@"Audio Page Default Action" icon:SPKSettingsIcon(@"action") menu:[self audioPageDefaultActionMenu]], SPKSettingsIcon(@"action"));

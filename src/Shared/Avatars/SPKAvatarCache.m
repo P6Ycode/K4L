@@ -202,7 +202,7 @@ static NSString *SPKAvatarPathForPK(NSString *pk) {
     });
 }
 
-// Group thread keys ("grp_…") aren't resolvable via users/<pk>/info/; only
+// Group thread keys ("grp_...") aren't resolvable via users/<pk>/info/; only
 // numeric user PKs are.
 - (BOOL)canResolvePK:(NSString *)pk {
     if (pk.length == 0)

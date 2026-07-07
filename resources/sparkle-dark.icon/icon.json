@@ -24,7 +24,14 @@
           "glass" : true,
           "hidden" : false,
           "image-name" : "sparkle-logo-gradient.png",
-          "name" : "sparkle-logo-gradient"
+          "name" : "sparkle-logo-gradient",
+          "position" : {
+            "scale" : 0.9,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
         }
       ],
       "lighting" : "combined",

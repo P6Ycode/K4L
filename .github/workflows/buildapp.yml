@@ -152,49 +152,27 @@ jobs:
               env:
                 THEOS: ${{ github.workspace }}/theos
 
-            - name: Rename IPA to include version info
-              run: |
-                cd main/packages
-                SUFFIX=""
-                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
-                  SUFFIX="-sidestore"
-                fi
-                
-                if [ "${{ inputs.with_flex }}" = "true" ]; then
-                  IPA_NAME="Sparkle${SUFFIX}.ipa"
-                else
-                  IPA_NAME="Sparkle-no-flex${SUFFIX}.ipa"
-                fi
-                
-                FINAL_SUFFIX=""
-                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
-                  FINAL_SUFFIX="_sidestore"
-                fi
-                
-                mv "$IPA_NAME" "Sparkle_sideloaded_v${SPARKLE_VERSION}${FINAL_SUFFIX}.ipa"
-
             - name: Pass package name to upload action
               id: package_name
               run: |
-                FINAL_SUFFIX=""
-                if [ "${{ inputs.for_sidestore }}" = "true" ]; then
-                  FINAL_SUFFIX="_sidestore"
-                fi
-                echo "package=Sparkle_sideloaded_v${SPARKLE_VERSION}${FINAL_SUFFIX}.ipa" >> "$GITHUB_OUTPUT"
+                # build.sh already produces Sparkle[_<flags>]_v<version>_IG_v<ig version>.ipa
+                IPA_PATH="$(ls -t main/packages/Sparkle_*_IG_v*.ipa | head -n1)"
+                echo "package=$(basename "$IPA_PATH")" >> "$GITHUB_OUTPUT"
+                echo "path=${IPA_PATH}" >> "$GITHUB_OUTPUT"
 
             - name: Upload Artifact
               if: ${{ inputs.upload_artifact }}
               uses: actions/upload-artifact@v4
               with:
-                name: Sparkle_sideloaded_v${{ steps.sparkle_version.outputs.version }}
-                path: ${{ github.workspace }}/main/packages/${{ steps.package_name.outputs.package }}
+                name: ${{ steps.package_name.outputs.package }}
+                path: ${{ github.workspace }}/main/${{ steps.package_name.outputs.path }}
                 if-no-files-found: error
 
             - name: Create Release
               uses: softprops/action-gh-release@v2.0.6
               with:
-                name: Sparkle_sideloaded_v${{ steps.sparkle_version.outputs.version }}
-                files: ${{ github.workspace }}/main/packages/Sparkle_sideloaded_v*.ipa
+                name: Sparkle v${{ steps.sparkle_version.outputs.version }}
+                files: ${{ github.workspace }}/main/packages/Sparkle_*_IG_v*.ipa
                 draft: true
 
             - name: Output Release URL

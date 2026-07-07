@@ -4,7 +4,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // App-wide, two-tier profile-picture cache shared across every Sparkle surface
-// (Profile Analyzer lists, Deleted Messages, …). A user's avatar is the same
+// (Profile Analyzer lists, Deleted Messages, ...). A user's avatar is the same
 // regardless of where it's shown, so a single store is keyed by user PK.
 //
 // • In-memory NSCache keyed by PK for instant cell reuse.

@@ -97,16 +97,12 @@ jobs:
               env:
                 THEOS: ${{ github.workspace }}/theos
 
-            - name: Rename deb to include version info
-              run: |
-                cd main/packages
-                DEB_FILE="$(ls -t com.sparkle.sparkle_*.deb | head -n1)"
-                mv "$DEB_FILE" "com.sparkle.sparkle_${SPARKLE_VERSION}+debug-rootless.deb"
-
             - name: Pass package name to upload action
               id: package_name
               run: |
-                echo "package=$(ls -t main/packages | head -n1)" >> "$GITHUB_OUTPUT"
+                # build.sh already names the deb Sparkle_v<version>_rootless.deb
+                DEB_FILE="$(basename "$(ls -t main/packages/Sparkle_v*_rootless.deb | head -n1)")"
+                echo "package=${DEB_FILE}" >> "$GITHUB_OUTPUT"
 
             - name: Upload Artifact
               uses: actions/upload-artifact@v4

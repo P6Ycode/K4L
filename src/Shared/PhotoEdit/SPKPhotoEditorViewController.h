@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, SPKPhotoEditorAspectMode) {
     /// A single fixed 1:1 crop, no ratio picker (Instants positioning).
     SPKPhotoEditorAspectModeLockedSquare = 0,
-    /// Freeform + ratio presets (Original / 1:1 / 4:5 / 16:9) for general editing.
+    /// Freeform + ratio presets for general editing.
     SPKPhotoEditorAspectModeFreeform = 1,
 };
 
@@ -30,7 +30,7 @@ typedef NS_ENUM(NSInteger, SPKPhotoEditorAspectMode) {
 /// Title of the confirm button (e.g. "Use" for Instants, "Done" for Gallery).
 @property (nonatomic, copy) NSString *confirmButtonTitle;
 /// When non-empty, Done becomes a destination menu (Photos / Gallery / Share /
-/// Copy …). The chosen id is delivered via the destination completion. Empty =
+/// Copy ...). The chosen id is delivered via the destination completion. Empty =
 /// a plain confirm that returns just the image (gallery/instants flows).
 @property (nonatomic, copy, nullable) NSArray<SPKPhotoEditorDoneOption *> *doneOptions;
 

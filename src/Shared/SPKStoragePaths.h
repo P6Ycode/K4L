@@ -10,7 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)profileAnalyzerDirectory;
 + (NSString *)downloadsDirectory;
 // App-wide profile-picture cache shared across features (Profile Analyzer,
-// Deleted Messages, …). Keyed by user PK; regenerable, safe to clear.
+// Deleted Messages, ...). Keyed by user PK; regenerable, safe to clear.
 + (NSString *)avatarCacheDirectory;
 
 // Total bytes of regular files under `path` (recursive). 0 if missing.

@@ -6,6 +6,10 @@ CMAKE_OSX_ARCHITECTURES="arm64e;arm64"
 CMAKE_OSX_SYSROOT="iphoneos"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Sparkle version, read from the control file (single source of truth).
+SPARKLE_VERSION="$(awk '/^Version:/ {print $2; exit}' "$ROOT_DIR/control")"
+
 FFMPEG_MODULES_DIR="$ROOT_DIR/modules/ffmpegkit"
 FFMPEG_FRAMEWORKS=(
     "$FFMPEG_MODULES_DIR/ffmpegkit.framework"
@@ -305,43 +309,86 @@ inject_custom_icons() {
     rm -rf "$temp_dir"
 }
 
-# Args: instagram ipa basename without .ipa; globals OPT_* must be set
-sparkle_sideload_output_ipa() {
-    local ig_base="$1"
-    local suffix=""
-    if [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ]; then
-        if [ "${OPT_SIDESTORE:-0}" -eq 1 ] && [[ "$ig_base" == Sparkle* ]]; then
-            suffix="-sidestore"
-        else
-            suffix="-no-ext"
+# Rename the freshly built .deb to Sparkle_v<version>_<rootless|rootful>.deb.
+# Arg: scheme name (rootless|rootful). Echoes the final path.
+rename_sparkle_deb() {
+    local scheme="$1"
+    local newest dest
+    newest="$(ls -t "$ROOT_DIR/packages/"com.sparkle.sparkle_*.deb 2>/dev/null | head -n 1)"
+    if [ -z "$newest" ]; then
+        echo -e '\033[1m\033[0;31mCould not find a built .deb to rename.\033[0m' >&2
+        return 1
+    fi
+    dest="$ROOT_DIR/packages/Sparkle_v${SPARKLE_VERSION}_${scheme}.deb"
+    mv -f "$newest" "$dest"
+    echo "$dest"
+}
+
+# Read the Instagram marketing version (CFBundleShortVersionString) from an IPA.
+# Falls back to a filename-derived guess, then to "unknown".
+ig_app_version() {
+    local ipa="$1"
+    local tmp plist version
+    tmp="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-igver.XXXXXX")"
+
+    if unzip -o -q "$ipa" "Payload/*.app/Info.plist" -d "$tmp" >/dev/null 2>&1; then
+        plist="$(find "$tmp/Payload" -maxdepth 2 -name Info.plist 2>/dev/null | head -n 1)"
+        if [ -n "$plist" ]; then
+            version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null)"
         fi
     fi
-    if [ "${OPT_INJECT:-0}" -eq 1 ] && [ "${OPT_FFMPEG:-0}" -eq 1 ] && [ "${OPT_PATCH:-0}" -eq 1 ]; then
-        if [ "${OPT_DEV:-0}" -eq 1 ]; then
-            if [ "${OPT_FLEX:-0}" -eq 1 ]; then
-                echo "Sparkle-dev${suffix}.ipa"
-            else
-                echo "Sparkle-dev-no-flex${suffix}.ipa"
-            fi
-        else
-            if [ "${OPT_FLEX:-0}" -eq 1 ]; then
-                echo "Sparkle${suffix}.ipa"
-            else
-                echo "Sparkle-no-flex${suffix}.ipa"
-            fi
-        fi
-        return
+    rm -rf "$tmp"
+
+    if [ -z "$version" ]; then
+        # e.g. com.burbn.instagram_437.1.0.decrypted.ipa -> 437.1.0
+        version="$(basename "$ipa" | sed -E 's/^[^0-9]*([0-9]+(\.[0-9]+)*).*/\1/')"
     fi
+    [ -z "$version" ] && version="unknown"
+    echo "$version"
+}
+
+# Build the "<flags>" segment of the output name from the OPT_* globals.
+# Empty for a plain release build (--inject --ffmpeg --patch, no extras).
+sparkle_flag_token() {
     local parts=()
-    [ "${OPT_INJECT:-0}" -eq 1 ] && parts+=(inject)
-    [ "${OPT_FFMPEG:-0}" -eq 1 ] && parts+=(ffmpeg)
-    [ "${OPT_FLEX:-0}" -eq 1 ] && parts+=(flex)
-    [ "${OPT_PATCH:-0}" -eq 1 ] && parts+=(patch)
-    [ -n "$suffix" ] && parts+=("${suffix#-}")
-    [ "${OPT_DEV:-0}" -eq 1 ] && parts+=(dev)
-    local joined
-    joined=$(IFS=-; echo "${parts[*]}")
-    echo "${ig_base}-${joined}.ipa"
+    if [ "${OPT_INJECT:-0}" -eq 1 ] && [ "${OPT_FFMPEG:-0}" -eq 1 ] && [ "${OPT_PATCH:-0}" -eq 1 ]; then
+        # Canonical full release build (flex included): only annotate the
+        # notable deviations from it.
+        [ "${OPT_DEV:-0}" -eq 1 ] && parts+=(dev)
+        [ "${OPT_FLEX:-0}" -eq 0 ] && parts+=(no-flex)
+        if [ "${OPT_SIDESTORE:-0}" -eq 1 ]; then
+            parts+=(sidestore)
+        elif [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ]; then
+            parts+=(no-ext)
+        fi
+    else
+        # Partial / à la carte build: spell out every included component.
+        [ "${OPT_INJECT:-0}" -eq 1 ] && parts+=(inject)
+        [ "${OPT_FFMPEG:-0}" -eq 1 ] && parts+=(ffmpeg)
+        [ "${OPT_FLEX:-0}" -eq 1 ] && parts+=(flex)
+        [ "${OPT_PATCH:-0}" -eq 1 ] && parts+=(patch)
+        if [ "${OPT_SIDESTORE:-0}" -eq 1 ]; then
+            parts+=(sidestore)
+        elif [ "${OPT_STRIP_EXTENSIONS:-0}" -eq 1 ]; then
+            parts+=(no-ext)
+        fi
+        [ "${OPT_DEV:-0}" -eq 1 ] && parts+=(dev)
+    fi
+    local IFS=_
+    echo "${parts[*]}"
+}
+
+# Compose the output IPA name:
+#   Sparkle[_<flags>]_v<sparkle version>_IG_v<instagram version>.ipa
+# Globals: SPARKLE_VERSION, IG_VERSION, OPT_*
+sparkle_sideload_output_ipa() {
+    local flags name
+    flags="$(sparkle_flag_token)"
+    name="Sparkle"
+    [ -n "$flags" ] && name="${name}_${flags}"
+    name="${name}_v${SPARKLE_VERSION}"
+    [ -n "${IG_VERSION:-}" ] && name="${name}_IG_v${IG_VERSION}"
+    echo "${name}.ipa"
 }
 
 # Building modes
@@ -480,8 +527,8 @@ then
         ensure_ffmpeg_frameworks
     fi
 
-    ig_base="$(basename "$ipaFile" .ipa)"
-    OUTPUT_IPA="$(sparkle_sideload_output_ipa "$ig_base")"
+    IG_VERSION="$(ig_app_version "packages/${ipaFile}")"
+    OUTPUT_IPA="$(sparkle_sideload_output_ipa)"
     ipa_out="$ROOT_DIR/packages/${OUTPUT_IPA}"
     ipa_ffmpeg_tmp="$ROOT_DIR/packages/.sparkle-build-tmp-ffmpeg.ipa"
     ipa_stage_input="$ROOT_DIR/packages/.sparkle-build-stage-input.ipa"
@@ -563,7 +610,9 @@ then
 
     ensure_ffmpeg_frameworks
 
-    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
+    DEB_OUT="$(rename_sparkle_deb rootless)"
+
+    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nOutput deb: ${DEB_OUT}"
 
 elif [ "$1" == "rootful" ];
 then
@@ -579,7 +628,9 @@ then
 
     ensure_ffmpeg_frameworks
 
-    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
+    DEB_OUT="$(rename_sparkle_deb rootful)"
+
+    echo -e "\033[1m\033[32mDone, we hope you enjoy Sparkle!\033[0m\n\nOutput deb: ${DEB_OUT}"
 
 else
     echo '+--------------------+'
@@ -609,6 +660,10 @@ else
     echo '    ./build.sh ipa --release --flex'
     echo '    ./build.sh ipa --sidestore'
     echo '    ./build.sh ipa --ffmpeg    (FFmpeg in IPA only)'
+    echo
+    echo 'Output names:'
+    echo '    IPA  Sparkle[_<flags>]_v<version>_IG_v<ig version>.ipa'
+    echo '    deb  Sparkle_v<version>_<rootless|rootful>.deb'
     echo
     exit 1
 fi
