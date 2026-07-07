@@ -603,13 +603,81 @@ static NSString *SPKMediaFileSizeString(NSInteger fileSizeBytes) {
                  countStyle:NSByteCountFormatterCountStyleFile];
 }
 
+static NSString *SPKMediaMegapixelString(NSInteger width, NSInteger height) {
+    if (width <= 0 || height <= 0)
+        return nil;
+    double mp = ((double)width * (double)height) / 1000000.0;
+    if (mp <= 0.0)
+        return nil;
+    if (mp < 0.1)
+        return @"<0.1 MP";
+    if (mp >= 10.0)
+        return [NSString stringWithFormat:@"%.0f MP", mp];
+    return [NSString stringWithFormat:@"%.1f MP", mp];
+}
+
+static NSString *SPKMediaAspectRatioString(NSInteger width, NSInteger height) {
+    if (width <= 0 || height <= 0)
+        return nil;
+    double ratio = (double)width / (double)height;
+    // Snap to the aspect ratios Instagram media actually ships in.
+    NSArray<NSArray *> *known = @[
+        @[ @"1:1", @1.0 ], @[ @"4:5", @0.8 ], @[ @"5:4", @1.25 ],
+        @[ @"3:4", @0.75 ], @[ @"4:3", @(4.0 / 3.0) ], @[ @"2:3", @(2.0 / 3.0) ],
+        @[ @"3:2", @1.5 ], @[ @"9:16", @0.5625 ], @[ @"16:9", @(16.0 / 9.0) ]
+    ];
+    for (NSArray *entry in known) {
+        double value = [entry[1] doubleValue];
+        if (fabs(ratio - value) / value <= 0.03)
+            return entry[0];
+    }
+    // Fall back to a reduced integer ratio when it stays tidy, else a decimal.
+    NSInteger a = width, b = height;
+    while (b != 0) {
+        NSInteger t = b;
+        b = a % b;
+        a = t;
+    }
+    NSInteger rw = a > 0 ? width / a : width;
+    NSInteger rh = a > 0 ? height / a : height;
+    if (rw <= 32 && rh <= 32)
+        return [NSString stringWithFormat:@"%ld:%ld", (long)rw, (long)rh];
+    return [NSString stringWithFormat:@"%.2f:1", ratio];
+}
+
+static NSString *SPKMediaPhotoFormatFromURL(NSURL *url) {
+    NSString *ext = url.path.pathExtension.lowercaseString;
+    return ext.length > 0 ? ext : nil;
+}
+
+/// Relative quality tier for a photo candidate, judged against the largest
+/// candidate's long edge. Titles still carry the exact resolution alongside.
+static NSString *SPKMediaPhotoTierLabel(NSInteger longEdge,
+                                        NSInteger maxLongEdge) {
+    if (longEdge <= 0 || maxLongEdge <= 0)
+        return nil;
+    double fraction = (double)longEdge / (double)maxLongEdge;
+    if (fraction >= 0.98)
+        return @"Full";
+    if (fraction >= 0.6)
+        return @"High";
+    if (fraction >= 0.35)
+        return @"Medium";
+    return @"Low";
+}
+
 static NSString *SPKMediaPhotoSubtitle(NSInteger width, NSInteger height,
                                        NSInteger fileSizeBytes) {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    NSString *megapixels = SPKMediaMegapixelString(width, height);
+    if (megapixels.length > 0)
+        [parts addObject:megapixels];
+    NSString *aspect = SPKMediaAspectRatioString(width, height);
+    if (aspect.length > 0)
+        [parts addObject:aspect];
     NSString *size = SPKMediaFileSizeString(fileSizeBytes);
-    if (size.length > 0) {
+    if (size.length > 0)
         [parts addObject:size];
-    }
     return [parts componentsJoinedByString:@" • "];
 }
 
@@ -645,7 +713,17 @@ SPKMediaBuildPhotoOptions(id mediaObject, NSURL *fallbackURL,
     NSMutableArray<SPKMediaOption *> *options = [NSMutableArray array];
     NSMutableSet<NSString *> *seen = [NSMutableSet set];
 
-    for (NSDictionary *variant in SPKMediaPhotoVariantDictionaries(mediaObject)) {
+    NSArray<NSDictionary *> *variants =
+        SPKMediaPhotoVariantDictionaries(mediaObject);
+    // Variants arrive sorted largest-first; the leader anchors the tier scale.
+    NSInteger maxLongEdge = 0;
+    for (NSDictionary *variant in variants) {
+        NSInteger longEdge = MAX([variant[@"width"] integerValue],
+                                 [variant[@"height"] integerValue]);
+        maxLongEdge = MAX(maxLongEdge, longEdge);
+    }
+
+    for (NSDictionary *variant in variants) {
         NSURL *url = variant[@"url"];
         if (!url.absoluteString.length || [seen containsObject:url.absoluteString])
             continue;
@@ -658,12 +736,19 @@ SPKMediaBuildPhotoOptions(id mediaObject, NSURL *fallbackURL,
         option.height = [variant[@"height"] integerValue];
         option.fileSizeBytes = [variant[@"fileSizeBytes"] integerValue];
         option.duration = duration;
-        option.title =
+        option.codec = SPKMediaPhotoFormatFromURL(url);
+        NSString *resolution =
             (option.width > 0 && option.height > 0)
                 ? [NSString stringWithFormat:@"%ld×%ld", (long)option.width,
                                              (long)option.height]
                 : (SPKMediaResolutionLabel(option.width, option.height)
                        ?: @"Image");
+        NSString *tier = SPKMediaPhotoTierLabel(
+            MAX(option.width, option.height), maxLongEdge);
+        option.title = tier.length > 0
+                           ? [NSString stringWithFormat:@"%@ · %@", tier,
+                                                        resolution]
+                           : resolution;
         option.subtitle = SPKMediaPhotoSubtitle(option.width, option.height,
                                                 option.fileSizeBytes);
         option.selectable = YES;
@@ -676,6 +761,7 @@ SPKMediaBuildPhotoOptions(id mediaObject, NSURL *fallbackURL,
         SPKMediaOption *fallback = [[SPKMediaOption alloc] init];
         fallback.kind = SPKMediaOptionKindPhotoProgressive;
         fallback.primaryURL = fallbackURL;
+        fallback.codec = SPKMediaPhotoFormatFromURL(fallbackURL);
         fallback.title = @"Image";
         fallback.subtitle = @"Fallback source";
         fallback.selectable = YES;
@@ -1159,6 +1245,17 @@ static NSString *SPKMediaCodecBadge(NSString *codec) {
         return @"Opus";
     if ([lower containsString:@"mp3"])
         return @"MP3";
+    // Photo formats (fed the file extension via SPKMediaOption.codec).
+    if ([lower isEqualToString:@"jpg"] || [lower isEqualToString:@"jpeg"])
+        return @"JPEG";
+    if ([lower isEqualToString:@"heic"] || [lower isEqualToString:@"heif"])
+        return @"HEIC";
+    if ([lower isEqualToString:@"webp"])
+        return @"WebP";
+    if ([lower isEqualToString:@"png"])
+        return @"PNG";
+    if ([lower isEqualToString:@"gif"])
+        return @"GIF";
     return [[lower componentsSeparatedByString:@"."].firstObject uppercaseString];
 }
 

@@ -107,6 +107,12 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
                                  viewController:[SPKGalleryHiddenSourcesViewController new]]
         ],
                         @"Pin favorites above other files inside the current sort and folder context."),
+        SPKTopicSection(@"Editing", @[
+            [SPKSetting switchCellWithTitle:@"Ask to Replace Original"
+                                       icon:SPKSettingsIcon(@"left_right")
+                                defaultsKey:@"trim_gallery_prompt_replace"]
+        ],
+                        @"When you trim or edit a Gallery item, ask whether to replace the original or save a copy. Off always saves a copy and keeps the original."),
         SPKTopicSection(@"Lock", @[
             [SPKSetting switchCellWithTitle:@"Gallery Passcode Lock"
                                        icon:SPKSettingsIcon(@"lock")
@@ -118,10 +124,6 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
                                      }]
         ],
                         @"Lock the Gallery with a passcode or biometrics."),
-        SPKTopicSection(@"Shortcuts", @[
-            SPKSettingApplySelectedMenuIcon([SPKSetting menuCellWithTitle:@"Quick Gallery Access" icon:SPKSettingsIcon(@"circle_off") menu:SPKGalleryShortcutTargetMenu()], SPKSettingsIcon(@"circle_off"))
-        ],
-                        @"Choose the tab that opens Gallery on long press. None disables the action."),
         SPKTopicSection(@"Import", @[
             [SPKSetting buttonCellWithTitle:@"Import from Files..."
                                    subtitle:nil
@@ -214,6 +216,14 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
         [[NSNotificationCenter defaultCenter] postNotificationName:kSPKGalleryGridControlsChangedNotification object:nil];
     };
     [sections addObject:SPKTopicSection(@"Browsing", @[ favoritesRow, pinFolderRow ], @"Pin favorites above other files inside the current sort and folder context. Keep the subfolder bar pinned to the top while scrolling.")];
+
+    [sections addObject:SPKTopicSection(@"Editing", @[
+                  [SPKSetting switchCellWithTitle:@"Ask to Replace Original"
+                                             icon:SPKSettingsIcon(@"left_right")
+                                      defaultsKey:@"trim_gallery_prompt_replace"]
+              ],
+                                        @"When you trim or edit a Gallery item, ask whether to replace the original or save a copy. Off always saves a copy and keeps the original.")];
+
     SPKSetting *accountFilterRow = [SPKSetting switchCellWithTitle:@"This Account Only" icon:SPKSettingsIcon(@"user_circle") defaultsKey:@"gallery_filter_current_account"];
     __weak typeof(self) weakAccountSelf = self;
     accountFilterRow.action = ^{
@@ -280,10 +290,6 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
     }
 
     [sections addObject:SPKTopicSection(@"Lock", lockRows, @"Lock the Gallery with a passcode or biometrics.")];
-
-    SPKSetting *shortcutTarget = SPKSettingApplySelectedMenuIcon([SPKSetting menuCellWithTitle:@"Quick Gallery Access" icon:SPKSettingsIcon(@"circle_off") menu:SPKGalleryShortcutTargetMenu()], SPKSettingsIcon(@"circle_off"));
-
-    [sections addObject:SPKTopicSection(@"Shortcuts", @[ shortcutTarget ], @"Choose the tab that opens Gallery on long press. None disables the action.")];
 
     SPKSetting *importRow = [SPKSetting buttonCellWithTitle:@"Import from Files..."
                                                    subtitle:nil
