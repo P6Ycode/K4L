@@ -177,6 +177,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 
 @property (nonatomic, assign) BOOL isToolbarVisible;
 @property (nonatomic, assign) BOOL isSingleItemMode;
+// Bare local-file preview: no bottom action toolbar, no metadata/remote resolution.
+@property (nonatomic, assign) BOOL previewOnly;
 
 @property (nonatomic, assign) BOOL dismissPanDecided;
 @property (nonatomic, assign) BOOL dismissPanIsVertical;
@@ -247,6 +249,20 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 
     SPKFullScreenMediaPlayer *player = [[SPKFullScreenMediaPlayer alloc] init];
     player.isFromGallery = fromGallery;
+
+    UIViewController *presenter = topMostController();
+    [player playItems:@[ item ] startingAtIndex:0 fromViewController:presenter];
+}
+
++ (void)showLocalFilePreview:(NSURL *)fileURL {
+    // A read-only look at a local file (Files-import queue): just the media, close button,
+    // and pinch/zoom. No metadata attached, so nothing tries to resolve a remote URL.
+    SPKMediaItem *item = [SPKMediaItem itemWithFileURL:fileURL];
+    item.isFromGallery = NO;
+
+    SPKFullScreenMediaPlayer *player = [[SPKFullScreenMediaPlayer alloc] init];
+    player.isFromGallery = NO;
+    player.previewOnly = YES;
 
     UIViewController *presenter = topMostController();
     [player playItems:@[ item ] startingAtIndex:0 fromViewController:presenter];
@@ -615,6 +631,12 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 
 - (void)setupBottomBar {
     UINavigationController *nav = self.navigationController;
+    if (_previewOnly) {
+        // No action toolbar in bare preview mode — keep it hidden and skip item setup.
+        [nav setToolbarHidden:YES animated:NO];
+        SPKMediaChromeSetBarsMaterialActive(nav, NO);
+        return;
+    }
     SPKMediaChromeConfigureBottomToolbar(nav.toolbar);
 
     _savePhotosItem = SPKMediaChromeBottomBarButtonItem(
@@ -1463,7 +1485,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     navigationController.navigationBar.alpha = 1.0;
     navigationController.toolbar.alpha = 1.0;
     [navigationController setNavigationBarHidden:!visible animated:YES];
-    [navigationController setToolbarHidden:!visible animated:YES];
+    // Preview mode never has a bottom toolbar; keep it hidden when toggling chrome.
+    [navigationController setToolbarHidden:(_previewOnly ? YES : !visible) animated:YES];
 
     [UIView animateWithDuration:UINavigationControllerHideShowBarDuration
         delay:0.0

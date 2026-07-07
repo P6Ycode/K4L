@@ -327,8 +327,8 @@ NSNotificationName const SPKProfileAnalyzerProgressDidChangeNotification = @"SPK
                                     double stageLocal = total > 0 ? MIN(1.0, (double)acc.count / (double)total) : 0;
                                     double frac = 0.03 + (stageOffset + stageLocal * stageWeight) * 0.97;
                                     NSString *label = isFollowers
-                                                          ? [NSString stringWithFormat:@"Fetching followers • %lu of %ld...", (unsigned long)acc.count, (long)total]
-                                                          : [NSString stringWithFormat:@"Fetching following • %lu of %ld...", (unsigned long)acc.count, (long)total];
+                                                          ? [NSString stringWithFormat:@"Fetching followers... • %lu of %ld", (unsigned long)acc.count, (long)total]
+                                                          : [NSString stringWithFormat:@"Fetching following... • %lu of %ld", (unsigned long)acc.count, (long)total];
                                     [strongSelf reportProgress:progress status:label fraction:frac];
 
                                     if (!nextMax.length || strongSelf.cancelled) {

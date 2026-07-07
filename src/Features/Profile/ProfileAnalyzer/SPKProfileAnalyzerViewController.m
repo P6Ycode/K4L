@@ -3,6 +3,7 @@
 #import "../../../Shared/UI/SPKIGAlertPresenter.h"
 #import "../../../Shared/UI/SPKMediaChrome.h"
 #import "../../../Shared/UI/SPKNotificationCenter.h"
+#import "../../../Shared/UI/SPKProgressPillButton.h"
 #import "../../../Shared/UI/SPKSwitch.h"
 #import "../../../Utils.h"
 #import "../../../Shared/Avatars/SPKAvatarView.h"
@@ -34,112 +35,6 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @implementation SPKPACategoryRow
 @end
 
-#pragma mark - Scan pill button (progress fills inside the pill)
-
-@interface SPKPAScanButton : UIControl
-@property (nonatomic, strong) UILabel *label;
-@property (nonatomic, strong) CALayer *fillLayer;
-@property (nonatomic, assign) double progress; // 0..1
-@property (nonatomic, assign, getter=isScanning) BOOL scanning;
-- (void)setProgress:(double)progress animated:(BOOL)animated;
-@end
-
-@implementation SPKPAScanButton
-
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (!self)
-        return self;
-    self.clipsToBounds = YES;
-
-    _fillLayer = [CALayer layer];
-    _fillLayer.anchorPoint = CGPointMake(0, 0);
-    [self.layer addSublayer:_fillLayer];
-
-    _label = [UILabel new];
-    _label.translatesAutoresizingMaskIntoConstraints = NO;
-    _label.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
-    _label.textAlignment = NSTextAlignmentCenter;
-    [self addSubview:_label];
-    [NSLayoutConstraint activateConstraints:@[
-        [_label.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-        [_label.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [_label.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor
-                                                          constant:16.0],
-        [_label.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor
-                                                        constant:-16.0],
-    ]];
-
-    [self applyColors];
-    return self;
-}
-
-// "Light in dark mode and vice versa": the pill fill tracks the primary-text
-// color (white-ish in dark, black-ish in light); the title is the inverse. The
-// progress fill is the same hue at full opacity over a dimmed track, so the pill
-// visually "fills up" while scanning without a contrast-breaking accent color.
-- (void)applyColors {
-    UIColor *base = [SPKUtils SPKColor_InstagramPrimaryText];
-    UIColor *text = [SPKUtils SPKColor_InstagramBackground];
-    self.label.textColor = text;
-    if (self.scanning) {
-        self.backgroundColor = [base colorWithAlphaComponent:0.30];
-        self.fillLayer.backgroundColor = base.CGColor;
-        self.fillLayer.hidden = NO;
-    } else {
-        self.backgroundColor = base;
-        self.fillLayer.hidden = YES;
-    }
-}
-
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    self.layer.cornerRadius = self.bounds.size.height / 2.0; // pill
-    [self updateFillFrameAnimated:NO];
-    [self applyColors]; // re-resolve CGColor for the current trait collection
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previous {
-    [super traitCollectionDidChange:previous];
-    [self applyColors];
-}
-
-- (void)updateFillFrameAnimated:(BOOL)animated {
-    CGFloat w = self.bounds.size.width * MAX(0.0, MIN(1.0, self.progress));
-    CGRect target = CGRectMake(0, 0, w, self.bounds.size.height);
-    if (!animated) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        self.fillLayer.frame = target;
-        [CATransaction commit];
-    } else {
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:0.25];
-        self.fillLayer.frame = target;
-        [CATransaction commit];
-    }
-}
-
-- (void)setScanning:(BOOL)scanning {
-    _scanning = scanning;
-    if (!scanning) {
-        _progress = 0;
-    }
-    [self applyColors];
-    [self updateFillFrameAnimated:NO];
-}
-
-- (void)setProgress:(double)progress animated:(BOOL)animated {
-    _progress = MAX(0.0, MIN(1.0, progress));
-    [self updateFillFrameAnimated:animated];
-}
-
-- (void)setText:(NSString *)text {
-    self.label.text = text;
-}
-
-@end
-
 #pragma mark - Identity header
 
 @interface SPKPAIdentityHeader : UIView
@@ -148,7 +43,7 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @property (nonatomic, strong) UILabel *usernameLabel;
 @property (nonatomic, strong) UIStackView *statsRow;
 @property (nonatomic, strong) UILabel *scanDateLabel;
-@property (nonatomic, strong) SPKPAScanButton *scanButton;
+@property (nonatomic, strong) SPKProgressPillButton *scanButton;
 @end
 
 @implementation SPKPAIdentityHeader
@@ -191,7 +86,7 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
     _scanDateLabel.textAlignment = NSTextAlignmentCenter;
     [self addSubview:_scanDateLabel];
 
-    _scanButton = [[SPKPAScanButton alloc] initWithFrame:CGRectZero];
+    _scanButton = [[SPKProgressPillButton alloc] initWithFrame:CGRectZero];
     _scanButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:_scanButton];
 
@@ -446,7 +341,7 @@ static NSString *SPKPACompact(NSInteger n) {
         [self.header.avatarView configureWithPK:self.selfPK urlString:picURL];
     }
 
-    if (!self.header.scanButton.isScanning) {
+    if (!self.header.scanButton.isBusy) {
         [self.header.scanButton setText:(self.report.current ? @"Re-run Analysis" : @"Run Analysis")];
     }
     [self.view setNeedsLayout];
@@ -616,7 +511,7 @@ static NSString *SPKPACompact(NSInteger n) {
 }
 
 - (void)setScanning:(BOOL)scanning {
-    self.header.scanButton.scanning = scanning;
+    self.header.scanButton.busy = scanning;
     if (scanning) {
         [self.header.scanButton setText:@"Analyzing..."];
         [self.header.scanButton setProgress:MAX(0.02, [SPKProfileAnalyzerService sharedService].currentFraction) animated:NO];
@@ -642,7 +537,7 @@ static NSString *SPKPACompact(NSInteger n) {
         [self setScanning:NO];
         return;
     }
-    if (!self.header.scanButton.isScanning)
+    if (!self.header.scanButton.isBusy)
         [self setScanning:YES];
     [self.header.scanButton setProgress:[note.userInfo[@"fraction"] doubleValue] animated:YES];
     NSString *status = note.userInfo[@"status"];

@@ -35,6 +35,10 @@ typedef void (^SPKMediaPreviewPlaybackBlock)(void);
 + (void)showFileURL:(NSURL *)fileURL metadata:(nullable SPKGallerySaveMetadata *)metadata;
 + (void)showFileURL:(NSURL *)fileURL fromGallery:(BOOL)fromGallery;
 
+/// Bare, read-only preview of a local file: media + close + zoom only, no action toolbar and no
+/// metadata (so nothing attempts remote resolution). Used by the Files-import queue.
++ (void)showLocalFilePreview:(NSURL *)fileURL;
+
 + (void)showGalleryFiles:(NSArray<SPKGalleryFile *> *)files
          startingAtIndex:(NSInteger)index
       fromViewController:(UIViewController *)presenter;
