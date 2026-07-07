@@ -78,7 +78,7 @@
         SPKTopicSection(@"Capture", @[
             ({
                 SPKSetting *s = [SPKSetting switchCellWithTitle:@"Hide UI on Capture"
-                                                           icon:SPKSettingsIcon(@"camera")
+                                                           icon:nil
                                                     defaultsKey:@"interface_hide_ui_on_capture"];
                 s.switchChangeHandler = ^(BOOL isOn) {
                     [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:@"interface_hide_ui_on_capture"];
@@ -87,13 +87,7 @@
                 s;
             })
         ],
-                        @"Redacts Sparkle overlay buttons (action button, seen/mentions buttons, etc.) from screenshots, screen recordings, and mirroring."),
-        SPKTopicSection(@"Display", @[
-            [SPKSetting switchCellWithTitle:@"Disable HDR on UI Elements"
-                                defaultsKey:@"interface_disable_random_hdr"
-                            requiresRestart:YES]
-        ],
-                        @"Prevents seemingly random behavior of buttons and other elements using EDR/HDR.")
+                        @"Redacts Sparkle UI elements from screenshots, screen recordings, and mirroring.")
     ]];
 
     {

@@ -36,7 +36,6 @@ FOUNDATION_EXPORT void SPKInstallTweakLaunchCriticalHooks(void);
 FOUNDATION_EXPORT void SPKInstallOpenLinkFromClipboardHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallHideExploreGridHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallHideTrendingSearchesHooksIfEnabled(void);
-FOUNDATION_EXPORT void SPKInstallDisableRandomHDRHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallNavigationHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallSettingsShortcutsHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallDisableHapticsHooksIfEnabled(void);
@@ -247,7 +246,6 @@ void SPKInstallGeneralUIHooksIfNeeded(void) {
     SPKInstallOpenLinkFromClipboardHooksIfEnabled();
     SPKInstallHideExploreGridHooksIfEnabled();
     SPKInstallHideTrendingSearchesHooksIfEnabled();
-    SPKInstallDisableRandomHDRHooksIfEnabled();
     SPKInstallNavigationHooksIfNeeded();
     SPKInstallSettingsShortcutsHooksIfNeeded();
     SPKInstallDisableHapticsHooksIfEnabled();

@@ -103,7 +103,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"downloads_enhanced_media_resolution" : @(NO),
         @"downloads_detect_duplicates" : @(YES),
         @"downloads_max_concurrent" : @(2),
-        @"downloads_history_limit" : @(300),
+        @"downloads_history_limit" : @(100),
         @"general_hide_ads_feed" : @(YES),
         @"general_hide_ads_stories" : @(YES),
         @"general_hide_ads_reels" : @(YES),
@@ -177,7 +177,6 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"general_strip_share_link_tracking" : @(YES),
         @"general_hide_create_group" : @(NO),
         @"interface_hide_ui_on_capture" : @(NO),
-        @"interface_disable_random_hdr" : @(NO),
         @"feed_disable_autoplay" : @(NO),
     } mutableCopy];
 
