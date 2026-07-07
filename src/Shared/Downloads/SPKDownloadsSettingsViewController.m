@@ -13,11 +13,11 @@
 
 + (UIMenu *)audioPageDefaultActionMenu {
     NSArray<NSDictionary *> *items = @[
-        @{@"title" : @"Save to Files", @"value" : @"files", @"icon" : @"audio_download"},
-        @{@"title" : @"Share", @"value" : @"share", @"icon" : @"share"},
-        @{@"title" : @"Save to Gallery", @"value" : @"gallery", @"icon" : @"sparkle_gallery"},
-        @{@"title" : @"Play", @"value" : @"play", @"icon" : @"play"},
-        @{@"title" : @"Copy Download URL", @"value" : @"copy_url", @"icon" : @"link"},
+        @{@"title" : @"Save Audio to Files", @"value" : @"files", @"icon" : @"audio_download"},
+        @{@"title" : @"Share Audio", @"value" : @"share", @"icon" : @"share"},
+        @{@"title" : @"Save Audio to Gallery", @"value" : @"gallery", @"icon" : @"sparkle_gallery"},
+        @{@"title" : @"Play Audio", @"value" : @"play", @"icon" : @"play"},
+        @{@"title" : @"Copy Audio Download URL", @"value" : @"copy_url", @"icon" : @"link"},
         @{@"title" : @"Open Menu", @"value" : @"none", @"icon" : @"action"}
     ];
     NSMutableArray<UICommand *> *commands = [NSMutableArray array];

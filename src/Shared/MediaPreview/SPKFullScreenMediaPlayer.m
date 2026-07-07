@@ -1189,16 +1189,19 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     BOOL fromGallery = (item.galleryFile != nil);
     if (!fromGallery) {
         NSMutableArray<SPKTrimDoneOption *> *options = [NSMutableArray array];
-        // Photos can't hold an audio file, so for audio offer "Save to Files"
+        // Photos can't hold an audio file, so for audio offer "Save Audio to Files"
         // (broadly available for audio) in its place.
         if (isAudio) {
-            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Files" identifier:@"files" iconName:@"audio_download"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save Audio to Files" identifier:@"files" iconName:@"audio_download"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Share Audio" identifier:@"share" iconName:@"share"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Copy Audio" identifier:@"clipboard" iconName:@"copy"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save Audio to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"]];
         } else {
             [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Photos" identifier:@"photos" iconName:@"download"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"]];
+            [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"]];
         }
-        [options addObject:[SPKTrimDoneOption optionWithTitle:@"Save to Gallery" identifier:@"gallery" iconName:@"sparkle_gallery"]];
-        [options addObject:[SPKTrimDoneOption optionWithTitle:@"Share" identifier:@"share" iconName:@"share"]];
-        [options addObject:[SPKTrimDoneOption optionWithTitle:@"Copy" identifier:@"clipboard" iconName:@"copy"]];
         config.doneOptions = options;
     }
 

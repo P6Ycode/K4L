@@ -12,8 +12,8 @@
 #import <AVFoundation/AVFoundation.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
-// Presents the system "Save to Files" (document export) sheet and reports the
-// outcome back through the store completion. Retains itself until the picker
+// Presents the system "Save Audio to Files" (document export) sheet and reports
+// the outcome back through the store completion. Retains itself until the picker
 // finishes, since UIDocumentPickerViewController holds its delegate weakly.
 @interface SPKTrimFilesExporter : NSObject <UIDocumentPickerDelegate>
 @property (nonatomic, copy) void (^done)(BOOL, NSString *);
@@ -356,8 +356,8 @@
         };
     }
 
-    // Name the render with the standard scheme so Save to Files / Share carry a
-    // proper filename instead of the temp UUID (Gallery renames on import anyway).
+    // Name the render with the standard scheme so Save Audio to Files / Share Audio carry
+    // a proper filename instead of the temp UUID (Gallery renames on import anyway).
     if (!result.preferredBasename.length) {
         result.preferredBasename = [SPKFileNameForMedia(result.sourceURL, mediaType, metadata) stringByDeletingPathExtension];
     }

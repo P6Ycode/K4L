@@ -703,7 +703,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 // full-screen overlay.
 - (UIMenu *)buildDoneMenu {
     // In Audio Only mode the output is an .m4a, which Photos can't hold — swap any
-    // "Save to Photos" destination for "Save to Files" so the menu matches what
+    // "Save to Photos" destination for "Save Audio to Files" so the menu matches what
     // will actually be produced. The menu is rebuilt on mode change (applyMode:).
     BOOL audioMode = ([self currentSelectedMode] == SPKTrimResultModeTrimmedAudio);
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
@@ -712,10 +712,18 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
         NSString *title = option.title;
         NSString *identifier = option.identifier;
         NSString *iconName = option.iconName;
-        if (audioMode && [identifier isEqualToString:@"photos"]) {
-            title = @"Save to Files";
-            identifier = @"files";
-            iconName = @"audio_download";
+        if (audioMode) {
+            if ([identifier isEqualToString:@"photos"] || [identifier isEqualToString:@"files"]) {
+                title = @"Save Audio to Files";
+                identifier = @"files";
+                iconName = @"audio_download";
+            } else if ([identifier isEqualToString:@"share"]) {
+                title = @"Share Audio";
+            } else if ([identifier isEqualToString:@"clipboard"]) {
+                title = @"Copy Audio";
+            } else if ([identifier isEqualToString:@"gallery"]) {
+                title = @"Save Audio to Gallery";
+            }
         }
         UIImage *image = iconName.length > 0
                              ? [SPKAssetUtils instagramIconNamed:iconName pointSize:22.0]

@@ -195,9 +195,9 @@ Per-feature control of the Sparkle notification pill and its haptics. See **Noti
 
 ### Notes
 - **Hide Notes Tray**, **Hide Friends Map**.
-- **Download Notes Audio**: Long-press a note in the tray to add a "Save audio" row to its menu (Save to Files, Share, Save to Gallery, Play, or Copy URL). Only appears on notes that carry audio. **(restart)**
+- **Download Notes Audio**: Long-press a note in the tray to add a "Save audio" row to its menu (Save Audio to Files, Share Audio, Save Audio to Gallery, Play Audio, or Copy Audio Download URL). Only appears on notes that carry audio. **(restart)**
 - **Copy Note Text**: Long-press a note to add a "Copy text" row to its menu. Only appears on text notes. **(restart)**
-- _Note actions are not supported on IG 410.1.0 yet._
+- _Note actions are not supported on IG 410.1.0 (yet)._
 
 ### Audio
 - **Download Audio Messages**: Adds audio actions to voice/audio message views. **(restart)**
@@ -314,9 +314,9 @@ the main settings search.
 - **View Encoding Logs**: Inspect and share the FFmpeg loader/merge logs.
 
 ### Audio
-- **Audio Downloads**: Adds audio actions (save/share/copy URL) to supported media.
+- **Audio Downloads**: Adds audio actions (save/share/copy download URL) to supported media.
 - **Audio Page Button**: Adds an action button to the music/audio page.
-- **Audio Page Default Action**: Default tap action for the audio page button: `Save to Files`, `Share`, `Save to Gallery`, `Play`, `Copy Download URL`, or `None`.
+- **Audio Page Default Action**: Default tap action for the audio page button: `Save Audio to Files`, `Share Audio`, `Save Audio to Gallery`, `Play Audio`, `Copy Audio Download URL`, or `None`.
 
 ---
 

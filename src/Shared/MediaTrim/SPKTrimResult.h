@@ -33,9 +33,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Optional basename (no extension) for the rendered temp file. When set, the
 /// save coordinator names the render with it instead of a random `SPKTrim-<UUID>`,
-/// so destinations that hand the file off directly (Save to Files, Share) carry
-/// the usual `epoch_username_source_date` name rather than the temp UUID. The
-/// Gallery path renames on import regardless, so it's only needed for the
+/// so destinations that hand the file off directly (Save Audio to Files, Share)
+/// carry the usual `epoch_username_source_date` name rather than the temp UUID.
+/// The Gallery path renames on import regardless, so it's only needed for the
 /// direct-handoff destinations.
 @property (nonatomic, copy, nullable) NSString *preferredBasename;
 

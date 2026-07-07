@@ -161,7 +161,7 @@ NSArray<NSDictionary *> *SPKNotificationPreferenceSections(void) {
               SPKNotificationItem(kSPKNotificationDownloadAudioShare, @"Share Audio", @"share"),
               SPKNotificationItem(kSPKNotificationDownloadAudioGallery, @"Save Audio to Gallery", @"sparkle_gallery"),
               SPKNotificationItem(kSPKNotificationPlayAudio, @"Play Audio", @"play"),
-              SPKNotificationItem(kSPKNotificationCopyAudioURL, @"Copy Download URL", @"link"),
+              SPKNotificationItem(kSPKNotificationCopyAudioURL, @"Copy Audio Download URL", @"link"),
           ]},
         @{@"title" : @"Stories",
           @"items" : @[

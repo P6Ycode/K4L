@@ -220,27 +220,27 @@ static void SPKNotesPresentAudioActions(NSArray *audioCandidates, id noteModel,
                                                         title:@"Note Audio"
                                                       message:nil
                                                       actions:@[
-                                                          [SPKIGAlertAction actionWithTitle:@"Save to Files"
+                                                          [SPKIGAlertAction actionWithTitle:@"Save Audio to Files"
                                                                                       style:SPKIGAlertActionStyleDefault
                                                                                     handler:^{
                                                                                         [SPKAudioDownloadCoordinator performAction:SPKAudioActionSaveToFiles item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudio];
                                                                                     }],
-                                                          [SPKIGAlertAction actionWithTitle:@"Share"
+                                                          [SPKIGAlertAction actionWithTitle:@"Share Audio"
                                                                                       style:SPKIGAlertActionStyleDefault
                                                                                     handler:^{
                                                                                         [SPKAudioDownloadCoordinator performAction:SPKAudioActionConvertAndShare item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudioShare];
                                                                                     }],
-                                                          [SPKIGAlertAction actionWithTitle:@"Save to Gallery"
+                                                          [SPKIGAlertAction actionWithTitle:@"Save Audio to Gallery"
                                                                                       style:SPKIGAlertActionStyleDefault
                                                                                     handler:^{
                                                                                         [SPKAudioDownloadCoordinator performAction:SPKAudioActionConvertAndSaveToGallery item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationDownloadAudioGallery];
                                                                                     }],
-                                                          [SPKIGAlertAction actionWithTitle:@"Play"
+                                                          [SPKIGAlertAction actionWithTitle:@"Play Audio"
                                                                                       style:SPKIGAlertActionStyleDefault
                                                                                     handler:^{
                                                                                         [SPKAudioDownloadCoordinator performAction:SPKAudioActionPlay item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationPlayAudio];
                                                                                     }],
-                                                          [SPKIGAlertAction actionWithTitle:@"Copy Download URL"
+                                                          [SPKIGAlertAction actionWithTitle:@"Copy Audio Download URL"
                                                                                       style:SPKIGAlertActionStyleDefault
                                                                                     handler:^{
                                                                                         [SPKAudioDownloadCoordinator performAction:SPKAudioActionCopyURL item:item presenter:host sourceView:sourceView metadata:metadata notificationIdentifier:kSPKNotificationCopyAudioURL];

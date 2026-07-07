@@ -214,11 +214,11 @@ static UIMenu *SPKAudioPageMenuForButton(UIButton *button) {
                       identifier:nil
                          options:0
                         children:@[
-                            SPKAudioPageMenuAction(@"Save to Files", kSPKAudioPageActionFiles, kSPKActionDownloadAudio, @"audio_download", button),
-                            SPKAudioPageMenuAction(@"Share", kSPKAudioPageActionShare, kSPKActionDownloadAudioShare, @"share", button),
-                            SPKAudioPageMenuAction(@"Save to Gallery", kSPKAudioPageActionGallery, kSPKActionDownloadAudioGallery, @"sparkle_gallery", button),
-                            SPKAudioPageMenuAction(@"Play", kSPKAudioPageActionPlay, kSPKActionPlayAudio, @"play", button),
-                            SPKAudioPageMenuAction(@"Copy Download URL", kSPKAudioPageActionCopyURL, kSPKActionCopyAudioURL, @"link", button)
+                            SPKAudioPageMenuAction(@"Save Audio to Files", kSPKAudioPageActionFiles, kSPKActionDownloadAudio, @"audio_download", button),
+                            SPKAudioPageMenuAction(@"Share Audio", kSPKAudioPageActionShare, kSPKActionDownloadAudioShare, @"share", button),
+                            SPKAudioPageMenuAction(@"Save Audio to Gallery", kSPKAudioPageActionGallery, kSPKActionDownloadAudioGallery, @"sparkle_gallery", button),
+                            SPKAudioPageMenuAction(@"Play Audio", kSPKAudioPageActionPlay, kSPKActionPlayAudio, @"play", button),
+                            SPKAudioPageMenuAction(@"Copy Audio Download URL", kSPKAudioPageActionCopyURL, kSPKActionCopyAudioURL, @"link", button)
                         ]];
 }
 

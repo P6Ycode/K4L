@@ -52,7 +52,7 @@
                                                     title:@"Play Audio"
                                                  iconName:@"play"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionCopyAudioURL
-                                                    title:@"Copy Audio URL"
+                                                    title:@"Copy Audio Download URL"
                                                  iconName:@"link"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionDownloadAllLibrary
                                                     title:@"Save All to Photos"
