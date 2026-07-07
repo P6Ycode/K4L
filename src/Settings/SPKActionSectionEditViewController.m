@@ -148,6 +148,7 @@ static char kSPKSectionEditSwitchAssocKey;
             field.textAlignment = NSTextAlignmentRight;
             field.placeholder = @"Section";
             field.text = section.title;
+            field.returnKeyType = UIReturnKeyDone;
             field.delegate = self;
             objc_setAssociatedObject(field, &kSPKSectionEditFieldAssocKey, self, OBJC_ASSOCIATION_ASSIGN);
             [field addTarget:self action:@selector(titleFieldChanged:) forControlEvents:UIControlEventEditingChanged];
@@ -297,6 +298,11 @@ static char kSPKSectionEditSwitchAssocKey;
         [self.tableView reloadData];
     }
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
 }
 
 - (void)titleFieldChanged:(UITextField *)sender {

@@ -46,7 +46,7 @@ static double SPKNormalizedStepperValue(SPKSetting *row, double value) {
     return value;
 }
 
-@interface SPKSettingsViewController () <UITableViewDataSource, UITableViewDelegate, UITableViewDragDelegate, UITableViewDropDelegate, UISearchResultsUpdating>
+@interface SPKSettingsViewController () <UITableViewDataSource, UITableViewDelegate, UITableViewDragDelegate, UITableViewDropDelegate, UISearchResultsUpdating, UITextFieldDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray *sections;
@@ -304,8 +304,15 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     self.tableView.dragDelegate = self;
     self.tableView.dropDelegate = self;
     self.tableView.backgroundColor = backgroundColor;
+    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     self.tableView.separatorColor = [SPKUtils SPKColor_InstagramSeparator];
     self.tableView.tintColor = [SPKUtils SPKColor_InstagramBlue];
+
+    // Number pads (used by some text-field rows) have no return key; tap
+    // elsewhere to dismiss the keyboard.
+    UITapGestureRecognizer *dismissTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(spk_dismissKeyboard)];
+    dismissTap.cancelsTouchesInView = NO;
+    [self.tableView addGestureRecognizer:dismissTap];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 72.0;
     // Disable header/footer height estimation. The grouped footers are multi-line
@@ -646,6 +653,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         textField.keyboardType = row.keyboardType;
         textField.text = [SPKUtils getStringPref:row.defaultsKey];
         textField.enabled = rowEnabled;
+        textField.returnKeyType = UIReturnKeyDone;
+        textField.delegate = self;
 
         if (!rowEnabled) {
             cellContentConfig.textProperties.color = [SPKUtils SPKColor_InstagramSecondaryText];
@@ -1066,6 +1075,15 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     if (row.action) {
         row.action();
     }
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
+}
+
+- (void)spk_dismissKeyboard {
+    [self.view endEditing:YES];
 }
 
 - (void)textFieldChanged:(UITextField *)sender {

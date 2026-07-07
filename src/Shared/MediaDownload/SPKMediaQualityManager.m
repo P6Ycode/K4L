@@ -1475,6 +1475,7 @@ static NSString *SPKMediaCodecBadge(NSString *codec) {
     self.textField.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
     self.textField.autocorrectionType = UITextAutocorrectionTypeNo;
     self.textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    self.textField.returnKeyType = UIReturnKeyDone;
     self.textField.placeholder = self.placeholderText;
     self.textField.delegate = self;
     self.textField.text = [SPKUtils getStringPref:self.defaultsKey];
