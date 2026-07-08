@@ -118,11 +118,11 @@ By default, **long-press the Home tab** or the **Profile settings button** to op
    ./fetch-ffmpegkit.sh
    ```
 4. **For sideloading:** obtain a **decrypted, un-thinned** Instagram IPA from a trusted source, rename it to `com.burbn.instagram.ipa`, and place it in a `packages/` folder at the repo root.
-   
-    > [!IMPORTANT]
-    > Use a *universal* decrypted IPA. An IPA that was already thinned to a specific device (e.g. dumped on an older iPhone) might be missing higher-scale icons/image assets, which makes icons and image assets blurry on newer devices.
-    >
-    > Alternatively, if you own a jailbroken device, I recommend using [ipadecrypt](https://github.com/londek/ipadecrypt), which provides an un-thinned IPA regardless of your device's screen size.
+
+> [!IMPORTANT]
+> Use a *universal* decrypted IPA. An IPA that was already thinned to a specific device (e.g. dumped on an older iPhone) might be missing higher-scale icons/image assets, which makes icons and image assets blurry on newer devices.
+>
+> Alternatively, if you own a jailbroken device, I recommend using [ipadecrypt](https://github.com/londek/ipadecrypt), which provides an un-thinned IPA regardless of your device's screen size.
 
 ### Build
 
@@ -149,7 +149,7 @@ The `ipa` command takes composable flags:
 
 Outputs are named with the Sparkle version (and, for IPAs, the bundled Instagram version) so builds are easy to tell apart:
 
-- **IPA**: `Sparkle[_<flags>]_v<version>_IG_v<ig version>.ipa` (e.g. `Sparkle_v1.0.0_IG_v437.1.0.ipa`, or `Sparkle_no-flex_v1.0.0_IG_v437.1.0.ipa`)
+- **IPA**: `Sparkle[_<flags>]_v<version>_IG_v<ig version>.ipa` (e.g. `Sparkle_v1.0.0_IG_v437.2.0.ipa`, or `Sparkle_no-flex_v1.0.0_IG_v437.2.0.ipa`)
 - **deb**: `Sparkle_v<version>_<rootless|rootful>.deb`
 
 Run `./build.sh` with no arguments for the full usage reference.
