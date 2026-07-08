@@ -12,10 +12,6 @@ body:
       label: Before creating a feature request...
       description: 'Please make sure you have done the following steps:'
       options:
-        - label: >-
-            I have read through the
-            [FAQ](https://github.com/efibalogh/Sparkle/wiki/FAQ)
-          required: true
         - label: I have made sure this feature has not already been already suggested
           required: true
   - type: textarea

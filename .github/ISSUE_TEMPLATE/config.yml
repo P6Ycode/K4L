@@ -1,8 +1,1 @@
 blank_issues_enabled: false
-contact_links:
-  - name: '💬 Browse Q&A'
-    url: https://github.com/efibalogh/Sparkle/wiki/FAQ
-    about: Find answers to the most commonly asked questions
-  - name: '❓ Need Help?'
-    url: https://github.com/efibalogh/Sparkle/discussions
-    about: Visit the Sparkle discussions form to get support
