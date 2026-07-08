@@ -20,9 +20,19 @@ static UIViewController *SPKSettingsLockPresenter(void) {
 }
 
 static void SPKSettingsLockReloadPresenter(UIViewController *presenter) {
+    // `presenter` is the topmost presented VC, which is usually the navigation
+    // controller wrapping the settings page rather than the page itself. Reload
+    // whichever SPKSettingsViewController is actually on screen so the Change
+    // Passcode row greys/ungreys with the lock toggle.
+    SPKSettingsViewController *settingsVC = nil;
     if ([presenter isKindOfClass:SPKSettingsViewController.class]) {
-        [((SPKSettingsViewController *)presenter).tableView reloadData];
+        settingsVC = (SPKSettingsViewController *)presenter;
+    } else if ([presenter isKindOfClass:UINavigationController.class]) {
+        UIViewController *top = ((UINavigationController *)presenter).topViewController;
+        if ([top isKindOfClass:SPKSettingsViewController.class])
+            settingsVC = (SPKSettingsViewController *)top;
     }
+    [settingsVC.tableView reloadData];
 }
 
 static NSDictionary *SPKSettingsLockSection(void) {

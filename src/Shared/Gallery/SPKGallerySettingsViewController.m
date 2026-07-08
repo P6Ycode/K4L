@@ -254,7 +254,6 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
 
     [sections addObject:SPKTopicSection(@"Grid", @[ pinchRow, sourceUsernameRow ], @"Pinch the grid to change density (2, 3 or 5 columns). Source icon and username overlay on each grid item; the username shows at lower densities.")];
 
-    SPKGalleryManager *mgr = [SPKGalleryManager sharedManager];
     NSMutableArray *lockRows = [NSMutableArray array];
 
     __weak typeof(self) weakSelf = self;
@@ -267,18 +266,19 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
     };
     [lockRows addObject:lockSwitch];
 
-    if (mgr.isLockEnabled) {
-        SPKSetting *changePasscode = [SPKSetting buttonCellWithTitle:@"Change Passcode"
-                                                            subtitle:nil
-                                                                icon:SPKSettingsIcon(@"key")
-                                                              action:^{
-                                                                  [SPKGalleryLockViewController presentMode:SPKGalleryLockModeChangePasscode
-                                                                                         fromViewController:self
-                                                                                                 completion:^(BOOL success){
-                                                                                                 }];
-                                                              }];
-        [lockRows addObject:changePasscode];
-    }
+    SPKSetting *changePasscode = [SPKSetting buttonCellWithTitle:@"Change Passcode"
+                                                        subtitle:nil
+                                                            icon:SPKSettingsIcon(@"key")
+                                                          action:^{
+                                                              [SPKGalleryLockViewController presentMode:SPKGalleryLockModeChangePasscode
+                                                                                     fromViewController:self
+                                                                                             completion:^(BOOL success){
+                                                                                             }];
+                                                          }];
+    changePasscode.enabledProvider = ^BOOL {
+        return [SPKGalleryManager sharedManager].isLockEnabled;
+    };
+    [lockRows addObject:changePasscode];
 
     [sections addObject:SPKTopicSection(@"Lock", lockRows, @"Lock the Gallery with a passcode or biometrics.")];
 
