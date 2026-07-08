@@ -2427,7 +2427,6 @@ typedef NS_ENUM(NSInteger, SPKGalleryViewMode) {
 
 - (void)pushSettings {
     SPKGallerySettingsViewController *vc = [[SPKGallerySettingsViewController alloc] init];
-    vc.importDestinationFolderPath = self.currentFolderPath;
     [self.navigationController pushViewController:vc animated:YES];
 }
 

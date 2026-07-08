@@ -9,7 +9,6 @@
 #import "SPKGalleryFile.h"
 #import "SPKGalleryGridDensity.h"
 #import "SPKGalleryHiddenSources.h"
-#import "SPKGalleryImportViewController.h"
 #import "SPKGalleryLockViewController.h"
 #import "SPKGalleryManager.h"
 
@@ -124,14 +123,6 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
                                      }]
         ],
                         @"Lock the Gallery with a passcode or biometrics."),
-        SPKTopicSection(@"Import", @[
-            [SPKSetting buttonCellWithTitle:@"Import from Files..."
-                                   subtitle:nil
-                                       icon:SPKSettingsIcon(@"arrow_down")
-                                     action:^{
-                                     }]
-        ],
-                        @"Import from the Files app with full editable metadata."),
         SPKTopicSection(@"Delete", @[
             [SPKSetting buttonCellWithTitle:@"Delete Files"
                                    subtitle:nil
@@ -290,15 +281,6 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
     }
 
     [sections addObject:SPKTopicSection(@"Lock", lockRows, @"Lock the Gallery with a passcode or biometrics.")];
-
-    SPKSetting *importRow = [SPKSetting buttonCellWithTitle:@"Import from Files..."
-                                                   subtitle:nil
-                                                       icon:SPKSettingsIcon(@"arrow_down")
-                                                     action:^{
-                                                         SPKGalleryImportViewController *vc = [[SPKGalleryImportViewController alloc] initWithDestinationFolderPath:self.importDestinationFolderPath];
-                                                         [self.navigationController pushViewController:vc animated:YES];
-                                                     }];
-    [sections addObject:SPKTopicSection(@"Import", @[ importRow ], @"Import from the Files app with full editable metadata.")];
 
     SPKSetting *deleteRow = [SPKSetting buttonCellWithTitle:@"Delete Files"
                                                    subtitle:nil

@@ -287,7 +287,6 @@ logs, and Profile Analyzer data live locally under `Documents/Sparkle/`.
 - **Hidden Sources**: Hides selected sources, from Gallery browsing and Gallery picker sheets without deleting files or excluding them from maintenance and duplicate tracking.
 - **Enable Passcode Lock** + **Change Passcode**: 4–6 digit passcode with Face ID / Touch ID unlock. Hashes are stored in the keychain (PBKDF2-HMAC-SHA256). Enforced globally when opening the Gallery itself and all gallery picker sheets (e.g., when uploading media in Direct Messages or Instants).
 - **Storage**: Total / image / video / audio counts and total size.
-- **Import from Files...**: Queue files from the Files app with full editable per-file and shared metadata (display name, source, username, user/media IDs, profile/permalink URLs, shortcode, dimensions, duration, gallery date). **Subject to change.**
 - **Delete Files**: Bulk-delete tooling: by everything, by type (images/videos/thumbnails), by source (feed/stories/reels/DMs/profile pictures), or by user.
 
 ---
