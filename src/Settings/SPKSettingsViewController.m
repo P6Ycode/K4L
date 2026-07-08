@@ -92,6 +92,27 @@ static NSMutableArray *SPKMutableSectionsCopy(NSArray *sections) {
     return mutableSections;
 }
 
+// Mutable copy with rows whose `hiddenProvider` returns YES dropped. Used to
+// derive the displayed `sections` from the full `originalSections`, so a row can
+// disappear/reappear live in response to another control (e.g. a passcode row
+// that only exists while a lock switch is on) without restructuring the tree.
+static NSMutableArray *SPKVisibleSectionsCopy(NSArray *sections) {
+    NSMutableArray *mutableSections = SPKMutableSectionsCopy(sections);
+    for (NSMutableDictionary *section in mutableSections) {
+        NSMutableArray *rows = section[@"rows"];
+        if (![rows isKindOfClass:[NSArray class]])
+            continue;
+        NSMutableArray *visibleRows = [NSMutableArray arrayWithCapacity:rows.count];
+        for (id row in rows) {
+            if ([row isKindOfClass:[SPKSetting class]] && ((SPKSetting *)row).hiddenProvider && ((SPKSetting *)row).hiddenProvider())
+                continue;
+            [visibleRows addObject:row];
+        }
+        section[@"rows"] = visibleRows;
+    }
+    return mutableSections;
+}
+
 static UIImage *SPKSettingsSizedRemoteImage(UIImage *image, BOOL circular) {
     if (!image)
         return nil;
@@ -267,7 +288,7 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
                                           }];
 
         self.originalSections = [mutableSections copy];
-        self.sections = mutableSections;
+        self.sections = SPKVisibleSectionsCopy(mutableSections);
     }
 
     return self;
@@ -916,7 +937,7 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 - (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
     NSString *query = SPKSettingsNormalizedQuery(searchController.searchBar.text);
     if (query.length == 0) {
-        self.sections = SPKMutableSectionsCopy(self.originalSections);
+        self.sections = SPKVisibleSectionsCopy(self.originalSections);
     } else if (self.searchesAllSettings) {
         self.sections = [self searchAllSettingsForQuery:query];
     } else {
@@ -935,6 +956,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         NSString *sectionTitle = section[@"header"];
         NSString *sectionFooter = section[@"footer"];
         for (SPKSetting *row in rows) {
+            if (row.hiddenProvider && row.hiddenProvider())
+                continue;
             if (SPKSettingsRowMatchesTokens(row, tokens, self.title, sectionTitle, sectionFooter)) {
                 [matchedRows addObject:row];
             }
@@ -990,6 +1013,8 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         for (SPKSetting *row in section[@"rows"]) {
             if (![row isKindOfClass:[SPKSetting class]])
                 continue;
+            if (row.hiddenProvider && row.hiddenProvider())
+                continue;
 
             NSArray<NSString *> *rowPathComponents = sectionPathComponents.count > 0 ? sectionPathComponents : SPKSettingsPathComponentsByAppending(pathComponents, row.title);
             NSString *rowPath = SPKSettingsBreadcrumbText(rowPathComponents);
@@ -1044,7 +1069,7 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
         // animation short. Handlers that need a table refresh either set
         // reloadsTableOnSwitchChange or reload themselves (e.g. rebuildSections).
         if (row.reloadsTableOnSwitchChange) {
-            [self.tableView reloadData];
+            [self refreshDependentRowsAfterSwitchChange:sender];
         }
         return;
     }
@@ -1125,7 +1150,26 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
     SPKLog(@"General", @"Menu changed: %@ = %@", writeKey, properties[@"value"]);
 
-    [self reloadCellForView:command.sender animated:YES];
+    // A menu selection can gate another row's visibility (e.g. the Create Tab
+    // toggle only shows for the Classic tab order). Only pay for a full rebuild
+    // on pages that actually have hideable rows; otherwise keep the animated
+    // single-cell refresh.
+    BOOL hasHideableRows = NO;
+    for (NSDictionary *section in self.originalSections) {
+        for (id row in section[@"rows"]) {
+            if ([row isKindOfClass:[SPKSetting class]] && ((SPKSetting *)row).hiddenProvider) {
+                hasHideableRows = YES;
+                break;
+            }
+        }
+        if (hasHideableRows)
+            break;
+    }
+    if (hasHideableRows && ![self isSearching]) {
+        [self rebuildVisibleSections];
+    } else {
+        [self reloadCellForView:command.sender animated:YES];
+    }
 
     if (properties[@"requiresRestart"]) {
         [SPKUtils showRestartConfirmation];
@@ -1136,9 +1180,63 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
 
 - (void)replaceSections:(NSArray *)sections {
     self.originalSections = [sections copy] ?: @[];
-    self.sections = SPKMutableSectionsCopy(self.originalSections);
+    self.sections = SPKVisibleSectionsCopy(self.originalSections);
     self.tableView.dragInteractionEnabled = ![self isSearching] && [self pageAllowsReordering];
     [self.tableView reloadData];
+}
+
+// Re-evaluate every row's `hiddenProvider` against the full `originalSections`
+// and reload. Call after a control changes state that another row's visibility
+// depends on. No-op while searching (search maintains its own filtered set).
+- (void)rebuildVisibleSections {
+    if ([self isSearching])
+        return;
+    self.sections = SPKVisibleSectionsCopy(self.originalSections);
+    [self.tableView reloadData];
+}
+
+// Like rebuildVisibleSections, but reloads every row *except* the one holding
+// `sender`, so a toggled switch keeps its native slide animation while dependent
+// rows refresh their enabled/greyed state. Falls back to a full reload if the
+// visible row layout changed (a row appeared/disappeared), where a targeted
+// reload would desync the table.
+- (void)refreshDependentRowsAfterSwitchChange:(UISwitch *)sender {
+    if ([self isSearching]) {
+        [self.tableView reloadData];
+        return;
+    }
+
+    UITableViewCell *cell = (UITableViewCell *)sender.superview;
+    while (cell && ![cell isKindOfClass:[UITableViewCell class]])
+        cell = (UITableViewCell *)cell.superview;
+    NSIndexPath *senderPath = cell ? [self.tableView indexPathForCell:cell] : nil;
+
+    NSMutableArray<NSNumber *> *previousCounts = [NSMutableArray array];
+    for (NSDictionary *section in self.sections)
+        [previousCounts addObject:@([section[@"rows"] count])];
+
+    self.sections = SPKVisibleSectionsCopy(self.originalSections);
+
+    NSMutableArray<NSNumber *> *newCounts = [NSMutableArray array];
+    for (NSDictionary *section in self.sections)
+        [newCounts addObject:@([section[@"rows"] count])];
+
+    if (!senderPath || ![previousCounts isEqualToArray:newCounts]) {
+        [self.tableView reloadData];
+        return;
+    }
+
+    NSMutableArray<NSIndexPath *> *paths = [NSMutableArray array];
+    for (NSInteger s = 0; s < (NSInteger)self.sections.count; s++) {
+        NSInteger rowCount = [self.sections[s][@"rows"] count];
+        for (NSInteger r = 0; r < rowCount; r++) {
+            if (s == senderPath.section && r == senderPath.row)
+                continue;
+            [paths addObject:[NSIndexPath indexPathForRow:r inSection:s]];
+        }
+    }
+    if (paths.count > 0)
+        [self.tableView reloadRowsAtIndexPaths:paths withRowAnimation:UITableViewRowAnimationNone];
 }
 
 - (NSString *)formatString:(NSString *)template withValue:(double)value step:(double)step label:(NSString *)label singularLabel:(NSString *)singularLabel {

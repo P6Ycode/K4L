@@ -24,6 +24,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (SPKSetting *)settingForSender:(id)sender;
 - (void)replaceSections:(NSArray *)sections;
 
+/// Re-evaluate every row's `hiddenProvider` and reload the table. Call after
+/// changing state that a row's `hiddenProvider` depends on. No-op while searching.
+- (void)rebuildVisibleSections;
+
 @end
 
 NS_ASSUME_NONNULL_END

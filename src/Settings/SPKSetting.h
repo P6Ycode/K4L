@@ -29,6 +29,10 @@ typedef NS_ENUM(NSInteger, SPKTableCell) {
 @property (nonatomic, copy, nullable) UIImage * (^iconProvider)(void);
 @property (nonatomic, copy, nullable) NSString * (^accessoryTextProvider)(void);
 @property (nonatomic, copy, nullable) BOOL (^enabledProvider)(void);
+/// When set and it returns YES, the row is omitted from the table entirely
+/// (not merely greyed out). Evaluated whenever the table's visible sections are
+/// rebuilt — call `-rebuildVisibleSections` after changing the state this reads.
+@property (nonatomic, copy, nullable) BOOL (^hiddenProvider)(void);
 @property (nonatomic, strong, nullable) UIColor *tintColor;
 @property (nonatomic, strong) NSString *defaultsKey;
 
@@ -60,10 +64,11 @@ typedef NS_ENUM(NSInteger, SPKTableCell) {
 @property (nonatomic, copy) void (^action)(void);
 @property (nonatomic, copy, nullable) BOOL (^switchValueProvider)(void);
 @property (nonatomic, copy, nullable) void (^switchChangeHandler)(BOOL isOn);
-/// When YES, the table reloads after `switchChangeHandler` runs. Default NO so
-/// the switch's native (Liquid Glass) toggle animation isn't cut short by a
-/// cell rebuild. Set YES only when the row's appearance must refresh on toggle
-/// and the handler doesn't already reload the table itself.
+/// When YES, dependent rows reload after `switchChangeHandler` runs so their
+/// enabled/greyed state can refresh. The toggled row itself is left untouched, so
+/// the switch keeps its native (Liquid Glass) slide animation. Set YES only when
+/// toggling this row changes another row's appearance and the handler doesn't
+/// already reload the table itself.
 @property (nonatomic) BOOL reloadsTableOnSwitchChange;
 
 @property (nonatomic, strong) UIMenu *baseMenu;
