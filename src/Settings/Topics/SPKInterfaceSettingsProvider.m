@@ -6,6 +6,55 @@
 #import "../SPKTopicSettingsSupport.h"
 #import "SPKNotificationSettingsProvider.h"
 
+// The navigable tab keys. The create "+" is a composer launcher rather than a
+// destination, so it is excluded — hiding it can never leave the app tab-less.
+static NSArray<NSString *> *SPKDestinationTabHideKeys(void) {
+    return @[
+        @"interface_hide_feed_tab",
+        @"interface_hide_explore_tab",
+        @"interface_hide_reels_tab",
+        @"interface_hide_msgs_tab",
+        @"interface_hide_profile_tab",
+    ];
+}
+
+// YES if turning on `keyToEnable` would leave every navigable tab hidden.
+static BOOL SPKEnablingKeyHidesEveryTab(NSString *keyToEnable) {
+    for (NSString *key in SPKDestinationTabHideKeys()) {
+        if ([key isEqualToString:keyToEnable])
+            continue;
+        if (![SPKUtils getBoolPref:key])
+            return NO;
+    }
+    return YES;
+}
+
+// A "Hide … Tab" switch that can't hide the last remaining navigable tab: when
+// this is the only tab still visible its switch is greyed out and can't be
+// turned on, while any already-hidden tab can always be turned back on.
+static SPKSetting *SPKHideTabSwitch(NSString *title, NSString *iconName, NSString *key) {
+    SPKSetting *row = [SPKSetting switchCellWithTitle:title
+                                                 icon:SPKSettingsIcon(iconName)
+                                          defaultsKey:key
+                                      requiresRestart:YES];
+    row.switchValueProvider = ^BOOL {
+        return [SPKUtils getBoolPref:key];
+    };
+    row.enabledProvider = ^BOOL {
+        if ([SPKUtils getBoolPref:key])
+            return YES;
+        return !SPKEnablingKeyHidesEveryTab(key);
+    };
+    // Toggling one tab decides whether its siblings become the "last" visible
+    // one, so reload to refresh their greyed state.
+    row.reloadsTableOnSwitchChange = YES;
+    row.switchChangeHandler = ^(BOOL isOn) {
+        [[NSUserDefaults standardUserDefaults] setBool:isOn forKey:SPKEffectivePreferenceKey(key)];
+        [SPKUtils showRestartConfirmation];
+    };
+    return row;
+}
+
 @implementation SPKInterfaceSettingsProvider
 
 + (SPKSetting *)rootSetting {
@@ -35,30 +84,33 @@
                         @"   - Alternate: Home and Reels tabs swapped\n"
                         @"To get the old layout back, use Classic and disable swiping between tabs."),
         SPKTopicSection(@"", @[
-            [SPKSetting switchCellWithTitle:@"Hide Feed Tab"
-                                       icon:SPKSettingsIcon(@"home")
-                                defaultsKey:@"interface_hide_feed_tab"
-                            requiresRestart:YES],
-            [SPKSetting switchCellWithTitle:@"Hide Explore Tab"
-                                       icon:SPKSettingsIcon(@"search")
-                                defaultsKey:@"interface_hide_explore_tab"
-                            requiresRestart:YES],
-            [SPKSetting switchCellWithTitle:@"Hide Messages Tab"
-                                       icon:SPKSettingsIcon(@"messages")
-                                defaultsKey:@"interface_hide_msgs_tab"
-                            requiresRestart:YES],
-            [SPKSetting switchCellWithTitle:@"Hide Reels Tab"
-                                       icon:SPKSettingsIcon(@"reels")
-                                defaultsKey:@"interface_hide_reels_tab"
-                            requiresRestart:YES],
-            [SPKSetting switchCellWithTitle:@"Hide Create Tab"
-                                       icon:SPKSettingsIcon(@"plus")
-                                defaultsKey:@"interface_hide_create_tab"
-                            requiresRestart:YES],
-            [SPKSetting switchCellWithTitle:@"Hide Profile Tab"
-                                       icon:SPKSettingsIcon(@"user_circle")
-                                defaultsKey:@"interface_hide_profile_tab"
-                            requiresRestart:YES]
+            SPKHideTabSwitch(@"Hide Feed Tab", @"home", @"interface_hide_feed_tab"),
+            SPKHideTabSwitch(@"Hide Explore Tab", @"search", @"interface_hide_explore_tab"),
+            ({
+                // Classic puts Messages back in the top-right corner instead of the
+                // bottom bar (that layout is where the Create "+" becomes a tab), so
+                // the "tab" toggle doesn't apply — hide it whenever Create's does show.
+                SPKSetting *hideMessagesTab = SPKHideTabSwitch(@"Hide Messages Tab", @"messages", @"interface_hide_msgs_tab");
+                hideMessagesTab.hiddenProvider = ^BOOL {
+                    return [[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+                };
+                hideMessagesTab;
+            }),
+            SPKHideTabSwitch(@"Hide Reels Tab", @"reels", @"interface_hide_reels_tab"),
+            ({
+                // The create button is only a dedicated tab in the Classic tab
+                // order; the other layouts fold it into the composer, so the
+                // toggle is meaningless there and is hidden.
+                SPKSetting *hideCreateTab = [SPKSetting switchCellWithTitle:@"Hide Create Tab"
+                                                                       icon:SPKSettingsIcon(@"plus")
+                                                                defaultsKey:@"interface_hide_create_tab"
+                                                            requiresRestart:YES];
+                hideCreateTab.hiddenProvider = ^BOOL {
+                    return ![[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+                };
+                hideCreateTab;
+            }),
+            SPKHideTabSwitch(@"Hide Profile Tab", @"user_circle", @"interface_hide_profile_tab")
         ],
                         nil),
         SPKTopicSection(@"Explore & Search", @[
