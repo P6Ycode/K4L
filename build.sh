@@ -39,16 +39,27 @@ ensure_ffmpeg_frameworks() {
 # @rpath/libswiftCoreMedia.dylib". Every device we support (iOS 15+) ships the
 # Swift runtime in-OS at /usr/lib/swift, so rewrite those refs to the absolute
 # path where they always resolve. Signature is re-applied by ipapatch/cyan later.
+# Returns non-zero if the binary still references @rpath/libswift afterward, so
+# the caller can abort rather than ship an IPA that crashes at launch.
 sanitize_swift_rpaths() {
     local binary="$1"
     [ -f "$binary" ] || return 0
-    otool -L "$binary" 2>/dev/null \
-        | grep -oE '@rpath/libswift[^ ]+\.dylib' \
-        | sort -u \
-        | while read -r dep; do
+    local deps
+    deps="$(otool -L "$binary" 2>/dev/null | grep -oE '@rpath/libswift[^ ]+\.dylib' | sort -u)"
+    if [ -n "$deps" ]; then
+        while IFS= read -r dep; do
+            [ -n "$dep" ] || continue
             echo -e "\033[0;33m    fixing swift rpath in $(basename "$binary"): $dep\033[0m"
-            install_name_tool -change "$dep" "/usr/lib/swift/${dep#@rpath/}" "$binary" 2>/dev/null || true
-        done
+            if ! install_name_tool -change "$dep" "/usr/lib/swift/${dep#@rpath/}" "$binary"; then
+                echo -e "\033[1m\033[0;31m    install_name_tool failed to rewrite $dep\033[0m"
+            fi
+        done <<< "$deps"
+    fi
+    if otool -L "$binary" 2>/dev/null | grep -q '@rpath/libswift'; then
+        echo -e "\033[1m\033[0;31m    ERROR: $(basename "$binary") still references @rpath/libswift after sanitize\033[0m"
+        return 1
+    fi
+    return 0
 }
 
 inject_ffmpeg_frameworks() {
@@ -72,7 +83,11 @@ inject_ffmpeg_frameworks() {
         local destination="$app_dir/Frameworks/$(basename "$framework")"
         rm -rf "$destination"
         ditto "$framework" "$destination"
-        sanitize_swift_rpaths "$destination/$(basename "$framework" .framework)"
+        if ! sanitize_swift_rpaths "$destination/$(basename "$framework" .framework)"; then
+            echo -e '\033[1m\033[0;31mAborting: FFmpeg framework still has an unresolved @rpath/libswift reference; the IPA would crash at launch.\033[0m'
+            rm -rf "$temp_dir"
+            exit 1
+        fi
     done
 
     rm -f "$output_ipa"
