@@ -279,23 +279,36 @@ static NSString *SPKFFmpegPresetForSpeed(NSString *speed) {
     return preset.length > 0 ? preset : @"medium";
 }
 
+// Minimum/maximum ABR target for the default re-encode, in bits/sec. Mirrors the
+// clamp SPKFFmpegAdvancedDefaultBitrateKbps applies in the advanced path (2500 –
+// 50000 kbps).
+static const NSInteger kSPKFFmpegDefaultMinVideoBitrate = 2500000;
+static const NSInteger kSPKFFmpegDefaultMaxVideoBitrate = 50000000;
+
 // Rate-control tokens for the default (non-advanced) encoder. When the source
 // bitrate is known, target it with single-pass ABR (bitrate-capped) so the
 // re-encode lands close to the source's — and therefore the sheet's estimated —
 // size. Without this, libx264's implicit CRF 23 chases the source's detail and
 // balloons an already-compressed rep (e.g. a ~100 kbps AV1 tier) into a
-// multi-megabyte H.264 file. `sourceBitrate` is the manifest bandwidth
-// (bits/sec); 0 falls back to plain CRF. Encoding effort still comes from the
-// "Encoding speed" preset, applied separately by the caller.
+// multi-megabyte H.264 file.
+//
+// The target is FLOORED at 2.5 Mbps (and capped at 50 Mbps), matching the
+// advanced path. IG serves videos as AV1/HEVC, whose manifest bandwidth
+// can be far below what H.264 needs for equal quality. The floor keeps such reps watchable while leaving the
+// common case (a healthy multi-Mbps manifest) exactly as before. `sourceBitrate`
+// is the manifest bandwidth (bits/sec); 0 falls back to plain CRF. Encoding
+// effort still comes from the "Encoding speed" preset, applied by the caller.
 static NSArray<NSString *> *SPKFFmpegRateControlTokens(NSInteger sourceBitrate) {
     if (sourceBitrate <= 0) {
         return @[ @"-crf", @"23" ];
     }
-    NSInteger maxrate = (NSInteger)llround(sourceBitrate * 1.2);
+    NSInteger target = MIN(MAX(sourceBitrate, kSPKFFmpegDefaultMinVideoBitrate),
+                           kSPKFFmpegDefaultMaxVideoBitrate);
+    NSInteger maxrate = (NSInteger)llround(target * 1.2);
     return @[
-        @"-b:v", [NSString stringWithFormat:@"%ld", (long)sourceBitrate],
+        @"-b:v", [NSString stringWithFormat:@"%ld", (long)target],
         @"-maxrate", [NSString stringWithFormat:@"%ld", (long)maxrate],
-        @"-bufsize", [NSString stringWithFormat:@"%ld", (long)(sourceBitrate * 2)]
+        @"-bufsize", [NSString stringWithFormat:@"%ld", (long)(target * 2)]
     ];
 }
 
