@@ -34,6 +34,17 @@ patch_framework_rpaths() {
     binary="$framework_dir/$framework.framework/$framework"
     [[ -f "$binary" ]] || continue
     install_name_tool -add_rpath "@loader_path/.." "$binary" 2>/dev/null || true
+
+    # Newer Xcode toolchains link the Swift CoreMedia overlay via a back-deploy
+    # @rpath reference (FFmpegKit targets iOS 12.1, below Swift's in-OS cutoff of
+    # 12.2). The injected tweak embeds no Swift runtime, so dyld aborts at launch.
+    # Point those refs at the OS copy in /usr/lib/swift, present on all iOS 15+.
+    otool -L "$binary" 2>/dev/null \
+      | grep -oE '@rpath/libswift[^ ]+\.dylib' \
+      | sort -u \
+      | while read -r dep; do
+          install_name_tool -change "$dep" "/usr/lib/swift/${dep#@rpath/}" "$binary" 2>/dev/null || true
+        done
   done
 }
 

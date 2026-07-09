@@ -32,6 +32,25 @@ ensure_ffmpeg_frameworks() {
     done
 }
 
+# Some FFmpegKit source builds (deployment target < iOS 12.2, newer Xcode) link
+# the Swift CoreMedia overlay via a back-deploy `@rpath/libswift*.dylib` load
+# command, expecting the app to embed the Swift runtime. A tweak injected into IG
+# embeds nothing, so dyld aborts at launch with "Library not loaded:
+# @rpath/libswiftCoreMedia.dylib". Every device we support (iOS 15+) ships the
+# Swift runtime in-OS at /usr/lib/swift, so rewrite those refs to the absolute
+# path where they always resolve. Signature is re-applied by ipapatch/cyan later.
+sanitize_swift_rpaths() {
+    local binary="$1"
+    [ -f "$binary" ] || return 0
+    otool -L "$binary" 2>/dev/null \
+        | grep -oE '@rpath/libswift[^ ]+\.dylib' \
+        | sort -u \
+        | while read -r dep; do
+            echo -e "\033[0;33m    fixing swift rpath in $(basename "$binary"): $dep\033[0m"
+            install_name_tool -change "$dep" "/usr/lib/swift/${dep#@rpath/}" "$binary" 2>/dev/null || true
+        done
+}
+
 inject_ffmpeg_frameworks() {
     local input_ipa="$1"
     local output_ipa="$2"
@@ -53,6 +72,7 @@ inject_ffmpeg_frameworks() {
         local destination="$app_dir/Frameworks/$(basename "$framework")"
         rm -rf "$destination"
         ditto "$framework" "$destination"
+        sanitize_swift_rpaths "$destination/$(basename "$framework" .framework)"
     done
 
     rm -f "$output_ipa"
