@@ -1329,9 +1329,50 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
 }
 
 - (void)resetAllSettingsFromController:(UIViewController *)controller {
+    // Mirror Export's account-scope prompt: when per-account settings are on and the
+    // active account actually has per-account overrides, let the user reset every
+    // account or only the active one. Otherwise reset is global — go straight to confirm.
+    NSString *currentPK = [SPKAccountManager currentAccountPK];
+    BOOL offerScope = SPKPerAccountModeActive() && currentPK.length > 0 && SPKPerAccountOverrideKeys(SPKTransferAccountScopeAllAccounts, nil).count > 0;
+
+    if (!offerScope) {
+        [self confirmResetFromController:controller scope:SPKTransferAccountScopeAllAccounts];
+        return;
+    }
+
+    NSString *username = [SPKAccountManager currentAccountUsername];
+    NSString *thisTitle = username.length ? [NSString stringWithFormat:@"This Account Only (%@)", username] : @"This Account Only";
+    __weak typeof(self) weakSelf = self;
+    [SPKIGAlertPresenter presentActionSheetFromViewController:controller
+                                                        title:@"Which Accounts?"
+                                                      message:@"Per-account settings are on. Reset every account's settings, or only the active account's."
+                                                      actions:@[
+                                                          [SPKIGAlertAction actionWithTitle:@"All Accounts"
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [weakSelf confirmResetFromController:controller scope:SPKTransferAccountScopeAllAccounts];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:thisTitle
+                                                                                      style:SPKIGAlertActionStyleDefault
+                                                                                    handler:^{
+                                                                                        [weakSelf confirmResetFromController:controller scope:SPKTransferAccountScopeCurrentAccount];
+                                                                                    }],
+                                                          [SPKIGAlertAction actionWithTitle:@"Cancel"
+                                                                                      style:SPKIGAlertActionStyleCancel
+                                                                                    handler:nil],
+                                                      ]];
+}
+
+- (void)confirmResetFromController:(UIViewController *)controller scope:(SPKTransferAccountScope)scope {
+    BOOL currentScope = (scope == SPKTransferAccountScopeCurrentAccount);
+    NSString *username = [SPKAccountManager currentAccountUsername];
+    NSString *message = currentScope
+                            ? [NSString stringWithFormat:@"This restores every Sparkle preference for %@ to its default value. Other accounts and Gallery media are left untouched. This cannot be undone.", username.length ? username : @"the active account"]
+                            : @"This restores every Sparkle preference to its default value. Gallery media is left untouched. This cannot be undone.";
+    NSString *currentPK = [SPKAccountManager currentAccountPK];
     [SPKIGAlertPresenter presentAlertFromViewController:controller
-                                                  title:@"Reset all settings?"
-                                                message:@"This restores every Sparkle preference to its default value. Gallery media is left untouched. This cannot be undone."
+                                                  title:@"Reset All Settings"
+                                                message:message
                                                 actions:@[
                                                     [SPKIGAlertAction actionWithTitle:@"Cancel"
                                                                                 style:SPKIGAlertActionStyleCancel
@@ -1340,14 +1381,23 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
                                                                                 style:SPKIGAlertActionStyleDestructive
                                                                               handler:^{
                                                                                   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-                                                                                  // Clear global keys AND every account's per-account overrides.
-                                                                                  for (NSString *key in SPKExportedPreferenceKeysForScope(SPKTransferAccountScopeAllAccounts, nil)) {
-                                                                                      [defaults removeObjectForKey:key];
+                                                                                  if (currentScope) {
+                                                                                      // Clear only the active account's per-account overrides; global keys
+                                                                                      // and other accounts are untouched, so this account falls back to
+                                                                                      // the global/default values. The passcode is device-global, so leave it.
+                                                                                      for (NSString *key in SPKPerAccountOverrideKeys(SPKTransferAccountScopeCurrentAccount, currentPK)) {
+                                                                                          [defaults removeObjectForKey:key];
+                                                                                      }
+                                                                                  } else {
+                                                                                      // Clear global keys AND every account's per-account overrides.
+                                                                                      for (NSString *key in SPKExportedPreferenceKeysForScope(SPKTransferAccountScopeAllAccounts, nil)) {
+                                                                                          [defaults removeObjectForKey:key];
+                                                                                      }
+                                                                                      [[SPKSettingsLockManager sharedManager] removePasscode];
                                                                                   }
-                                                                                  [[SPKSettingsLockManager sharedManager] removePasscode];
                                                                                   SPKNotify(kSPKNotificationSettingsImport,
                                                                                             @"Settings reset",
-                                                                                            @"All Sparkle preferences were restored to defaults.",
+                                                                                            currentScope ? @"This account's Sparkle preferences were restored to defaults." : @"All Sparkle preferences were restored to defaults.",
                                                                                             @"circle_check_filled",
                                                                                             SPKNotificationToneForIconResource(@"circle_check_filled"));
                                                                                   [SPKUtils showRestartConfirmation];
