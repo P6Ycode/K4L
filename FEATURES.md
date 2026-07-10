@@ -20,6 +20,9 @@ marked **(restart)** and prompt for a relaunch when changed.
 - **Confirm Create Group**: Confirmation alert before creating a group on Instagram send/share sheet.
 - **Confirm Send**: Confirmation alert before sending a post.
 
+### Media Preview
+- **Show Media Info**: Overlays the author and post date over the expanded photo preview. Tap the media to hide it together with the controls. (Photos only — video previews are left untouched so the scrubber and controls stay clear.)
+
 ### Recommendations
 - **Ads**: Per-surface ad hiding: Feed, Stories, Reels, Explore, plus Reels shopping CTA.
 - **Meta AI**: Hide Meta AI in Direct, Explore & Search, Comments, Creation Tools, and global AI chrome. Hiding it in Explore & Search also restores the plain search glyph in the search bar (replacing the gen-AI search icon).
@@ -283,6 +286,7 @@ logs, and Profile Analyzer data live locally under `Documents/Sparkle/`.
 ### Gallery Settings
 - **Pinch to Zoom**: Enables grid density pinching.
 - **Show Source & Username**: Toggles the grid overlays above.
+- **Show Media Info**: Overlays the username, source, and saved/posted dates on the expanded photo preview. Tap the media to hide it along with the controls. (Photos only.)
 - **This Account Only**: Scopes the Gallery to media saved while logged into the current account (plus older unassigned files); enabling it offers to claim existing unassigned files for the current account. Each saved file is tagged with the account that saved it; reassign a file to another logged-in account from its **Edit Details → Account** row (e.g. to stash media into a different account's Gallery). Non-destructive: turn it off to see everything.
 - **Hidden Sources**: Hides selected sources, from Gallery browsing and Gallery picker sheets without deleting files or excluding them from maintenance and duplicate tracking.
 - **Enable Passcode Lock** + **Change Passcode**: 4–6 digit passcode with Face ID / Touch ID unlock. Hashes are stored in the keychain (PBKDF2-HMAC-SHA256). Enforced globally when opening the Gallery itself and all gallery picker sheets (e.g., when uploading media in Direct Messages or Instants).

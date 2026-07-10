@@ -112,6 +112,12 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
                                 defaultsKey:@"trim_gallery_prompt_replace"]
         ],
                         @"When you trim or edit a Gallery item, ask whether to replace the original or save a copy. Off always saves a copy and keeps the original."),
+        SPKTopicSection(@"Preview", @[
+            [SPKSetting switchCellWithTitle:@"Show Media Info"
+                                       icon:SPKSettingsIcon(@"info")
+                                defaultsKey:@"gallery_preview_show_metadata"]
+        ],
+                        @"Overlay the username, source, and saved/posted dates on the expanded photo preview."),
         SPKTopicSection(@"Lock", @[
             [SPKSetting switchCellWithTitle:@"Gallery Passcode Lock"
                                        icon:SPKSettingsIcon(@"lock")
@@ -253,6 +259,13 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
     };
 
     [sections addObject:SPKTopicSection(@"Grid", @[ pinchRow, sourceUsernameRow ], @"Pinch the grid to change density (2, 3 or 5 columns). Source icon and username overlay on each grid item; the username shows at lower densities.")];
+
+    [sections addObject:SPKTopicSection(@"Preview", @[
+                  [SPKSetting switchCellWithTitle:@"Show Media Info"
+                                             icon:SPKSettingsIcon(@"info")
+                                      defaultsKey:@"gallery_preview_show_metadata"]
+              ],
+                                        @"Overlay the username, source, and saved/posted dates on the expanded photo preview. Tap the media to hide it along with the controls.")];
 
     NSMutableArray *lockRows = [NSMutableArray array];
 

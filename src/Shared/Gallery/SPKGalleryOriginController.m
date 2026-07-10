@@ -292,6 +292,14 @@ static BOOL SPKGalleryURLIsPostOrReel(NSURL *url) {
     if (userPK.length > 0)
         metadata.sourceUserPK = userPK;
 
+    if (metadata.sourceFullName.length == 0) {
+        NSString *fullName = SPKGalleryStringForSelector(user, @"fullName");
+        if (fullName.length == 0)
+            fullName = SPKGalleryStringForSelector(user, @"full_name");
+        if (fullName.length > 0)
+            metadata.sourceFullName = fullName;
+    }
+
     NSURL *profileURL = nil;
     for (NSString *selectorName in @[ @"profileURL", @"profileUrl", @"url" ]) {
         profileURL = SPKGalleryURLForSelector(user, selectorName);

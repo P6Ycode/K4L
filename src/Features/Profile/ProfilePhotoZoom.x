@@ -124,7 +124,7 @@ static BOOL SPKShouldInterceptProfileLongPress(UILongPressGestureRecognizer *ges
     NSString *username = SPKUsernameFromIGUser(user);
     SPKGallerySaveMetadata *meta = [[SPKGallerySaveMetadata alloc] init];
     meta.source = (int16_t)SPKGallerySourceProfile;
-    [SPKGalleryOriginController populateProfileMetadata:meta username:username user:nil];
+    [SPKGalleryOriginController populateProfileMetadata:meta username:username user:user];
 
     UIViewController *presentingController = [SPKUtils viewControllerForAncestralView:view];
     [SPKFullScreenMediaPlayer showRemoteImageURL:url

@@ -26,6 +26,7 @@
     c.customName = [self.customName copy];
     c.importCapturedDate = self.importCapturedDate;
     c.importPostedDate = self.importPostedDate;
+    c.sourceFullName = [self.sourceFullName copy];
     return c;
 }
 

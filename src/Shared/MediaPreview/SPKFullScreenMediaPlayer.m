@@ -28,6 +28,7 @@
 #import "SPKFullScreenVideoViewController.h"
 #import "SPKMediaCacheManager.h"
 #import "SPKMediaItem.h"
+#import "SPKMediaPreviewInfoOverlay.h"
 
 static CGFloat const kDismissAxisLockSlop = 20.0;
 static CGFloat const kDismissDistanceRatio = 50.0 / 667.0;
@@ -38,6 +39,20 @@ static CGFloat const kDismissMinimumDuration = 0.12;
 static CGFloat const kDismissFinalBackdropAlpha = 0.1;
 static NSTimeInterval const kPresentationFadeDuration = 0.22;
 static NSTimeInterval const kDismissFadeDuration = 0.18;
+
+// Absolute medium-style date ("8 Jul 2026") for the preview metadata overlay.
+static NSString *SPKPreviewMediumDateString(NSDate *date) {
+    if (!date)
+        return nil;
+    static NSDateFormatter *fmt;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        fmt = [[NSDateFormatter alloc] init];
+        fmt.dateStyle = NSDateFormatterMediumStyle;
+        fmt.timeStyle = NSDateFormatterNoStyle;
+    });
+    return [fmt stringFromDate:date];
+}
 // The bottom toolbar is a real UIToolbar now, so the navigation controller
 // folds it into the safe area that AVPlayerViewController already respects. No
 // manual control inset is needed; keep it at zero so the scrubber sits just
@@ -219,6 +234,13 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 /// Suppresses safe-area-driven inset recomputation while a chrome toggle
 /// animation is running (the toggle drives the insets explicitly).
 @property (nonatomic, assign) BOOL chromeToggleInProgress;
+
+/// Overlay showing author/date on the live media preview (photos only).
+/// Non-interactive; its visibility tracks the chrome (fades with the bars on tap).
+@property (nonatomic, strong, nullable) SPKMediaPreviewInfoOverlay *infoOverlay;
+/// Bottom pin for the overlay, frozen to the toolbar-visible position so the overlay
+/// fades in place rather than sliding as the chrome (and its safe-area inset) moves.
+@property (nonatomic, strong, nullable) NSLayoutConstraint *infoOverlayBottomConstraint;
 
 @end
 
@@ -530,8 +552,131 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     [self setupTopNavigationItems];
     [self setupBottomBar];
     [self setupPageViewController];
+    [self setupInfoOverlay];
     [self setupDismissGesture];
     [self updateUI];
+}
+
+// Metadata overlay over the media: author + subtitle (post date, or full name for
+// profile pictures; source + both dates in the gallery). Shown for the live
+// action-button preview path and the gallery — not the bare local-file preview — and
+// only when the corresponding pref is enabled.
+//
+// PHOTOS ONLY: on video the bottom is occupied by AVPlayerViewController's scrubber
+// and the top-right by its route/cast button, so there is no non-colliding spot; we
+// skip the overlay for video pages entirely (see refreshInfoOverlay).
+//
+// Anchored to the bottom, but its bottom constraint is frozen at the toolbar-visible
+// position (updateInfoOverlayPositionIfNeeded) so it fades in place instead of
+// sliding as the chrome and its safe-area inset move.
+- (void)setupInfoOverlay {
+    if (_previewOnly)
+        return;
+    NSString *prefKey = _isFromGallery ? @"gallery_preview_show_metadata"
+                                       : @"general_preview_show_metadata";
+    if (![SPKUtils getBoolPref:prefKey])
+        return;
+
+    _infoOverlay = [[SPKMediaPreviewInfoOverlay alloc] initWithFrame:CGRectZero];
+    _infoOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    _infoOverlay.alpha = _isToolbarVisible ? 1.0 : 0.0;
+    [self.view addSubview:_infoOverlay];
+    _infoOverlayBottomConstraint =
+        [_infoOverlay.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+    [NSLayoutConstraint activateConstraints:@[
+        [_infoOverlay.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [_infoOverlay.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        _infoOverlayBottomConstraint,
+    ]];
+    [self refreshInfoOverlay];
+}
+
+// Freeze the overlay just above the action toolbar. Only recompute while the chrome
+// is visible and not mid-toggle, so the position is captured once from the
+// toolbar-visible layout and never shifts as the toolbar animates away.
+- (void)updateInfoOverlayPositionIfNeeded {
+    if (!_infoOverlayBottomConstraint)
+        return;
+    if (!_isToolbarVisible || self.chromeToggleInProgress)
+        return;
+
+    UIToolbar *toolbar = self.navigationController.toolbar;
+    CGFloat toolbarTopInView;
+    if (toolbar && !toolbar.hidden && toolbar.window) {
+        CGRect frameInView = [self.view convertRect:toolbar.bounds fromView:toolbar];
+        toolbarTopInView = CGRectGetMinY(frameInView);
+    } else {
+        toolbarTopInView =
+            CGRectGetMaxY(self.view.bounds) - self.view.safeAreaInsets.bottom;
+    }
+
+    CGFloat newConstant = (toolbarTopInView - 6.0) - CGRectGetHeight(self.view.bounds);
+    if (ABS(newConstant - _infoOverlayBottomConstraint.constant) > 0.5) {
+        _infoOverlayBottomConstraint.constant = newConstant;
+    }
+}
+
+- (void)refreshInfoOverlay {
+    if (!_infoOverlay)
+        return;
+
+    SPKMediaItem *item = [self currentItem];
+    // Photos only — the video transport bar has no free space for it.
+    if (item.mediaType != SPKMediaItemTypeImage) {
+        _infoOverlay.hidden = YES;
+        return;
+    }
+
+    SPKGallerySaveMetadata *meta = [self metadataForMediaItem:item];
+    NSString *username = meta.sourceUsername;
+    NSString *handle = username.length > 0 ? [@"@" stringByAppendingString:username] : nil;
+
+    NSString *title = nil;
+    NSString *subtitle = nil;
+
+    if (self.isFromGallery) {
+        // Gallery: "@user · Feed" (or just the source when there's no username),
+        // subtitle "Posted <date> · Saved <date>".
+        SPKGalleryFile *file = item.galleryFile;
+        NSString *sourceLabel =
+            [SPKGalleryFile shortLabelForSource:(SPKGallerySource)meta.source];
+        if (handle.length > 0 && sourceLabel.length > 0) {
+            title = [NSString stringWithFormat:@"%@ · %@", handle, sourceLabel];
+        } else {
+            title = handle.length > 0 ? handle : sourceLabel;
+        }
+
+        NSDate *savedDate = file.dateAdded;
+        // The posted date isn't persisted, but Sparkle filenames encode it as a
+        // trailing compact segment — recover it with the shared parser.
+        SPKGallerySaveMetadata *parsed = [[SPKGallerySaveMetadata alloc] init];
+        SPKGalleryApplyImportHeuristicsFromFilename(file.relativePath, parsed);
+        NSDate *postedDate = parsed.importPostedDate;
+
+        NSMutableArray<NSString *> *parts = [NSMutableArray array];
+        // Only surface "Posted" when it meaningfully differs from "Saved" (the
+        // generator writes posted == saved when IG exposed no taken_at).
+        if (postedDate &&
+            (!savedDate || ABS([postedDate timeIntervalSinceDate:savedDate]) > 120.0)) {
+            [parts addObject:[NSString stringWithFormat:@"Posted %@",
+                                                        SPKPreviewMediumDateString(postedDate)]];
+        }
+        if (savedDate) {
+            [parts addObject:[NSString stringWithFormat:@"Saved %@",
+                                                        SPKPreviewMediumDateString(savedDate)]];
+        }
+        subtitle = [parts componentsJoinedByString:@" · "];
+    } else {
+        // Live preview: "@user"; subtitle = post date, or full name for profile pics.
+        title = handle;
+        subtitle = SPKPreviewMediumDateString(meta.importPostedDate);
+        if (subtitle.length == 0) {
+            subtitle = meta.sourceFullName;
+        }
+    }
+
+    BOOL hasContent = [_infoOverlay configureWithTitle:title subtitle:subtitle];
+    _infoOverlay.hidden = !hasContent;
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -544,6 +689,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self updateMediaContentBarInsetsIfNeeded];
+    [self updateInfoOverlayPositionIfNeeded];
 }
 
 // On non-notched devices the opaque top/bottom bars overlap edge-to-edge media,
@@ -1003,6 +1149,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     [self updateCounter];
     [self updateFavoriteButton];
     [self updateGalleryOriginButton];
+    [self refreshInfoOverlay];
     if (self.bulkActionsItem) {
         UIMenu *menu = [self bulkActionsMenu];
         self.bulkActionsItem.menu = menu;
@@ -1495,6 +1642,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
         animations:^{
             [self setNeedsStatusBarAppearanceUpdate];
             [navigationController setNeedsStatusBarAppearanceUpdate];
+            self.infoOverlay.alpha = visible ? 1.0 : 0.0;
             for (UIViewController *controller in self.pageViewController
                      .viewControllers) {
                 [self applyMediaContentBarInsetsToController:controller];
@@ -2448,6 +2596,9 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                     self.presentationBackdropView.alpha = 0.0;
                     self.navigationController.navigationBar.alpha = 0.0;
                     self.navigationController.toolbar.alpha = 0.0;
+                    self.infoOverlay.transform = CGAffineTransformMakeTranslation(
+                        0.0, finalCenterY - self.interactiveDismissAnchorPoint.y);
+                    self.infoOverlay.alpha = 0.0;
                 }
                 completion:^(BOOL finished) {
                     [self finishInteractiveDismissal];
@@ -2467,6 +2618,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                     CGFloat alpha = self->_isToolbarVisible ? 1.0 : 0.0;
                     self.navigationController.navigationBar.alpha = alpha;
                     self.navigationController.toolbar.alpha = alpha;
+                    self.infoOverlay.transform = CGAffineTransformIdentity;
+                    self.infoOverlay.alpha = alpha;
                 }
                 completion:^(BOOL finished) {
                     UIViewController *currentVC =
@@ -2511,6 +2664,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
         CGFloat alpha = self->_isToolbarVisible ? 1.0 : 0.0;
         self.navigationController.navigationBar.alpha = alpha;
         self.navigationController.toolbar.alpha = alpha;
+        self.infoOverlay.transform = CGAffineTransformIdentity;
+        self.infoOverlay.alpha = alpha;
     };
     if (animated) {
         [UIView animateWithDuration:0.25 animations:animations];
@@ -2557,6 +2712,10 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     CGFloat fade = (self.isToolbarVisible ? 1.0 : 0.0) * backdropAlpha;
     self.navigationController.navigationBar.alpha = MAX(0.0, fade);
     self.navigationController.toolbar.alpha = MAX(0.0, fade);
+    // Keep the info overlay attached to the media: translate with it and fade
+    // together with the chrome.
+    self.infoOverlay.transform = CGAffineTransformMakeTranslation(0.0, verticalDelta);
+    self.infoOverlay.alpha = MAX(0.0, fade);
 }
 
 - (void)removeTransitionToViewForCancelledInteractiveDismissalIfNeeded {
@@ -2597,6 +2756,8 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     self.interactiveDismissalInProgress = NO;
     self.pageViewController.view.transform = CGAffineTransformIdentity;
     self.pageViewController.view.center = SPKCenterForBounds(self.view.bounds);
+    self.infoOverlay.transform = CGAffineTransformIdentity;
+    self.infoOverlay.alpha = self.isToolbarVisible ? 1.0 : 0.0;
 }
 
 - (id<UIViewControllerAnimatedTransitioning>)
@@ -2687,12 +2848,14 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
             self.presentationBackdropView.alpha = 0.0;
             self.navigationController.navigationBar.alpha = 0.0;
             self.navigationController.toolbar.alpha = 0.0;
+            self.infoOverlay.alpha = 0.0;
         }
         completion:^(__unused BOOL finished) {
             BOOL completed = !transitionContext.transitionWasCancelled;
             if (!completed) {
                 self.pageViewController.view.alpha = 1.0;
                 self.presentationBackdropView.alpha = 1.0;
+                self.infoOverlay.alpha = self.isToolbarVisible ? 1.0 : 0.0;
                 [toView removeFromSuperview];
             }
             [transitionContext completeTransition:completed];

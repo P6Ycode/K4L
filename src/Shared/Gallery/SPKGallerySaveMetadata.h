@@ -33,6 +33,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// Optional media posted time parsed from tweak-style trailing compact dates (..._story_yyyyMMddHHmmss). Used for generated filename compact segment when available.
 @property (nonatomic, strong, nullable) NSDate *importPostedDate;
 
+/// Transient (never persisted) display/full name of the source user, resolved live for
+/// the preview metadata overlay (used as the subtitle for profile pictures, which have
+/// no post date). Not written to the gallery.
+@property (nonatomic, copy, nullable) NSString *sourceFullName;
+
 @end
 
 NS_ASSUME_NONNULL_END

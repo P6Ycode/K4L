@@ -134,6 +134,12 @@
                         @"1. Hide the create group button from the Instagram send/share sheet.\n"
                         @"2. Show a confirmation alert when you try to create a group.\n"
                         @"3. Show a confirmation alert when sending a post."),
+        SPKTopicSection(@"Media Preview", @[
+            [SPKSetting switchCellWithTitle:@"Show Media Info"
+                                       icon:SPKSettingsIcon(@"info")
+                                defaultsKey:@"general_preview_show_metadata"],
+        ],
+                        @"Overlay the author and post date on the expanded photo preview."),
         SPKTopicSection(@"Recommendations", @[
             [SPKSetting navigationCellWithTitle:@"Ads"
                                        subtitle:@""
