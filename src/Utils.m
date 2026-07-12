@@ -973,6 +973,27 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
                                           countStyle:NSByteCountFormatterCountStyleFile];
 }
 
++ (NSString *)spk_localizedTimeComponent {
+    // `j` resolves to whichever hour cycle the locale/device prefers; if the
+    // resolved template keeps the AM/PM designator ("a") we're on a 12-hour
+    // clock, otherwise the device is set to 24-hour time.
+    NSString *resolved = [NSDateFormatter dateFormatFromTemplate:@"jmm"
+                                                         options:0
+                                                          locale:[NSLocale currentLocale]];
+    BOOL is24Hour = !resolved || [resolved rangeOfString:@"a"].location == NSNotFound;
+    return is24Hour ? @"HH:mm" : @"h:mm a";
+}
+
++ (NSString *)spk_localizedDateComponentIncludingYear:(BOOL)includeYear {
+    NSString *template = includeYear ? @"yMMMd" : @"MMMd";
+    NSString *resolved = [NSDateFormatter dateFormatFromTemplate:template
+                                                         options:0
+                                                          locale:[NSLocale currentLocale]];
+    if (resolved.length)
+        return resolved;
+    return includeYear ? @"MMM d, yyyy" : @"MMM d";  // safe fallback
+}
+
 + (NSString *)cacheAutoClearMode {
     NSString *mode = [SPKUtils getStringPref:kSPKCacheAutoClearModeKey];
     return mode.length > 0 ? mode : @"never";

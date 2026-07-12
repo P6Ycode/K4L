@@ -98,6 +98,17 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 + (unsigned long long)cleanCacheReturningFreedBytes;
 + (unsigned long long)cacheSizeBytes;
 + (NSString *)formattedCacheSize;
+
+/// Time-only date-format component ("HH:mm" or "h:mm a") matching the device's
+/// 12/24-hour clock setting. Use it to compose "<date> at <time>" strings so
+/// they follow the user's preference automatically (no in-app setting).
++ (NSString *)spk_localizedTimeComponent;
+
+/// Month/day date-format component ordered for the current locale (e.g. "MMM d"
+/// in en_US, "d MMM" in most others), optionally including the year. Pair with
+/// spk_localizedTimeComponent so dates follow the user's regional format.
++ (NSString *)spk_localizedDateComponentIncludingYear:(BOOL)includeYear;
+
 + (NSString *)cacheAutoClearMode;
 + (BOOL)shouldAutomaticallyClearCacheNow;
 + (void)markCacheClearedNow;

@@ -190,6 +190,7 @@ Per-feature control of the Sparkle notification pill and its haptics. See **Noti
 - **Confirm Inbox Refresh**: Confirmation before pull-to-refresh in the inbox, which would reload threads and drop preserved messages.
 
 ### Interface
+- **Last Active**: Shows the exact time someone was last active in the chat header ("Active at 1:15 AM") instead of a relative label ("Active 2h ago"). Only reformats the presence Instagram already shows — no extra tracking — and leaves the live "Active now" window untouched. Choose **Off**, **Smart** (time alone for today, adds the date for older days), or **Date & Time** (always shows both).
 - **Hide Typing Status**: Suppresses your typing indicator.
 - **Hide Reels Blend Button**, **Hide Audio Call Button**, **Hide Video Call Button**, **No Suggested Chats**. Call-button visibility changes apply after reopening the DM thread.
 

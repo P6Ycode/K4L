@@ -304,6 +304,18 @@
 @interface IGDirectInboxSearchAIAgentsSuggestedPromptRowCell : UIView
 @end
 
+// Chat header title view — holds the "Active now" / "Active Xh ago" presence
+// subtitle we rewrite into an absolute timestamp (Full Last Active feature).
+@interface IGDirectLeftAlignedTitleView : UIView
+@property (nonatomic, retain) id titleViewModel;
+- (id)delegate;
+- (id)_currentSubtitleViewModel;
+- (void)setTitleViewModel:(id)titleViewModel;
+- (void)animationCoordinatorDidUpdate:(id)coordinator;
+@end
+
+// Inbox row view model — its `socialContextText` carries the "Active Xh ago"
+// presence line rendered into the cell's social-context label (Full Last Active).
 @interface IGDSSegmentedPillBarView : UIView
 - (id)delegate;
 @end

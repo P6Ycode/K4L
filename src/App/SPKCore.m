@@ -182,6 +182,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"msgs_seen_on_reaction" : @(NO),
         @"msgs_seen_on_typing" : @(NO),
         @"msgs_seen_button_position" : @"top",
+        @"msgs_last_active_format" : @"off",
         @"feed_confirm_repost" : @(NO),
         @"reels_confirm_repost" : @(NO),
         @"feed_hide_repost_btn" : @(NO),

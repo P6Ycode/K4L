@@ -902,7 +902,10 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         fmt = [[NSDateFormatter alloc] init];
-        fmt.dateFormat = @"MMM d 'at' h:mm a";
+        // Date order + time follow the device's regional / 12/24-hour settings.
+        fmt.dateFormat = [NSString stringWithFormat:@"%@ 'at' %@",
+                          [SPKUtils spk_localizedDateComponentIncludingYear:NO],
+                          [SPKUtils spk_localizedTimeComponent]];
     });
     return self.dateAdded ? [fmt stringFromDate:self.dateAdded] : @"";
 }

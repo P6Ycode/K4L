@@ -202,6 +202,14 @@ UIMenu *SPKSeenButtonPositionMenu(void) {
     ]];
 }
 
+UIMenu *SPKLastActiveFormatMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SPKMenuCommand(@"Off", nil, nil, @"msgs_last_active_format", @"off", NO),
+        SPKMenuCommand(@"Smart", nil, nil, @"msgs_last_active_format", @"smart", NO),
+        SPKMenuCommand(@"Date & Time", nil, nil, @"msgs_last_active_format", @"datetime", NO)
+    ]];
+}
+
 UIMenu *SPKNavigationIconOrderingMenu(void) {
     return [UIMenu menuWithChildren:@[
         SPKMenuCommand(@"Default", nil, nil, @"interface_nav_order", @"default", YES),
