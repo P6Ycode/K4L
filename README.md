@@ -4,7 +4,7 @@
 
 # Sparkle for Instagram
 
-`v1.0.0` · Tested on versions **437.2.0** and **410.1.0**
+`v1.0.0` · Tested on versions **438.0.0** and **410.1.0**
 
 [📣 Telegram Channel](https://t.me/sparkle_ig) · [💬 Chat & Support](https://t.me/+f-Xo21HnfCY3NmE0) · [📥 Releases](https://github.com/efibalogh/sparkle-ig/releases/latest) · [🐛 Issues](https://github.com/efibalogh/sparkle-ig/issues/new/choose) · [☕ Donate](https://ko-fi.com/sparkle_ig)
 
