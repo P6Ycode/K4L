@@ -9,6 +9,21 @@
 static BOOL sSPKAppDidBecomeActive = NO;
 static BOOL sSPKStagedHooksFinished = NO;
 static BOOL sSPKStabilityCompletionScheduled = NO;
+static BOOL sSPKSafeModeAlertScheduled = NO;
+
+// Safe mode suppresses every feature hook, which is indistinguishable from
+// Sparkle being broken unless we say so. Explain it once per launch, and keep
+// explaining on later launches until the user turns it off — a missed alert
+// otherwise leaves them stuck with a silently inert tweak.
+static void SPKPresentSafeModeAlertIfNeeded(void) {
+    if (sSPKSafeModeAlertScheduled || !SPKStabilityGuardIsSafeStartupMode()) {
+        return;
+    }
+    sSPKSafeModeAlertScheduled = YES;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SPKStabilityGuardPresentSafeModeAlertIfNeeded();
+    });
+}
 
 static void SPKMarkLaunchStableIfReady(void) {
     if (!sSPKAppDidBecomeActive || !sSPKStagedHooksFinished || sSPKStabilityCompletionScheduled) {
@@ -105,6 +120,7 @@ static void SPKScheduleStagedFeatureHooks(void) {
     %orig;
     sSPKAppDidBecomeActive = YES;
     SPKMarkLaunchStableIfReady();
+    SPKPresentSafeModeAlertIfNeeded();
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         [SPKUtils evaluateAutomaticCacheClearIfNeeded];

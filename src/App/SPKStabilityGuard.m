@@ -10,6 +10,7 @@
 // clear this from Tools > "Reset Safe Startup Mode" (SPKStabilityGuardReset).
 #import "SPKStabilityGuard.h"
 
+#import "../Shared/UI/SPKIGAlertPresenter.h"
 #import "../Utils.h"
 
 static NSString *const kSPKStabilityLaunchStartedAtKey = @"app_launch_started_at";
@@ -67,6 +68,36 @@ void SPKStabilityGuardMarkHooksFinished(void) {
 
 BOOL SPKStabilityGuardIsSafeStartupMode(void) {
     return [[NSUserDefaults standardUserDefaults] boolForKey:kSPKSafeStartupModeKey];
+}
+
+void SPKStabilityGuardPresentSafeModeAlertIfNeeded(void) {
+    if (!SPKStabilityGuardIsSafeStartupMode()) {
+        return;
+    }
+
+    NSString *reason = [[NSUserDefaults standardUserDefaults] stringForKey:kSPKSafeStartupReasonKey] ?: @"unknown";
+    SPKLog(@"Stability", @"Presenting safe startup alert (reason: %@)", reason);
+
+    [SPKIGAlertPresenter presentAlertFromViewController:nil
+                                                 title:@"Sparkle Safe Mode"
+                                               message:@"Instagram closed before finishing launch several times in a row, so Sparkle turned its features off to get you back into the app.\n\n"
+                                                        "Every Sparkle feature is disabled right now. Only Sparkle Settings is reachable. Turn Safe Mode off to enable them again."
+                                               actions:@[
+                                                   [SPKIGAlertAction actionWithTitle:@"Turn Off Safe Mode"
+                                                                               style:SPKIGAlertActionStyleDefault
+                                                                             handler:^{
+                                                                                 SPKStabilityGuardReset();
+                                                                                 [SPKUtils showRestartConfirmation];
+                                                                             }],
+                                                   [SPKIGAlertAction actionWithTitle:@"Open Sparkle Settings"
+                                                                               style:SPKIGAlertActionStyleDefault
+                                                                             handler:^{
+                                                                                 [SPKUtils showSettingsForTopicTitle:@"Tools"];
+                                                                             }],
+                                                   [SPKIGAlertAction actionWithTitle:@"Not Now"
+                                                                               style:SPKIGAlertActionStyleCancel
+                                                                             handler:nil],
+                                               ]];
 }
 
 void SPKStabilityGuardReset(void) {
