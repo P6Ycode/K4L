@@ -1,6 +1,8 @@
 #import <UIKit/UIKit.h>
 
-@class SPKMediaItem, SPKGalleryFile, SPKGallerySaveMetadata;
+#import "SPKMediaItem.h"  // for SPKMediaItemType
+
+@class SPKGalleryFile, SPKGallerySaveMetadata;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -37,7 +39,11 @@ typedef void (^SPKMediaPreviewPlaybackBlock)(void);
 
 /// Bare, read-only preview of a local file: media + close + zoom only, no action toolbar and no
 /// metadata (so nothing attempts remote resolution). Used by the Files-import queue.
-+ (void)showLocalFilePreview:(NSURL *)fileURL;
+///
+/// The media type is required rather than sniffed from the extension, because the extension can lie:
+/// a Regram vault stores audio inside an `.mp4` container, which would otherwise open as a black
+/// "video" showing AVPlayer's generic QuickTime placeholder instead of the audio artwork overlay.
++ (void)showLocalFilePreview:(NSURL *)fileURL mediaType:(SPKMediaItemType)mediaType;
 
 + (void)showGalleryFiles:(NSArray<SPKGalleryFile *> *)files
          startingAtIndex:(NSInteger)index
