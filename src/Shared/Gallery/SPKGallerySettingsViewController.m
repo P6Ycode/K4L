@@ -131,13 +131,17 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
         ],
                         @"Lock the Gallery with a passcode or biometrics."),
         SPKTopicSection(@"Import", @[
-            [SPKSetting buttonCellWithTitle:@"Import Media"
-                                   subtitle:nil
-                                       icon:SPKSettingsIcon(@"media")
-                                     action:^{
-                                     }]
+            // A navigation row, not a button: this mirror feeds the settings search index, and a
+            // button row's action is what search runs on tap — an empty one silently does nothing.
+            // The framework pushes navViewController itself, so the result is actually reachable.
+            // No folder context from search, so it imports to the gallery root (nil).
+            [SPKSetting navigationCellWithTitle:@"Import Media"
+                                       subtitle:nil
+                                           icon:SPKSettingsIcon(@"media")
+                                 viewController:[[SPKGalleryImportViewController alloc] initWithDestinationFolderPath:nil]]
         ],
-                        @"Import media from the Files app with full editable metadata. Coming from Regram? Pick your exported folder or MediaVault.zip here to bring your whole Media Vault over."),
+                        @"Import media from the Files app with full editable metadata.\n"
+                        @"Coming from Regram? Pick your exported folder or MediaVault.zip here to bring your whole Media Vault over."),
         SPKTopicSection(@"Delete", @[
             [SPKSetting buttonCellWithTitle:@"Delete Files"
                                    subtitle:nil
@@ -317,7 +321,8 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
                                                          [self.navigationController pushViewController:vc animated:YES];
                                                      }];
     [sections addObject:SPKTopicSection(@"Import", @[ importRow ],
-                                        @"Import media from the Files app with full editable metadata. Coming from Regram? Pick your exported folder or MediaVault.zip here to bring your whole Media Vault over.")];
+                                        @"Import media from the Files app with full editable metadata.\n"
+                                        @"Coming from Regram? Pick your exported folder or MediaVault.zip here to bring your whole Media Vault over.")];
 
     SPKSetting *deleteRow = [SPKSetting buttonCellWithTitle:@"Delete Files"
                                                    subtitle:nil

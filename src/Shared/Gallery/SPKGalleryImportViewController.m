@@ -989,7 +989,7 @@ static UIColor *SPKImportAmberColor(void) {
 - (void)pushSharedEditor {
     SPKGalleryImportMetadataFormViewController *form = [[SPKGalleryImportMetadataFormViewController alloc] init];
     form.metadata = self.sharedDefaults;
-    form.title = @"Shared details";
+    form.title = @"Shared Details";
     self.activeForm = form;
     self.activeFormItem = nil;
     self.activeFormIsShared = YES;

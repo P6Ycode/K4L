@@ -143,8 +143,16 @@ static BOOL SPKParseInstagramLink(NSString *raw, SPKGallerySaveMetadata *m) {
                                                    pointSize:22.0
                                                renderingMode:UIImageRenderingModeAlwaysTemplate];
     cell.imageView.tintColor = [SPKUtils SPKColor_InstagramPrimaryText];
-    cell.accessoryType = (src == self.selectedSource) ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
     cell.tintColor = [SPKUtils SPKColor_InstagramBlue];
+    // Sparkle's pickers mark the selection with the filled circle-check, not the system tick.
+    if (src == self.selectedSource) {
+        UIImageView *checkmark = [[UIImageView alloc] initWithImage:[SPKAssetUtils instagramIconNamed:@"circle_check_filled"]];
+        checkmark.tintColor = [SPKUtils SPKColor_InstagramBlue];
+        cell.accessoryView = checkmark;
+    } else {
+        cell.accessoryView = nil;
+    }
+    cell.accessoryType = UITableViewCellAccessoryNone;
     return cell;
 }
 
@@ -357,7 +365,7 @@ static BOOL SPKParseInstagramLink(NSString *raw, SPKGallerySaveMetadata *m) {
     case SPKGalleryImportFormSectionIdentity:
         return @"Identity";
     case SPKGalleryImportFormSectionLink:
-        return @"Link it back";
+        return @"Link It Back";
     default:
         return nil;
     }
@@ -613,7 +621,7 @@ static BOOL SPKParseInstagramLink(NSString *raw, SPKGallerySaveMetadata *m) {
     UITableViewCell *cell = [self chromeCell];
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     UIListContentConfiguration *cfg = cell.defaultContentConfiguration;
-    cfg.text = @"Paste link to autofill";
+    cfg.text = @"Paste Link to Autofill";
     cfg.textProperties.color = [SPKUtils SPKColor_InstagramBlue];
     cell.contentConfiguration = cfg;
     return cell;
