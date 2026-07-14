@@ -10,6 +10,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer;
 - (void)resetAllSettingsFromController:(UIViewController *)controller;
 
+/// Expands a picked `.zip` (STORED method 0 or DEFLATE method 8) into a fresh temporary
+/// directory and returns its root path, or nil on failure. Exposed so other importers
+/// (e.g. the Regram media-vault importer) can reuse Sparkle's dependency-free unzip reader.
+/// Runs synchronously — call off the main thread.
++ (nullable NSString *)expandZipArchiveAtURL:(NSURL *)archiveURL error:(NSError **)error;
+
 // Restores a single grouped, multi-key configuration (e.g. Advanced Encoding, a
 // surface's Action Button layout) to its built-in defaults for the active account,
 // leaving all other preferences — and other accounts' overrides — untouched. Confirms
