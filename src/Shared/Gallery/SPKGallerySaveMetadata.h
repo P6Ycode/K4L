@@ -38,6 +38,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// no post date). Not written to the gallery.
 @property (nonatomic, copy, nullable) NSString *sourceFullName;
 
+/// Plist-safe round-trip for persisting the import queue across screen dismissals / relaunches.
+/// The transient `sourceFullName` is intentionally excluded (it is re-resolved live).
+- (NSDictionary *)spk_dictionaryRepresentation;
++ (instancetype)spk_metadataFromDictionary:(NSDictionary *)dict;
+
 @end
 
 NS_ASSUME_NONNULL_END

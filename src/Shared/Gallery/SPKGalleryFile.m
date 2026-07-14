@@ -223,6 +223,9 @@ static NSDate *_Nullable SPKParseEpochDateFromString(NSString *s) {
 }
 
 /// Recognizes slug segments matching `SPKGallerySourceSlug` output (feed, story, reel, ...).
+/// Also recognizes Regram's own basename slugs (tv, dm-story, dm-note, post-audio, highlight-cover)
+/// so imported Regram media strips the slug token instead of folding it into the username — see
+/// SPKRegramImporter for the full source-value → slug table.
 static BOOL SPKSourceFromBasenameSlug(NSString *low, SPKGallerySource *out) {
     if ([low isEqualToString:@"feed"]) {
         *out = SPKGallerySourceFeed;
@@ -232,7 +235,7 @@ static BOOL SPKSourceFromBasenameSlug(NSString *low, SPKGallerySource *out) {
         *out = SPKGallerySourceStories;
         return YES;
     }
-    if ([low isEqualToString:@"reel"] || [low isEqualToString:@"reels"]) {
+    if ([low isEqualToString:@"reel"] || [low isEqualToString:@"reels"] || [low isEqualToString:@"tv"]) {
         *out = SPKGallerySourceReels;
         return YES;
     }
@@ -240,11 +243,13 @@ static BOOL SPKSourceFromBasenameSlug(NSString *low, SPKGallerySource *out) {
         *out = SPKGallerySourceProfile;
         return YES;
     }
-    if ([low isEqualToString:@"dm"] || [low isEqualToString:@"dms"]) {
+    if ([low isEqualToString:@"dm"] || [low isEqualToString:@"dms"] || [low isEqualToString:@"dm-story"] ||
+        [low isEqualToString:@"dm-note"]) {
         *out = SPKGallerySourceDMs;
         return YES;
     }
-    if ([low isEqualToString:@"thumbnail"] || [low isEqualToString:@"thumb"]) {
+    if ([low isEqualToString:@"thumbnail"] || [low isEqualToString:@"thumb"] || [low isEqualToString:@"cover"] ||
+        [low isEqualToString:@"highlight-cover"]) {
         *out = SPKGallerySourceThumbnail;
         return YES;
     }
@@ -252,7 +257,8 @@ static BOOL SPKSourceFromBasenameSlug(NSString *low, SPKGallerySource *out) {
         *out = SPKGallerySourceInstants;
         return YES;
     }
-    if ([low isEqualToString:@"audio"] || [low isEqualToString:@"audio-page"] || [low isEqualToString:@"audiopage"]) {
+    if ([low isEqualToString:@"audio"] || [low isEqualToString:@"audio-page"] || [low isEqualToString:@"audiopage"] ||
+        [low isEqualToString:@"post-audio"]) {
         *out = SPKGallerySourceAudioPage;
         return YES;
     }
@@ -287,8 +293,10 @@ void SPKGalleryApplyImportHeuristicsFromFilename(NSString *fileName, SPKGalleryS
         return;
     }
 
+    BOOL hasLeadEpoch = NO;
     NSDate *leadEpochDate = SPKParseEpochDateFromString(parts.firstObject);
     if (leadEpochDate) {
+        hasLeadEpoch = YES;
         if (!m.importCapturedDate) {
             m.importCapturedDate = leadEpochDate;
         }
@@ -298,8 +306,10 @@ void SPKGalleryApplyImportHeuristicsFromFilename(NSString *fileName, SPKGalleryS
         return;
     }
 
+    BOOL hasTrailDate = NO;
     NSDate *trailDate = SPKParseCompactDigitDateFromString(parts.lastObject);
     if (trailDate) {
+        hasTrailDate = YES;
         if (!m.importPostedDate) {
             m.importPostedDate = trailDate;
         }
@@ -325,44 +335,36 @@ void SPKGalleryApplyImportHeuristicsFromFilename(NSString *fileName, SPKGalleryS
         return;
     }
 
-    if (parts.count >= 2) {
-        NSString *a = parts[0];
-        NSString *b = parts[1];
-        if (SPKDigitsOnlyString(a) && !SPKDigitsOnlyString(b)) {
-            if (!m.sourceUserPK.length) {
-                m.sourceUserPK = a;
-            }
-            if (!m.sourceUsername.length) {
-                m.sourceUsername = b;
-                [SPKGalleryOriginController populateProfileMetadata:m username:b user:nil];
-            }
-        } else if (!SPKDigitsOnlyString(a) && SPKDigitsOnlyString(b)) {
-            if (!m.sourceUsername.length) {
-                m.sourceUsername = a;
-                [SPKGalleryOriginController populateProfileMetadata:m username:a user:nil];
-            }
-            if (!m.sourceUserPK.length) {
-                m.sourceUserPK = b;
-            }
-        } else if (!SPKDigitsOnlyString(a) && !SPKDigitsOnlyString(b)) {
-            if (!m.sourceUsername.length) {
-                m.sourceUsername = a;
-                [SPKGalleryOriginController populateProfileMetadata:m username:a user:nil];
-            }
-        }
+    // Only auto-fill a username when the filename matches Sparkle's own export layout
+    // (epoch_user_slug_date — see SPKFileNameForMedia). For arbitrary Files, leave the username
+    // blank rather than guessing a handle from an unrelated file name.
+    if (!(hasLeadEpoch && hasTrailDate)) {
         return;
     }
 
-    NSString *only = parts[0];
-    if (SPKDigitsOnlyString(only)) {
+    // The remaining parts are the username region. A leading digits-only token is the user pk;
+    // rejoin everything after it with "_" so usernames containing underscores survive (this is
+    // the inverse of SPKSanitizedGalleryUsername).
+    NSUInteger usernameStart = 0;
+    if (parts.count >= 2 && SPKDigitsOnlyString(parts[0])) {
         if (!m.sourceUserPK.length) {
-            m.sourceUserPK = only;
+            m.sourceUserPK = parts[0];
         }
-    } else {
-        if (!m.sourceUsername.length) {
-            m.sourceUsername = only;
-            [SPKGalleryOriginController populateProfileMetadata:m username:only user:nil];
+        usernameStart = 1;
+    }
+    NSArray<NSString *> *usernameParts =
+        [parts subarrayWithRange:NSMakeRange(usernameStart, parts.count - usernameStart)];
+    NSString *username = [usernameParts componentsJoinedByString:@"_"];
+    if (username.length == 0) {
+        return;
+    }
+    if (SPKDigitsOnlyString(username)) {
+        if (!m.sourceUserPK.length) {
+            m.sourceUserPK = username;
         }
+    } else if (!m.sourceUsername.length) {
+        m.sourceUsername = username;
+        [SPKGalleryOriginController populateProfileMetadata:m username:username user:nil];
     }
 }
 
@@ -1149,6 +1151,76 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 
 #pragma mark - Thumbnails
 
+// Synchronous render core shared by the saved-file thumbnailer and the URL variant. Call off the
+// main thread. Images are decoded + downscaled; videos yield a frame at the half-second mark.
++ (nullable UIImage *)renderThumbnailForURL:(NSURL *)url mediaType:(SPKGalleryMediaType)mediaType maxSize:(CGSize)maxSize {
+    if (mediaType == SPKGalleryMediaTypeImage) {
+        // Decode via ImageIO with downsampling: this handles formats -imageWithContentsOfFile: chokes
+        // on (WebP, some HEIC/animated frames) and applies the EXIF orientation, so Regram exports and
+        // odd Files imports render a thumbnail instead of falling back to the grey placeholder glyph.
+        CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
+        if (source) {
+            CGFloat scale = MAX(UIScreen.mainScreen.scale, 1.0);
+            CGFloat maxPixel = MAX(maxSize.width, maxSize.height);
+            if (maxPixel < 1.0) {
+                maxPixel = 256.0 * scale;
+            }
+            NSDictionary *opts = @{
+                (id)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
+                (id)kCGImageSourceCreateThumbnailWithTransform : @YES,
+                (id)kCGImageSourceShouldCacheImmediately : @YES,
+                (id)kCGImageSourceThumbnailMaxPixelSize : @(maxPixel),
+            };
+            CGImageRef cg = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)opts);
+            CFRelease(source);
+            if (cg) {
+                UIImage *img = [UIImage imageWithCGImage:cg];
+                CGImageRelease(cg);
+                return img;
+            }
+        }
+        // Last resort for anything ImageIO couldn't thumbnail (e.g. a raw pixel buffer format).
+        UIImage *full = [UIImage imageWithContentsOfFile:url.path];
+        return full ? [self resizeImage:full toSize:maxSize] : nil;
+    }
+    if (mediaType == SPKGalleryMediaTypeVideo) {
+        AVAsset *asset = [AVAsset assetWithURL:url];
+        AVAssetImageGenerator *gen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+        gen.appliesPreferredTrackTransform = YES;
+        gen.maximumSize = maxSize;
+        gen.requestedTimeToleranceBefore = kCMTimePositiveInfinity;
+        gen.requestedTimeToleranceAfter = kCMTimePositiveInfinity;
+
+        // Prefer a frame ~0.5s in, but fall back to the very first frame for clips shorter than that
+        // (a single grabbed frame is why some short reels/audio-cover videos showed no thumbnail).
+        CMTime times[] = { CMTimeMakeWithSeconds(0.5, 600), kCMTimeZero };
+        for (int i = 0; i < 2; i++) {
+            CGImageRef cgImage = [gen copyCGImageAtTime:times[i] actualTime:NULL error:NULL];
+            if (cgImage) {
+                UIImage *img = [UIImage imageWithCGImage:cgImage];
+                CGImageRelease(cgImage);
+                return img;
+            }
+        }
+    }
+    return nil;
+}
+
++ (void)generateThumbnailForURL:(NSURL *)url
+                      mediaType:(SPKGalleryMediaType)mediaType
+                           size:(CGSize)size
+                     completion:(void (^)(UIImage *_Nullable))completion {
+    if (!completion) {
+        return;
+    }
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        UIImage *thumb = [self renderThumbnailForURL:url mediaType:mediaType maxSize:size];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(thumb);
+        });
+    });
+}
+
 + (void)generateThumbnailForFile:(SPKGalleryFile *)file completion:(void (^)(BOOL success))completion {
     int16_t mediaType = file.mediaType;
     if (mediaType == SPKGalleryMediaTypeAudio) {
@@ -1204,27 +1276,9 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
     }
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        UIImage *thumb = nil;
-
-        if (mediaType == SPKGalleryMediaTypeImage) {
-            UIImage *full = [UIImage imageWithContentsOfFile:filePath];
-            if (full) {
-                thumb = [self resizeImage:full toSize:CGSizeMake(kThumbnailSize, kThumbnailSize)];
-            }
-        } else if (mediaType == SPKGalleryMediaTypeVideo) {
-            NSURL *videoURL = [NSURL fileURLWithPath:filePath];
-            AVAsset *asset = [AVAsset assetWithURL:videoURL];
-            AVAssetImageGenerator *gen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
-            gen.appliesPreferredTrackTransform = YES;
-            gen.maximumSize = CGSizeMake(kThumbnailSize, kThumbnailSize);
-
-            NSError *err;
-            CGImageRef cgImage = [gen copyCGImageAtTime:CMTimeMake(1, 2) actualTime:NULL error:&err];
-            if (cgImage) {
-                thumb = [UIImage imageWithCGImage:cgImage];
-                CGImageRelease(cgImage);
-            }
-        }
+        UIImage *thumb = [self renderThumbnailForURL:[NSURL fileURLWithPath:filePath]
+                                           mediaType:(SPKGalleryMediaType)mediaType
+                                             maxSize:CGSizeMake(kThumbnailSize, kThumbnailSize)];
 
         if (thumb) {
             NSData *jpegData = UIImageJPEGRepresentation(thumb, 0.8);
@@ -1314,6 +1368,10 @@ static UIImage *SPKGalleryAudioPlaceholderImage(void) {
     return glyph;
 }
 
++ (UIImage *)audioPlaceholderThumbnail {
+    return SPKGalleryAudioPlaceholderImage();
+}
+
 + (UIImage *)loadThumbnailForFile:(SPKGalleryFile *)file {
     if (file.mediaType == SPKGalleryMediaTypeAudio) {
         return SPKGalleryAudioPlaceholderImage();
@@ -1335,6 +1393,12 @@ static UIImage *SPKGalleryAudioPlaceholderImage(void) {
 }
 
 + (UIImage *)resizeImage:(UIImage *)image toSize:(CGSize)targetSize {
+    // Guard against a zero/degenerate target (e.g. a not-yet-laid-out view passing a 0 width),
+    // which would make UIGraphicsBeginImageContext assert on a {0,0} bitmap.
+    if (!image || image.size.width < 1.0 || image.size.height < 1.0 ||
+        targetSize.width < 1.0 || targetSize.height < 1.0) {
+        return image;
+    }
     CGFloat scale = MIN(targetSize.width / image.size.width, targetSize.height / image.size.height);
     CGSize newSize = CGSizeMake(image.size.width * scale, image.size.height * scale);
 

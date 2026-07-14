@@ -9,6 +9,7 @@
 #import "SPKGalleryFile.h"
 #import "SPKGalleryGridDensity.h"
 #import "SPKGalleryHiddenSources.h"
+#import "SPKGalleryImportViewController.h"
 #import "SPKGalleryLockViewController.h"
 #import "SPKGalleryManager.h"
 
@@ -129,6 +130,14 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
                                      }]
         ],
                         @"Lock the Gallery with a passcode or biometrics."),
+        SPKTopicSection(@"Import", @[
+            [SPKSetting buttonCellWithTitle:@"Import Media"
+                                   subtitle:nil
+                                       icon:SPKSettingsIcon(@"media")
+                                     action:^{
+                                     }]
+        ],
+                        @"Import media from the Files app with full editable metadata. Coming from Regram? Pick your exported folder or MediaVault.zip here to bring your whole Media Vault over."),
         SPKTopicSection(@"Delete", @[
             [SPKSetting buttonCellWithTitle:@"Delete Files"
                                    subtitle:nil
@@ -299,6 +308,16 @@ static NSString *const kGalleryQuickAccessDisabledValue = @"none";
     [lockRows addObject:changePasscode];
 
     [sections addObject:SPKTopicSection(@"Lock", lockRows, @"Lock the Gallery with a passcode or biometrics.")];
+
+    SPKSetting *importRow = [SPKSetting buttonCellWithTitle:@"Import Media"
+                                                   subtitle:nil
+                                                       icon:SPKSettingsIcon(@"media")
+                                                     action:^{
+                                                         SPKGalleryImportViewController *vc = [[SPKGalleryImportViewController alloc] initWithDestinationFolderPath:self.importDestinationFolderPath];
+                                                         [self.navigationController pushViewController:vc animated:YES];
+                                                     }];
+    [sections addObject:SPKTopicSection(@"Import", @[ importRow ],
+                                        @"Import media from the Files app with full editable metadata. Coming from Regram? Pick your exported folder or MediaVault.zip here to bring your whole Media Vault over.")];
 
     SPKSetting *deleteRow = [SPKSetting buttonCellWithTitle:@"Delete Files"
                                                    subtitle:nil

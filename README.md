@@ -37,6 +37,7 @@ For the full list of features, check out [`FEATURES.md`](FEATURES.md).
   - High-quality DASH video+audio merging via FFmpegKit.
 - **Private Gallery**:
   - An on-device media library with folders, search, metadata, source overlays, and an optional passcode / Face ID / Touch ID lock. Nothing ever leaves your device.
+  - Import your own media from Files with editable metadata, or bring your whole Regram Media Vault over in one go.
 - **Built-in editors**:
   - Trim any video down to a clip, a single still frame, or audio-only.
   - A photo editor with crop / pan-zoom / rotate / flip.
