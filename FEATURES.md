@@ -304,6 +304,11 @@ logs, and Profile Analyzer data live locally under `Documents/Sparkle/`.
 - **Trim & Save (action button)**: An opt-in, video-only action you can add to any action-button menu via the customizer (works on feed-inline reels too). It sources the video at your configured **download video quality** (progressive "ready-to-play" or merged DASH; prompts when set to "always ask"), opens the trim editor, then offers a Done menu of destinations (**Photos / Gallery / Share / Copy**; when the output is audio, **Save to Files** replaces Photos). DASH-quality trims download the streams and merge + cut in one pass, encoding only the selected window.
 - **Edit & Save (action button)**: The photo counterpart to Trim & Save: an opt-in, image-only action for any action-button menu. It fetches the photo, opens the editor, then offers a Done menu of destinations (**Photos / Gallery / Share / Copy**).
 
+### Importing
+- **Import Media**: Bring media into the Gallery from the Files app — images, GIFs, videos, and audio — with full editable metadata. Picked files land in a queue you can review before committing: each row previews the file (tap the thumbnail for a full-screen preview) and opens a details form to set its **display name**, **username**, **source**, **date**, and, under **Advanced**, the user/media IDs, shortcode, permalink, pixel size, and duration. **Paste link to autofill** fills the form from a copied Instagram link. A **Shared details** row applies the same values to every queued file that you haven't edited individually, so a batch from one account only needs filling in once. Files are imported into the Gallery folder you opened Settings from.
+- **Queue persistence**: The queue survives leaving the screen and app relaunches — picked files are staged on disk, so a half-filled batch is never lost. Entries are cleared as they import, or via swipe / **Clear Queue**.
+- **Regram Media Vault import**: Coming from Regram? Pick your exported folder, `MediaVault.zip`, or the full `Regram-Data.zip` and Sparkle reads the vault's database directly, enqueueing every file with its metadata already filled in — source, username, dates, dimensions, and favorites — mapped onto Sparkle's own sources. Everything stays editable before import. (ZIP64 archives, which is what macOS and the Files app produce, are supported.)
+
 ### Gallery Settings
 - **Pinch to Zoom**: Enables grid density pinching.
 - **Show Source & Username**: Toggles the grid overlays above.
@@ -311,6 +316,7 @@ logs, and Profile Analyzer data live locally under `Documents/Sparkle/`.
 - **This Account Only**: Scopes the Gallery to media saved while logged into the current account (plus older unassigned files); enabling it offers to claim existing unassigned files for the current account. Each saved file is tagged with the account that saved it; reassign a file to another logged-in account from its **Edit Details → Account** row (e.g. to stash media into a different account's Gallery). Non-destructive: turn it off to see everything.
 - **Hidden Sources**: Hides selected sources, from Gallery browsing and Gallery picker sheets without deleting files or excluding them from maintenance and duplicate tracking.
 - **Enable Passcode Lock** + **Change Passcode**: 4–6 digit passcode with Face ID / Touch ID unlock. Hashes are stored in the keychain (PBKDF2-HMAC-SHA256). Enforced globally when opening the Gallery itself and all gallery picker sheets (e.g., when uploading media in Direct Messages or Instants).
+- **Import Media**: Opens the importer (see Importing above) — from Files, or a Regram Media Vault export.
 - **Storage**: Total / image / video / audio counts and total size.
 - **Delete Files**: Bulk-delete tooling: by everything, by type (images/videos/thumbnails), by source (feed/stories/reels/DMs/profile pictures), or by user.
 

@@ -275,10 +275,15 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     [player playItems:@[ item ] startingAtIndex:0 fromViewController:presenter];
 }
 
-+ (void)showLocalFilePreview:(NSURL *)fileURL {
++ (void)showLocalFilePreview:(NSURL *)fileURL mediaType:(SPKMediaItemType)mediaType {
     // A read-only look at a local file (Files-import queue): just the media, close button,
-    // and pinch/zoom. No metadata attached, so nothing tries to resolve a remote URL.
+    // and pinch/zoom. Pre-resolve the on-disk URL so the video path never falls through the cache
+    // manager to its "Missing remote media URL" branch (there is no remote for an import preview).
     SPKMediaItem *item = [SPKMediaItem itemWithFileURL:fileURL];
+    // Trust the caller's type over the extension: Regram stores audio in .mp4, which would
+    // otherwise play as a black video with no audio artwork overlay.
+    item.mediaType = mediaType;
+    item.resolvedFileURL = fileURL;
     item.isFromGallery = NO;
 
     SPKFullScreenMediaPlayer *player = [[SPKFullScreenMediaPlayer alloc] init];

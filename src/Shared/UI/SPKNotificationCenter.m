@@ -255,7 +255,7 @@ NSArray<NSDictionary *> *SPKNotificationPreferenceSections(void) {
               SPKNotificationItem(kSPKNotificationGalleryDeleteFile, @"Delete File", @"media"),
               SPKNotificationItem(kSPKNotificationGalleryDeleteSelected, @"Delete Selected Files", @"circle_check"),
               SPKNotificationItem(kSPKNotificationGalleryBulkDelete, @"Bulk Delete", @"trash"),
-              SPKNotificationItem(kSPKNotificationGalleryImport, @"Import Files", @"arrow_down"),
+              SPKNotificationItem(kSPKNotificationGalleryImport, @"Import Media", @"media"),
           ]},
         @{@"title" : @"Settings & Tools",
           @"items" : @[

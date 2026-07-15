@@ -1,6 +1,16 @@
 #import "SPKGlassButton.h"
 #import "../../Utils.h"
 
+// The glass look AND its interactive "bounce" both come from the system's
+// prominentGlass button configuration — a UIGlassEffect behind a plain button was
+// tried and is NOT equivalent (it renders flat and has no touch response, since the
+// effect view can't take the touches). So the configuration stays.
+//
+// The tint must be CHROMATIC. Glass tints its material with tintColor, and an
+// achromatic tint (Sparkle's black/white primary-text colour) leaves the material no
+// light to bend, so it renders as a flat pill — at every alpha; opacity is not the
+// variable, hue is. IG blue is what the trim/photo editor's Done-style Save checkmark
+// tints its bar item with, and that reads as proper glass, so this matches it.
 @interface SPKGlassButton () {
     BOOL _isGlass;
 }
@@ -14,13 +24,13 @@
         Class configClass = NSClassFromString(@"UIButtonConfiguration");
         SEL prominentGlassSel = NSSelectorFromString(@"prominentGlassButtonConfiguration");
         SEL filledSel = NSSelectorFromString(@"filledButtonConfiguration");
-        
+
         id titleTransformer = ^(NSDictionary *incoming) {
             NSMutableDictionary *mut = [incoming mutableCopy] ?: [NSMutableDictionary dictionary];
             mut[NSFontAttributeName] = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
             return mut;
         };
-        
+
         if (configClass && [configClass respondsToSelector:prominentGlassSel]) {
             _isGlass = YES;
             id config = ((id (*)(id, SEL))[configClass methodForSelector:prominentGlassSel])(configClass, prominentGlassSel);
@@ -46,10 +56,18 @@
 - (void)applyColors {
     UIColor *baseColor = [SPKUtils SPKColor_InstagramPrimaryText];
     UIColor *textColor = [SPKUtils SPKColor_InstagramBackground];
-    
+
+    // Chromatic tint only (see class comment) — matches the editors' Save checkmark
+    // rather than the system accent. The label colour is left to the configuration,
+    // which contrasts itself against the tint.
+    if (_isGlass) {
+        self.tintColor = [SPKUtils SPKColor_InstagramBlue];
+        return;
+    }
+
     self.tintColor = baseColor;
-    
-    if (self.configuration && !_isGlass) {
+
+    if (self.configuration) {
         id config = self.configuration;
         [config setValue:baseColor forKey:@"baseBackgroundColor"];
         [config setValue:textColor forKey:@"baseForegroundColor"];

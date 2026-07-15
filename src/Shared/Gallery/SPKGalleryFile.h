@@ -146,12 +146,25 @@ typedef NS_ENUM(int16_t, SPKGallerySource) {
 + (void)generateThumbnailForFile:(SPKGalleryFile *)file
                       completion:(void (^_Nullable)(BOOL success))completion;
 
+/// Renders a thumbnail straight from a file URL (image or video) using the same pipeline as the
+/// saved-file thumbnailer, for media that isn't a \c SPKGalleryFile yet (e.g. Files import). The
+/// completion is called on the main queue; \c nil means no thumbnail could be produced.
++ (void)generateThumbnailForURL:(NSURL *)url
+                      mediaType:(SPKGalleryMediaType)mediaType
+                           size:(CGSize)size
+                     completion:(void (^)(UIImage *_Nullable thumbnail))completion;
+
 + (nullable UIImage *)loadThumbnailForFile:(SPKGalleryFile *)file;
 
 /// Crisp three-bar EQ glyph (the same shape the gallery grid draws for audio)
 /// rendered in `barColor` on a transparent background. Lets dark surfaces such
 /// as the trim editor's audio pane show the bars in white without the gray card.
 + (UIImage *)audioGlyphImageWithBarColor:(UIColor *)barColor;
+
+/// The exact audio thumbnail the gallery grid/list draws for audio files
+/// (tertiary-background card with centered EQ bars). Cached per interface style.
+/// Used by the Files-import queue so audio rows match the gallery.
++ (UIImage *)audioPlaceholderThumbnail;
 
 /// Returns a human-readable label for the given source.
 + (NSString *)labelForSource:(SPKGallerySource)source;

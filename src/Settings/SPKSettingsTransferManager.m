@@ -309,6 +309,11 @@ static uint32_t SPKReadUInt32LE(const uint8_t *bytes, NSUInteger offset) {
            ((uint32_t)bytes[offset + 3] << 24);
 }
 
+static uint64_t SPKReadUInt64LE(const uint8_t *bytes, NSUInteger offset) {
+    return (uint64_t)SPKReadUInt32LE(bytes, offset) |
+           ((uint64_t)SPKReadUInt32LE(bytes, offset + 4) << 32);
+}
+
 static uint32_t SPKZipCRC32ForBytes(uint32_t crc, const uint8_t *bytes, NSUInteger length) {
     static uint32_t table[256];
     static dispatch_once_t onceToken;
@@ -602,7 +607,10 @@ static BOOL SPKInflateRawDeflateToFile(const uint8_t *src, size_t srcLen, size_t
 
 // Expands a zip created by our own exporter (stored, method 0) as well as zips
 // re-compressed by Files / iCloud / desktop tools (DEFLATE, method 8).
-static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NSError **error) {
+// Extracts every entry of a zip (STORED method 0 or DEFLATE method 8, incl. ZIP64) into a fresh
+// temporary directory and returns that directory — a *generic* unzip with no assumptions about the
+// contents. `SPKExpandStoredZipSettingsTransferArchive` layers Sparkle-bundle resolution on top.
+static NSString *SPKExpandZipArchiveRaw(NSURL *archiveURL, NSError **error) {
     NSData *zipData = [NSData dataWithContentsOfURL:archiveURL options:NSDataReadingMappedIfSafe error:error];
     if (zipData.length < 22)
         return nil;
@@ -641,15 +649,48 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
         }
 
         uint16_t method = SPKReadUInt16LE(bytes, cursor + 10);
-        uint32_t compressedSize = SPKReadUInt32LE(bytes, cursor + 20);
-        uint32_t uncompressedSize = SPKReadUInt32LE(bytes, cursor + 24);
+        uint64_t compressedSize = SPKReadUInt32LE(bytes, cursor + 20);
+        uint64_t uncompressedSize = SPKReadUInt32LE(bytes, cursor + 24);
         uint16_t nameLen = SPKReadUInt16LE(bytes, cursor + 28);
         uint16_t extraLen = SPKReadUInt16LE(bytes, cursor + 30);
         uint16_t commentLen = SPKReadUInt16LE(bytes, cursor + 32);
-        uint32_t localOffset = SPKReadUInt32LE(bytes, cursor + 42);
+        uint64_t localOffset = SPKReadUInt32LE(bytes, cursor + 42);
         if (cursor + 46 + nameLen + extraLen + commentLen > zipData.length) {
             [archiveHandle closeFile];
             return nil;
+        }
+
+        // ZIP64: any 32-bit size/offset equal to 0xFFFFFFFF is a sentinel; the real 64-bit value
+        // lives in the 0x0001 extra block, present in fixed order (uncompressed, compressed, local
+        // offset) only for the fields that overflowed. Modern zip writers (incl. Regram exports)
+        // emit ZIP64 even for small entries, so this must be handled or every entry looks corrupt.
+        if (compressedSize == 0xFFFFFFFFULL || uncompressedSize == 0xFFFFFFFFULL || localOffset == 0xFFFFFFFFULL) {
+            NSUInteger ep = cursor + 46 + nameLen;
+            NSUInteger extraEnd = ep + extraLen;
+            while (ep + 4 <= extraEnd) {
+                uint16_t headerID = SPKReadUInt16LE(bytes, ep);
+                uint16_t blockSize = SPKReadUInt16LE(bytes, ep + 2);
+                NSUInteger body = ep + 4;
+                if (body + blockSize > extraEnd)
+                    break;
+                if (headerID == 0x0001) {
+                    NSUInteger q = body;
+                    if (uncompressedSize == 0xFFFFFFFFULL && q + 8 <= body + blockSize) {
+                        uncompressedSize = SPKReadUInt64LE(bytes, q);
+                        q += 8;
+                    }
+                    if (compressedSize == 0xFFFFFFFFULL && q + 8 <= body + blockSize) {
+                        compressedSize = SPKReadUInt64LE(bytes, q);
+                        q += 8;
+                    }
+                    if (localOffset == 0xFFFFFFFFULL && q + 8 <= body + blockSize) {
+                        localOffset = SPKReadUInt64LE(bytes, q);
+                        q += 8;
+                    }
+                    break;
+                }
+                ep = body + blockSize;
+            }
         }
 
         NSData *nameData = [zipData subdataWithRange:NSMakeRange(cursor + 46, nameLen)];
@@ -705,14 +746,14 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
         [fm createFileAtPath:destPath contents:nil attributes:nil];
         NSFileHandle *output = [NSFileHandle fileHandleForWritingAtPath:destPath];
         [archiveHandle seekToFileOffset:dataOffset];
-        uint32_t remaining = compressedSize;
+        uint64_t remaining = compressedSize;
         while (remaining > 0) {
             NSUInteger chunkSize = MIN((NSUInteger)remaining, (NSUInteger)(1024 * 1024));
             NSData *chunk = [archiveHandle readDataOfLength:chunkSize];
             if (chunk.length == 0)
                 break;
             [output writeData:chunk];
-            remaining -= (uint32_t)chunk.length;
+            remaining -= (uint64_t)chunk.length;
         }
         [output closeFile];
         if (remaining > 0) {
@@ -722,7 +763,20 @@ static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NS
     }
 
     [archiveHandle closeFile];
-    return SPKIsValidSettingsTransferBundleRoot(expandedRoot) ? expandedRoot : SPKResolvedSettingsTransferBundleRoot([NSURL fileURLWithPath:expandedRoot isDirectory:YES]);
+    SPKLog(@"Transfer", @"[unzip] extracted %u entr%@ -> %@", entryCount, entryCount == 1 ? @"y" : @"ies", expandedRoot);
+    return expandedRoot;
+}
+
+// Expands a Sparkle export zip and resolves it to the bundle root (the directory that actually holds
+// Preferences/Gallery/manifest — the export may wrap them in a top-level folder). Returns nil when
+// the archive isn't a Sparkle settings bundle.
+static NSString *SPKExpandStoredZipSettingsTransferArchive(NSURL *archiveURL, NSError **error) {
+    NSString *expandedRoot = SPKExpandZipArchiveRaw(archiveURL, error);
+    if (expandedRoot.length == 0)
+        return nil;
+    if (SPKIsValidSettingsTransferBundleRoot(expandedRoot))
+        return expandedRoot;
+    return SPKResolvedSettingsTransferBundleRoot([NSURL fileURLWithPath:expandedRoot isDirectory:YES]);
 }
 
 static BOOL SPKIsValidSettingsTransferBundleRoot(NSString *bundleRoot) {
@@ -1040,6 +1094,13 @@ static NSString *SPKTransferArchiveFilename(BOOL includeSettings, BOOL includeGa
             [presenter presentViewController:picker animated:YES completion:nil];
         });
     });
+}
+
++ (NSString *)expandZipArchiveAtURL:(NSURL *)archiveURL error:(NSError **)error {
+    if (!archiveURL) {
+        return nil;
+    }
+    return SPKExpandZipArchiveRaw(archiveURL, error);
 }
 
 - (void)importFromController:(UIViewController *)controller includeSettings:(BOOL)includeSettings includeGallery:(BOOL)includeGallery includeDeletedMessages:(BOOL)includeDeletedMessages includeProfileAnalyzer:(BOOL)includeProfileAnalyzer {
