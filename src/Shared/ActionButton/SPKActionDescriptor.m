@@ -93,6 +93,12 @@
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionToggleStorySeenUserRule
                                                     title:@"Toggle Story User Rule"
                                                  iconName:@"eye"],
+            [SPKActionDescriptor descriptorWithIdentifier:kSPKActionToggleStoryAutoSaveUserRule
+                                                    title:@"Toggle Story Auto-Save"
+                                                 iconName:@"sparkle_gallery"],
+            [SPKActionDescriptor descriptorWithIdentifier:kSPKActionToggleDirectAutoSaveThreadRule
+                                                    title:@"Toggle Chat Auto-Save"
+                                                 iconName:@"sparkle_gallery"],
             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionToggleProfileStorySeenUserRule
                                                     title:@"Toggle Story Seen"
                                                  iconName:@"eye"],

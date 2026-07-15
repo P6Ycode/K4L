@@ -14,6 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) NSString *sourceMediaURLString;
 @property (nonatomic, assign) int16_t source;
 
+/// Marks the resulting `SPKGalleryFile` as auto-saved (see `SPKGalleryFile.isAutoSave`).
+@property (nonatomic, assign) BOOL isAutoSave;
+
 /// If > 0, overrides probed dimensions from the file.
 @property (nonatomic, assign) int32_t pixelWidth;
 @property (nonatomic, assign) int32_t pixelHeight;

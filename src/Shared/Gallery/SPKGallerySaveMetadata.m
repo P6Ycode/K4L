@@ -19,6 +19,7 @@
     c.sourceMediaCode = [self.sourceMediaCode copy];
     c.sourceMediaURLString = [self.sourceMediaURLString copy];
     c.source = self.source;
+    c.isAutoSave = self.isAutoSave;
     c.pixelWidth = self.pixelWidth;
     c.pixelHeight = self.pixelHeight;
     c.durationSeconds = self.durationSeconds;

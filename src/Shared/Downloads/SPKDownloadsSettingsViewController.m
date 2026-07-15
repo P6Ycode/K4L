@@ -5,6 +5,7 @@
 #import "../../Settings/SPKSetting.h"
 #import "../../Settings/SPKTopicSettingsSupport.h"
 #import "../../Utils.h"
+#import "../AutoSave/SPKAutoSaveSettingsViewController.h"
 #import "../MediaDownload/SPKMediaFFmpeg.h"
 #import "../MediaDownload/SPKMediaQualityManager.h"
 #import "SPKDownloadTypes.h"
@@ -67,7 +68,17 @@
           @"5. Review the FFmpeg output from recent encoding jobs."
         : @"FFmpegKit is required for video quality options and encoding features.";
 
+    SPKSetting *autoSave = [SPKSetting navigationCellWithTitle:@"Auto-Save"
+                                                      subtitle:@""
+                                                          icon:SPKSettingsIcon(@"download")
+                                                viewController:[SPKAutoSaveSettingsViewController new]];
+    autoSave.searchSectionsProvider = ^NSArray * {
+        return [SPKAutoSaveSettingsViewController searchSections];
+    };
+
     return @[
+        SPKTopicSection(@"Auto-Save", @[ autoSave ],
+                        @"Save media to your Gallery automatically as you view it."),
         SPKTopicSection(@"Behavior", @[
             [SPKSetting switchCellWithTitle:@"Detect Duplicate Downloads"
                                        icon:SPKSettingsIcon(@"duplicate")

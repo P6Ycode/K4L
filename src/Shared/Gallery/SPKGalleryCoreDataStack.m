@@ -34,6 +34,7 @@ static NSString *const kSPKGalleryStoreName = @"gallery.sqlite";
 
 - (NSManagedObjectModel *)buildModelWithAccountOwnership:(BOOL)includeAccountOwnership {
     return [self buildModelWithAccountOwnership:includeAccountOwnership
+                                  includeAutoSave:YES
                                      entityName:kSPKGalleryEntityName
                                    renamingFrom:kSPKGalleryLegacyEntityName];
 }
@@ -41,7 +42,14 @@ static NSString *const kSPKGalleryStoreName = @"gallery.sqlite";
 // `entityName` is the entity's on-disk name. `renamingIdentifier`, when non-nil,
 // lets Core Data's inferred mapping match a store created under that older name
 // (used to rename SCIGalleryFile -> SPKGalleryFile during migration).
+//
+// `includeAccountOwnership` and `includeAutoSave` exist so `migrateStoreAtURLIfNeeded:`
+// can rebuild *historical* schemas as migration sources. Every attribute added over time
+// needs a flag here: a source model that declares a column the on-disk store never had
+// won't match its version hash, and the store silently falls through to "incompatible
+// with all known schemas".
 - (NSManagedObjectModel *)buildModelWithAccountOwnership:(BOOL)includeAccountOwnership
+                                         includeAutoSave:(BOOL)includeAutoSave
                                               entityName:(NSString *)entityName
                                             renamingFrom:(NSString *)renamingIdentifier {
     NSManagedObjectModel *model = [[NSManagedObjectModel alloc] init];
@@ -154,6 +162,18 @@ static NSString *const kSPKGalleryStoreName = @"gallery.sqlite";
         pixelWidth, pixelHeight, durationSeconds
     ] mutableCopy];
 
+    if (includeAutoSave) {
+        // Auto-save marker. Non-optional with a NO default so existing rows
+        // migrate as "saved manually".
+        NSAttributeDescription *isAutoSave = [[NSAttributeDescription alloc] init];
+        isAutoSave.name = @"isAutoSave";
+        isAutoSave.attributeType = NSBooleanAttributeType;
+        isAutoSave.optional = NO;
+        isAutoSave.defaultValue = @NO;
+
+        [properties addObject:isAutoSave];
+    }
+
     if (includeAccountOwnership) {
         // Per-account ownership: the logged-in account this file belongs to.
         // Optional so legacy files migrate as nil = "unassigned".
@@ -237,17 +257,27 @@ static NSString *const kSPKGalleryStoreName = @"gallery.sqlite";
         return YES;
     }
 
-    // Find a source model that matches the on-disk store. Candidates cover both the
-    // pre-/post-account schemas AND the pre-rename entity name (SCIGalleryFile), so a
-    // single inferred mapping can rename the entity and add the account columns at once.
+    // Find a source model that matches the on-disk store. Candidates cover the
+    // pre-/post-account schemas, the pre-/post-auto-save schemas, AND the pre-rename
+    // entity name (SCIGalleryFile), so a single inferred mapping can rename the entity
+    // and add any missing columns at once. Each candidate must describe a schema that
+    // really shipped, or it won't match any store's version hash.
     NSArray<NSManagedObjectModel *> *candidateSourceModels = @[
+        // Current schema minus auto-save: what every user upgrading to auto-save is on.
         [self buildModelWithAccountOwnership:YES
+                             includeAutoSave:NO
+                                  entityName:kSPKGalleryEntityName
+                                renamingFrom:nil],
+        [self buildModelWithAccountOwnership:YES
+                             includeAutoSave:NO
                                   entityName:kSPKGalleryLegacyEntityName
                                 renamingFrom:nil],
         [self buildModelWithAccountOwnership:NO
+                             includeAutoSave:NO
                                   entityName:kSPKGalleryLegacyEntityName
                                 renamingFrom:nil],
         [self buildModelWithAccountOwnership:NO
+                             includeAutoSave:NO
                                   entityName:kSPKGalleryEntityName
                                 renamingFrom:nil],
     ];

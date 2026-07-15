@@ -29,6 +29,11 @@ UIMenu *SPKNotificationProgressSubtitleStyleMenu(void);
 UIMenu *SPKNotificationPillPositionMenu(void);
 UIMenu *SPKMediaVideoQualityMenu(void);
 UIMenu *SPKMediaPhotoQualityMenu(void);
+UIMenu *SPKAutoSaveDestinationMenu(void);
+UIMenu *SPKAutoSaveVideoQualityMenu(void);
+UIMenu *SPKAutoSavePhotoQualityMenu(void);
+UIMenu *SPKAutoSaveFilterModeMenu(NSString *filterModeKey, NSString *subjectPlural);
+UIMenu *SPKStoryAutoSaveFilterModeMenu(void);
 UIMenu *SPKGalleryShortcutTargetMenu(void);
 SPKSetting *SPKFeedHeaderButtonDefaultActionNavigationSetting(void);
 

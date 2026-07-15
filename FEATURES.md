@@ -325,6 +325,24 @@ the main settings search.
 - **Downloads**: Action-based download manager with chip filters for All, Active, Queued, Failed, and Recent. Each row represents the user action, not an internal transport task. Multi-item actions expand inline, failed items can be retried individually, Gallery and Photos saves open their matching destination, and single-file results preview locally when applicable. Supports cancellation, destructive-action confirmations, clearing history without deleting saved media, and best-effort retry for reconstructable actions. With **Per-Account Settings** on, the history is scoped to the current account (each download keeps the account that started it); the limit and max-concurrent settings stay global.
 - **Global Queue Pill**: Parallel and queued download work shares one aggregate Downloads pill instead of spawning one pill per item or separate queue-finished toasts.
 
+### Auto-Save
+Saves media automatically as you view it, with no tap. Available for **Stories**, **Messages** (view-once), and **Instants**. The destination, quality, and feedback settings below are shared by every surface; each surface page holds only its own enable switch, filter mode, and list. Media already saved to the chosen destination is skipped, so re-viewing never saves twice — this holds regardless of the *Detect Duplicate Downloads* setting, which auto-save does not use.
+
+Every surface has the same **Filter Mode**: `All` saves everything except what you exclude; `Selected` saves only what you pick. Each mode keeps its own list, so switching back and forth never destroys the other. Lists are per-account, per-surface, and independent of the Manually Mark Seen lists.
+
+- **Stories**: Auto-saves story photos and videos as you watch them. Keyed by user.
+  - **Excluded / Selected Users**: Manageable from the list itself (add by username) or from the story action menu (*Toggle Story Auto-Save*), which adds or removes the user whose story you're watching.
+- **Messages**: Auto-saves view-once and replayable DM photos and videos as you open them — the media you otherwise can't get back. Keyed by **chat**, so group threads work without resolving a per-message sender.
+  - **Excluded / Selected Chats**: Manageable from the list itself (add by username, which resolves your 1:1 thread with them) or from the visual message viewer's action menu (*Toggle Chat Auto-Save*). Groups can only be added from the viewer.
+- **Instants**: Auto-saves instants as you open them. Keyed by **username**, since a resolved snap carries no author id — which also means the list is curated by typing a username, with no lookup needed.
+- **Save To**: `Sparkle Gallery` keeps auto-saved media inside the tweak; `Photos App` saves it to your system photo library (iOS asks for photo library permission the first time). The skip-if-already-saved check follows the destination you pick, so switching destinations re-saves items the new one doesn't have yet — and deleting an item from its destination lets it be saved again next time you view it.
+- **Photo Quality** / **Video Quality**: Quality tier for auto-saved media. `Default` takes Instagram's ready-to-play file — fastest, no re-encode per item; `High` merges DASH video + audio for best quality at the cost of an FFmpeg pass per item (**requires FFmpegKit**). Auto-save never prompts, so there is no `Always Ask`.
+- **Keep in Download History**: Auto-saves are pruned from the download history once saved. Enable to keep them listed.
+- **Notifications**: Feedback is per viewing session, not per item — tapping through twenty stories costs two toasts, not forty. All of it is configured under *Notifications › Auto-Save*, where each toast can be a pill, haptic-only, or silent:
+  - *Story / DM / Instants Auto-Save Started*: posted once, on the session's first save.
+  - *Auto-Save Summary*: posted at the end with the number of items saved; tap it to open the Gallery (or the Photos app, following the destination). It waits for every download and DASH merge to finish, so the count is final.
+  - *Auto-Save Still Working*: only when you leave the viewer while items are mid-flight (typically `High` video quality muxing DASH audio), explaining why the summary hasn't arrived yet.
+
 ### Behavior
 - **Detect Duplicate Downloads**: Skips media already saved: Gallery checks are exact by persistent media identity; Photos checks cover saves Sparkle recorded while tracking is enabled. Existing Photos-library items cannot be discovered retroactively.
 - **Parallel Downloads**: Limits concurrent download work from 1–4 (default 2) across direct saves, carousel items, conversions, and DASH merge pipelines.

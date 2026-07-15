@@ -18,9 +18,11 @@
 #import "../MediaPreview/SPKFullScreenMediaPlayer.h"
 #import "../MediaPreview/SPKMediaItem.h"
 #import "../MediaTrim/SPKTrimEntry.h"
+#import "../Messages/SPKDirectAutoSave.h"
 #import "../Messages/SPKDirectSeenContext.h"
 #import "../Messages/SPKDirectUserResolver.h"
 #import "../PhotoEdit/SPKPhotoEditEntry.h"
+#import "../Stories/SPKStoryAutoSave.h"
 #import "../Stories/SPKStoryContext.h"
 #import "../UI/SPKChrome.h"
 #import "../UI/SPKNotificationCenter.h"
@@ -55,6 +57,8 @@ NSString *const kSPKActionOpenTopicSettings = @"open_topic_settings";
 NSString *const kSPKActionDeletedMessagesLog = @"deleted_messages_log";
 NSString *const kSPKActionRepost = @"repost";
 NSString *const kSPKActionToggleStorySeenUserRule = @"toggle_story_seen_user_rule";
+NSString *const kSPKActionToggleStoryAutoSaveUserRule = @"toggle_story_auto_save_user_rule";
+NSString *const kSPKActionToggleDirectAutoSaveThreadRule = @"toggle_direct_auto_save_thread_rule";
 NSString *const kSPKActionToggleProfileStorySeenUserRule = @"toggle_profile_story_seen_user_rule";
 NSString *const kSPKActionToggleProfileMessagesSeenUserRule = @"toggle_profile_messages_seen_user_rule";
 NSString *const kSPKActionStoryMentionsSheet = @"story_mentions_sheet";
@@ -984,6 +988,14 @@ static NSString *SPKActionButtonDisplayTitleForContext(NSString *identifier,
         NSString *title = SPKStoryCurrentUserRuleActionTitle(SPKStoryContextForActionButtonContext(context));
         return title ?: SPKActionDescriptorDisplayTitle(identifier, context.settingsTitle);
     }
+    if ([identifier isEqualToString:kSPKActionToggleStoryAutoSaveUserRule]) {
+        NSString *title = SPKStoryAutoSaveCurrentUserActionTitle(SPKStoryContextForActionButtonContext(context));
+        return title ?: SPKActionDescriptorDisplayTitle(identifier, context.settingsTitle);
+    }
+    if ([identifier isEqualToString:kSPKActionToggleDirectAutoSaveThreadRule]) {
+        NSString *title = SPKDirectAutoSaveCurrentThreadActionTitle(SPKDirectThreadContextFromSource(context.controller));
+        return title ?: SPKActionDescriptorDisplayTitle(identifier, context.settingsTitle);
+    }
     if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
         id user = SPKResolveMediaForContext(context);
         NSString *pk = user ? [SPKUtils pkFromIGUser:user] : nil;
@@ -1059,6 +1071,10 @@ static UIImage *SPKIconForActionIdentifier(NSString *identifier, SPKActionButton
         SPKStoryContext *storyCtx = SPKStoryContextForActionButtonContext(context);
         BOOL applies = storyCtx ? SPKStoryManualSeenAppliesToContext(storyCtx) : YES;
         return [SPKAssetUtils instagramIconNamed:applies ? @"eye_off" : @"eye" pointSize:size];
+    }
+    if ([identifier isEqualToString:kSPKActionToggleStoryAutoSaveUserRule] ||
+        [identifier isEqualToString:kSPKActionToggleDirectAutoSaveThreadRule]) {
+        return [SPKAssetUtils instagramIconNamed:@"sparkle_gallery" pointSize:size];
     }
     if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
         id user = context ? SPKResolveMediaForContext(context) : nil;
@@ -1659,6 +1675,32 @@ static NSArray<SPKResolvedMediaEntry *> *SPKEntriesFromMedia(id media) {
     return entries;
 }
 
+extern "C" BOOL SPKResolveGalleryDownloadForMedia(id media,
+                                                  SPKActionButtonSource source,
+                                                  NSString *fallbackUsername,
+                                                  NSURL *__autoreleasing *outPhotoURL,
+                                                  NSURL *__autoreleasing *outVideoURL,
+                                                  SPKGallerySaveMetadata *__autoreleasing *outMetadata) {
+    if (!media)
+        return NO;
+
+    SPKResolvedMediaEntry *entry = SPKEntriesFromMedia(media).firstObject;
+    if (!entry.videoURL && !entry.photoURL)
+        return NO;
+
+    NSString *username = SPKUsernameForEntry(entry, fallbackUsername);
+    SPKGallerySaveMetadata *meta = SPKGalleryMetadata(source, username, entry.metadataObject ?: entry.mediaObject ?: media);
+    SPKApplyEntryMetadata(meta, entry);
+
+    if (outPhotoURL)
+        *outPhotoURL = entry.photoURL;
+    if (outVideoURL)
+        *outVideoURL = entry.videoURL;
+    if (outMetadata)
+        *outMetadata = meta;
+    return YES;
+}
+
 static NSArray<SPKMediaItem *> *SPKPlayerItemsFromEntries(NSArray<SPKResolvedMediaEntry *> *entries, SPKActionButtonSource source, NSString *username, id media) {
     NSMutableArray<SPKMediaItem *> *items = [NSMutableArray array];
 
@@ -2125,6 +2167,16 @@ static BOOL SPKIsActionVisible(SPKActionButtonContext *context,
         return context.source == SPKActionButtonSourceStories &&
                SPKStoryCurrentUserRuleActionTitle(SPKStoryContextForActionButtonContext(context)).length > 0;
     }
+    if ([identifier isEqualToString:kSPKActionToggleStoryAutoSaveUserRule]) {
+        return context.source == SPKActionButtonSourceStories &&
+               [SPKUtils getBoolPref:@"stories_auto_save"] &&
+               SPKStoryAutoSaveCurrentUserActionTitle(SPKStoryContextForActionButtonContext(context)).length > 0;
+    }
+    if ([identifier isEqualToString:kSPKActionToggleDirectAutoSaveThreadRule]) {
+        return context.source == SPKActionButtonSourceDirect &&
+               [SPKUtils getBoolPref:@"msgs_auto_save"] &&
+               SPKDirectAutoSaveCurrentThreadActionTitle(SPKDirectThreadContextFromSource(context.controller)).length > 0;
+    }
     if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
         return context.source == SPKActionButtonSourceProfile &&
                SPKResolveMediaForContext(context) != nil;
@@ -2294,6 +2346,12 @@ static NSString *SPKActionButtonMenuSignature(SPKActionButtonContext *context,
     NSString *dynamicStoryRuleTitle = [visibleActions containsObject:kSPKActionToggleStorySeenUserRule]
                                           ? SPKStoryCurrentUserRuleActionTitle(SPKStoryContextForActionButtonContext(context))
                                           : @"";
+    NSString *dynamicStoryAutoSaveTitle = [visibleActions containsObject:kSPKActionToggleStoryAutoSaveUserRule]
+                                              ? SPKStoryAutoSaveCurrentUserActionTitle(SPKStoryContextForActionButtonContext(context))
+                                              : @"";
+    NSString *dynamicDirectAutoSaveTitle = [visibleActions containsObject:kSPKActionToggleDirectAutoSaveThreadRule]
+                                               ? SPKDirectAutoSaveCurrentThreadActionTitle(SPKDirectThreadContextFromSource(context.controller))
+                                               : @"";
     NSString *dynamicProfileStoryRuleTitle = [visibleActions containsObject:kSPKActionToggleProfileStorySeenUserRule]
                                                  ? SPKActionButtonDisplayTitleForContext(kSPKActionToggleProfileStorySeenUserRule, context, nil)
                                                  : @"";
@@ -2305,12 +2363,14 @@ static NSString *SPKActionButtonMenuSignature(SPKActionButtonContext *context,
                                          : @"";
     id media = SPKResolveMediaForContext(context);
     NSInteger currentIndex = SPKResolveCurrentIndexForContext(context);
-    return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@|%@|%@|%p|idx:%ld",
+    return [NSString stringWithFormat:@"%@|%@|%@|bulk:%lu|%@|%@|%@|%@|%@|%@|%@|%p|idx:%ld",
                                       SPKActionButtonTopicKeyForSource(context.source),
                                       defaultIdentifier ?: @"",
                                       [visibleActions componentsJoinedByString:@","],
                                       (unsigned long)bulkEntryCount,
                                       dynamicStoryRuleTitle ?: @"",
+                                      dynamicStoryAutoSaveTitle ?: @"",
+                                      dynamicDirectAutoSaveTitle ?: @"",
                                       dynamicProfileStoryRuleTitle ?: @"",
                                       dynamicProfileMessagesRuleTitle ?: @"",
                                       profileInfoSignature ?: @"",
@@ -2745,6 +2805,36 @@ static BOOL SPKExecuteCommonAction(NSString *identifier,
     return NO;
 }
 
+static BOOL SPKExecuteToggleStoryAutoSaveUserRuleAction(SPKActionButtonContext *context) {
+    SPKStoryContext *storyContext = SPKStoryContextForActionButtonContext(context);
+    NSString *title = SPKStoryAutoSaveCurrentUserConfirmationTitle(storyContext);
+    NSString *message = SPKStoryAutoSaveCurrentUserConfirmationMessage(storyContext);
+    if (title.length == 0 || message.length == 0) {
+        SPKNotify(kSPKNotificationStoryAutoSaveUserRule, @"Story user not found", nil, @"error_filled", SPKNotificationToneError);
+        return YES;
+    }
+
+    [SPKUtils
+        showConfirmation:^{
+            NSString *notificationTitle = nil;
+            NSString *notificationSubtitle = nil;
+            if (!SPKStoryToggleAutoSaveCurrentUser(storyContext, &notificationTitle, &notificationSubtitle)) {
+                SPKNotify(kSPKNotificationStoryAutoSaveUserRule, @"Story user not found", nil, @"error_filled", SPKNotificationToneError);
+                return;
+            }
+            SPKNotify(kSPKNotificationStoryAutoSaveUserRule, notificationTitle, notificationSubtitle, @"circle_check_filled", SPKNotificationToneSuccess);
+            [storyContext.overlayView setNeedsLayout];
+        }
+                   title:title
+                 message:message];
+    return YES;
+}
+
+static BOOL SPKExecuteToggleDirectAutoSaveThreadRuleAction(SPKActionButtonContext *context) {
+    SPKDirectPresentAutoSaveThreadRuleToggle(SPKDirectThreadContextFromSource(context.controller));
+    return YES;
+}
+
 static BOOL SPKExecuteToggleStorySeenUserRuleAction(SPKActionButtonContext *context) {
     SPKStoryContext *storyContext = SPKStoryContextForActionButtonContext(context);
     NSString *title = SPKStoryCurrentUserRuleConfirmationTitle(storyContext);
@@ -2898,6 +2988,12 @@ BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *co
 
     if ([identifier isEqualToString:kSPKActionToggleStorySeenUserRule]) {
         return SPKExecuteToggleStorySeenUserRuleAction(context);
+    }
+    if ([identifier isEqualToString:kSPKActionToggleDirectAutoSaveThreadRule]) {
+        return SPKExecuteToggleDirectAutoSaveThreadRuleAction(context);
+    }
+    if ([identifier isEqualToString:kSPKActionToggleStoryAutoSaveUserRule]) {
+        return SPKExecuteToggleStoryAutoSaveUserRuleAction(context);
     }
     if ([identifier isEqualToString:kSPKActionToggleProfileStorySeenUserRule]) {
         return SPKExecuteToggleProfileStorySeenUserRuleAction(context);

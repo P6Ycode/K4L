@@ -40,6 +40,26 @@ NS_ASSUME_NONNULL_BEGIN
                      showProgress:(BOOL)showProgress
                     sourceSurface:(NSInteger)sourceSurface;
 
+/// As above, but `qualityOverride` (`high` / `high_ignore_dash` / `medium` / `low`)
+/// forces a tier instead of reading `downloads_video_quality` / `downloads_photo_quality`.
+///
+/// Auto-save needs this: the default video-quality preference is `always_ask`, which
+/// would otherwise pop the quality picker mid-story. With an override this always
+/// resolves to a concrete option, never presents a sheet, and needs no presenter.
+/// Returns NO when the media yields no downloadable option.
++ (BOOL)handleDownloadDestination:(SPKDownloadDestination)destination
+                       identifier:(NSString *)identifier
+                        presenter:(nullable UIViewController *)presenter
+                       sourceView:(nullable UIView *)sourceView
+                      mediaObject:(nullable id)mediaObject
+                         photoURL:(nullable NSURL *)photoURL
+                         videoURL:(nullable NSURL *)videoURL
+                  galleryMetadata:
+                      (nullable SPKGallerySaveMetadata *)galleryMetadata
+                     showProgress:(BOOL)showProgress
+                    sourceSurface:(NSInteger)sourceSurface
+                  qualityOverride:(nullable NSString *)qualityOverride;
+
 + (BOOL)handleCopyActionWithIdentifier:(NSString *)identifier
                              presenter:(nullable UIViewController *)presenter
                             sourceView:(nullable UIView *)sourceView

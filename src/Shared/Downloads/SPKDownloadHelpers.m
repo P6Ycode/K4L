@@ -288,8 +288,8 @@ static NSString *SPKDownloadDisplayUsername(NSString *username) {
                              destination:(SPKDownloadDestination)destination
                           notificationID:(NSString *)notificationID
                                presenter:(UIViewController *)presenter
-                           sourceSurface:
-                               (SPKDownloadSourceSurface)sourceSurface {
+                           sourceSurface:(SPKDownloadSourceSurface)sourceSurface
+                            showProgress:(BOOL)showProgress {
     SPKDownloadMediaKind kind = SPKDownloadMediaKindVideo;
     if (optionKind == 3)
         kind = SPKDownloadMediaKindAudio;
@@ -319,7 +319,7 @@ static NSString *SPKDownloadDisplayUsername(NSString *username) {
     request.presenter = presenter;
     request.sourceSurface = [self resolvedSourceSurface:sourceSurface
                                                metadata:metadata];
-    request.presentationMode = SPKNotificationIsEnabled(notificationID)
+    request.presentationMode = (showProgress && SPKNotificationIsEnabled(notificationID))
                                    ? SPKDownloadPresentationModeQueuePill
                                    : SPKDownloadPresentationModeQuiet;
     [[SPKDownloadService shared] submitRequest:request completion:nil];

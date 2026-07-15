@@ -4,6 +4,7 @@
 
 #import "../../AssetUtils.h"
 #import "../../InstagramHeaders.h"
+#import "../../Shared/Messages/SPKDirectAutoSave.h"
 #import "../../Shared/Messages/SPKDirectSeenContext.h"
 #import "../../Shared/Stories/SPKStoryContext.h"
 #import "../../Shared/UI/SPKChrome.h"
@@ -369,7 +370,7 @@ static void SPKDirectResolveChatPartner(SPKDirectThreadContext *context, NSStrin
         *outName = username.length ? username : fullName;
 }
 
-static UIMenu *SPKDirectSeenButtonMenu(id source) {
+static NSArray<UIMenuElement *> *SPKDirectSeenButtonMenuChildren(id source) {
     NSMutableArray<UIMenuElement *> *children = [NSMutableArray array];
     SPKDirectSeenDebugPrintEnabled = YES;
     SPKDirectThreadContext *context = SPKDirectThreadContextFromSource(source);
@@ -404,6 +405,21 @@ static UIMenu *SPKDirectSeenButtonMenu(id source) {
         [children addObject:toggleAction];
     }
 
+    // Same rule as the DM viewer's action-button entry: only offer it when auto-save is
+    // on and the thread actually resolved.
+    NSString *autoSaveTitle = [SPKUtils getBoolPref:@"msgs_auto_save"]
+                                  ? SPKDirectAutoSaveCurrentThreadActionTitle(context)
+                                  : nil;
+    if (autoSaveTitle.length > 0) {
+        UIAction *autoSaveAction = [UIAction actionWithTitle:autoSaveTitle
+                                                       image:[SPKAssetUtils menuIconNamed:@"sparkle_gallery"]
+                                                  identifier:nil
+                                                     handler:^(__unused UIAction *action) {
+                                                         SPKDirectPresentAutoSaveThreadRuleToggle(context);
+                                                     }];
+        [children addObject:autoSaveAction];
+    }
+
     UIImage *logImage = [SPKAssetUtils menuIconNamed:@"channels"];
     NSString *partnerPK = nil;
     NSString *partnerName = nil;
@@ -434,7 +450,20 @@ static UIMenu *SPKDirectSeenButtonMenu(id source) {
                                                  }];
     [children addObject:settingsAction];
 
-    return [UIMenu menuWithTitle:@"" children:children];
+    return children;
+}
+
+// The menu is assigned once when the button is installed, but both toggles are titled
+// from live state ("Auto-Save This Chat" / "Stop Auto-Saving This Chat"). Resolving the
+// children on each presentation keeps them honest without depending on a nav-bar rebuild
+// that the composer-bubble placement never gets.
+static UIMenu *SPKDirectSeenButtonMenu(id source) {
+    __weak id weakSource = source;
+    UIDeferredMenuElement *deferred =
+        [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+            completion(SPKDirectSeenButtonMenuChildren(weakSource) ?: @[]);
+        }];
+    return [UIMenu menuWithTitle:@"" children:@[ deferred ]];
 }
 
 static void SPKDirectRememberActiveThreadContextForController(id controller, NSString *eventName) {

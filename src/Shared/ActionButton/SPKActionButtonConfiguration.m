@@ -92,6 +92,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
             kSPKActionViewThumbnail,
             kSPKActionStoryMentionsSheet,
             kSPKActionToggleStorySeenUserRule,
+            kSPKActionToggleStoryAutoSaveUserRule,
             kSPKActionOpenTopicSettings
         ];
     case SPKActionButtonSourceDirect:
@@ -111,6 +112,7 @@ NSArray<NSString *> *SPKActionButtonSupportedActionsForSource(SPKActionButtonSou
             kSPKActionExpand,
             kSPKActionViewThumbnail,
             kSPKActionDeletedMessagesLog,
+            kSPKActionToggleDirectAutoSaveThreadRule,
             kSPKActionOpenTopicSettings
         ];
     case SPKActionButtonSourceInstants:
@@ -258,9 +260,9 @@ NSArray<SPKActionMenuSection *> *SPKActionButtonDefaultSectionsForSource(SPKActi
     if (source == SPKActionButtonSourceFeed || source == SPKActionButtonSourceReels) {
         moreActions = @[ kSPKActionRepost, kSPKActionOpenTopicSettings ];
     } else if (source == SPKActionButtonSourceStories) {
-        moreActions = @[ kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionOpenTopicSettings ];
+        moreActions = @[ kSPKActionStoryMentionsSheet, kSPKActionToggleStorySeenUserRule, kSPKActionToggleStoryAutoSaveUserRule, kSPKActionOpenTopicSettings ];
     } else if (source == SPKActionButtonSourceDirect) {
-        moreActions = @[ kSPKActionDeletedMessagesLog, kSPKActionOpenTopicSettings ];
+        moreActions = @[ kSPKActionDeletedMessagesLog, kSPKActionToggleDirectAutoSaveThreadRule, kSPKActionOpenTopicSettings ];
     } else if (source == SPKActionButtonSourceProfile) {
         moreActions = @[ kSPKActionToggleProfileStorySeenUserRule, kSPKActionToggleProfileMessagesSeenUserRule, kSPKActionOpenTopicSettings ];
     } else {

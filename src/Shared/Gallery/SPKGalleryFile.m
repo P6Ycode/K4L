@@ -420,6 +420,7 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
 @dynamic dateAdded;
 @dynamic fileSize;
 @dynamic isFavorite;
+@dynamic isAutoSave;
 @dynamic folderPath;
 @dynamic customName;
 @dynamic sourceUsername;
@@ -464,6 +465,7 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
         file.pixelHeight = metadata.pixelHeight;
         file.durationSeconds = metadata.durationSeconds;
         file.customName = metadata.customName.length ? metadata.customName : nil;
+        file.isAutoSave = metadata.isAutoSave;
     } else {
         file.source = fallbackSource;
         file.sourceUsername = nil;
@@ -476,6 +478,7 @@ NSString *SPKFileNameForMedia(NSURL *fileURL,
         file.pixelHeight = 0;
         file.durationSeconds = 0;
         file.customName = nil;
+        file.isAutoSave = NO;
     }
 }
 

@@ -84,7 +84,8 @@ NS_ASSUME_NONNULL_BEGIN
                          destination:(SPKDownloadDestination)destination
                       notificationID:(NSString *)notificationID
                            presenter:(nullable UIViewController *)presenter
-                       sourceSurface:(SPKDownloadSourceSurface)sourceSurface;
+                       sourceSurface:(SPKDownloadSourceSurface)sourceSurface
+                        showProgress:(BOOL)showProgress;
 
 + (void)submitLocalFileURL:(NSURL *)fileURL
                  extension:(NSString *)extension

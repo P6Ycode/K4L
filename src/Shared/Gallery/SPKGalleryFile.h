@@ -38,6 +38,8 @@ typedef NS_ENUM(int16_t, SPKGallerySource) {
 @property (nonatomic, strong) NSDate *dateAdded;
 @property (nonatomic) int64_t fileSize;
 @property (nonatomic) BOOL isFavorite;
+/// YES when captured by auto-save rather than an explicit user action.
+@property (nonatomic) BOOL isAutoSave;
 @property (nonatomic, copy, nullable) NSString *folderPath;
 @property (nonatomic, copy, nullable) NSString *customName;
 @property (nonatomic, copy, nullable) NSString *sourceUsername;

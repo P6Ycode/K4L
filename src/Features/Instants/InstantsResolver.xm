@@ -1068,6 +1068,76 @@ static NSURL *SPKInstantsTempURLForImage(UIImage *image) {
 
 /// Resolves a snap from a live snap view (UIView from the stack's currentImages).
 /// This is the fallback path for snaps that have been removed from the service cache.
+static SPKInstantsResolvedSnap *SPKInstantsResolvedSnapFromView(UIView *snap);
+static NSString *SPKInstantsCurrentAuthorUsername(UIView *header);
+
+/// The snap being displayed, found purely by looking at the view hierarchy.
+///
+/// Deliberately store-free: IG *pops* the displayed snap off the snap store, so the
+/// store holds the ones still queued and never the one on screen. Anything that maps a
+/// tracked index into the store list therefore can't see the item auto-save exists to
+/// capture.
+///
+/// Frontmost wins: the stack view draws snaps back-to-front, so the last visible
+/// SingleSnapView subview sitting at an identity transform is the displayed one --
+/// a non-identity transform means it's mid-animation on its way out.
+static UIView *SPKInstantsActiveSnapViewInWindow(UIView *viewInHierarchy) {
+    UIView *stackView = SPKInstantsSnapStackViewForHeader(viewInHierarchy);
+    if (!stackView)
+        return nil;
+
+    Class singleSnapClass = NSClassFromString(@"_TtC40IGQuickSnapImmersiveViewerSingleSnapView40IGQuickSnapImmersiveViewerSingleSnapView");
+    if (!singleSnapClass)
+        singleSnapClass = NSClassFromString(@"IGQuickSnapImmersiveViewerSingleSnapView");
+
+    UIView *fallback = nil;
+    NSArray<UIView *> *subviews = stackView.subviews;
+    for (NSInteger i = (NSInteger)subviews.count - 1; i >= 0; i--) {
+        UIView *sub = subviews[i];
+        if (sub.hidden || sub.alpha < 0.3)
+            continue;
+        if (sub.bounds.size.width < 20 || sub.bounds.size.height < 20)
+            continue;
+
+        BOOL isSnapView = singleSnapClass ? [sub isKindOfClass:singleSnapClass]
+                                          : [NSStringFromClass(sub.class) containsString:@"SingleSnapView"];
+        if (!isSnapView && !singleSnapClass)
+            continue;
+        if (!isSnapView && ![NSStringFromClass(sub.class) containsString:@"SingleSnapView"])
+            continue;
+
+        CGAffineTransform t = sub.transform;
+        BOOL isIdentityish = (fabs(t.a - 1.0) < 0.15 && fabs(t.d - 1.0) < 0.15 &&
+                              fabs(t.b) < 0.15 && fabs(t.c) < 0.15);
+        if (isIdentityish)
+            return sub;
+        if (!fallback)
+            fallback = sub;
+    }
+    // Everything is mid-animation: the frontmost visible snap is the best guess.
+    return fallback;
+}
+
+SPKInstantsResolvedSnap *SPKInstantsResolveActiveSnapInView(UIView *viewInHierarchy) {
+    UIView *activeView = SPKInstantsActiveSnapViewInWindow(viewInHierarchy);
+    if (!activeView)
+        return nil;
+
+    SPKInstantsResolvedSnap *snap = SPKInstantsResolvedSnapFromView(activeView);
+    if (!snap)
+        return nil;
+    snap.resolverPath = @"window.active.view";
+
+    if (!snap.sourceUsername.length) {
+        NSString *author = SPKInstantsCurrentAuthorUsername(activeView);
+        if (author.length > 0) {
+            snap.sourceUsername = author;
+            snap.authorResolverPath = @"window.author";
+        }
+    }
+    return snap;
+}
+
 static SPKInstantsResolvedSnap *SPKInstantsResolvedSnapFromView(UIView *snap) {
     if (!snap)
         return nil;

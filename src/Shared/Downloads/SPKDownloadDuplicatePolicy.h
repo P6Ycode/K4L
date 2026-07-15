@@ -36,6 +36,18 @@ typedef void (^SPKDownloadPreflightCompletion)(SPKDownloadPreflightResult result
                           metadata:(nullable SPKGallerySaveMetadata *)metadata
                          mediaType:(NSInteger)mediaType;
 
+/// Unconditional "has this media already been saved to `destination`?" check --
+/// the Gallery's own records for Gallery, the Photos save ledger for Photos.
+/// Any other destination has nothing durable to check and answers NO.
+///
+/// Unlike `hasDuplicateForDestination:`, this ignores the user-facing
+/// detect-duplicates preference. Auto-save needs a guard that holds across
+/// launches regardless of that setting, since its session set only dedupes
+/// within a single viewer session.
++ (BOOL)destinationContainsMediaForMetadata:(nullable SPKGallerySaveMetadata *)metadata
+                                  mediaType:(NSInteger)mediaType
+                                destination:(SPKDownloadDestination)destination;
+
 + (void)recordPhotosSaveWithMetadata:(nullable SPKGallerySaveMetadata *)metadata
                            mediaType:(NSInteger)mediaType
                 assetLocalIdentifier:(nullable NSString *)assetLocalIdentifier;

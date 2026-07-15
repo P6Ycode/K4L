@@ -211,6 +211,11 @@
 - (id)gestureDelegate;
 @end
 
+// Real superclass is IGViewController; UIViewController is enough for the
+// appearance callbacks Sparkle hooks here.
+@interface IGStoryViewerViewController : UIViewController
+@end
+
 @interface IGDirectVisualMessageViewerController : UIViewController
 @end
 

@@ -33,6 +33,7 @@ For the full list of features, check out [`FEATURES.md`](FEATURES.md).
 
 - **Media downloads**:
   - Save feed posts, reels, stories, DMs, Instants, and comments.
+  - Auto-save stories, view-once DM media, and instants straight to the Gallery or Photos as you view them.
   - An action-based download manager with a queue, retries, duplicate detection, and configurable concurrency.
   - High-quality DASH video+audio merging via FFmpegKit.
 - **Private Gallery**:

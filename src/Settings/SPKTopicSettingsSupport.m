@@ -8,6 +8,7 @@
 #import "SPKPreferences.h"
 
 #import "../AssetUtils.h"
+#import "../Shared/AutoSave/SPKAutoSave.h"
 #import "../Shared/ActionButton/SPKActionButtonConfiguration.h"
 #import "../Shared/ActionButton/SPKActionDescriptor.h"
 #import "../Utils.h"
@@ -329,6 +330,52 @@ UIMenu *SPKMediaPhotoQualityMenu(void) {
         SPKMenuCommand(@"High", nil, nil, @"downloads_photo_quality", @"high", NO),
         SPKMenuCommand(@"Low", nil, nil, @"downloads_photo_quality", @"low", NO)
     ]];
+}
+
+// Auto-save mirrors the download quality menus minus "Always Ask": there's no user
+// present to answer a picker mid-story. "Default" (ignore DASH) is the auto-save
+// default -- it takes the ready-to-play file instead of running an FFmpeg merge for
+// every story you happen to watch.
+UIMenu *SPKAutoSaveDestinationMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SPKMenuCommand(@"Sparkle Gallery", nil, nil, kSPKAutoSaveDestinationKey, @"gallery", NO),
+        SPKMenuCommand(@"Photos App", nil, nil, kSPKAutoSaveDestinationKey, @"photos", NO)
+    ]];
+}
+
+UIMenu *SPKAutoSaveVideoQualityMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SPKMenuCommand(@"Default", nil, nil, kSPKAutoSaveVideoQualityKey, @"high_ignore_dash", NO),
+        [UIMenu menuWithTitle:@""
+                        image:nil
+                   identifier:nil
+                      options:UIMenuOptionsDisplayInline
+                     children:@[
+                         SPKMenuCommand(@"High", nil, nil, kSPKAutoSaveVideoQualityKey, @"high", NO),
+                         SPKMenuCommand(@"Medium", nil, nil, kSPKAutoSaveVideoQualityKey, @"medium", NO),
+                         SPKMenuCommand(@"Low", nil, nil, kSPKAutoSaveVideoQualityKey, @"low", NO)
+                     ]]
+    ]];
+}
+
+UIMenu *SPKAutoSavePhotoQualityMenu(void) {
+    return [UIMenu menuWithChildren:@[
+        SPKMenuCommand(@"High", nil, nil, kSPKAutoSavePhotoQualityKey, @"high", NO),
+        SPKMenuCommand(@"Low", nil, nil, kSPKAutoSavePhotoQualityKey, @"low", NO)
+    ]];
+}
+
+// Every auto-save surface offers the same All/Selected choice over its own pref; only
+// the subject noun differs ("Users" for stories/instants, "Chats" for DMs).
+UIMenu *SPKAutoSaveFilterModeMenu(NSString *filterModeKey, NSString *subjectPlural) {
+    return [UIMenu menuWithChildren:@[
+        SPKMenuCommand([NSString stringWithFormat:@"All %@", subjectPlural], nil, nil, filterModeKey, @"all", NO),
+        SPKMenuCommand([NSString stringWithFormat:@"Selected %@", subjectPlural], nil, nil, filterModeKey, @"selected", NO)
+    ]];
+}
+
+UIMenu *SPKStoryAutoSaveFilterModeMenu(void) {
+    return SPKAutoSaveFilterModeMenu(@"stories_auto_save_filter_mode", @"Users");
 }
 
 SPKSetting *SPKFeedHeaderButtonDefaultActionNavigationSetting(void) {

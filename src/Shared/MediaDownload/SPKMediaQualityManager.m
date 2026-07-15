@@ -1054,10 +1054,18 @@ SPKMediaFFmpegFreeHighOption(SPKMediaAnalysis *analysis) {
                   : SPKMediaFirstSelectableOption(analysis.mergedDashOptions);
 }
 
-static SPKMediaOption *SPKMediaResolveDefaultOption(SPKMediaAnalysis *analysis) {
+// `qualityOverride` forces a tier instead of reading the user's download-quality
+// preference. Callers that cannot surface the picker (trim, auto-save) pass one so
+// this always resolves to a concrete option rather than returning nil to request a
+// sheet. Pass nil for the normal, preference-driven behavior.
+static SPKMediaOption *SPKMediaResolveDefaultOption(SPKMediaAnalysis *analysis,
+                                                    NSString *qualityOverride) {
     NSString *preferenceKey = analysis.isVideo ? @"downloads_video_quality"
                                                : @"downloads_photo_quality";
-    NSString *quality = [SPKUtils getStringPref:preferenceKey];
+    NSString *quality = qualityOverride;
+    if (quality.length == 0) {
+        quality = [SPKUtils getStringPref:preferenceKey];
+    }
     if (quality.length == 0) {
         quality = analysis.isVideo ? @"always_ask" : @"high";
     }
@@ -1070,7 +1078,10 @@ static SPKMediaOption *SPKMediaResolveDefaultOption(SPKMediaAnalysis *analysis) 
     }
 
     if (!analysis.ffmpegAvailable) {
-        if (![quality isEqualToString:@"high_ignore_dash"]) {
+        // Only correct the stored preference when it's what we actually read. An
+        // override belongs to some other setting (auto-save's own quality), so
+        // writing it here would silently rewrite the user's global download choice.
+        if (qualityOverride.length == 0 && ![quality isEqualToString:@"high_ignore_dash"]) {
             [[NSUserDefaults standardUserDefaults] setObject:@"high_ignore_dash" forKey:preferenceKey];
         }
         return SPKMediaFFmpegFreeHighOption(analysis);
@@ -2396,7 +2407,8 @@ static void SPKMediaPerformOptionDownload(
                              destination:destination
                           notificationID:notificationIdentifier
                                presenter:presenter
-                           sourceSurface:sourceSurface];
+                           sourceSurface:sourceSurface
+                            showProgress:showProgress];
 }
 
 @implementation SPKMediaQualityManager
@@ -2680,6 +2692,30 @@ static void SPKMediaPerformOptionDownload(
                   galleryMetadata:(SPKGallerySaveMetadata *)galleryMetadata
                      showProgress:(BOOL)showProgress
                     sourceSurface:(NSInteger)sourceSurface {
+    return [self handleDownloadDestination:destination
+                                identifier:identifier
+                                 presenter:presenter
+                                sourceView:sourceView
+                               mediaObject:mediaObject
+                                  photoURL:photoURL
+                                  videoURL:videoURL
+                           galleryMetadata:galleryMetadata
+                              showProgress:showProgress
+                             sourceSurface:sourceSurface
+                           qualityOverride:nil];
+}
+
++ (BOOL)handleDownloadDestination:(SPKDownloadDestination)destination
+                       identifier:(NSString *)identifier
+                        presenter:(UIViewController *)presenter
+                       sourceView:(UIView *)sourceView
+                      mediaObject:(id)mediaObject
+                         photoURL:(NSURL *)photoURL
+                         videoURL:(NSURL *)videoURL
+                  galleryMetadata:(SPKGallerySaveMetadata *)galleryMetadata
+                     showProgress:(BOOL)showProgress
+                    sourceSurface:(NSInteger)sourceSurface
+                  qualityOverride:(NSString *)qualityOverride {
     BOOL includeAudioOptions = (destination == SPKDownloadDestinationShare ||
                                 destination == SPKDownloadDestinationGallery ||
                                 destination == SPKDownloadDestinationCacheOnly ||
@@ -2694,12 +2730,26 @@ static void SPKMediaPerformOptionDownload(
         return NO;
     }
 
+    SPKMediaOption *resolvedOption = SPKMediaResolveDefaultOption(analysis, qualityOverride);
+
+    // Forced-quality callers (auto-save) run with no user present: resolve or bail,
+    // and never fall through to the picker sheet. They also need no presenter --
+    // it only exists to host that sheet.
+    if (qualityOverride.length > 0) {
+        if (!resolvedOption)
+            return NO;
+        SPKMediaPerformOptionDownload(resolvedOption, mediaObject, galleryMetadata,
+                                      destination, NO, identifier, showProgress,
+                                      presenter,
+                                      (SPKDownloadSourceSurface)sourceSurface);
+        return YES;
+    }
+
     UIViewController *resolvedPresenter = presenter ?: topMostController();
     if (!resolvedPresenter) {
         return NO;
     }
 
-    SPKMediaOption *resolvedOption = SPKMediaResolveDefaultOption(analysis);
     if (resolvedOption) {
         SPKMediaPerformOptionDownload(resolvedOption, mediaObject, galleryMetadata,
                                       destination, NO, identifier, showProgress,
@@ -2744,7 +2794,7 @@ static void SPKMediaPerformOptionDownload(
         return NO;
     }
 
-    SPKMediaOption *resolvedOption = SPKMediaResolveDefaultOption(analysis);
+    SPKMediaOption *resolvedOption = SPKMediaResolveDefaultOption(analysis, nil);
     if (resolvedOption) {
         SPKMediaPerformOptionDownload(resolvedOption, mediaObject, galleryMetadata,
                                       SPKDownloadDestinationClipboard, YES,

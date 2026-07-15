@@ -4,6 +4,8 @@
 #import "ActionButtonLookupUtils.h"
 #import <UIKit/UIKit.h>
 
+@class SPKGallerySaveMetadata;
+
 typedef NS_ENUM(NSInteger, SPKActionButtonSource) {
     SPKActionButtonSourceFeed = 1,
     SPKActionButtonSourceReels = 2,
@@ -39,6 +41,8 @@ FOUNDATION_EXPORT NSString *const kSPKActionOpenTopicSettings;
 FOUNDATION_EXPORT NSString *const kSPKActionDeletedMessagesLog;
 FOUNDATION_EXPORT NSString *const kSPKActionRepost;
 FOUNDATION_EXPORT NSString *const kSPKActionToggleStorySeenUserRule;
+FOUNDATION_EXPORT NSString *const kSPKActionToggleStoryAutoSaveUserRule;
+FOUNDATION_EXPORT NSString *const kSPKActionToggleDirectAutoSaveThreadRule;
 FOUNDATION_EXPORT NSString *const kSPKActionToggleProfileStorySeenUserRule;
 FOUNDATION_EXPORT NSString *const kSPKActionToggleProfileMessagesSeenUserRule;
 FOUNDATION_EXPORT NSString *const kSPKActionStoryMentionsSheet;
@@ -89,6 +93,19 @@ UIImage *SPKActionButtonMenuIconForIdentifier(NSString *identifier, CGFloat size
 // Menu" (kSPKActionNone). User-configurable; defaults to "action".
 NSString *SPKActionButtonOpenMenuIconName(void);
 BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *context, BOOL isDefaultTap);
+/// Resolves `media` down to the photo/video URLs and gallery metadata a manual save
+/// would produce. Lets non-action-button callers (auto-save) reuse the action button's
+/// own resolution instead of duplicating it, so their files carry identical metadata
+/// and the quality manager sees exactly what it sees on a manual save.
+///
+/// Either URL may come back nil (a photo has no videoURL, and vice versa). Returns NO
+/// when neither resolves.
+BOOL SPKResolveGalleryDownloadForMedia(id _Nullable media,
+                                       SPKActionButtonSource source,
+                                       NSString *_Nullable fallbackUsername,
+                                       NSURL *_Nullable *_Nullable outPhotoURL,
+                                       NSURL *_Nullable *_Nullable outVideoURL,
+                                       SPKGallerySaveMetadata *_Nullable *_Nullable outMetadata);
 NSArray<NSString *> *SPKConfiguredBulkActionIdentifiersForSource(SPKActionButtonSource source);
 NSArray *SPKActionButtonCarouselChildren(id _Nullable media);
 void SPKArmPendingRepostFeedback(SPKActionButtonContext *context);

@@ -11,6 +11,13 @@ SPKInstantsResolverResult *SPKInstantsResolveForHeader(UIView *header, NSString 
 /// Installs service/listener hooks. Called once at startup.
 void SPKInstallInstantsResolverHooks(void);
 
+/// The snap currently on screen, resolved purely from the view hierarchy -- no snap
+/// store, no tracked index. IG pops the displayed snap off the store, so the store
+/// never contains the item being viewed; only the view knows. Pass any view in the
+/// viewer's window. Returns nil when no snap is displayed or its media hasn't loaded
+/// yet (callers should retry rather than treat it as "nothing to save").
+SPKInstantsResolvedSnap *SPKInstantsResolveActiveSnapInView(UIView *viewInHierarchy);
+
 @interface SPKInstantsResolvedSnap : NSObject
 @property (nonatomic, strong) NSURL *sparkleMediaURL;
 @property (nonatomic, strong) NSURL *sparklePhotoURL;

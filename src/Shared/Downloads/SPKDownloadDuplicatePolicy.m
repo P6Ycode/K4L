@@ -5,6 +5,7 @@
 #import "../../Utils.h"
 #import "../Gallery/SPKGalleryCoreDataStack.h"
 #import "../Gallery/SPKGalleryFile.h"
+#import "../Gallery/SPKGalleryHiddenSources.h"
 #import "../Gallery/SPKGallerySaveMetadata.h"
 #import "../UI/SPKIGAlertPresenter.h"
 
@@ -83,7 +84,25 @@ static SPKGalleryFile *SPKExistingGalleryFile(SPKGallerySaveMetadata *metadata, 
     NSManagedObjectContext *context = [SPKGalleryCoreDataStack shared].viewContext;
     [context performBlockAndWait:^{
         NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"SPKGalleryFile"];
-        request.predicate = [NSPredicate predicateWithFormat:@"mediaType == %d", (int)mediaType];
+        // Narrow to the same sourceMediaPK when we have one. A row with a different
+        // (or empty) sourceMediaPK can never produce a "pk:"-based key equal to this
+        // one, so this is equivalent to scanning every row of the media type — but it
+        // avoids fetching the whole table and stat-ing each file, which is what made
+        // auto-save stutter the story viewer on large galleries.
+        NSPredicate *predicate = nil;
+        if (metadata.sourceMediaPK.length > 0) {
+            predicate = [NSPredicate predicateWithFormat:@"mediaType == %d AND sourceMediaPK == %@",
+                                                         (int)mediaType, metadata.sourceMediaPK];
+        } else {
+            predicate = [NSPredicate predicateWithFormat:@"mediaType == %d", (int)mediaType];
+        }
+        // "Already in the Gallery" has to mean the Gallery the user can actually see.
+        // With per-account filtering on, another account's copy is invisible to them, so
+        // counting it as a duplicate would silently make the media unsavable.
+        NSPredicate *accountScope = SPKGalleryAccountScopePredicate();
+        if (accountScope)
+            predicate = [NSCompoundPredicate andPredicateWithSubpredicates:@[ predicate, accountScope ]];
+        request.predicate = predicate;
         NSArray<SPKGalleryFile *> *files = [context executeFetchRequest:request error:nil] ?: @[];
         for (SPKGalleryFile *file in files) {
             SPKGallerySaveMetadata *stored = [[SPKGallerySaveMetadata alloc] init];
@@ -103,12 +122,44 @@ static NSMutableDictionary<NSString *, NSString *> *SPKPhotosSaveLedger(void) {
     return [saved isKindOfClass:NSDictionary.class] ? [saved mutableCopy] : [NSMutableDictionary dictionary];
 }
 
+static void SPKPhotosSaveLedgerRemoveKey(NSString *key) {
+    if (key.length == 0)
+        return;
+    @synchronized([SPKDownloadDuplicatePolicy class]) {
+        NSMutableDictionary<NSString *, NSString *> *ledger = SPKPhotosSaveLedger();
+        if (!ledger[key])
+            return;
+        [ledger removeObjectForKey:key];
+        [[NSUserDefaults standardUserDefaults] setObject:ledger forKey:kSPKPhotosSaveLedgerKey];
+    }
+}
+
+// The Photos counterpart of the Gallery branch's `fileExists`: a ledger entry only
+// counts while the asset it points at is still in the library, so deleting the photo in
+// Photos lets it be saved again instead of being skipped forever.
+static BOOL SPKPhotosLedgerEntryIsLive(NSString *key, NSString *localIdentifier) {
+    if (localIdentifier.length == 0)
+        return NO;
+    // Verifying means *reading* the library, which add-only and limited access don't
+    // allow -- a fetch there comes back empty even for assets we did save, which would
+    // read as "deleted" and re-save every item on every view. Without read access the
+    // ledger is the only evidence there is, so trust it.
+    if ([PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelReadWrite] != PHAuthorizationStatusAuthorized)
+        return YES;
+
+    if ([PHAsset fetchAssetsWithLocalIdentifiers:@[ localIdentifier ] options:nil].count > 0)
+        return YES;
+
+    SPKPhotosSaveLedgerRemoveKey(key);
+    return NO;
+}
+
 static BOOL SPKHasDuplicate(SPKDownloadDuplicateDestination destination, SPKGallerySaveMetadata *metadata, NSInteger mediaType) {
     NSString *key = SPKDuplicateKey(metadata, mediaType);
     if (key.length == 0)
         return NO;
     if (destination == SPKDownloadDuplicateDestinationPhotos) {
-        return SPKPhotosSaveLedger()[key].length > 0;
+        return SPKPhotosLedgerEntryIsLive(key, SPKPhotosSaveLedger()[key]);
     }
     return SPKExistingGalleryFile(metadata, mediaType) != nil;
 }
@@ -355,6 +406,19 @@ static void SPKDeleteExistingDuplicate(SPKDownloadDuplicateDestination destinati
     if (![[NSUserDefaults standardUserDefaults] boolForKey:kSPKDownloadDetectDuplicatesKey])
         return NO;
     return SPKHasDuplicate(destination, metadata, mediaType);
+}
+
++ (BOOL)destinationContainsMediaForMetadata:(SPKGallerySaveMetadata *)metadata
+                                  mediaType:(NSInteger)mediaType
+                                destination:(SPKDownloadDestination)destination {
+    switch (destination) {
+    case SPKDownloadDestinationPhotos:
+        return SPKHasDuplicate(SPKDownloadDuplicateDestinationPhotos, metadata, mediaType);
+    case SPKDownloadDestinationGallery:
+        return SPKHasDuplicate(SPKDownloadDuplicateDestinationGallery, metadata, mediaType);
+    default:
+        return NO;
+    }
 }
 
 + (void)recordPhotosSaveWithMetadata:(SPKGallerySaveMetadata *)metadata

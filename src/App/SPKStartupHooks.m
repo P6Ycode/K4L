@@ -10,6 +10,8 @@ FOUNDATION_EXPORT void SPKInstallHeaderActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallFollowingFeedHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallReelsActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallStoriesActionButtonHooksIfEnabled(void);
+FOUNDATION_EXPORT void SPKInstallStoryAutoSaveHooksIfEnabled(void);
+FOUNDATION_EXPORT void SPKInstallDirectAutoSaveHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallMessagesActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallAggregatedMediaActionButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallProfileActionButtonHooksIfEnabled(void);
@@ -68,6 +70,7 @@ FOUNDATION_EXPORT void SPKInstallProfileAnalyzerVisitTrackerHooksIfEnabled(void)
 FOUNDATION_EXPORT void SPKInstallDisableDMStorySeenHooksIfNeeded(void);
 FOUNDATION_EXPORT void SPKInstallDisableInstantsCreationHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallInstantsActionButtonHooksIfEnabled(void);
+FOUNDATION_EXPORT void SPKInstallInstantsAutoSaveHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallInstantsAllowScreenshotHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallInstantsReactionConfirmHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallInstantsGalleryUploadHooksIfEnabled(void);
@@ -170,6 +173,7 @@ void SPKInstallStorySurfaceHooksIfNeeded(void) {
     SPKInstallTweakStoryHooksIfNeeded();
     SPKInstallFeedFilteringHooksIfEnabled();
     SPKInstallStoriesActionButtonHooksIfEnabled();
+    SPKInstallStoryAutoSaveHooksIfEnabled();
     SPKInstallSeenButtonHooksIfNeeded();
     SPKInstallHideMetaAIHooksIfEnabled();
     SPKInstallLikeConfirmHooksIfNeeded();
@@ -204,6 +208,7 @@ void SPKInstallMessagesSurfaceHooksIfNeeded(void) {
         return;
     }
     SPKInstallTweakMessagesHooksIfNeeded();
+    SPKInstallDirectAutoSaveHooksIfEnabled();
     SPKInstallMessagesActionButtonHooksIfEnabled();
     SPKInstallAggregatedMediaActionButtonHooksIfEnabled();
     SPKInstallSeenButtonHooksIfNeeded();
@@ -213,6 +218,7 @@ void SPKInstallMessagesSurfaceHooksIfNeeded(void) {
     SPKInstallDisableDMStorySeenHooksIfNeeded();
     SPKInstallDisableInstantsCreationHooksIfEnabled();
     SPKInstallInstantsActionButtonHooksIfEnabled();
+    SPKInstallInstantsAutoSaveHooksIfEnabled();
     SPKInstallInstantsAllowScreenshotHooksIfEnabled();
     SPKInstallInstantsReactionConfirmHooksIfEnabled();
     SPKInstallInstantsGalleryUploadHooksIfEnabled();
