@@ -19,6 +19,21 @@ SPKDirectThreadContext *_Nullable SPKDirectThreadContextFromSource(id _Nullable 
 SPKDirectThreadContext *_Nullable SPKDirectThreadContextFromInboxViewModel(id _Nullable viewModel);
 NSDictionary *_Nullable SPKDirectThreadEntryFromContext(SPKDirectThreadContext *_Nullable context);
 
+/// Human-readable name for a thread: its own title, else the participants' names, else
+/// nil. Callers own the "no name at all" fallback, since it reads differently in a list
+/// row ("Unknown Chat") than in a sentence ("this chat"). Both DM thread lists and every
+/// current-thread prompt name threads through here so they can never disagree.
+NSString *_Nullable SPKDirectDisplayNameForThreadEntry(NSDictionary *_Nullable entry);
+NSString *_Nullable SPKDirectDisplayNameForThreadContext(SPKDirectThreadContext *_Nullable context);
+
+/// Row-tap behaviour shared by every DM thread list: a 1:1 opens the partner's profile,
+/// a group does nothing (it has no single profile to open, and its name is not a handle).
+void SPKDirectOpenProfileForThreadEntry(NSDictionary *_Nullable entry);
+
+/// "N participants" for a group thread; nil for a 1:1 or when the roster is unknown.
+/// Instagram's stored roster excludes the current user, so the count adds you back.
+NSString *_Nullable SPKDirectParticipantSubtitleForThreadEntry(NSDictionary *_Nullable entry);
+
 void SPKDirectSetActiveThreadContext(SPKDirectThreadContext *_Nullable context);
 SPKDirectThreadContext *_Nullable SPKDirectActiveThreadContext(void);
 

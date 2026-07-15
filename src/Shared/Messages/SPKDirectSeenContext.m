@@ -428,8 +428,86 @@ static SPKDirectThreadContext *SPKDirectThreadContextFromSourceInternal(id sourc
     return allowActiveFallback ? SPKDirectActiveContext : nil;
 }
 
+// A source deep in the DM stack -- the visual-message viewer, a cell -- can usually reach
+// a thread id but nothing else: only the thread view controller owns the info provider
+// that carries the title and roster. The active context IS that controller's, so borrow
+// what's missing from it whenever the ids agree. Without this the viewer resolves a
+// nameless context and every prompt/list row built from it reads "Unknown Chat".
+static SPKDirectThreadContext *SPKDirectContextEnrichedFromActiveContext(SPKDirectThreadContext *context) {
+    SPKDirectThreadContext *active = SPKDirectActiveContext;
+    if (!context || !active || context == active)
+        return context;
+
+    NSString *threadId = SPKDirectStringFromValue(context.threadId);
+    if (threadId.length == 0 || ![threadId isEqualToString:SPKDirectStringFromValue(active.threadId)])
+        return context;
+
+    if (context.users.count == 0)
+        context.users = active.users;
+    if (context.threadName.length == 0)
+        context.threadName = active.threadName.length > 0 ? active.threadName : SPKDirectNameFromUsers(context.users);
+    if (context.groupPhotoUrl.length == 0)
+        context.groupPhotoUrl = active.groupPhotoUrl;
+    if (!context.isGroup)
+        context.isGroup = active.isGroup;
+    return context;
+}
+
 SPKDirectThreadContext *SPKDirectThreadContextFromSource(id source) {
-    return SPKDirectThreadContextFromSourceInternal(source, [NSMutableSet set], YES);
+    return SPKDirectContextEnrichedFromActiveContext(
+        SPKDirectThreadContextFromSourceInternal(source, [NSMutableSet set], YES));
+}
+
+NSString *SPKDirectDisplayNameForThreadEntry(NSDictionary *entry) {
+    if (![entry isKindOfClass:[NSDictionary class]])
+        return nil;
+    NSString *threadName = SPKDirectStringFromValue(entry[@"threadName"]);
+    if (threadName.length > 0)
+        return threadName;
+    return SPKDirectNameFromUsers([entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[]);
+}
+
+NSString *SPKDirectParticipantSubtitleForThreadEntry(NSDictionary *entry) {
+    if (![entry isKindOfClass:[NSDictionary class]] || ![entry[@"isGroup"] boolValue])
+        return nil;
+    NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
+    NSUInteger count = users.count;
+    if (count == 0)
+        return nil;
+
+    // IG's recipient list excludes the current user, so add yourself back to report the
+    // real member count. Only when we actually have the roster.
+    NSString *currentPk = [SPKUtils currentUserPK];
+    if (currentPk.length > 0) {
+        BOOL includesSelf = NO;
+        for (NSDictionary *user in users) {
+            if ([SPKDirectStringFromValue(user[@"pk"]) isEqualToString:currentPk]) {
+                includesSelf = YES;
+                break;
+            }
+        }
+        if (!includesSelf)
+            count += 1;
+    }
+    return [NSString stringWithFormat:@"%lu participant%@", (unsigned long)count, count == 1 ? @"" : @"s"];
+}
+
+void SPKDirectOpenProfileForThreadEntry(NSDictionary *entry) {
+    if (![entry isKindOfClass:[NSDictionary class]] || [entry[@"isGroup"] boolValue])
+        return;
+    NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
+    if (users.count != 1)
+        return;
+    NSString *username = SPKDirectStringFromValue(users.firstObject[@"username"]);
+    if (username.length > 0)
+        [SPKUtils openInstagramProfileForUsername:username];
+}
+
+NSString *SPKDirectDisplayNameForThreadContext(SPKDirectThreadContext *context) {
+    NSString *threadName = SPKDirectStringFromValue(context.threadName);
+    if (threadName.length > 0)
+        return threadName;
+    return SPKDirectNameFromUsers(context.users ?: @[]);
 }
 
 static id SPKDirectInboxValueForKeys(id candidate, NSArray<NSString *> *keys) {
@@ -1027,33 +1105,14 @@ BOOL SPKDirectToggleCurrentThreadRule(SPKDirectThreadContext *context, NSString 
 }
 
 - (NSString *)displayNameForEntry:(NSDictionary *)entry {
-    NSString *name = [entry[@"threadName"] isKindOfClass:[NSString class]] ? entry[@"threadName"] : nil;
-    if (name.length > 0)
-        return name;
-    NSString *fromUsers = SPKDirectNameFromUsers([entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[]);
-    return fromUsers.length > 0 ? fromUsers : @"Unknown Chat";
+    return SPKDirectDisplayNameForThreadEntry(entry) ?: @"Unknown Chat";
 }
 
 - (NSString *)subtitleForEntry:(NSDictionary *)entry {
+    NSString *participants = SPKDirectParticipantSubtitleForThreadEntry(entry);
+    if (participants)
+        return participants;
     NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
-    if ([entry[@"isGroup"] boolValue]) {
-        // IG's recipient list excludes the current user, so add yourself back to
-        // report the real member count. Only when we actually have the roster.
-        NSUInteger count = users.count;
-        NSString *currentPk = [SPKUtils currentUserPK];
-        if (count > 0 && currentPk.length > 0) {
-            BOOL includesSelf = NO;
-            for (NSDictionary *user in users) {
-                if ([user[@"pk"] isKindOfClass:[NSString class]] && [user[@"pk"] isEqualToString:currentPk]) {
-                    includesSelf = YES;
-                    break;
-                }
-            }
-            if (!includesSelf)
-                count += 1;
-        }
-        return [NSString stringWithFormat:@"%lu participant%@", (unsigned long)count, count == 1 ? @"" : @"s"];
-    }
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     for (NSDictionary *user in users) {
         NSString *username = [user[@"username"] isKindOfClass:[NSString class]] ? user[@"username"] : nil;
@@ -1121,15 +1180,8 @@ BOOL SPKDirectToggleCurrentThreadRule(SPKDirectThreadContext *context, NSString 
     self.title = [NSString stringWithFormat:@"%lu %@", (unsigned long)count, SPKDirectManualSeenListModeTitle(self.manualSeenEnabled)];
 }
 
-// 1:1 chats open the profile; groups have no single profile to open.
 - (void)didSelectItem:(SPKUserListItem *)item {
-    NSDictionary *entry = item.representedObject;
-    if ([entry[@"isGroup"] boolValue])
-        return;
-    NSArray *users = [entry[@"users"] isKindOfClass:[NSArray class]] ? entry[@"users"] : @[];
-    NSString *username = users.count == 1 && [users.firstObject[@"username"] isKindOfClass:[NSString class]] ? users.firstObject[@"username"] : nil;
-    if (username.length > 0)
-        [SPKUtils openInstagramProfileForUsername:username];
+    SPKDirectOpenProfileForThreadEntry(item.representedObject);
 }
 
 - (void)didDeleteItem:(SPKUserListItem *)item {
