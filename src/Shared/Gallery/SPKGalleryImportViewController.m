@@ -33,14 +33,11 @@ static CGFloat const SPKImportJumpButtonMargin = 16.0;
 // No semantic warning color ships in SPKUtils, so define the amber used by the
 // "Needs details" nudge here (matches the gallery's warm accent in both themes).
 static UIColor *SPKImportAmberColor(void) {
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-                       ? [UIColor colorWithRed:0.88 green:0.64 blue:0.23 alpha:1.0]
-                       : [UIColor colorWithRed:0.72 green:0.47 blue:0.11 alpha:1.0];
-        }];
-    }
-    return [UIColor colorWithRed:0.72 green:0.47 blue:0.11 alpha:1.0];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor colorWithRed:0.88 green:0.64 blue:0.23 alpha:1.0]
+                    : [UIColor colorWithRed:0.72 green:0.47 blue:0.11 alpha:1.0];
+    }];
 }
 
 #pragma mark - Queued file model

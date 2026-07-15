@@ -658,9 +658,7 @@ static BOOL SPKParseInstagramLink(NSString *raw, SPKGallerySaveMetadata *m) {
 
     UIDatePicker *picker = [[UIDatePicker alloc] init];
     picker.datePickerMode = UIDatePickerModeDateAndTime;
-    if (@available(iOS 14.0, *)) {
-        picker.preferredDatePickerStyle = UIDatePickerStyleCompact;
-    }
+    picker.preferredDatePickerStyle = UIDatePickerStyleCompact;
     picker.date = self.metadata.importCapturedDate ?: [NSDate date];
     [picker addTarget:self action:@selector(dateChanged:) forControlEvents:UIControlEventValueChanged];
 
