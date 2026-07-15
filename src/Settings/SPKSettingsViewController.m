@@ -1135,6 +1135,13 @@ static UIImage *SPKSettingsBreadcrumbChevronImage(void) {
     if (row.action) {
         row.action();
     }
+
+    // Same contract as the switchChangeHandler branch above: a plain pref-backed switch
+    // that gates other rows still has to refresh them, or their enabledProvider state is
+    // stale until the page is left and re-entered.
+    if (row.reloadsTableOnSwitchChange) {
+        [self refreshDependentRowsAfterSwitchChange:sender];
+    }
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
