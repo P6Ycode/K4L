@@ -8,6 +8,38 @@ static BOOL SPKShouldSanitizeCopiedShareLinks(void) {
     return [SPKUtils getBoolPref:@"general_strip_share_link_tracking"];
 }
 
+// Returns a sanitized replacement ONLY when `string` is a plain Instagram
+// share URL that actually changes. Any other text (arbitrary copied text,
+// non-IG URLs, empty) returns nil so the original write passes through
+// untouched. `sanitizedInstagramShareURL:` already returns nil for anything
+// whose scheme isn't http/https or whose host isn't a canonical IG host, so
+// this is the whole specificity gate.
+static NSString *SPKSanitizedShareStringOrNil(NSString *string) {
+    if (![string isKindOfClass:[NSString class]] || string.length == 0)
+        return nil;
+    NSURL *url = [NSURL URLWithString:string];
+    if (!url)
+        return nil;
+    NSString *sanitized = [SPKUtils sanitizedInstagramShareURL:url].absoluteString;
+    if (sanitized.length > 0 && ![sanitized isEqualToString:string])
+        return sanitized;
+    return nil;
+}
+
+static NSURL *SPKSanitizedShareURLOrNil(NSURL *url) {
+    if (![url isKindOfClass:[NSURL class]])
+        return nil;
+    NSURL *sanitized = [SPKUtils sanitizedInstagramShareURL:url];
+    if (sanitized.absoluteString.length > 0 && ![sanitized.absoluteString isEqualToString:url.absoluteString])
+        return sanitized;
+    return nil;
+}
+
+// The external share sheet ("Copy link") is the one surface where we can't see
+// the value being written: IG 436+ routes every share button through Swift's
+// `shareTo:` with an opaque enum and copies to the pasteboard internally. Here
+// (and only here) we fall back to polling the clipboard, gated so it only
+// rewrites when the clipboard actually changed AND now holds an IG URL.
 static void SPKPollClipboardAndSanitize(NSInteger countBefore, int polls, double interval) {
     __block BOOL done = NO;
     for (int i = 0; i < polls; i++) {
@@ -18,24 +50,15 @@ static void SPKPollClipboardAndSanitize(NSInteger countBefore, int polls, double
                 return;
 
             NSString *string = [UIPasteboard generalPasteboard].string;
-            NSURL *url = string.length > 0 ? [NSURL URLWithString:string] : nil;
-            NSURL *sanitized = [SPKUtils sanitizedInstagramShareURL:url];
-            if (sanitized.absoluteString.length > 0 && ![sanitized.absoluteString isEqualToString:string]) {
-                [UIPasteboard generalPasteboard].string = sanitized.absoluteString;
+            NSString *sanitized = SPKSanitizedShareStringOrNil(string);
+            if (sanitized) {
+                [UIPasteboard generalPasteboard].string = sanitized;
             }
             done = YES;
         });
     }
 }
 
-// IG 436+ : the external share sheet became Swift
-// (IGExternalShareOptions.IGExternalShareOptionsViewController) and the dedicated
-// `_shareToClipboardFromVC:` method is gone. Every share button now routes through
-// `shareTo:` with an IGExternalShareOptionsType enum value. The copy-link value
-// isn't recoverable from the dumped headers, so instead of matching a specific
-// value we poll the pasteboard after any share: the sanitizer only rewrites when
-// the clipboard actually changed AND contains an Instagram URL, so non-copy
-// shares are inherently no-ops.
 static void (*orig_shareTo)(id, SEL, long long);
 static void replaced_shareTo(id self, SEL _cmd, long long shareType) {
     if (!SPKShouldSanitizeCopiedShareLinks()) {
@@ -47,103 +70,68 @@ static void replaced_shareTo(id self, SEL _cmd, long long shareType) {
     SPKPollClipboardAndSanitize(countBefore, 30, 0.05);
 }
 
-// Other copy-link surfaces (e.g. the profile "..." menu's "Copy Profile URL" row)
-// don't go through IGExternalShareOptionsViewController at all and write directly
-// to the pasteboard from their own obfuscated/Swift presenters, so `shareTo:`
-// alone misses them. Rather than chasing every surface's internal selector,
-// hook every UIPasteboard write entry point and reuse the same poll mechanism
-// above. Crucially, `generalPasteboard` returns an instance of the private
-// `_UIConcretePasteboard` class cluster member, which has its own overrides of
-// these setters — hooking the public `UIPasteboard` base class alone never
-// intercepts those instances, which is why the profile menu's write slipped
-// through. All the public setters above `setString:`/`setItems:options:` (and
-// the private `_setItemsAndSave:options:...` family some of them funnel
-// through) need covering since different call sites favor different ones.
-#define SPK_HOOK_PASTEBOARD_WRITE_BODY(name, call)                        \
-    if (!SPKShouldSanitizeCopiedShareLinks()) {                           \
-        call;                                                             \
-        return;                                                           \
-    }                                                                     \
-    NSInteger countBefore = [UIPasteboard generalPasteboard].changeCount; \
-    call;                                                                 \
-    SPKPollClipboardAndSanitize(countBefore, 30, 0.05);
-
+// Direct-write copy surfaces (the profile "..." menu's "Copy Profile URL" row,
+// long-press "Copy Link", etc.) write a plain string or URL straight to the
+// pasteboard. We hook ONLY those typed setters and rewrite the argument in
+// place before it lands. We deliberately do NOT hook the low-level item/object
+// funnel (`_setItemsAndSave:options:...`, `setItems:`, `setObjects:`,
+// `setValue:forPasteboardType:`, ...): that funnel is what WebKit routes its
+// rich item-provider writes through when you copy text in the in-app browser,
+// and intercepting it there crashed inside WebKit's data-owner context. Copy
+// surfaces we care about never use it, so scoping to `setString:`/`setURL:`
+// (and their array forms) makes the rewrite both crash-proof and specific:
+// nothing but a plain IG URL write is ever touched.
 static void (*orig_setString)(id, SEL, NSString *);
 static void replaced_setString(id self, SEL _cmd, NSString *string) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setString, orig_setString(self, _cmd, string))
+    if (SPKShouldSanitizeCopiedShareLinks()) {
+        NSString *sanitized = SPKSanitizedShareStringOrNil(string);
+        if (sanitized)
+            string = sanitized;
+    }
+    orig_setString(self, _cmd, string);
 }
 
 static void (*orig_setURL)(id, SEL, NSURL *);
 static void replaced_setURL(id self, SEL _cmd, NSURL *url) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setURL, orig_setURL(self, _cmd, url))
+    if (SPKShouldSanitizeCopiedShareLinks()) {
+        NSURL *sanitized = SPKSanitizedShareURLOrNil(url);
+        if (sanitized)
+            url = sanitized;
+    }
+    orig_setURL(self, _cmd, url);
 }
 
-static void (*orig_setStrings)(id, SEL, NSArray *);
-static void replaced_setStrings(id self, SEL _cmd, NSArray *strings) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setStrings, orig_setStrings(self, _cmd, strings))
+static void (*orig_setStrings)(id, SEL, NSArray<NSString *> *);
+static void replaced_setStrings(id self, SEL _cmd, NSArray<NSString *> *strings) {
+    if (SPKShouldSanitizeCopiedShareLinks() && [strings isKindOfClass:[NSArray class]]) {
+        __block BOOL changed = NO;
+        NSMutableArray *rewritten = [NSMutableArray arrayWithCapacity:strings.count];
+        for (NSString *string in strings) {
+            NSString *sanitized = SPKSanitizedShareStringOrNil(string);
+            [rewritten addObject:sanitized ?: (string ?: @"")];
+            changed = changed || (sanitized != nil);
+        }
+        if (changed)
+            strings = rewritten;
+    }
+    orig_setStrings(self, _cmd, strings);
 }
 
-static void (*orig_setURLs)(id, SEL, NSArray *);
-static void replaced_setURLs(id self, SEL _cmd, NSArray *urls) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setURLs, orig_setURLs(self, _cmd, urls))
+static void (*orig_setURLs)(id, SEL, NSArray<NSURL *> *);
+static void replaced_setURLs(id self, SEL _cmd, NSArray<NSURL *> *urls) {
+    if (SPKShouldSanitizeCopiedShareLinks() && [urls isKindOfClass:[NSArray class]]) {
+        __block BOOL changed = NO;
+        NSMutableArray *rewritten = [NSMutableArray arrayWithCapacity:urls.count];
+        for (NSURL *url in urls) {
+            NSURL *sanitized = SPKSanitizedShareURLOrNil(url);
+            [rewritten addObject:sanitized ?: url];
+            changed = changed || (sanitized != nil);
+        }
+        if (changed)
+            urls = rewritten;
+    }
+    orig_setURLs(self, _cmd, urls);
 }
-
-static void (*orig_setItems)(id, SEL, NSArray *);
-static void replaced_setItems(id self, SEL _cmd, NSArray *items) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setItems, orig_setItems(self, _cmd, items))
-}
-
-static void (*orig_addItems)(id, SEL, NSArray *);
-static void replaced_addItems(id self, SEL _cmd, NSArray *items) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(addItems, orig_addItems(self, _cmd, items))
-}
-
-static void (*orig_setItemsOptions)(id, SEL, NSArray *, NSDictionary *);
-static void replaced_setItemsOptions(id self, SEL _cmd, NSArray *items, NSDictionary *options) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setItemsOptions, orig_setItemsOptions(self, _cmd, items, options))
-}
-
-static void (*orig_setValueForPasteboardType)(id, SEL, id, NSString *);
-static void replaced_setValueForPasteboardType(id self, SEL _cmd, id value, NSString *pasteboardType) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setValueForPasteboardType, orig_setValueForPasteboardType(self, _cmd, value, pasteboardType))
-}
-
-static void (*orig_setDataForPasteboardType)(id, SEL, NSData *, NSString *);
-static void replaced_setDataForPasteboardType(id self, SEL _cmd, NSData *data, NSString *pasteboardType) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setDataForPasteboardType, orig_setDataForPasteboardType(self, _cmd, data, pasteboardType))
-}
-
-static void (*orig_setObjects)(id, SEL, NSArray *);
-static void replaced_setObjects(id self, SEL _cmd, NSArray *objects) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setObjects, orig_setObjects(self, _cmd, objects))
-}
-
-static void (*orig_setObjectsOptions)(id, SEL, NSArray *, NSDictionary *);
-static void replaced_setObjectsOptions(id self, SEL _cmd, NSArray *objects, NSDictionary *options) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setObjectsOptions, orig_setObjectsOptions(self, _cmd, objects, options))
-}
-
-static void (*orig_setObjectsLocalOnlyExpirationDate)(id, SEL, NSArray *, BOOL, NSDate *);
-static void replaced_setObjectsLocalOnlyExpirationDate(id self, SEL _cmd, NSArray *objects, BOOL localOnly, NSDate *expirationDate) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setObjectsLocalOnlyExpirationDate, orig_setObjectsLocalOnlyExpirationDate(self, _cmd, objects, localOnly, expirationDate))
-}
-
-static void (*orig_setItemsAndSaveOptions)(id, SEL, NSArray *, NSDictionary *);
-static void replaced_setItemsAndSaveOptions(id self, SEL _cmd, NSArray *items, NSDictionary *options) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setItemsAndSaveOptions, orig_setItemsAndSaveOptions(self, _cmd, items, options))
-}
-
-static void (*orig_setItemsAndSaveOptionsCoerce)(id, SEL, NSArray *, NSDictionary *, BOOL);
-static void replaced_setItemsAndSaveOptionsCoerce(id self, SEL _cmd, NSArray *items, NSDictionary *options, BOOL coerceStringsToURLs) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setItemsAndSaveOptionsCoerce, orig_setItemsAndSaveOptionsCoerce(self, _cmd, items, options, coerceStringsToURLs))
-}
-
-static void (*orig_setItemsAndSaveOptionsCoerceDataOwner)(id, SEL, NSArray *, NSDictionary *, BOOL, id);
-static void replaced_setItemsAndSaveOptionsCoerceDataOwner(id self, SEL _cmd, NSArray *items, NSDictionary *options, BOOL coerceStringsToURLs, id dataOwner) {
-    SPK_HOOK_PASTEBOARD_WRITE_BODY(setItemsAndSaveOptionsCoerceDataOwner, orig_setItemsAndSaveOptionsCoerceDataOwner(self, _cmd, items, options, coerceStringsToURLs, dataOwner))
-}
-
-#undef SPK_HOOK_PASTEBOARD_WRITE_BODY
 
 extern "C" void SPKInstallSharedLinkCleanupHooksIfEnabled(void) {
     if (!SPKShouldSanitizeCopiedShareLinks())
@@ -158,9 +146,9 @@ extern "C" void SPKInstallSharedLinkCleanupHooksIfEnabled(void) {
         }
 
         // `generalPasteboard` returns an instance of this private concrete
-        // subclass; hooking only the public `UIPasteboard` base class is a
-        // no-op against it. Fall back to the base class for older iOS where
-        // it doesn't exist.
+        // subclass, which overrides the typed setters; hooking only the public
+        // `UIPasteboard` base class is a no-op against it. Fall back to the base
+        // class on older iOS where the concrete class doesn't exist.
         Class pasteboardCls = NSClassFromString(@"_UIConcretePasteboard");
         if (!pasteboardCls)
             pasteboardCls = [UIPasteboard class];
@@ -179,17 +167,6 @@ extern "C" void SPKInstallSharedLinkCleanupHooksIfEnabled(void) {
         SPK_INSTALL_PASTEBOARD_HOOK(@selector(setURL:), setURL);
         SPK_INSTALL_PASTEBOARD_HOOK(@selector(setStrings:), setStrings);
         SPK_INSTALL_PASTEBOARD_HOOK(@selector(setURLs:), setURLs);
-        SPK_INSTALL_PASTEBOARD_HOOK(@selector(setItems:), setItems);
-        SPK_INSTALL_PASTEBOARD_HOOK(@selector(addItems:), addItems);
-        SPK_INSTALL_PASTEBOARD_HOOK(@selector(setItems:options:), setItemsOptions);
-        SPK_INSTALL_PASTEBOARD_HOOK(NSSelectorFromString(@"setValue:forPasteboardType:"), setValueForPasteboardType);
-        SPK_INSTALL_PASTEBOARD_HOOK(NSSelectorFromString(@"setData:forPasteboardType:"), setDataForPasteboardType);
-        SPK_INSTALL_PASTEBOARD_HOOK(@selector(setObjects:), setObjects);
-        SPK_INSTALL_PASTEBOARD_HOOK(NSSelectorFromString(@"setObjects:options:"), setObjectsOptions);
-        SPK_INSTALL_PASTEBOARD_HOOK(@selector(setObjects:localOnly:expirationDate:), setObjectsLocalOnlyExpirationDate);
-        SPK_INSTALL_PASTEBOARD_HOOK(NSSelectorFromString(@"_setItemsAndSave:options:"), setItemsAndSaveOptions);
-        SPK_INSTALL_PASTEBOARD_HOOK(NSSelectorFromString(@"_setItemsAndSave:options:coerceStringsToURLs:"), setItemsAndSaveOptionsCoerce);
-        SPK_INSTALL_PASTEBOARD_HOOK(NSSelectorFromString(@"_setItemsAndSave:options:coerceStringsToURLs:dataOwner:"), setItemsAndSaveOptionsCoerceDataOwner);
 
 #undef SPK_INSTALL_PASTEBOARD_HOOK
     });
