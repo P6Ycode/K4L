@@ -367,6 +367,105 @@ static UIView *spkFindCanvasDeep(UIView *root, NSInteger depth) {
 
 @end
 
+@interface SPKChromeLabel () {
+    SPKChromeCanvas *_chromeCanvas;
+    UIImageView *_iconView;
+    UILabel *_label;
+    CGSize _measuredSize;
+}
+@end
+
+@implementation SPKChromeLabel
+
+static const CGFloat kSPKChromeLabelIconTextGap = 4.0;
+
+- (instancetype)initWithText:(NSString *)text icon:(UIImage *)icon font:(UIFont *)font color:(UIColor *)color {
+    self = [super initWithFrame:CGRectZero];
+
+    if (self) {
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        self.userInteractionEnabled = NO;
+
+        _chromeCanvas = [SPKChromeCanvas new];
+        _chromeCanvas.userInteractionEnabled = NO;
+        [self addSubview:_chromeCanvas];
+        spkPinEdges(_chromeCanvas, self);
+
+        // Add content to the canvas now (before it materialises its secure
+        // canvas) but constrain it to `_chromeCanvas` itself — its identity is
+        // stable, whereas `contentContainer` swaps from self to the stolen
+        // CanvasView once attached, migrating these subviews along with it.
+        UIView *host = _chromeCanvas.contentContainer;
+        NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
+
+        CGFloat iconWidth = 0.0;
+        CGFloat iconHeight = 0.0;
+        if (icon) {
+            _iconView = [[UIImageView alloc] initWithImage:icon];
+            _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+            _iconView.contentMode = UIViewContentModeScaleAspectFit;
+            _iconView.tintColor = color;
+            [host addSubview:_iconView];
+            iconWidth = icon.size.width;
+            iconHeight = icon.size.height;
+            [constraints addObjectsFromArray:@[
+                [_iconView.leadingAnchor constraintEqualToAnchor:_chromeCanvas.leadingAnchor],
+                [_iconView.centerYAnchor constraintEqualToAnchor:_chromeCanvas.centerYAnchor],
+                [_iconView.widthAnchor constraintEqualToConstant:iconWidth],
+                [_iconView.heightAnchor constraintEqualToConstant:iconHeight]
+            ]];
+        }
+
+        CGSize labelSize = CGSizeZero;
+        if (text.length) {
+            _label = [[UILabel alloc] init];
+            _label.translatesAutoresizingMaskIntoConstraints = NO;
+            _label.text = text;
+            _label.font = font;
+            _label.textColor = color;
+            [host addSubview:_label];
+            labelSize = [_label sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
+            NSLayoutXAxisAnchor *labelLeading = _iconView ? _iconView.trailingAnchor : _chromeCanvas.leadingAnchor;
+            CGFloat leadingGap = _iconView ? kSPKChromeLabelIconTextGap : 0.0;
+            [constraints addObjectsFromArray:@[
+                [_label.leadingAnchor constraintEqualToAnchor:labelLeading constant:leadingGap],
+                [_label.centerYAnchor constraintEqualToAnchor:_chromeCanvas.centerYAnchor]
+            ]];
+        }
+
+        CGFloat gap = (iconWidth > 0.0 && labelSize.width > 0.0) ? kSPKChromeLabelIconTextGap : 0.0;
+        _measuredSize = CGSizeMake(iconWidth + gap + labelSize.width, MAX(iconHeight, labelSize.height));
+
+        // Pin the label's own size explicitly rather than trusting only
+        // `intrinsicContentSize` to win the layout negotiation. When the label
+        // is placed with just two edge constraints (e.g. leading + bottom to a
+        // host container), an intrinsic size can be overridden or left ambiguous
+        // by the host's own layout, which showed up as the badge sometimes not
+        // appearing. Explicit width/height make the size deterministic; hugging
+        // and compression resistance are maxed as a belt-and-suspenders.
+        if (_measuredSize.width > 0.0 && _measuredSize.height > 0.0) {
+            [constraints addObjectsFromArray:@[
+                [self.widthAnchor constraintEqualToConstant:_measuredSize.width],
+                [self.heightAnchor constraintEqualToConstant:_measuredSize.height]
+            ]];
+        }
+        [self setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [self setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+        [self setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [self setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+
+        [NSLayoutConstraint activateConstraints:constraints];
+    }
+
+    return self;
+}
+
+- (CGSize)intrinsicContentSize {
+    return _measuredSize;
+}
+
+@end
+
 UIBarButtonItem *SPKChromeBarButtonItem(NSString *symbol, CGFloat pointSize, id target, SEL action, SPKChromeButton **outButton) {
     SPKChromeButton *button = [[SPKChromeButton alloc] initWithSymbol:symbol pointSize:pointSize diameter:44.0];
     button.iconOffset = UIOffsetMake(-2.0, 0.0);

@@ -62,6 +62,25 @@ BOOL SPKChromeCanvasOwnsSecureField(UITextField *field);
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
 @end
 
+// MARK: - SPKChromeLabel
+
+/// A self-sizing, capture-redacted label with an optional leading glyph. Hosts
+/// its content inside an SPKChromeCanvas so the text/icon disappear from
+/// screenshots/recordings when "Hide UI on Capture" is on — no external tag or
+/// `addSubview:` interception needed. Reports `intrinsicContentSize`, so pinning
+/// just two edges (e.g. leading + bottom to a container) both places and sizes
+/// it. Content is fixed at init; build a new instance to change it.
+@interface SPKChromeLabel : UIView
+- (instancetype)initWithText:(nullable NSString *)text
+                        icon:(nullable UIImage *)icon
+                        font:(UIFont *)font
+                       color:(UIColor *)color NS_DESIGNATED_INITIALIZER;
+
+- (instancetype)init NS_UNAVAILABLE;
+- (instancetype)initWithFrame:(CGRect)frame NS_UNAVAILABLE;
+- (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
+@end
+
 #ifdef __cplusplus
 extern "C" {
 #endif

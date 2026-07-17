@@ -1,10 +1,16 @@
 // Shows whether the current profile user follows you.
+//
+// The badge is rendered from the stat container's own `layoutSubviews` and
+// pinned with Auto Layout (leading + bottom), so it tracks IG's header layout
+// on every version instead of fighting it with manual frames from the profile
+// controller — the latter only held up on iOS 26's scroll-driven collapsing
+// header and was flaky on iOS 16.
 
 #import "../../AssetUtils.h"
 #import "../../InstagramHeaders.h"
 #import "../../Networking/SPKInstagramAPI.h"
+#import "../../Shared/UI/SPKChrome.h"
 #import "../../Utils.h"
-#import "../General/CaptureHiding.h"
 #import "FollowIndicator.h"
 #import <objc/runtime.h>
 
@@ -12,6 +18,9 @@ NSNotificationName const SPKFollowIndicatorDidChangeNotification = @"SPKFollowIn
 
 static NSInteger const kSPKFollowBadgeTag = 99788;
 static const void *kSPKFollowStatusAssocKey = &kSPKFollowStatusAssocKey;
+static const void *kSPKFollowProfilePKAssocKey = &kSPKFollowProfilePKAssocKey;
+static const void *kSPKFollowFetchPKAssocKey = &kSPKFollowFetchPKAssocKey;
+static const void *kSPKFollowBadgeSpecAssocKey = &kSPKFollowBadgeSpecAssocKey;
 
 // Mode is a string pref ("off" | "text" | "icon" | "icontext"). It is
 // intentionally NOT registered with a default so that, until the user picks a
@@ -40,18 +49,6 @@ static BOOL SPKFollowIndicatorShowsText(void) {
     return [mode isEqualToString:@"text"] || [mode isEqualToString:@"icontext"];
 }
 
-// Weak set of profile controllers that have rendered a badge, so a settings
-// change (posted via SPKFollowIndicatorDidChangeNotification) can refresh them
-// in place — the settings sheet doesn't re-fire viewDidAppear underneath.
-static NSHashTable *SPKFollowIndicatorControllers(void) {
-    static NSHashTable *controllers;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        controllers = [NSHashTable weakObjectsHashTable];
-    });
-    return controllers;
-}
-
 // Colorful (green/red) is off by default: the indicator is native gray unless
 // the user opts in. Like the mode key, no default is registered so a never-set
 // value can fall back to the legacy bool — anyone who had the indicator enabled
@@ -71,224 +68,260 @@ static UIColor *SPKFollowIndicatorColor(BOOL followsYou) {
                       : [UIColor colorWithRed:0.85 green:0.30 blue:0.30 alpha:1.0];
 }
 
-static NSString *SPKPKFromUserObject(id userObject) {
-    if (!userObject)
-        return nil;
-    Ivar pkIvar = NULL;
-    for (Class cls = [userObject class]; cls && !pkIvar; cls = class_getSuperclass(cls)) {
-        pkIvar = class_getInstanceVariable(cls, "_pk");
-    }
-    if (!pkIvar)
-        return nil;
-    id pk = object_getIvar(userObject, pkIvar);
-    return pk ? [pk description] : nil;
+// Follow status is fetched once per profile PK and memoised globally, so
+// re-entering a profile (or IG recycling the controller) reuses the answer
+// instead of re-hitting the throttled /friendships/ endpoint.
+static NSMutableDictionary<NSString *, NSNumber *> *SPKFollowStatusCache(void) {
+    static NSMutableDictionary *cache;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        cache = [NSMutableDictionary dictionary];
+    });
+    return cache;
 }
 
-static NSString *SPKCurrentUserPK(void) {
-    @try {
-        for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
-            if (![scene isKindOfClass:[UIWindowScene class]])
-                continue;
-            for (UIWindow *window in scene.windows) {
-                id session = [window valueForKey:@"userSession"];
-                if (!session)
-                    continue;
-                id user = [session valueForKey:@"user"];
-                if (!user)
-                    continue;
-                NSString *pk = SPKPKFromUserObject(user);
-                if (pk.length > 0)
-                    return pk;
-            }
-        }
-    } @catch (__unused NSException *exception) {
-    }
-    return nil;
+// Maps a live profile controller to the stat container it last laid out in, so
+// an async status arrival (or a settings change) can nudge that container to
+// re-render without walking the view tree. Weak on both sides: the cache keeps
+// nothing alive and stale entries zero out.
+static NSMapTable *SPKFollowContainerForController(void) {
+    static NSMapTable *table;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        table = [NSMapTable weakToWeakObjectsMapTable];
+    });
+    return table;
 }
 
-static NSNumber *SPKGetFollowStatusForController(id controller) {
+static NSNumber *SPKGetFollowStatus(id controller) {
     return objc_getAssociatedObject(controller, kSPKFollowStatusAssocKey);
 }
 
-static void SPKSetFollowStatusForController(id controller, NSNumber *status) {
+static void SPKSetFollowStatus(id controller, NSNumber *status) {
     objc_setAssociatedObject(controller, kSPKFollowStatusAssocKey, status, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-static UIView *SPKProfileStatContainer(UIViewController *controller) {
-    if (!controller.view)
-        return nil;
-
-    NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:controller.view];
-    while (stack.count > 0) {
-        UIView *view = stack.lastObject;
-        [stack removeLastObject];
-
-        if ([NSStringFromClass([view class]) containsString:@"StatButtonContainerView"]) {
-            return view;
-        }
-
-        [stack addObjectsFromArray:view.subviews];
-    }
-    return nil;
+static NSString *SPKGetFollowProfilePK(id controller) {
+    return objc_getAssociatedObject(controller, kSPKFollowProfilePKAssocKey);
 }
 
-static void SPKRenderFollowBadge(UIViewController *controller) {
-    NSNumber *status = SPKGetFollowStatusForController(controller);
-    if (!status)
-        return;
+static void SPKSetFollowProfilePK(id controller, NSString *pk) {
+    objc_setAssociatedObject(controller, kSPKFollowProfilePKAssocKey, pk, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
 
-    UIView *container = SPKProfileStatContainer(controller);
+static NSString *SPKGetFollowFetchPK(id controller) {
+    return objc_getAssociatedObject(controller, kSPKFollowFetchPKAssocKey);
+}
+
+static void SPKSetFollowFetchPK(id controller, NSString *pk) {
+    objc_setAssociatedObject(controller, kSPKFollowFetchPKAssocKey, pk, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+static id SPKProfileUser(UIViewController *controller) {
+    @try {
+        return [(id)controller valueForKey:@"user"];
+    } @catch (__unused NSException *exception) {
+        return nil;
+    }
+}
+
+// Everything that changes what the badge looks like. Stored on the badge so a
+// layout pass can tell "same badge, leave it" from "rebuild it" and avoid
+// tearing down and re-adding the view on every pass.
+static NSString *SPKFollowBadgeSpec(BOOL followsYou) {
+    return [NSString stringWithFormat:@"%@|%d|%d",
+                                      SPKFollowIndicatorMode(),
+                                      followsYou ? 1 : 0,
+                                      SPKFollowIndicatorColorful() ? 1 : 0];
+}
+
+static void SPKRenderFollowBadge(UIViewController *controller, UIView *container) {
     if (!container)
         return;
 
-    // Remove our previous wrapper (direct child only; the capture canvas may
-    // have re-parented the inner label, so match on the wrapper's tag).
-    for (UIView *sub in [container.subviews copy]) {
-        if (sub.tag == kSPKCaptureFollowIndicatorTag)
-            [sub removeFromSuperview];
+    UIView *existing = [container viewWithTag:kSPKFollowBadgeTag];
+    NSNumber *status = SPKGetFollowStatus(controller);
+
+    // No status yet, or the feature was turned off from settings: clear the
+    // badge (if any) and stop.
+    if (!status || !SPKFollowIndicatorEnabled()) {
+        [existing removeFromSuperview];
+        return;
     }
 
-    // Re-check after clearing so a live settings change to "Off" (via the
-    // refresh notification) removes the badge instead of redrawing it.
+    BOOL followsYou = status.boolValue;
+    NSString *spec = SPKFollowBadgeSpec(followsYou);
+    if (existing) {
+        NSString *existingSpec = objc_getAssociatedObject(existing, kSPKFollowBadgeSpecAssocKey);
+        if ([existingSpec isEqualToString:spec])
+            return; // Identical badge already installed; its constraints keep it placed.
+        [existing removeFromSuperview];
+    }
+
+    UIColor *accent = SPKFollowIndicatorColor(followsYou);
+
+    UIImage *icon = nil;
+    if (SPKFollowIndicatorShowsIcon()) {
+        NSString *iconName = followsYou ? @"circle_check" : @"circle_xmark";
+        UIImage *raw = [SPKAssetUtils instagramIconNamed:iconName
+                                               pointSize:12.0
+                                           renderingMode:UIImageRenderingModeAlwaysTemplate];
+        // A missing glyph would become a zero-sized image, leaving a stray gap
+        // in "icon + text" or an invisible badge in "icon".
+        if (raw && raw.size.width > 0.0 && raw.size.height > 0.0)
+            icon = raw;
+    }
+
+    NSString *text = nil;
+    if (SPKFollowIndicatorShowsText())
+        text = followsYou ? @"FOLLOWING YOU" : @"NOT FOLLOWING YOU";
+
+    if (!icon && text.length == 0)
+        return;
+
+    SPKChromeLabel *badge = [[SPKChromeLabel alloc] initWithText:text
+                                                           icon:icon
+                                                           font:[UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium]
+                                                          color:accent];
+    badge.tag = kSPKFollowBadgeTag;
+    objc_setAssociatedObject(badge, kSPKFollowBadgeSpecAssocKey, spec, OBJC_ASSOCIATION_COPY_NONATOMIC);
+
+    [container addSubview:badge];
+    // Small bottom margin so the badge doesn't sit flush against the edge.
+    [NSLayoutConstraint activateConstraints:@[
+        [badge.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [badge.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8.0]
+    ]];
+}
+
+// Ask the controller's last-known stat container to re-render, e.g. after an
+// async status arrival that produced no layout pass of its own. Only nudges a
+// container that is still on screen: after IG rebuilds the profile header the
+// map can point at a torn-down container, and re-rendering into that produced
+// the "badge shows on some opens but not others" flakiness on iOS 16. A live
+// container gets a real layout pass; a stale one is left for the current
+// container's own natural layout to handle.
+static void SPKNudgeFollowIndicator(UIViewController *controller) {
+    UIView *container = [SPKFollowContainerForController() objectForKey:controller];
+    if (container.window)
+        [container setNeedsLayout];
+}
+
+static void SPKFetchFollowStatus(UIViewController *controller, NSString *profilePK) {
+    SPKSetFollowFetchPK(controller, profilePK);
+
+    __weak UIViewController *weakController = controller;
+    NSString *requestedPK = profilePK.copy;
+    NSString *path = [NSString stringWithFormat:@"friendships/show/%@/", requestedPK];
+
+    [SPKInstagramAPI sendRequestWithMethod:@"GET"
+                                      path:path
+                                      body:nil
+                                completion:^(NSDictionary *response, NSError *error) {
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                        UIViewController *strongController = weakController;
+                                        if (!strongController)
+                                            return;
+
+                                        // Drop the result if a newer fetch superseded this one.
+                                        if (![SPKGetFollowFetchPK(strongController) isEqualToString:requestedPK])
+                                            return;
+                                        SPKSetFollowFetchPK(strongController, nil);
+
+                                        // ...or the profile changed under us before we returned.
+                                        if (error || !response ||
+                                            ![SPKGetFollowProfilePK(strongController) isEqualToString:requestedPK])
+                                            return;
+
+                                        NSNumber *followsYou = @([response[@"followed_by"] boolValue]);
+                                        SPKFollowStatusCache()[requestedPK] = followsYou;
+                                        SPKSetFollowStatus(strongController, followsYou);
+                                        SPKNudgeFollowIndicator(strongController);
+                                    });
+                                }];
+}
+
+// Resolve who the profile belongs to and make sure `status` reflects that user,
+// fetching once if needed. Cheap and idempotent — safe to call from setUser: and
+// viewDidAppear:.
+static void SPKRefreshFollowIndicator(UIViewController *controller) {
+    // Clears are deliberately lazy: update state but do NOT force a re-render.
+    // During a pull-to-refresh IG briefly sets the profile user to nil and back,
+    // and proactively removing the badge on that transient nil (then re-adding
+    // it a beat later) is exactly what made the indicator flicker on iOS 16. The
+    // stale badge is instead left in place for the next natural layout pass,
+    // which by then sees the restored status and keeps it. A genuine change
+    // (own profile / real navigation) still clears the badge on that next pass.
     if (!SPKFollowIndicatorEnabled())
         return;
 
-    // Track this controller so a settings change can refresh it in place.
-    [SPKFollowIndicatorControllers() addObject:controller];
+    NSString *profilePK = [SPKUtils pkFromIGUser:SPKProfileUser(controller)];
+    NSString *currentPK = [SPKUtils currentUserPK];
 
-    BOOL followsYou = status.boolValue;
-    UIColor *accent = SPKFollowIndicatorColor(followsYou);
-    BOOL showIcon = SPKFollowIndicatorShowsIcon();
-    BOOL showText = SPKFollowIndicatorShowsText();
-
-    UIImageView *iconView = nil;
-    if (showIcon) {
-        NSString *iconName = followsYou ? @"circle_check" : @"circle_xmark";
-        UIImage *icon = [SPKAssetUtils instagramIconNamed:iconName
-                                                pointSize:12.0
-                                            renderingMode:UIImageRenderingModeAlwaysTemplate];
-        iconView = [[UIImageView alloc] initWithImage:icon];
-        iconView.contentMode = UIViewContentModeScaleAspectFit;
-        iconView.tintColor = accent;
-        [iconView sizeToFit];
+    // Own profile, or PKs unavailable: nothing to show (cleared lazily, see above).
+    if (profilePK.length == 0 || currentPK.length == 0 || [profilePK isEqualToString:currentPK]) {
+        SPKSetFollowProfilePK(controller, nil);
+        SPKSetFollowStatus(controller, nil);
+        return;
     }
 
-    UILabel *label = nil;
-    if (showText) {
-        label = [[UILabel alloc] init];
-        label.text = followsYou ? @"FOLLOWING YOU" : @"NOT FOLLOWING YOU";
-        label.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
-        label.textColor = accent;
-        [label sizeToFit];
+    // Already resolved for this exact profile.
+    if ([SPKGetFollowProfilePK(controller) isEqualToString:profilePK] && SPKGetFollowStatus(controller))
+        return;
+
+    SPKSetFollowProfilePK(controller, profilePK);
+    SPKSetFollowStatus(controller, nil);
+
+    NSNumber *cached = SPKFollowStatusCache()[profilePK];
+    if (cached) {
+        SPKSetFollowStatus(controller, cached);
+        SPKNudgeFollowIndicator(controller);
+        return;
     }
 
-    // Icon-only, text-only, or both laid out horizontally with a small gap.
-    UIView *badge = nil;
-    if (iconView && label) {
-        CGFloat gap = 4.0;
-        CGFloat iconW = CGRectGetWidth(iconView.bounds);
-        CGFloat iconH = CGRectGetHeight(iconView.bounds);
-        CGFloat labelW = CGRectGetWidth(label.bounds);
-        CGFloat labelH = CGRectGetHeight(label.bounds);
-        CGFloat totalH = MAX(iconH, labelH);
-        badge = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, iconW + gap + labelW, totalH)];
-        iconView.frame = CGRectMake(0.0, (totalH - iconH) / 2.0, iconW, iconH);
-        label.frame = CGRectMake(iconW + gap, (totalH - labelH) / 2.0, labelW, labelH);
-        [badge addSubview:iconView];
-        [badge addSubview:label];
-    } else {
-        badge = iconView ?: label;
-    }
-    badge.tag = kSPKFollowBadgeTag;
-
-    // Pin to the leftmost stat, not the first subview in array order: the stat
-    // buttons aren't ordered left-to-right in `subviews`, so taking the first
-    // one landed the badge under the middle stat and made it look centered. Take
-    // the minimum minX (excluding our own wrapper) for a true left alignment.
-    CGFloat xOrigin = CGFLOAT_MAX;
-    for (UIView *subview in container.subviews) {
-        if (subview.tag == kSPKCaptureFollowIndicatorTag)
-            continue;
-        if (!subview.isHidden && CGRectGetWidth(subview.frame) > 0.0) {
-            xOrigin = MIN(xOrigin, CGRectGetMinX(subview.frame));
-        }
-    }
-    if (xOrigin == CGFLOAT_MAX)
-        xOrigin = 0.0;
-
-    CGFloat badgeWidth = CGRectGetWidth(badge.bounds);
-    CGFloat badgeHeight = CGRectGetHeight(badge.bounds);
-    badge.frame = CGRectMake(0.0, 0.0, badgeWidth, badgeHeight);
-
-    // Wrap the label in a capture-hidden container so it disappears from
-    // screenshots/recordings when "Hide UI on Capture" is enabled. The capture
-    // hooks redirect the wrapper's subviews into a secure canvas; a bare
-    // UILabel's own text can't be hidden that way. When the pref is off the
-    // wrapper is a plain passthrough.
-    // Small bottom margin so the badge doesn't sit flush against the edge.
-    CGFloat bottomMargin = 8.0;
-    UIView *wrapper = [[UIView alloc] initWithFrame:CGRectMake(xOrigin,
-                                                               CGRectGetHeight(container.bounds) - badgeHeight - bottomMargin,
-                                                               badgeWidth,
-                                                               badgeHeight)];
-    wrapper.tag = kSPKCaptureFollowIndicatorTag;
-    [wrapper addSubview:badge];
-    [container addSubview:wrapper];
+    if (![SPKGetFollowFetchPK(controller) isEqualToString:profilePK])
+        SPKFetchFollowStatus(controller, profilePK);
 }
 
 %group SPKFollowIndicatorHooks
 
 %hook IGProfileViewController
 
-- (void)viewDidAppear:(BOOL)animated {
+- (void)setUser:(id)user {
     %orig;
     if (!SPKFollowIndicatorEnabled())
         return;
-
-    NSNumber *cachedStatus = SPKGetFollowStatusForController(self);
-    if (cachedStatus) {
-        SPKRenderFollowBadge((UIViewController *)self);
-        return;
-    }
-
-    id profileUser = nil;
-    @try {
-        profileUser = [(id)self valueForKey:@"user"];
-    } @catch (__unused NSException *exception) {
-    }
-    if (!profileUser)
-        return;
-
-    NSString *profilePK = SPKPKFromUserObject(profileUser);
-    NSString *currentUserPK = SPKCurrentUserPK();
-    if (profilePK.length == 0 || currentUserPK.length == 0 || [profilePK isEqualToString:currentUserPK]) {
-        return;
-    }
-
-    NSString *path = [NSString stringWithFormat:@"friendships/show/%@/", profilePK];
-    __weak UIViewController *weakController = (UIViewController *)self;
-    [SPKInstagramAPI sendRequestWithMethod:@"GET"
-                                      path:path
-                                      body:nil
-                                completion:^(NSDictionary *response, NSError *error) {
-                                    if (error || !response)
-                                        return;
-                                    BOOL followsYou = [response[@"followed_by"] boolValue];
-                                    dispatch_async(dispatch_get_main_queue(), ^{
-                                        UIViewController *strongController = weakController;
-                                        if (!strongController)
-                                            return;
-                                        SPKSetFollowStatusForController(strongController, @(followsYou));
-                                        SPKRenderFollowBadge(strongController);
-                                    });
-                                }];
+    // setUser: can land before the view exists, and IG reuses controllers, so
+    // defer and re-resolve against whatever profile is now loaded.
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (weakSelf)
+            SPKRefreshFollowIndicator((UIViewController *)weakSelf);
+    });
 }
 
-- (void)viewDidLayoutSubviews {
+- (void)viewDidAppear:(BOOL)animated {
     %orig;
-    if (SPKFollowIndicatorEnabled()) {
-        SPKRenderFollowBadge((UIViewController *)self);
-    }
+    if (SPKFollowIndicatorEnabled())
+        SPKRefreshFollowIndicator((UIViewController *)self);
+}
+
+%end
+
+// The stats container lays itself out with the buttons already placed, so this
+// is where the badge is (re)rendered and constrained — no view-tree search and
+// no dependency on the profile controller getting another layout pass.
+%hook _TtC23IGProfileHeaderIdentity38IGProfileHeaderStatButtonContainerView
+
+- (void)layoutSubviews {
+    %orig;
+
+    UIViewController *controller = [SPKUtils nearestViewControllerForView:(UIView *)self];
+    if (![controller isKindOfClass:%c(IGProfileViewController)])
+        return;
+
+    [SPKFollowContainerForController() setObject:(UIView *)self forKey:controller];
+    SPKRenderFollowBadge(controller, (UIView *)self);
 }
 
 %end
@@ -308,8 +341,10 @@ void SPKInstallFollowIndicatorHooksIfEnabled(void) {
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
                                                       usingBlock:^(__unused NSNotification *note) {
-            for (UIViewController *controller in [SPKFollowIndicatorControllers() allObjects]) {
-                SPKRenderFollowBadge(controller);
+            NSMapTable *map = SPKFollowContainerForController();
+            for (UIViewController *controller in [[map keyEnumerator] allObjects]) {
+                UIView *container = [map objectForKey:controller];
+                SPKRenderFollowBadge(controller, container);
             }
         }];
     });
