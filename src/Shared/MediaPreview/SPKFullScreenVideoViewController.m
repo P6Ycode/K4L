@@ -1,4 +1,5 @@
 #import "SPKFullScreenVideoViewController.h"
+#import "SPKTransformZoomController.h"
 #import "../../Utils.h"
 #import "../Gallery/SPKGalleryFile.h"
 #import "SPKMediaCacheManager.h"
@@ -17,11 +18,14 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 - (void)setEntersFullScreenWhenTapped:(BOOL)entersFullScreenWhenTapped;
 @end
 
+@class SPKTransformZoomController;
+
 @interface SPKFullScreenVideoViewController () <AVPlayerViewControllerDelegate, UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) AVPlayer *player;
 @property (nonatomic, strong) AVPlayerItem *playerItem;
 @property (nonatomic, strong) AVPlayerViewController *playerViewController;
+@property (nonatomic, strong) SPKTransformZoomController *zoomController;
 @property (nonatomic, strong) UIImageView *thumbnailView;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, strong) UITapGestureRecognizer *singleTapGesture;
@@ -37,6 +41,7 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 @property (nonatomic, strong) NSLayoutConstraint *thumbnailTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *thumbnailBottomConstraint;
 @property (nonatomic, assign) NSInteger loadGeneration;
+@property (nonatomic, assign) BOOL lastReportedZoomState;
 
 @end
 
@@ -52,6 +57,7 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 }
 
 - (void)dealloc {
+    [_zoomController invalidate];
     [self tearDownPlayer];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
@@ -118,6 +124,11 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     [self prepareForDisplay];
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [_zoomController layoutZoomHelper];
+}
+
 - (UIView *)contentOverlayView {
     return _playerViewController.contentOverlayView;
 }
@@ -168,6 +179,15 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
         [_playerViewController.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_playerViewController.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
     ]];
+
+    __weak typeof(self) weakSelf = self;
+    _zoomController = [[SPKTransformZoomController alloc] initWithTargetView:_playerViewController.view containerView:self.view];
+    _zoomController.zoomStateChangedBlock = ^(BOOL isZoomed) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf spk_syncControlsForZoomState];
+        [strongSelf notifyZoomStateIfChanged];
+    };
 }
 
 - (void)setupThumbnailView {
@@ -209,6 +229,33 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     }
     if (changed) {
         [self.view layoutIfNeeded];
+    }
+}
+
+#pragma mark - Zoom
+
+- (BOOL)isZoomed {
+    return [_zoomController isZoomed];
+}
+
+- (void)resetZoomIfNeeded {
+    [_zoomController resetZoomAnimated:NO];
+}
+
+- (void)spk_syncControlsForZoomState {
+    BOOL zoomed = [self isZoomed];
+    if (_playerViewController.showsPlaybackControls == !zoomed)
+        return;
+    _playerViewController.showsPlaybackControls = !zoomed;
+}
+
+- (void)notifyZoomStateIfChanged {
+    BOOL zoomed = [self isZoomed];
+    if (zoomed == _lastReportedZoomState)
+        return;
+    _lastReportedZoomState = zoomed;
+    if ([self.delegate respondsToSelector:@selector(mediaContent:didChangeZoomState:)]) {
+        [self.delegate mediaContent:self didChangeZoomState:zoomed];
     }
 }
 
@@ -264,13 +311,10 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
         return YES;
     }
 
-    // Hand every touch inside the embedded AVPlayerViewController to AVKit so its
-    // transport controls reveal/operate normally. Our tap recognizer otherwise
-    // wins gesture arbitration on iOS 18 and lower and swallows the tap that
-    // would show/operate the controls (iOS 26 gives the touch to AVKit itself,
-    // which is why it "just works" there). The tap still toggles chrome on the
-    // letterbox area outside the player.
-    if (_playerViewController.isViewLoaded && [touch.view isDescendantOfView:_playerViewController.view]) {
+    // Yield touches inside the embedded player to AVKit when unzoomed so its
+    // transport controls operate normally. When zoomed, AVKit's controls are hidden,
+    // so we handle the tap ourselves to toggle the toolbars.
+    if (![self isZoomed] && _playerViewController.isViewLoaded && [touch.view isDescendantOfView:_playerViewController.view]) {
         return NO;
     }
 
@@ -534,6 +578,9 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     self.loadGeneration++;
     [self tearDownPlayer];
     [_loadingIndicator stopAnimating];
+    [_zoomController invalidate];
+    [_zoomController resetZoomAnimated:NO];
+    _playerViewController.showsPlaybackControls = YES;
     _thumbnailView.hidden = NO;
     _thumbnailView.alpha = 1.0;
     _thumbnailView.image = self.mediaItem.thumbnail;

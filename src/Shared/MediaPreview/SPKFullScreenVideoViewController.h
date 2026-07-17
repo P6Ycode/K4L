@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) SPKMediaItem *mediaItem;
 @property (nonatomic, weak) id<SPKFullScreenContentDelegate> delegate;
 @property (nonatomic, strong, readonly, nullable) UIView *contentOverlayView;
+@property (nonatomic, readonly) BOOL isZoomed;
 
 - (instancetype)initWithMediaItem:(SPKMediaItem *)item;
 - (void)preloadContent;
@@ -20,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// live player still holds the old asset.
 - (void)reloadWithFileURL:(NSURL *)url;
 - (void)cleanup;
+- (void)resetZoomIfNeeded;
 - (void)setPlayerControlOverlayInsets:(UIEdgeInsets)insets animated:(BOOL)animated;
 - (void)applyMediaContentInsets:(UIEdgeInsets)insets;
 - (void)play;

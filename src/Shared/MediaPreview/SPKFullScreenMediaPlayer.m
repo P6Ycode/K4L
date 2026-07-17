@@ -1059,6 +1059,18 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                : nil;
 }
 
+/// Whether the currently visible page (image or video) is zoomed in. Used to
+/// suppress paging/dismiss and drive the bar material.
+- (BOOL)isViewControllerZoomed:(UIViewController *)vc {
+    if ([vc isKindOfClass:[SPKFullScreenImageViewController class]]) {
+        return ((SPKFullScreenImageViewController *)vc).isZoomed;
+    }
+    if ([vc isKindOfClass:[SPKFullScreenVideoViewController class]]) {
+        return ((SPKFullScreenVideoViewController *)vc).isZoomed;
+    }
+    return NO;
+}
+
 - (void)updatePlayerControlInsetsForVideoController:
             (SPKFullScreenVideoViewController *)videoController
                                            animated:(BOOL)animated {
@@ -1117,9 +1129,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     [self prepareAdjacentViewControllersAroundIndex:newIndex];
 
     // Match the bar material to the newly visible page's zoom state.
-    BOOL zoomed =
-        [currentVC isKindOfClass:[SPKFullScreenImageViewController class]] &&
-        ((SPKFullScreenImageViewController *)currentVC).isZoomed;
+    BOOL zoomed = [self isViewControllerZoomed:currentVC];
     SPKMediaChromeSetBarsMaterialActive(self.navigationController, zoomed);
 
     for (UIViewController *prevVC in previousViewControllers) {
@@ -1145,6 +1155,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     if (controller != self.pageViewController.viewControllers.firstObject)
         return;
     SPKMediaChromeSetBarsMaterialActive(self.navigationController, isZoomed);
+    _pageScrollView.scrollEnabled = !isZoomed;
 }
 
 #pragma mark - UI Updates
@@ -2500,8 +2511,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     UIViewController *currentVC = _pageViewController.viewControllers.firstObject;
-    if ([currentVC isKindOfClass:[SPKFullScreenImageViewController class]] &&
-        [(SPKFullScreenImageViewController *)currentVC isZoomed]) {
+    if ([self isViewControllerZoomed:currentVC]) {
         return NO;
     }
     return YES;
@@ -2630,6 +2640,9 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                     if ([currentVC
                             isKindOfClass:[SPKFullScreenImageViewController class]]) {
                         [(SPKFullScreenImageViewController *)currentVC resetZoomIfNeeded];
+                    } else if ([currentVC
+                                   isKindOfClass:[SPKFullScreenVideoViewController class]]) {
+                        [(SPKFullScreenVideoViewController *)currentVC resetZoomIfNeeded];
                     }
                     [self cancelInteractiveDismissal];
                 }];
