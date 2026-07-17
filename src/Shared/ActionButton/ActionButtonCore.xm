@@ -3575,13 +3575,22 @@ void SPKConfigureActionButton(UIButton *button, SPKActionButtonContext *context)
     // menu is resolved lazily at open time (video-only actions track the visible
     // slide). Other surfaces build eagerly — same behavior as before.
     UIMenu *fullMenu;
+    NSString *menuTitle = @"";
+    if ([SPKUtils getBoolPref:@"general_action_btn_show_date"]) {
+        id media = SPKResolveMediaForContext(context);
+        NSDate *postedDate = [SPKUtils postedDateFromMediaObject:media];
+        if (postedDate) {
+            menuTitle = [SPKUtils spk_formattedDateHeader:postedDate] ?: @"";
+        }
+    }
+
     if (context.source == SPKActionButtonSourceFeed) {
         UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
             completion(SPKBuildActionMenuElements(context, configuration, weakButton));
         }];
-        fullMenu = [UIMenu menuWithTitle:@"" children:@[ deferred ]];
+        fullMenu = [UIMenu menuWithTitle:menuTitle children:@[ deferred ]];
     } else {
-        fullMenu = [UIMenu menuWithTitle:@"" children:SPKBuildActionMenuElements(context, configuration, weakButton)];
+        fullMenu = [UIMenu menuWithTitle:menuTitle children:SPKBuildActionMenuElements(context, configuration, weakButton)];
     }
     button.menu = fullMenu;
     button.showsMenuAsPrimaryAction = shouldOpenMenuOnTap;

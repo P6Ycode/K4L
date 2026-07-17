@@ -20,8 +20,9 @@ marked **(restart)** and prompt for a relaunch when changed.
 - **Confirm Create Group**: Confirmation alert before creating a group on Instagram send/share sheet.
 - **Confirm Send**: Confirmation alert before sending a post.
 
-### Media Preview
-- **Show Media Info**: Overlays the author and post date over the expanded photo preview. Tap the media to hide it together with the controls. (Photos only — video previews are left untouched so the scrubber and controls stay clear.)
+### Media Preview & Menu
+- **Show Media Info**: Overlays the author and post date (including time for live previews) over the expanded photo preview. Tap the media to hide it together with the controls. (Photos only — video previews are left untouched so the scrubber and controls stay clear.)
+- **Show Date in Menu**: Shows the exact date and time a post was made in the action button menu title.
 
 ### Recommendations
 - **Ads**: Per-surface ad hiding: Feed, Stories, Reels, Explore, plus Reels shopping CTA.

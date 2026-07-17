@@ -671,9 +671,9 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
         }
         subtitle = [parts componentsJoinedByString:@" · "];
     } else {
-        // Live preview: "@user"; subtitle = post date, or full name for profile pics.
+        // Live preview: "@user"; subtitle = post date + time (hour), or full name for profile pics.
         title = handle;
-        subtitle = SPKPreviewMediumDateString(meta.importPostedDate);
+        subtitle = [SPKUtils spk_formattedDateHeader:meta.importPostedDate];
         if (subtitle.length == 0) {
             subtitle = meta.sourceFullName;
         }

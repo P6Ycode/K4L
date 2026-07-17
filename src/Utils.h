@@ -113,6 +113,13 @@ FOUNDATION_EXPORT Class _Nullable SPKResolveIGClass(NSString *qualified, NSStrin
 /// spk_localizedTimeComponent so dates follow the user's regional format.
 + (NSString *)spk_localizedDateComponentIncludingYear:(BOOL)includeYear;
 
+/// Recursively extracts the posted date (taken_at, created_at, upload_time, etc.) from an Instagram media object.
++ (nullable NSDate *)postedDateFromMediaObject:(nullable id)media;
+
+/// Formats a date into a localized date-and-time header string (e.g. "Jul 18, 2026 at 5:30 PM").
++ (nullable NSString *)spk_formattedDateHeader:(nullable NSDate *)date;
+
+
 + (NSString *)cacheAutoClearMode;
 + (BOOL)shouldAutomaticallyClearCacheNow;
 + (void)markCacheClearedNow;

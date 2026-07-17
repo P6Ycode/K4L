@@ -1035,6 +1035,99 @@ static id SPKPrefValueWithMasterOverlay(NSString *key) {
     return includeYear ? @"MMM d, yyyy" : @"MMM d";  // safe fallback
 }
 
+static double SPKTimestampFromValue(id value) {
+    if (!value || [value isKindOfClass:[NSNull class]])
+        return 0.0;
+    if ([value isKindOfClass:[NSDate class]])
+        return [(NSDate *)value timeIntervalSince1970];
+
+    double raw = 0.0;
+    if ([value respondsToSelector:@selector(doubleValue)]) {
+        raw = [value doubleValue];
+    }
+    if (raw <= 0.0)
+        return 0.0;
+    if (raw > 1e15)
+        raw /= 1000000.0;
+    else if (raw > 1e12)
+        raw /= 1000.0;
+    return raw;
+}
+
+static NSDate *SPKDateFromTimestampValue(id value) {
+    NSTimeInterval timestamp = SPKTimestampFromValue(value);
+    if (timestamp <= 0.0)
+        return nil;
+    return [NSDate dateWithTimeIntervalSince1970:timestamp];
+}
+
+static id SPKFieldCacheValue(id target, NSString *key) {
+    if (!target || key.length == 0)
+        return nil;
+    id fieldCache = SPKKVCObject(target, @"_fieldCache");
+    if ([fieldCache isKindOfClass:[NSDictionary class]]) {
+        return fieldCache[key];
+    }
+    return nil;
+}
+
+static NSDate *SPKRecursiveDateForKeys(id target, NSArray<NSString *> *keys, NSInteger depth) {
+    if (!target || depth > 3)
+        return nil;
+
+    for (NSString *key in keys) {
+        id value = SPKObjectForSelector(target, key);
+        if (!value)
+            value = SPKKVCObject(target, key);
+        if (!value)
+            value = SPKFieldCacheValue(target, key);
+        NSDate *date = SPKDateFromTimestampValue(value);
+        if (date)
+            return date;
+    }
+
+    for (NSString *selectorName in @[ @"media", @"item", @"storyItem", @"visualMessage", @"explorePostInFeed", @"rootItem", @"clipsItem", @"clipsMedia", @"post" ]) {
+        id nested = SPKObjectForSelector(target, selectorName);
+        if (!nested)
+            nested = SPKKVCObject(target, selectorName);
+        if (!nested || nested == target)
+            continue;
+        NSDate *date = SPKRecursiveDateForKeys(nested, keys, depth + 1);
+        if (date)
+            return date;
+    }
+
+    return nil;
+}
+
++ (nullable NSDate *)postedDateFromMediaObject:(nullable id)media {
+    if (!media)
+        return nil;
+
+    id backingMedia = SPKObjectForSelector(media, @"backingMedia");
+    if (!backingMedia)
+        backingMedia = SPKKVCObject(media, @"backingMedia");
+    if (backingMedia && backingMedia != media)
+        media = backingMedia;
+
+    return SPKRecursiveDateForKeys(media, @[ @"taken_at", @"takenAt", @"takenAtDate", @"device_timestamp", @"deviceTimestamp", @"created_at", @"createdAt", @"upload_time", @"uploadTime", @"published_time", @"publishedTime" ], 0);
+}
+
++ (nullable NSString *)spk_formattedDateHeader:(nullable NSDate *)date {
+    if (!date)
+        return nil;
+    static NSDateFormatter *fmt;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        fmt = [[NSDateFormatter alloc] init];
+    });
+    fmt.dateFormat = [NSString stringWithFormat:@"%@ 'at' %@",
+                      [SPKUtils spk_localizedDateComponentIncludingYear:YES],
+                      [SPKUtils spk_localizedTimeComponent]];
+    return [fmt stringFromDate:date];
+}
+
+
 + (NSString *)cacheAutoClearMode {
     NSString *mode = [SPKUtils getStringPref:kSPKCacheAutoClearModeKey];
     return mode.length > 0 ? mode : @"never";
