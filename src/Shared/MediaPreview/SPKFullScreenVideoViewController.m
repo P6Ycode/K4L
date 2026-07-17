@@ -42,6 +42,7 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 @property (nonatomic, strong) NSLayoutConstraint *thumbnailBottomConstraint;
 @property (nonatomic, assign) NSInteger loadGeneration;
 @property (nonatomic, assign) BOOL lastReportedZoomState;
+@property (nonatomic, assign) BOOL wasPlayingBeforeBackground;
 
 @end
 
@@ -81,6 +82,15 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
     if (self.mediaItem.thumbnail) {
         self.thumbnailView.image = self.mediaItem.thumbnail;
     }
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(appDidEnterBackground:)
+                                                 name:UIApplicationDidEnterBackgroundNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(appDidBecomeActive:)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
 }
 
 // For audio items, AVPlayerViewController shows its generic (QuickTime-looking)
@@ -513,6 +523,18 @@ static NSTimeInterval const kPlayerControlOverlayInsetAnimationDuration = 0.25;
 
 - (void)playerItemDidReachEnd:(NSNotification *)notification {
     _isPlaying = NO;
+}
+
+- (void)appDidEnterBackground:(NSNotification *)notification {
+    self.wasPlayingBeforeBackground = self.isPlaying;
+    [self pause];
+}
+
+- (void)appDidBecomeActive:(NSNotification *)notification {
+    if (self.wasPlayingBeforeBackground) {
+        self.wasPlayingBeforeBackground = NO;
+        [self play];
+    }
 }
 
 #pragma mark - Controls
