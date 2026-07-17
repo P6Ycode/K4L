@@ -167,6 +167,7 @@ typedef NS_ENUM(NSInteger, SPKPACategory) {
 @property (nonatomic, strong) SPKProfileAnalyzerReport *report;
 @property (nonatomic, strong) NSArray<SPKProfileAnalyzerVisit *> *visits;
 @property (nonatomic, copy) NSArray<SPKProfileAnalyzerChangeEvent *> *changeEvents; // durable change log, newest-first
+@property (nonatomic, strong, nullable) NSDate *lastScanDate; // scan boundary: events at/after this belong to the most recent scan
 @property (nonatomic, copy) NSArray<SPKPACategoryRow *> *currentRows;               // section: current snapshot
 @property (nonatomic, copy) NSArray<SPKPACategoryRow *> *changeRows;                // section: accumulated changes
 @property (nonatomic, copy) NSString *selfPK;
@@ -393,6 +394,10 @@ static NSString *SPKPACompact(NSInteger n) {
     SPKProfileAnalyzerSnapshot *cur = [SPKProfileAnalyzerStorage currentSnapshotForUserPK:self.selfPK];
     SPKProfileAnalyzerSnapshot *prev = [SPKProfileAnalyzerStorage previousSnapshotForUserPK:self.selfPK];
     self.report = [SPKProfileAnalyzerReport reportFromCurrent:cur previous:prev];
+    // The most recent scan stamps its change events with this same date, so it's
+    // the boundary that keeps "Latest" pinned to the last scan's results until the
+    // next scan runs — independent of what's been viewed/marked seen.
+    self.lastScanDate = cur.scanDate;
     self.visits = [SPKProfileAnalyzerStorage visitedProfilesForUserPK:self.selfPK];
     self.changeEvents = [SPKProfileAnalyzerStorage changeEventsForUserPK:self.selfPK];
     [self rebuildRows];
@@ -887,8 +892,20 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
     [self.navigationController pushViewController:vc animated:YES];
 }
 
-// Splits a change category's events into Latest (unseen) / Previous (seen),
-// pushes a grouped list, then marks the category seen to clear its badge.
+// An event belongs to "Latest" when it came from the most recent scan (its date
+// is not older than the scan boundary). This is deliberately independent of the
+// seen flag, so viewing a category doesn't shuffle its items down into Previous —
+// only running another scan does. With no boundary yet (never scanned) nothing is
+// latest.
+- (BOOL)eventIsFromLatestScan:(SPKProfileAnalyzerChangeEvent *)event {
+    if (!self.lastScanDate || !event.date)
+        return NO;
+    return [event.date compare:self.lastScanDate] != NSOrderedAscending;
+}
+
+// Splits a change category's events into Latest (most recent scan) / Previous
+// (earlier scans), pushes a grouped list, then marks the category seen to clear
+// its badge — the badge tracks unseen, the grouping tracks scan recency.
 - (void)openChangeCategory:(SPKPAChangeType)type title:(NSString *)title {
     SPKProfileAnalyzerListViewController *vc;
     if (type == SPKPAChangeTypeProfileUpdate) {
@@ -898,7 +915,7 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
                 continue;
             SPKProfileAnalyzerProfileChange *ch = e.asProfileChange;
             if (ch)
-                [(e.seen ? previous : latest) addObject:ch];
+                [([self eventIsFromLatestScan:e] ? latest : previous) addObject:ch];
         }
         vc = [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
                                                     latestProfileUpdates:latest
@@ -908,7 +925,7 @@ typedef NS_ENUM(NSInteger, SPKPASectionKind) {
         for (SPKProfileAnalyzerChangeEvent *e in self.changeEvents) {
             if (e.type != type)
                 continue;
-            [(e.seen ? previous : latest) addObject:e.user];
+            [([self eventIsFromLatestScan:e] ? latest : previous) addObject:e.user];
         }
         vc = [[SPKProfileAnalyzerListViewController alloc] initWithTitle:title
                                                              latestUsers:latest
