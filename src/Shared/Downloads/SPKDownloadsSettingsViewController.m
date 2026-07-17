@@ -78,7 +78,7 @@
 
     return @[
         SPKTopicSection(@"Auto-Save", @[ autoSave ],
-                        @"Save media to your Gallery automatically as you view it."),
+                        @"Automatically download media as you view it."),
         SPKTopicSection(@"Behavior", @[
             [SPKSetting switchCellWithTitle:@"Detect Duplicate Downloads"
                                        icon:SPKSettingsIcon(@"duplicate")
@@ -101,10 +101,29 @@
                                         step:50
                                        label:@"entries"
                                singularLabel:@"entry"],
+            ({
+                SPKSetting *toggle = [SPKSetting switchCellWithTitle:@"Save to Custom Album"
+                                                                icon:SPKSettingsIcon(@"photo_gallery")
+                                                         defaultsKey:@"downloads_photos_album_enabled"];
+                toggle.reloadsTableOnSwitchChange = YES;
+                toggle;
+            }),
+            ({
+                SPKSetting *album = [SPKSetting textFieldCellWithTitle:@"Album Name"
+                                                           placeholder:@"Sparkle"
+                                                          keyboardType:UIKeyboardTypeDefault
+                                                           defaultsKey:@"downloads_photos_album"];
+                album.icon = SPKSettingsIcon(@"folder");
+                album.enabledProvider = ^BOOL {
+                    return [SPKUtils getBoolPref:@"downloads_photos_album_enabled"];
+                };
+                album;
+            }),
         ],
                         @"1. Check before downloading and skip media already saved. Gallery checks are exact; Photos checks cover media Sparkle saved while tracking is enabled.\n"
                         @"2. How many downloads may run at the same time.\n"
-                        @"3. How many finished entries the download history keeps before trimming the oldest."),
+                        @"3. How many finished entries the download history keeps before trimming the oldest.\n"
+                        @"4. Group saved Photos media under a specific custom album."),
         SPKTopicSection(@"Quality", @[
             [SPKSetting switchCellWithTitle:@"Enhanced Media Resolution"
                                        icon:SPKSettingsIcon(@"hd")

@@ -353,6 +353,8 @@ Every surface has the same **Filter Mode**: `All` saves everything except what y
 - **Detect Duplicate Downloads**: Skips media already saved: Gallery checks are exact by persistent media identity; Photos checks cover saves Sparkle recorded while tracking is enabled. Existing Photos-library items cannot be discovered retroactively.
 - **Parallel Downloads**: Limits concurrent download work from 1–4 (default 2) across direct saves, carousel items, conversions, and DASH merge pipelines.
 - **History Limit**: Caps saved download actions at a configurable history limit (default 300 entries).
+- **Save to Custom Album**: Toggles saving Photos-destination downloads to a specific custom album in the iOS Photos app.
+- **Album Name**: Configures the title of the custom Photos album (defaults to "Sparkle", disabled when the toggle is off). If empty, saving falls back to the default Recents camera roll.
 
 ### Storage
 - Each download keeps a **staged copy on disk** so its history entry stays previewable on tap; this staged data (plus staged source/preview scratch) is what the **Storage Usage → Downloads** figure counts. Clearing a download from history — via **Clear Finished Downloads**, a swipe-delete, or the history-limit trim — frees its staged copy automatically. Media already saved to Photos or the Gallery is never affected. On launch, Sparkle also sweeps any **orphaned** staged leftovers no longer tied to a history entry (interrupted downloads, crash leftovers, or backlog from older builds), so the cache stays bounded by your history without any manual step.

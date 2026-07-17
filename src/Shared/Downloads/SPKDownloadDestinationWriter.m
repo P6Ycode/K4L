@@ -36,31 +36,77 @@
             : (isVideo ? SPKGalleryMediaTypeVideo : SPKGalleryMediaTypeImage);
     __block NSString *assetLocalIdentifier = nil;
 
-    [[PHPhotoLibrary sharedPhotoLibrary]
-        performChanges:^{
-            PHAssetChangeRequest *request = nil;
-            if (isVideo) {
-                request = [PHAssetChangeRequest
-                    creationRequestForAssetFromVideoAtFileURL:fileURL];
-            } else {
-                request = [PHAssetChangeRequest
-                    creationRequestForAssetFromImageAtFileURL:fileURL];
-            }
-            assetLocalIdentifier =
-                request.placeholderForCreatedAsset.localIdentifier;
-        }
-        completionHandler:^(BOOL success, NSError *error) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (success) {
-                    [SPKDownloadDuplicatePolicy
-                        recordPhotosSaveWithMetadata:metadata
-                                           mediaType:mediaType
-                                assetLocalIdentifier:assetLocalIdentifier];
+    BOOL albumEnabled = [SPKUtils getBoolPref:@"downloads_photos_album_enabled"];
+    NSString *albumName = albumEnabled ? [SPKUtils getStringPref:@"downloads_photos_album"] : nil;
+
+    if (albumName.length > 0) {
+        PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
+        fetchOptions.predicate = [NSPredicate predicateWithFormat:@"title = %@", albumName];
+        PHFetchResult *fetchResult = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum
+                                                                              subtype:PHAssetCollectionSubtypeAny
+                                                                              options:fetchOptions];
+        PHAssetCollection *collection = fetchResult.firstObject;
+
+        [[PHPhotoLibrary sharedPhotoLibrary]
+            performChanges:^{
+                PHAssetChangeRequest *assetRequest = nil;
+                if (isVideo) {
+                    assetRequest = [PHAssetChangeRequest
+                        creationRequestForAssetFromVideoAtFileURL:fileURL];
+                } else {
+                    assetRequest = [PHAssetChangeRequest
+                        creationRequestForAssetFromImageAtFileURL:fileURL];
                 }
-                if (completion)
-                    completion(success, error);
-            });
-        }];
+                PHObjectPlaceholder *assetPlaceholder = assetRequest.placeholderForCreatedAsset;
+                assetLocalIdentifier = assetPlaceholder.localIdentifier;
+
+                PHAssetCollectionChangeRequest *albumChangeRequest = nil;
+                if (collection) {
+                    albumChangeRequest = [PHAssetCollectionChangeRequest changeRequestForAssetCollection:collection];
+                } else {
+                    albumChangeRequest = [PHAssetCollectionChangeRequest creationRequestForAssetCollectionWithTitle:albumName];
+                }
+                [albumChangeRequest addAssets:@[assetPlaceholder]];
+            }
+            completionHandler:^(BOOL success, NSError *error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (success) {
+                        [SPKDownloadDuplicatePolicy
+                            recordPhotosSaveWithMetadata:metadata
+                                               mediaType:mediaType
+                                    assetLocalIdentifier:assetLocalIdentifier];
+                    }
+                    if (completion)
+                        completion(success, error);
+                });
+            }];
+    } else {
+        [[PHPhotoLibrary sharedPhotoLibrary]
+            performChanges:^{
+                PHAssetChangeRequest *request = nil;
+                if (isVideo) {
+                    request = [PHAssetChangeRequest
+                        creationRequestForAssetFromVideoAtFileURL:fileURL];
+                } else {
+                    request = [PHAssetChangeRequest
+                        creationRequestForAssetFromImageAtFileURL:fileURL];
+                }
+                assetLocalIdentifier =
+                    request.placeholderForCreatedAsset.localIdentifier;
+            }
+            completionHandler:^(BOOL success, NSError *error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (success) {
+                        [SPKDownloadDuplicatePolicy
+                            recordPhotosSaveWithMetadata:metadata
+                                               mediaType:mediaType
+                                    assetLocalIdentifier:assetLocalIdentifier];
+                    }
+                    if (completion)
+                        completion(success, error);
+                });
+            }];
+    }
 }
 
 + (SPKGalleryFile *)saveFileURLToGallery:(NSURL *)fileURL
