@@ -48,30 +48,52 @@ static void SPKScheduleHookPhase(NSTimeInterval delay, NSString *name, dispatch_
     });
 }
 
+static BOOL SPKIsMessagesOnlyMode(void) {
+    BOOL msgsVisible = ![SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+    BOOL feedHidden = [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+    BOOL exploreHidden = [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
+    BOOL reelsHidden = [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
+    BOOL profileHidden = [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
+    
+    BOOL usesClassic = [[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+    BOOL createHidden = !usesClassic || [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+    
+    return msgsVisible && feedHidden && exploreHidden && reelsHidden && profileHidden && createHidden;
+}
+
 static void SPKScheduleStagedFeatureHooks(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        SPKScheduleHookPhase(0.25, @"general UI", ^{
+        BOOL msgOnly = SPKIsMessagesOnlyMode();
+        
+        NSTimeInterval generalDelay = 0.25;
+        NSTimeInterval feedDelay = msgOnly ? 0.65 : 0.35;
+        NSTimeInterval storiesDelay = msgOnly ? 0.75 : 0.45;
+        NSTimeInterval reelsDelay = msgOnly ? 0.85 : 0.55;
+        NSTimeInterval messagesDelay = msgOnly ? 0.10 : 0.65;
+        NSTimeInterval profileDelay = msgOnly ? 0.95 : 0.75;
+
+        SPKScheduleHookPhase(generalDelay, @"general UI", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceGeneralUI);
         },
                              NO);
-        SPKScheduleHookPhase(0.35, @"feed", ^{
+        SPKScheduleHookPhase(feedDelay, @"feed", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceFeed);
         },
                              NO);
-        SPKScheduleHookPhase(0.45, @"stories", ^{
+        SPKScheduleHookPhase(storiesDelay, @"stories", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceStories);
         },
                              NO);
-        SPKScheduleHookPhase(0.55, @"reels", ^{
+        SPKScheduleHookPhase(reelsDelay, @"reels", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceReels);
         },
                              NO);
-        SPKScheduleHookPhase(0.65, @"messages", ^{
+        SPKScheduleHookPhase(messagesDelay, @"messages", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceMessages);
         },
                              NO);
-        SPKScheduleHookPhase(0.75, @"profile", ^{
+        SPKScheduleHookPhase(profileDelay, @"profile", ^{
             SPKCoreInstallSurfaceHooks(SPKSurfaceProfile);
         },
                              YES);
