@@ -8,13 +8,15 @@
 @implementation SPKAboutSettingsProvider
 
 + (SPKSetting *)rootSetting {
-    // Larger, bolder title so it reads in balance with the 44pt donate glyph.
-    SPKSetting *donate = SPKSettingApplyIconTint([SPKSetting linkCellWithTitle:@"Donate to waffle"
-                                                                      subtitle:@""
-                                                                          icon:[SPKAssetUtils instagramIconNamed:@"donate" pointSize:44.0]
-                                                                           url:@"https://ko-fi.com/sparkle_ig"],
-                                                 [SPKUtils SPKColor_InstagramFavorite]);
-    donate.userInfo = @{@"titleFont" : [UIFont systemFontOfSize:20.0 weight:UIFontWeightSemibold]};
+    // Larger, bolder title so it reads in balance with the 45pt Ko-fi icon.
+    SPKSetting *donate = [SPKSetting linkCellWithTitle:@"Donate to waffle"
+                                              subtitle:@""
+                                              imageUrl:@"https://cdn.prod.website-files.com/5c14e387dab576fe667689cf/670f5a01229bf8a18f97a3c1_favion.png"
+                                                   url:@"https://ko-fi.com/sparkle_ig"];
+    donate.userInfo = @{
+        @"titleFont" : [UIFont systemFontOfSize:20.0 weight:UIFontWeightSemibold],
+        @"remoteImageCircular" : @NO
+    };
 
     return SPKTopicNavigationSetting(@"About", @"info", 24.0, @[
         SPKTopicSection(@"Support", @[
