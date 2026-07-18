@@ -72,6 +72,7 @@
                                             @"•  Quick access shortcuts (Settings & Gallery)\n"
                                             @"•  Main feed mode (For You / Following)\n"
                                             @"•  Disable video autoplay\n"
+                                            @"•  Reels doom scroll & limits\n"
                                             @"•  Hide UI on capture\n"
                                             @"•  Download encoding settings\n"
                                             @"•  Gallery view, sort & lock\n"

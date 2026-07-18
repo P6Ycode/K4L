@@ -666,6 +666,11 @@ static BOOL SPKPrefIsGlobalKey(NSString *key) {
             // per-account effective key would resolve against the wrong PK and
             // miss the value. Read the plain global key — no session dependency.
             @"feed_disable_autoplay",
+            // Reels doom scroll and limits are application-wide behavioral controls,
+            // and must resolve early/reliably regardless of account session state.
+            @"reels_prevent_doom_scroll",
+            @"reels_doom_scroll_limit",
+            @"reels_disable_scrolling",
         ]];
     });
     if ([globalExact containsObject:key])
