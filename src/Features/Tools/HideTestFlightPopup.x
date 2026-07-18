@@ -17,7 +17,13 @@
 %end
 
 %ctor {
-    if ([SPKUtils getBoolPref:@"tools_hide_testflight_popup"]) {
+    BOOL shouldInit = YES;
+#if SPK_DEV
+    shouldInit = [SPKUtils getBoolPref:@"tools_hide_testflight_popup"];
+#endif
+
+    if (shouldInit) {
         %init(SPKHideTestFlightNagReceipt);
     }
 }
+

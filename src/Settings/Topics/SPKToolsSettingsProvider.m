@@ -171,12 +171,11 @@ static NSDictionary *SPKSettingsLockSection(void) {
         SPKSettingsLockSection(),
     ]];
 
-    // The TestFlight/Beta popup only appears on sideloaded (re-signed) installs.
-    // On jailbroken installs Instagram runs off its genuine App Store receipt, so
-    // the nag never shows — hide the toggle there rather than expose a no-op.
+    // The TestFlight/Beta popup suppression is always active on release builds.
+    // On dev builds, we keep a toggle to allow disabling it for testing.
     NSMutableArray *instagramCells = [NSMutableArray array];
-#if SPK_SIDELOAD
-    [instagramCells addObject:[SPKSetting switchCellWithTitle:@"Hide TestFlight Popup"
+#if SPK_DEV
+    [instagramCells addObject:[SPKSetting switchCellWithTitle:@"[DEV] Hide TestFlight Popup"
                                                   defaultsKey:@"tools_hide_testflight_popup"
                                               requiresRestart:YES]];
 #endif
@@ -185,7 +184,7 @@ static NSDictionary *SPKSettingsLockSection(void) {
     [instagramCells addObject:[SPKSetting switchCellWithTitle:@"Disable Safe Mode"
                                                   defaultsKey:@"tools_disable_safe_mode"]];
 
-#if SPK_SIDELOAD
+#if SPK_DEV
     NSString *instagramFooter =
         @"1. Suppresses the Instagram Beta update popup.\n"
         @"2. Drops the duplicate in-app banner sideloaded Instagram posts while the notification extension is already delivering the same push. Only acts while the app is foregrounded.\n"

@@ -658,6 +658,9 @@ static BOOL SPKPrefIsGlobalKey(NSString *key) {
             // launch. Kept global so it's reliable and matches the (global)
             // gallery quick-access shortcut.
             @"tools_settings_shortcut",
+            // Suppressing the TestFlight popup runs early in %ctor before the account
+            // session resolves, and is inherently an application/install-wide setting.
+            @"tools_hide_testflight_popup",
             // Main feed mode (For You / Following) is read during early feed
             // setup before the account resolves, so it stays global.
             @"feed_mode",
