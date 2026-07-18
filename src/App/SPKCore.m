@@ -24,6 +24,8 @@ static NSDictionary *SPKBootstrapDefaults(void) {
         @"interface_hide_explore_tab" : @(NO),
         @"interface_hide_create_tab" : @(NO),
         @"interface_hide_profile_tab" : @(NO),
+        @"interface_hide_tab_bar_in_messages_only" : @(NO),
+        @"interface_show_header_button_in_messages_only" : @(YES),
         @"interface_open_clipboard_link" : @(YES),
         @"tools_settings_shortcut" : @(YES),
         @"tools_shortcut_haptics" : @(YES),

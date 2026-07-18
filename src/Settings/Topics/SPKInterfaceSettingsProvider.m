@@ -29,6 +29,19 @@ static BOOL SPKEnablingKeyHidesEveryTab(NSString *keyToEnable) {
     return YES;
 }
 
+static BOOL SPKIsMessagesOnlyMode(void) {
+    BOOL msgsVisible = ![SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+    BOOL feedHidden = [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+    BOOL exploreHidden = [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
+    BOOL reelsHidden = [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
+    BOOL profileHidden = [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
+    
+    BOOL usesClassic = [[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+    BOOL createHidden = !usesClassic || [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+    
+    return msgsVisible && feedHidden && exploreHidden && reelsHidden && profileHidden && createHidden;
+}
+
 // A "Hide … Tab" switch that can't hide the last remaining navigable tab: when
 // this is the only tab still visible its switch is greyed out and can't be
 // turned on, while any already-hidden tab can always be turned back on.
@@ -113,6 +126,29 @@ static SPKSetting *SPKHideTabSwitch(NSString *title, NSString *iconName, NSStrin
             SPKHideTabSwitch(@"Hide Profile Tab", @"user_circle", @"interface_hide_profile_tab")
         ],
                         nil),
+        SPKTopicSection(@"Messages Only Mode", @[
+            ({
+                SPKSetting *s = [SPKSetting switchCellWithTitle:@"Hide Tab Bar"
+                                                           icon:nil
+                                                    defaultsKey:@"interface_hide_tab_bar_in_messages_only"];
+                s.enabledProvider = ^BOOL {
+                    return SPKIsMessagesOnlyMode();
+                };
+                s;
+            }),
+            ({
+                SPKSetting *s = [SPKSetting switchCellWithTitle:@"Header Shortcut Button"
+                                                           icon:nil
+                                                    defaultsKey:@"interface_show_header_button_in_messages_only"];
+                s.enabledProvider = ^BOOL {
+                    return SPKIsMessagesOnlyMode();
+                };
+                s;
+            })
+        ],
+                        @"These settings are accessible when only the Messages tab is enabled.\n"
+                        @"1. Hides the tab bar to free up screen space. Sparkle settings can be accessed via long pressing the right navigation bar button.\n"
+                        @"2. Shows the feed header shortcut on the left side of the Messages navigation bar."),
         SPKTopicSection(@"Explore & Search", @[
             [SPKSetting switchCellWithTitle:@"Hide Explore Posts Grid"
                                        icon:SPKSettingsIcon(@"explore_grid")

@@ -64,8 +64,18 @@
 @end
 
 @interface IGTabBarController : UIViewController
+@property (readonly, nonatomic) UIView *tabBar;
+@property (readonly, nonatomic) UIViewController *selectedViewController;
 - (NSInteger)tabBarStyle;
 - (void)_exploreButtonLongPressed:(id)gesture;
+- (void)_updateTabBarVisibilityForController:(id)controller;
+@end
+
+@interface IGMainAppScrollingContainerViewController : UIViewController
+@end
+
+@interface IGDirectInboxNavigationHeaderView : UIView
+@property (readonly, nonatomic) UIButton *messageButton;
 @end
 
 @interface IGTableViewCell : UITableViewCell
