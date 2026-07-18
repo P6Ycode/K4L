@@ -408,6 +408,10 @@
 @interface IGDirectInboxConfig : NSObject
 @end
 
+@interface IGDirectInboxFeatureManager : NSObject
+- (BOOL)_isChatPeekEligibleForThreadId:(id)threadId;
+@end
+
 @interface IGDirectMediaPickerConfig : NSObject
 @end
 

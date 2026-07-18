@@ -113,6 +113,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"stories_auto_save" : @(NO),
         @"stories_auto_save_filter_mode" : @"all",
         @"msgs_auto_save" : @(NO),
+        @"msgs_unlock_preview" : @(NO),
         @"msgs_auto_save_filter_mode" : @"all",
         @"instants_auto_save" : @(NO),
         @"instants_auto_save_filter_mode" : @"all",
