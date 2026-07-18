@@ -18,6 +18,8 @@ static NSString *const kSPKGalleryQuickAccessDisabledValue = @"none";
 @interface IGTabBarButton (SPKQuickActions)
 - (void)spk_addLongPressWithAction:(SEL)action marker:(const void *)marker minimumDuration:(NSTimeInterval)minimumDuration;
 - (void)spk_removeProfileAccountPickerLongPressIfNeeded;
+- (void)spk_removeGalleryLongPressIfNeeded;
+- (void)spk_removeSettingsLongPressIfNeeded;
 - (void)handleHomeTabLongPress:(UILongPressGestureRecognizer *)sender;
 - (void)handleDirectInboxTabLongPress:(UILongPressGestureRecognizer *)sender;
 @end
@@ -188,21 +190,30 @@ static BOOL SPKTabButtonMatchesTarget(NSString *identifier, NSString *label, NSS
     return NO;
 }
 
-static BOOL SPKTabIdentifierMatchesGalleryShortcut(NSString *identifier, NSString *label) {
-    return SPKTabButtonMatchesTarget(identifier, label, SPKGalleryShortcutTabIdentifier());
+static BOOL SPKIsMessagesOnlyMode(void) {
+    BOOL msgsVisible = ![SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+    BOOL feedHidden = [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+    BOOL exploreHidden = [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
+    BOOL reelsHidden = [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
+    BOOL profileHidden = [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
+    
+    BOOL usesClassic = [[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+    BOOL createHidden = !usesClassic || [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+    
+    return msgsVisible && feedHidden && exploreHidden && reelsHidden && profileHidden && createHidden;
 }
 
-// Maps a canonical tab identifier to its "Hide Tabs" preference so we can tell,
-// up front, whether that tab's button will exist in the bar at all.
 static BOOL SPKTabHiddenForIdentifier(NSString *identifier) {
+    BOOL usesClassic = [[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+
     if ([identifier isEqualToString:@"mainfeed-tab"])
         return [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
     if ([identifier isEqualToString:@"reels-tab"])
         return [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
     if ([identifier isEqualToString:@"direct-inbox-tab"])
-        return [SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+        return usesClassic || [SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
     if ([identifier isEqualToString:@"camera-tab"])
-        return [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+        return !usesClassic || [SPKUtils getBoolPref:@"interface_hide_create_tab"];
     if ([identifier isEqualToString:@"explore-tab"])
         return [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
     if ([identifier isEqualToString:@"profile-tab"])
@@ -210,34 +221,45 @@ static BOOL SPKTabHiddenForIdentifier(NSString *identifier) {
     return NO;
 }
 
-// Settings-access safeguard: the tab the Quick Settings long-press should live on.
-// Normally the Home tab, but if Home is hidden — or claimed by the Gallery
-// shortcut — we fall back to the highest-priority *visible* tab that the Gallery
-// shortcut isn't already using, so the user can never hide their way out of
-// reaching Sparkle Settings. Ordered to avoid tabs with their own long-press
-// (profile account switcher, explore clipboard opener) unless nothing else is
-// left. As an absolute last resort (only one tab visible and the Gallery
-// shortcut wants it) Settings wins, since lockout is the worse outcome.
 static NSString *SPKResolvedSettingsShortcutTabIdentifier(void) {
     if (![SPKUtils getBoolPref:@"tools_settings_shortcut"])
         return nil;
 
     NSArray<NSString *> *priority = @[ @"mainfeed-tab", @"reels-tab", @"direct-inbox-tab", @"camera-tab", @"explore-tab", @"profile-tab" ];
-    NSString *galleryTarget = SPKGalleryShortcutTabIdentifier();
-
-    for (NSString *identifier in priority) {
-        if (SPKTabHiddenForIdentifier(identifier))
-            continue;
-        if ([identifier isEqualToString:galleryTarget])
-            continue;
-        return identifier;
-    }
     for (NSString *identifier in priority) {
         if (SPKTabHiddenForIdentifier(identifier))
             continue;
         return identifier;
     }
     return nil;
+}
+
+static NSString *SPKResolvedGalleryShortcutTabIdentifier(void) {
+    NSString *preferred = SPKGalleryShortcutTabIdentifier();
+    if (preferred.length == 0 || [preferred isEqualToString:kSPKGalleryQuickAccessDisabledValue])
+        return nil;
+
+    NSString *settingsHost = SPKResolvedSettingsShortcutTabIdentifier();
+    if (![preferred isEqualToString:settingsHost]) {
+        return preferred;
+    }
+
+    // Clash! Settings wins on the preferred tab.
+    // Gallery falls back to the next available visible tab that isn't settingsHost.
+    NSArray<NSString *> *priority = @[ @"mainfeed-tab", @"reels-tab", @"direct-inbox-tab", @"camera-tab", @"explore-tab", @"profile-tab" ];
+    for (NSString *identifier in priority) {
+        if (SPKTabHiddenForIdentifier(identifier))
+            continue;
+        if ([identifier isEqualToString:settingsHost])
+            continue;
+        return identifier;
+    }
+
+    return nil;
+}
+
+static BOOL SPKTabIdentifierMatchesGalleryShortcut(NSString *identifier, NSString *label) {
+    return SPKTabButtonMatchesTarget(identifier, label, SPKResolvedGalleryShortcutTabIdentifier());
 }
 
 static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *label) {
@@ -251,7 +273,18 @@ static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
 // Quick access to tweak settings by holding on home tab button
 %hook IGTabBarButton
-- (void)didMoveToSuperview {
+
+- (void)setAccessibilityIdentifier:(NSString *)identifier {
+    %orig;
+    [self setNeedsLayout];
+}
+
+- (void)setAccessibilityLabel:(NSString *)label {
+    %orig;
+    [self setNeedsLayout];
+}
+
+- (void)layoutSubviews {
     %orig;
 
     NSString *identifier = self.accessibilityIdentifier ?: @"";
@@ -259,20 +292,48 @@ static BOOL SPKShouldReplaceProfileTabLongPress(NSString *identifier, NSString *
 
     NSString *settingsHost = SPKResolvedSettingsShortcutTabIdentifier();
     BOOL hostsSettings = settingsHost && SPKTabButtonMatchesTarget(identifier, label, settingsHost);
-    if (hostsSettings) {
-        [self spk_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSPKHomeTabSettingsLongPressAssocKey minimumDuration:kSPKHomeTabLongPressDuration];
+    BOOL matchesGallery = SPKTabIdentifierMatchesGalleryShortcut(identifier, label);
+
+    SPKLog(@"TabBar", @"[Sparkle] IGTabBarButton layoutSubviews: ID='%@', label='%@', settingsHost='%@', hostsSettings=%d, matchesGallery=%d",
+           identifier, label, settingsHost, hostsSettings, matchesGallery);
+
+    for (UIGestureRecognizer *g in self.gestureRecognizers) {
+        if ([g isKindOfClass:[UILongPressGestureRecognizer class]]) {
+            SPKLog(@"TabBar", @"[Sparkle] Existing gesture before changes: %@, hasGalleryAssoc=%d, hasSettingsAssoc=%d, duration=%f",
+                   NSStringFromClass(g.class),
+                   objc_getAssociatedObject(g, kSPKGalleryTabLongPressAssocKey) != nil,
+                   objc_getAssociatedObject(g, kSPKHomeTabSettingsLongPressAssocKey) != nil,
+                   ((UILongPressGestureRecognizer *)g).minimumPressDuration);
+        }
     }
 
-    BOOL matchesGallery = SPKTabIdentifierMatchesGalleryShortcut(identifier, label);
-    // Only skip the Gallery shortcut here when Settings was forced onto this exact
-    // button (last-resort case where the only visible tab is the Gallery's tab) —
-    // Settings access takes priority.
-    BOOL settingsTookGalleryTab = hostsSettings && [settingsHost isEqualToString:SPKGalleryShortcutTabIdentifier()];
-    if (matchesGallery && !settingsTookGalleryTab) {
+    if (hostsSettings) {
+        [self spk_removeGalleryLongPressIfNeeded];
+        [self spk_addLongPressWithAction:@selector(handleHomeTabLongPress:) marker:kSPKHomeTabSettingsLongPressAssocKey minimumDuration:kSPKHomeTabLongPressDuration];
+
+        // Remove Instagram's native long press(es) that compete with ours.
+        // Both have 0.5s duration, and requireGestureRecognizerToFail is
+        // unreliable when durations match — sometimes IG's fires instead.
+        for (UIGestureRecognizer *g in [self.gestureRecognizers copy]) {
+            if (![g isKindOfClass:[UILongPressGestureRecognizer class]])
+                continue;
+            if (objc_getAssociatedObject(g, kSPKHomeTabSettingsLongPressAssocKey))
+                continue;
+            if (objc_getAssociatedObject(g, kSPKGalleryTabLongPressAssocKey))
+                continue;
+            [self removeGestureRecognizer:g];
+        }
+    } else {
+        [self spk_removeSettingsLongPressIfNeeded];
+    }
+
+    if (matchesGallery && !hostsSettings) {
         if (SPKShouldReplaceProfileTabLongPress(identifier, label)) {
             [self spk_removeProfileAccountPickerLongPressIfNeeded];
         }
         [self spk_addLongPressWithAction:@selector(handleDirectInboxTabLongPress:) marker:kSPKGalleryTabLongPressAssocKey minimumDuration:kSPKGalleryTabLongPressDuration];
+    } else {
+        [self spk_removeGalleryLongPressIfNeeded];
     }
 }
 
@@ -315,7 +376,30 @@ for (UIGestureRecognizer *gesture in [self.gestureRecognizers copy]) {
 }
 }
 
+%new - (void)spk_removeGalleryLongPressIfNeeded {
+for (UIGestureRecognizer *gesture in [self.gestureRecognizers copy]) {
+    if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]])
+        continue;
+    if (objc_getAssociatedObject(gesture, kSPKGalleryTabLongPressAssocKey)) {
+        [self removeGestureRecognizer:gesture];
+    }
+}
+}
+
+%new - (void)spk_removeSettingsLongPressIfNeeded {
+for (UIGestureRecognizer *gesture in [self.gestureRecognizers copy]) {
+    if (![gesture isKindOfClass:[UILongPressGestureRecognizer class]])
+        continue;
+    if (objc_getAssociatedObject(gesture, kSPKHomeTabSettingsLongPressAssocKey)) {
+        [self removeGestureRecognizer:gesture];
+    }
+}
+}
+
 %new - (void)handleHomeTabLongPress:(UILongPressGestureRecognizer *)sender {
+SPKLog(@"TabBar", @"[Sparkle] handleHomeTabLongPress: state=%ld, view=%@, window=%@",
+       (long)sender.state, NSStringFromClass([sender.view class]),
+       sender.view.window ? @"YES" : @"NO");
 if (sender.state != UIGestureRecognizerStateBegan)
     return;
 
@@ -332,12 +416,58 @@ SPKFireShortcutHaptic();
 }
 %end
 
+%hook IGDirectInboxNavigationHeaderView
+- (void)layoutSubviews {
+    %orig;
+
+    UIButton *btn = nil;
+    if ([self respondsToSelector:@selector(messageButton)]) {
+        btn = [self valueForKey:@"messageButton"];
+    }
+    if (btn) {
+        BOOL shouldAdd = SPKIsMessagesOnlyMode();
+        if (shouldAdd) {
+            UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:[SPKSettingsShortcutTarget sharedTarget]
+                                                                                                     action:@selector(handleProfileMoreLongPress:)];
+            longPress.minimumPressDuration = kSPKProfileMoreSettingsLongPressDuration;
+            longPress.cancelsTouchesInView = YES;
+            longPress.delaysTouchesBegan = YES;
+            longPress.delaysTouchesEnded = YES;
+
+            for (UIGestureRecognizer *gesture in [btn.gestureRecognizers copy]) {
+                if ([gesture isKindOfClass:[UILongPressGestureRecognizer class]] &&
+                    objc_getAssociatedObject(gesture, kSPKProfileMoreSettingsLongPressAssocKey)) {
+                    [btn removeGestureRecognizer:gesture];
+                }
+            }
+
+            for (UIGestureRecognizer *existing in btn.gestureRecognizers) {
+                [existing requireGestureRecognizerToFail:longPress];
+            }
+
+            [btn addGestureRecognizer:longPress];
+            objc_setAssociatedObject(longPress, kSPKProfileMoreSettingsLongPressAssocKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        } else {
+            // Clean up gesture if it shouldn't be here
+            for (UIGestureRecognizer *gesture in [btn.gestureRecognizers copy]) {
+                if ([gesture isKindOfClass:[UILongPressGestureRecognizer class]] &&
+                    objc_getAssociatedObject(gesture, kSPKProfileMoreSettingsLongPressAssocKey)) {
+                    [btn removeGestureRecognizer:gesture];
+                }
+            }
+        }
+    }
+}
+%end
+
 %end
 
 void SPKInstallSettingsShortcutsHooksIfNeeded(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        %init(SPKSettingsShortcutsHooks);
+        %init(SPKSettingsShortcutsHooks,
+              IGDirectInboxNavigationHeaderView = SPKResolveIGClass(@"IGDirectInboxNavigationHeaderView.IGDirectInboxNavigationHeaderView",
+                                                                    @"IGDirectInboxNavigationHeaderView"));
         SPKInstallProfileMoreShortcutHooks();
     });
 }
