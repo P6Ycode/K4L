@@ -65,7 +65,8 @@ Per-feature control of the Sparkle notification pill and its haptics. See **Noti
 - **Swipe Between Tabs**: `Default`, `Enabled`, or `Disabled`.
 - **Hide Tabs**:
   - Individually hide the Feed, Explore, Messages, Reels, Create, and Profile tabs. **(restart)**
-  - Settings access is safeguarded: if Quick Settings Access is on but the Home tab is hidden (or taken by the Gallery shortcut), the long-press to open Sparkle Settings automatically moves to another visible tab, so you can't hide your way out of reaching Settings.
+  - **Hide Tab Bar in Messages Only**: Hides the bottom tab bar entirely when all tabs except Messages are hidden, for a clean messages-only interface.
+  - Settings access is safeguarded: if Quick Settings Access is on but the Home tab is hidden (or taken by the Gallery shortcut), the long-press to open Sparkle Settings automatically moves to another visible tab, so you can't hide your way out of reaching Settings. Additionally, settings can always be opened in DMs by long-pressing the new message composer button (if the tab bar is hidden).
 
 ### Explore & Search
 - **Hide Explore Posts Grid**: Hides the suggested-post grid on Explore.
@@ -435,7 +436,7 @@ clearing, and more.
 - **Open FLEX Now**, **Three-finger Hold**, **Open on App Launch**, **Open on App Focus**. Requires `libFLEX.dylib` to be bundled (build the ipa with `--flex` flag or install `libFLEX.dylib` if jailbroken).
 
 ### Tweak
-- **Quick Settings Access**: Long-press the Home tab to open Sparkle Settings. **(restart)** If the Home tab is hidden or claimed by the Gallery shortcut, the long-press automatically falls back to another visible tab so Settings is always reachable.
+- **Quick Settings Access**: Long-press the Home tab to open Sparkle Settings. **(restart)** If the Home tab is hidden or claimed by the Gallery shortcut, the long-press automatically falls back to another visible tab so Settings is always reachable. Additionally, you can long-press the new message composer button in DMs to open Sparkle Settings (when the tab bar is hidden).
 - **Shortcut Haptics**: Light haptic feedback when opening Settings / Gallery.
 - **Show Settings on App Launch**.
 - **Disable All Settings**: Master kill switch; only Settings access remains. **(restart)**
