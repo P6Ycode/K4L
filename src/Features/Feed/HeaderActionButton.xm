@@ -2,6 +2,7 @@
 
 #import <objc/message.h>
 #import <objc/runtime.h>
+#import <substrate.h>
 
 #import "../../AssetUtils.h"
 #import "../../InstagramHeaders.h"
@@ -38,9 +39,27 @@ static const CGFloat kSPKHeaderButtonGlyph = 24.0;   // glyph point size
 static const CGFloat kSPKHeaderButtonSpacing = 8.0;
 static const CGFloat kSPKHeaderButtonLeftInset = 16.0;
 
+static BOOL SPKIsMessagesOnlyMode(void) {
+    BOOL msgsVisible = ![SPKUtils getBoolPref:@"interface_hide_msgs_tab"];
+    BOOL feedHidden = [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+    BOOL exploreHidden = [SPKUtils getBoolPref:@"interface_hide_explore_tab"];
+    BOOL reelsHidden = [SPKUtils getBoolPref:@"interface_hide_reels_tab"];
+    BOOL profileHidden = [SPKUtils getBoolPref:@"interface_hide_profile_tab"];
+    
+    BOOL usesClassic = [[SPKUtils getStringPref:@"interface_nav_order"] isEqualToString:@"classic"];
+    BOOL createHidden = !usesClassic || [SPKUtils getBoolPref:@"interface_hide_create_tab"];
+    
+    return msgsVisible && feedHidden && exploreHidden && reelsHidden && profileHidden && createHidden;
+}
+
+static const void *kSPKInboxHeaderButtonAssocKey = &kSPKInboxHeaderButtonAssocKey;
+static const void *kSPKInboxHeaderButtonLastFrameAssocKey = &kSPKInboxHeaderButtonLastFrameAssocKey;
+static const void *kSPKInboxHeaderGlassViewKey = &kSPKInboxHeaderGlassViewKey;
+
 static const void *kSPKHeaderButtonAssocKey = &kSPKHeaderButtonAssocKey;
 static const void *kSPKHeaderButtonConfigSignatureAssocKey = &kSPKHeaderButtonConfigSignatureAssocKey;
 static const void *kSPKHeaderButtonLastFrameAssocKey = &kSPKHeaderButtonLastFrameAssocKey;
+static const void *kSPKHeaderGlassViewKey = &kSPKHeaderGlassViewKey;
 
 #pragma mark - Destination model
 
@@ -187,11 +206,101 @@ static UIView *SPKHeaderSubview(id header, NSArray<NSString *> *keys) {
     return nil;
 }
 
+static void SPKHookTouchForwardingSetAlphaIfNeeded(UIView *touchForwardingView);
+
+static void SPKInboxAccumulateGlassAlpha(UIView *view, CGFloat *maxAlpha) {
+    if (!view)
+        return;
+    if ([NSStringFromClass([view class]) containsString:@"TouchForwardingVisualEffectView"]) {
+        CGFloat alpha = view.alpha;
+        if (alpha > *maxAlpha)
+            *maxAlpha = alpha;
+        SPKHookTouchForwardingSetAlphaIfNeeded(view);
+    }
+    for (UIView *subview in view.subviews) {
+        SPKInboxAccumulateGlassAlpha(subview, maxAlpha);
+    }
+}
+
+static CGFloat SPKInboxHeaderGlassProgress(UIView *headerView) {
+    CGFloat maxAlpha = -1.0;
+    SPKInboxAccumulateGlassAlpha(headerView, &maxAlpha);
+    return maxAlpha;
+}
+
+// Hook TouchForwardingVisualEffectView's setAlpha: so that when the glass alpha
+// changes (e.g. status-bar-tap scroll-to-top animation) the header re-layouts
+// and our glass bubble alpha stays in sync.  Without this, the header's
+// layoutSubviews isn't called during the programmatic scroll and the bubble
+// remains opaque until the user manually scrolls.
+static void (*orig_touchForwardingSetAlpha)(id, SEL, CGFloat);
+static void SPKHookedTouchForwardingSetAlpha(id self, SEL _cmd, CGFloat alpha) {
+    if (orig_touchForwardingSetAlpha)
+        orig_touchForwardingSetAlpha(self, _cmd, alpha);
+
+    // Walk up to find the nearest header ancestor and trigger its layout.
+    UIView *ancestor = [(UIView *)self superview];
+    while (ancestor) {
+        NSString *cls = NSStringFromClass([ancestor class]);
+        if ([cls containsString:@"HomeFeedHeaderView"] ||
+            [cls containsString:@"DirectInboxNavigationHeaderView"]) {
+            [ancestor setNeedsLayout];
+            break;
+        }
+        ancestor = ancestor.superview;
+    }
+}
+
+static BOOL sTouchForwardingHooked = NO;
+static void SPKHookTouchForwardingSetAlphaIfNeeded(UIView *touchForwardingView) {
+    if (sTouchForwardingHooked)
+        return;
+    sTouchForwardingHooked = YES;
+
+    Class cls = [touchForwardingView class];
+    SEL sel = @selector(setAlpha:);
+    Method method = class_getInstanceMethod(cls, sel);
+    if (!method)
+        return;
+    MSHookMessageEx(cls, sel, (IMP)SPKHookedTouchForwardingSetAlpha, (IMP *)&orig_touchForwardingSetAlpha);
+    SPKLog(@"HeaderButton", @"[Sparkle] Hooked setAlpha: on %@ for glass sync", NSStringFromClass(cls));
+}
+
+static UIVisualEffectView *SPKInboxMakeGlassBackground(void) {
+    Class glassEffectClass = NSClassFromString(@"UIGlassEffect");
+    if (!glassEffectClass)
+        return nil;
+
+    UIVisualEffect *effect = nil;
+    @try {
+        effect = [[glassEffectClass alloc] init];
+        [effect setValue:@YES forKey:@"interactive"];
+        UIColor *tint = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
+            UIColor *primary = [[SPKUtils SPKColor_InstagramPrimaryText] resolvedColorWithTraitCollection:traits];
+            CGFloat r = 0.0, g = 0.0, b = 0.0;
+            [primary getRed:&r green:&g blue:&b alpha:NULL];
+            return [UIColor colorWithRed:(1.0 - r) green:(1.0 - g) blue:(1.0 - b) alpha:0.5];
+        }];
+        [effect setValue:tint forKey:@"tintColor"];
+    } @catch (__unused NSException *exception) {
+    }
+    if (![effect isKindOfClass:[UIVisualEffect class]])
+        return nil;
+
+    UIVisualEffectView *glassView = [[UIVisualEffectView alloc] initWithEffect:effect];
+    glassView.userInteractionEnabled = NO;
+    glassView.clipsToBounds = YES;
+    glassView.layer.cornerCurve = kCACornerCurveContinuous;
+    glassView.accessibilityIdentifier = @"sparkle-inbox-action-glass";
+    return glassView;
+}
+
 @interface UIView (SPKHeaderButton)
 - (SPKFeedHeaderActionButton *)spk_headerActionButton;
 - (void)spk_installHeaderActionButtonIfNeeded;
 - (void)spk_layoutHeaderActionButton;
 - (void)spk_configureHeaderActionButton:(SPKFeedHeaderActionButton *)button;
+- (void)spk_updateHeaderGlass:(SPKFeedHeaderActionButton *)button;
 @end
 
 @implementation UIView (SPKHeaderButton)
@@ -389,6 +498,7 @@ static NSString *SPKHeaderButtonConfigSignature(NSArray<SPKHeaderDestination *> 
     NSValue *lastVal = objc_getAssociatedObject(button, kSPKHeaderButtonLastFrameAssocKey);
     CGRect lastFrame = lastVal ? [lastVal CGRectValue] : CGRectNull;
     if (button.superview == self && !CGRectIsNull(lastFrame) && CGRectEqualToRect(expectedFrame, lastFrame)) {
+        [self spk_updateHeaderGlass:button];
         return;
     }
 
@@ -398,11 +508,218 @@ static NSString *SPKHeaderButtonConfigSignature(NSArray<SPKHeaderDestination *> 
     SPKLog(@"HeaderButton", @"[Sparkle] Laid out header button haveHeart=%@ haveMessages=%@ alpha=%.2f heart=%@ frame=%@",
            haveHeart ? @"YES" : @"NO", haveMessages ? @"YES" : @"NO", effectiveAlpha,
            NSStringFromCGRect(heartFrame), NSStringFromCGRect(expectedFrame));
+    [self spk_updateHeaderGlass:button];
+}
+
+- (void)spk_updateHeaderGlass:(SPKFeedHeaderActionButton *)button {
+    UIVisualEffectView *glassView = objc_getAssociatedObject(button, kSPKHeaderGlassViewKey);
+    if (!glassView) {
+        glassView = SPKInboxMakeGlassBackground();
+        if (!glassView) {
+            return;
+        }
+        objc_setAssociatedObject(button, kSPKHeaderGlassViewKey, glassView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    UIView *host = button.iconView.superview ?: button;
+    if (glassView.superview != host) {
+        [host insertSubview:glassView atIndex:0];
+    }
+    [host sendSubviewToBack:glassView];
+
+    CGRect bounds = host.bounds;
+    glassView.frame = bounds;
+    glassView.layer.cornerRadius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+
+    CGFloat progress = SPKInboxHeaderGlassProgress(self);
+    glassView.alpha = progress > 0.0 ? MIN(progress, 1.0) : 0.0;
+}
+
+@end
+
+
+
+@interface UIView (SPKInboxHeaderButton)
+- (SPKFeedHeaderActionButton *)spk_inboxHeaderButton;
+- (void)spk_installInboxHeaderActionButtonIfNeeded;
+- (void)spk_layoutInboxHeaderActionButton;
+- (void)spk_updateInboxHeaderGlass:(SPKFeedHeaderActionButton *)button;
+@end
+
+@implementation UIView (SPKInboxHeaderButton)
+
+- (SPKFeedHeaderActionButton *)spk_inboxHeaderButton {
+    return objc_getAssociatedObject(self, kSPKInboxHeaderButtonAssocKey);
+}
+
+- (void)spk_installInboxHeaderActionButtonIfNeeded {
+    BOOL messagesOnly = [SPKUtils getBoolPref:@"interface_show_header_button_in_messages_only"] &&
+                         SPKIsMessagesOnlyMode();
+    if (!messagesOnly) {
+        SPKFeedHeaderActionButton *button = [self spk_inboxHeaderButton];
+        if (button) {
+            button.hidden = YES;
+            [button removeFromSuperview];
+            objc_setAssociatedObject(self, kSPKInboxHeaderButtonAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(self, kSPKInboxHeaderButtonLastFrameAssocKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        return;
+    }
+
+    if ([self spk_inboxHeaderButton])
+        return;
+
+    SPKFeedHeaderActionButton *button = [[SPKFeedHeaderActionButton alloc] initWithSymbol:@""
+                                                                                pointSize:kSPKHeaderButtonGlyph
+                                                                                 diameter:kSPKHeaderButtonSide];
+    button.accessibilityIdentifier = @"spk-inbox-header-action-button";
+    button.accessibilityLabel = @"Sparkle";
+    button.translatesAutoresizingMaskIntoConstraints = YES;
+    button.bubbleColor = UIColor.clearColor;
+
+    UIButton *composer = nil;
+    if ([self respondsToSelector:@selector(messageButton)]) {
+        composer = [self valueForKey:@"messageButton"];
+    }
+    button.iconTint = composer.tintColor ?: [UIColor labelColor];
+
+    __weak SPKFeedHeaderActionButton *weakButton = button;
+    button.menuWillDisplayHandler = ^{
+        (void)weakButton;
+        SPKHeaderFireShortcutHaptic();
+    };
+    [button addTarget:button action:@selector(spk_primaryTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    objc_setAssociatedObject(self, kSPKInboxHeaderButtonAssocKey, button, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self addSubview:button];
+    SPKLog(@"HeaderButton", @"[Sparkle] Installed inbox header action button into %@", NSStringFromClass(self.class));
+
+    [self spk_configureHeaderActionButton:button];
+}
+
+- (void)spk_layoutInboxHeaderActionButton {
+    SPKFeedHeaderActionButton *button = [self spk_inboxHeaderButton];
+    if (!button)
+        return;
+
+    BOOL messagesOnly = [SPKUtils getBoolPref:@"interface_show_header_button_in_messages_only"] &&
+                         SPKIsMessagesOnlyMode();
+    if (!messagesOnly) {
+        button.hidden = YES;
+        return;
+    }
+
+    NSArray<SPKHeaderDestination *> *enabled = SPKHeaderButtonEnabledDestinations();
+    NSString *defaultAction = [SPKUtils getStringPref:kSPKHeaderButtonDefaultActionKey];
+    NSString *signature = SPKHeaderButtonConfigSignature(enabled, defaultAction);
+    NSString *storedSignature = objc_getAssociatedObject(button, kSPKHeaderButtonConfigSignatureAssocKey);
+    if (![signature isEqualToString:storedSignature]) {
+        [self spk_configureHeaderActionButton:button];
+    }
+    if (enabled.count == 0) {
+        button.hidden = YES;
+        return;
+    }
+
+    UIButton *composer = nil;
+    if ([self respondsToSelector:@selector(messageButton)]) {
+        composer = [self valueForKey:@"messageButton"];
+    }
+
+    CGRect composerFrame = CGRectNull;
+    if (composer && composer.window) {
+        composerFrame = [self convertRect:composer.bounds fromView:composer];
+    }
+
+    CGFloat side = kSPKHeaderButtonSide;
+    CGRect expectedFrame;
+    if (!CGRectIsNull(composerFrame) && composerFrame.size.width > 1.0) {
+        CGFloat rightInset = CGRectGetWidth(self.bounds) - CGRectGetMaxX(composerFrame);
+        CGFloat centerY = CGRectGetMidY(composerFrame);
+        expectedFrame = CGRectMake(floor(rightInset), floor(centerY - side / 2.0), side, side);
+    } else {
+        CGFloat leftX = self.safeAreaInsets.left + kSPKHeaderButtonLeftInset;
+        expectedFrame = CGRectMake(floor(leftX), floor(CGRectGetHeight(self.bounds) / 2.0 - side / 2.0), side, side);
+    }
+
+    CGFloat effectiveAlpha = 1.0;
+    if (composer && composer.window) {
+        BOOL anyHidden = NO;
+        for (UIView *v = composer; v && v != self; v = v.superview) {
+            effectiveAlpha *= v.alpha;
+            if (v.hidden)
+                anyHidden = YES;
+        }
+        if (anyHidden) {
+            button.hidden = YES;
+            return;
+        }
+    }
+    button.hidden = NO;
+    button.alpha = effectiveAlpha;
+
+    NSValue *lastVal = objc_getAssociatedObject(button, kSPKInboxHeaderButtonLastFrameAssocKey);
+    CGRect lastFrame = lastVal ? [lastVal CGRectValue] : CGRectNull;
+    if (button.superview == self && !CGRectIsNull(lastFrame) && CGRectEqualToRect(expectedFrame, lastFrame)) {
+        [self spk_updateInboxHeaderGlass:button];
+        return;
+    }
+
+    button.frame = expectedFrame;
+    objc_setAssociatedObject(button, kSPKInboxHeaderButtonLastFrameAssocKey, [NSValue valueWithCGRect:expectedFrame], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self bringSubviewToFront:button];
+
+    [self spk_updateInboxHeaderGlass:button];
+}
+
+- (void)spk_updateInboxHeaderGlass:(SPKFeedHeaderActionButton *)button {
+    UIVisualEffectView *glassView = objc_getAssociatedObject(button, kSPKInboxHeaderGlassViewKey);
+    if (!glassView) {
+        glassView = SPKInboxMakeGlassBackground();
+        if (!glassView) {
+            return;
+        }
+        objc_setAssociatedObject(button, kSPKInboxHeaderGlassViewKey, glassView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+
+    UIView *host = button.iconView.superview ?: button;
+    if (glassView.superview != host) {
+        [host insertSubview:glassView atIndex:0];
+    }
+    [host sendSubviewToBack:glassView];
+
+    CGRect bounds = host.bounds;
+    glassView.frame = bounds;
+    glassView.layer.cornerRadius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+
+    CGFloat progress = SPKInboxHeaderGlassProgress(self);
+    glassView.alpha = progress > 0.0 ? MIN(progress, 1.0) : 0.0;
 }
 
 @end
 
 #pragma mark - Hooks
+
+%group SPKInboxHeaderActionButtonHooks
+
+%hook IGDirectInboxNavigationHeaderView
+
+- (void)didMoveToWindow {
+    %orig;
+    if ([(UIView *)self window])
+        [self spk_installInboxHeaderActionButtonIfNeeded];
+}
+
+- (void)layoutSubviews {
+    %orig;
+    if ([(UIView *)self window])
+        [self spk_installInboxHeaderActionButtonIfNeeded];
+    [self spk_layoutInboxHeaderActionButton];
+}
+
+%end
+
+%end
 
 %group SPKHeaderActionButtonHooks
 
@@ -460,6 +777,21 @@ static void SPKKickExistingHeader(Class headerClass) {
     });
 }
 
+static void SPKKickExistingInboxHeader(Class headerClass) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        for (UIWindow *window in UIApplication.sharedApplication.windows) {
+            UIView *header = SPKFindViewOfClass(window, headerClass);
+            if (!header)
+                continue;
+            SPKLog(@"HeaderButton", @"[Sparkle] Kicking existing inbox header %@", NSStringFromClass(header.class));
+            [header spk_installInboxHeaderActionButtonIfNeeded];
+            [header setNeedsLayout];
+            [header spk_layoutInboxHeaderActionButton];
+            return;
+        }
+    });
+}
+
 void SPKInstallHeaderActionButtonHooksIfEnabled(void) {
     // Register the account-change observer once, BEFORE the master-toggle gate, so
     // it fires even when the launch account had the button disabled. On a live
@@ -476,10 +808,17 @@ void SPKInstallHeaderActionButtonHooksIfEnabled(void) {
                                                           Class headerClass = SPKResolveIGClass(@"IGHomeFeedHeader.IGHomeFeedHeaderView", @"IGHomeFeedHeaderView");
                                                           if (headerClass)
                                                               SPKKickExistingHeader(headerClass);
+                                                          Class inboxHeaderClass = SPKResolveIGClass(@"IGDirectInboxNavigationHeaderView.IGDirectInboxNavigationHeaderView", @"IGDirectInboxNavigationHeaderView");
+                                                          if (inboxHeaderClass)
+                                                              SPKKickExistingInboxHeader(inboxHeaderClass);
                                                       }];
     });
 
-    if (![SPKUtils getBoolPref:kSPKHeaderButtonEnabledKey]) {
+    BOOL feedEnabled = [SPKUtils getBoolPref:kSPKHeaderButtonEnabledKey];
+    BOOL inboxEnabled = [SPKUtils getBoolPref:@"interface_show_header_button_in_messages_only"] &&
+                        SPKIsMessagesOnlyMode();
+
+    if (!feedEnabled && !inboxEnabled) {
         SPKLog(@"HeaderButton", @"[Sparkle] Header action button disabled — skipping install");
         return;
     }
@@ -487,12 +826,21 @@ void SPKInstallHeaderActionButtonHooksIfEnabled(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         Class headerClass = SPKResolveIGClass(@"IGHomeFeedHeader.IGHomeFeedHeaderView", @"IGHomeFeedHeaderView");
-        if (!headerClass) {
-            SPKLog(@"HeaderButton", @"[Sparkle] Could not resolve IGHomeFeedHeaderView — header button unavailable");
-            return;
+        if (headerClass) {
+            %init(SPKHeaderActionButtonHooks, IGHomeFeedHeaderView = headerClass);
+            SPKLog(@"HeaderButton", @"[Sparkle] Installed header action button hooks class=%@", NSStringFromClass(headerClass));
+            SPKKickExistingHeader(headerClass);
+        } else {
+            SPKLog(@"HeaderButton", @"[Sparkle] Could not resolve IGHomeFeedHeaderView");
         }
-        %init(SPKHeaderActionButtonHooks, IGHomeFeedHeaderView = headerClass);
-        SPKLog(@"HeaderButton", @"[Sparkle] Installed header action button hooks class=%@", NSStringFromClass(headerClass));
-        SPKKickExistingHeader(headerClass);
+
+        Class inboxHeaderClass = SPKResolveIGClass(@"IGDirectInboxNavigationHeaderView.IGDirectInboxNavigationHeaderView", @"IGDirectInboxNavigationHeaderView");
+        if (inboxHeaderClass) {
+            %init(SPKInboxHeaderActionButtonHooks, IGDirectInboxNavigationHeaderView = inboxHeaderClass);
+            SPKLog(@"HeaderButton", @"[Sparkle] Installed inbox header action button hooks class=%@", NSStringFromClass(inboxHeaderClass));
+            SPKKickExistingInboxHeader(inboxHeaderClass);
+        } else {
+            SPKLog(@"HeaderButton", @"[Sparkle] Could not resolve IGDirectInboxNavigationHeaderView");
+        }
     });
 }

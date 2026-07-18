@@ -240,6 +240,7 @@ void SPKInstallMessagesSurfaceHooksIfNeeded(void) {
     SPKInstallHideDirectCallButtonsHooksIfEnabled();
     SPKInstallNoRecentSearchesHooksIfEnabled();
     SPKInstallDetailedColorPickerHooksIfEnabled();
+    SPKInstallHeaderActionButtonHooksIfEnabled();
 }
 
 void SPKInstallProfileSurfaceHooksIfNeeded(void) {
