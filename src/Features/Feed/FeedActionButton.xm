@@ -587,7 +587,7 @@ static void SPKInstallFeedActionButton(UIView *barView) {
     button = SPKActionButtonWithTag(barView, kSPKFeedActionButtonTag);
     button.translatesAutoresizingMaskIntoConstraints = YES;
     SPKConfigureActionButton(button, SPKFeedActionContext(barView));
-    objc_setAssociatedObject(button, kSPKFeedConfiguredMediaAssocKey, barMedia, OBJC_ASSOCIATION_ASSIGN);
+    objc_setAssociatedObject(button, kSPKFeedConfiguredMediaAssocKey, barMedia, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     if (button.hidden)
         return;
 
