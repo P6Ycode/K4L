@@ -496,6 +496,16 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     [self showRemoteImageURL:url metadata:meta];
 }
 
++ (void)showRemoteImageURLPreview:(NSURL *)url {
+    if (!url)
+        return;
+    SPKMediaItem *item = [SPKMediaItem itemWithFileURL:url];
+    SPKFullScreenMediaPlayer *player = [[SPKFullScreenMediaPlayer alloc] init];
+    player.previewOnly = YES;
+    UIViewController *presenter = topMostController();
+    [player playItems:@[ item ] startingAtIndex:0 fromViewController:presenter];
+}
+
 #pragma mark - Playback Context
 
 - (void)configurePlaybackContextWithSource:
@@ -2145,7 +2155,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
     }
 
     if (!url && item.image) {
-        NSData *jpegData = UIImageJPEGRepresentation(item.image, 0.95);
+        NSData *jpegData = UIImageJPEGRepresentation(item.image, 0.85);
         if (jpegData) {
             SPKGallerySaveMetadata *meta = [self metadataForCurrentItem];
             NSString *fileName =
@@ -2265,7 +2275,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
         [self gallerySaveLocalFile:targetURL mediaType:galleryType];
         return;
     } else if (!targetURL && item.image) {
-        NSData *jpegData = UIImageJPEGRepresentation(item.image, 0.95);
+        NSData *jpegData = UIImageJPEGRepresentation(item.image, 0.85);
         if (jpegData) {
             NSString *tempPath = [NSTemporaryDirectory()
                 stringByAppendingPathComponent:
@@ -2345,7 +2355,7 @@ static CGPoint SPKCenterForBounds(CGRect bounds) {
                 }
             }
         } else if (item.image) {
-            NSData *jpegData = UIImageJPEGRepresentation(item.image, 0.95);
+            NSData *jpegData = UIImageJPEGRepresentation(item.image, 0.85);
             NSString *fileName =
                 SPKFileNameForMedia([NSURL fileURLWithPath:@"preview.jpg"],
                                     SPKGalleryMediaTypeImage, meta);

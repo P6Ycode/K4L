@@ -25,6 +25,7 @@
 #import "../Stories/SPKStoryAutoSave.h"
 #import "../Stories/SPKStoryContext.h"
 #import "../UI/SPKChrome.h"
+#import "../UI/SPKIGAlertPresenter.h"
 #import "../UI/SPKNotificationCenter.h"
 #import "ActionButtonCore.h"
 #import "SPKActionButtonConfiguration.h"
@@ -1371,7 +1372,34 @@ static NSURL *SPKBestCandidatePhotoURLFromCandidates(id candidates) {
     return urlString.length > 0 ? [NSURL URLWithString:urlString] : nil;
 }
 
+static NSString *SPKMediaPKForMediaObject(id mediaObject) {
+    if (!mediaObject)
+        return nil;
+    for (NSString *selectorName in @[ @"pk", @"mediaID", @"id", @"mediaId", @"mediaIdentifier" ]) {
+        id value = SPKObjectForSelector(mediaObject, selectorName);
+        if (!value)
+            value = SPKKVCObject(mediaObject, selectorName);
+        if ([value isKindOfClass:[NSString class]] && [value length] > 0) {
+            return value;
+        }
+        if ([value respondsToSelector:@selector(stringValue)]) {
+            NSString *strVal = [value stringValue];
+            if (strVal.length > 0)
+                return strVal;
+        }
+    }
+    return nil;
+}
+
 static NSURL *SPKHDPhotoURLForMediaObject(id mediaObject) {
+    NSString *mediaPK = SPKMediaPKForMediaObject(mediaObject);
+    if (mediaPK.length > 0) {
+        NSArray *webCandidates = [SPKMediaQualityManager webPhotoCandidatesForPK:mediaPK];
+        NSURL *webCacheURL = SPKBestCandidatePhotoURLFromCandidates(webCandidates);
+        if (webCacheURL)
+            return webCacheURL;
+    }
+
     id imageVersions = SPKFieldCacheValue(mediaObject, @"image_versions2");
     id candidates = [imageVersions isKindOfClass:[NSDictionary class]] ? ((NSDictionary *)imageVersions)[@"candidates"] : nil;
     if (!candidates) {
@@ -1585,6 +1613,8 @@ static SPKResolvedMediaEntry *SPKEntryFromMediaObject(id mediaObject) {
     if (!entry.photoURL && !entry.videoURL) {
         return nil;
     }
+
+    entry.sourceMediaPK = SPKMediaPKForMediaObject(mediaObject);
 
     return entry;
 }
@@ -1976,7 +2006,9 @@ static UIView *SPKActionContextAnchorView(SPKActionButtonContext *context) {
 static NSArray<SPKDownloadItemRequest *> *SPKBulkDownloadItemsFromEntries(NSArray<SPKResolvedMediaEntry *> *entries,
                                                                           SPKActionButtonSource source,
                                                                           NSString *username,
-                                                                          id media) {
+                                                                          id media,
+                                                                          NSString *qualityOverride,
+                                                                          SPKDownloadDestination destination) {
     NSMutableArray<SPKDownloadItemRequest *> *items = [NSMutableArray array];
     NSInteger index = 0;
     for (SPKResolvedMediaEntry *entry in entries) {
@@ -1988,6 +2020,14 @@ static NSArray<SPKDownloadItemRequest *> *SPKBulkDownloadItemsFromEntries(NSArra
         BOOL isVideo = (entry.videoURL != nil);
         id metadataObject = entry.metadataObject ?: entry.mediaObject ?
                                                                       : media;
+
+        if (!isVideo && (qualityOverride.length > 0 || ![[SPKUtils getStringPref:@"downloads_photo_quality"] isEqualToString:@"always_ask"])) {
+            NSURL *resolvedURL = [SPKMediaQualityManager resolvedURLForMediaObject:metadataObject photoURL:entry.photoURL videoURL:entry.videoURL qualityOverride:qualityOverride destination:destination];
+            if (resolvedURL.absoluteString.length > 0) {
+                url = resolvedURL;
+            }
+        }
+
         NSString *itemUsername = source == SPKActionButtonSourceInstants ? SPKUsernameForEntry(entry, username) : username;
         SPKGallerySaveMetadata *meta = SPKGalleryMetadata(source, itemUsername, metadataObject);
         SPKApplyEntryMetadata(meta, entry);
@@ -2448,18 +2488,6 @@ static BOOL SPKExecuteBulkChildAction(NSString *identifier,
         return YES;
     }
 
-    NSArray<SPKDownloadItemRequest *> *bulkItems = SPKBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media);
-    UIViewController *presenter = SPKActionContextPresenter(context);
-    UIView *anchorView = SPKActionContextAnchorView(context);
-    SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
-
-    if ([SPKDownloadHelpers performBulkDownloadIdentifier:identifier
-                                                    items:bulkItems
-                                                presenter:presenter
-                                               anchorView:anchorView
-                                            sourceSurface:surface]) {
-        return YES;
-    }
     if ([identifier isEqualToString:kSPKActionDownloadAllLinks]) {
         NSArray<NSString *> *bulkLinks = SPKBulkDownloadLinksFromEntries(downloadableEntries, media);
         if (bulkLinks.count == 0) {
@@ -2471,7 +2499,72 @@ static BOOL SPKExecuteBulkChildAction(NSString *identifier,
         return YES;
     }
 
-    return NO;
+    UIViewController *presenter = SPKActionContextPresenter(context);
+    UIView *anchorView = SPKActionContextAnchorView(context);
+    SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];
+    SPKDownloadDestination destination = [identifier isEqualToString:kSPKActionDownloadAllGallery] ? SPKDownloadDestinationGallery : SPKDownloadDestinationPhotos;
+
+    void (^performBatchDownloadWithQuality)(NSString *) = ^(NSString *qualityOverride) {
+        void (^startDownload)(void) = ^{
+            NSArray<SPKDownloadItemRequest *> *bulkItems = SPKBulkDownloadItemsFromEntries(downloadableEntries, context.source, username, media, qualityOverride, destination);
+            [SPKDownloadHelpers performBulkDownloadIdentifier:identifier
+                                                         items:bulkItems
+                                                     presenter:presenter
+                                                    anchorView:anchorView
+                                                 sourceSurface:surface];
+        };
+
+        if ([qualityOverride isEqualToString:@"max"] && [SPKUtils getBoolPref:@"downloads_fetch_4k_images"]) {
+            NSString *topPK = SPKMediaPKForMediaObject(media);
+            if (topPK.length > 0 && ![SPKMediaQualityManager hasWebPhotoCandidatesFetchedForPK:topPK]) {
+                if (SPKNotificationIsEnabled(identifier)) {
+                    SPKNotify(identifier, @"Fetching 4K candidates...", nil, @"web", SPKNotificationToneInfo);
+                }
+                [SPKInstagramAPI fetchWebMediaInfoForPK:topPK completion:^(NSDictionary *response, NSError *error) {
+                    [SPKMediaQualityManager markWebPhotoCandidatesFetchedForPK:topPK];
+                    if (response) {
+                        [SPKMediaQualityManager cacheWebCandidatesFromResponse:response];
+                    }
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        startDownload();
+                    });
+                }];
+                return;
+            }
+        }
+
+        startDownload();
+    };
+
+    NSString *photoQuality = [SPKUtils getStringPref:@"downloads_photo_quality"] ?: @"high";
+    if ([photoQuality isEqualToString:@"always_ask"] && presenter) {
+        BOOL can4K = [SPKUtils getBoolPref:@"downloads_fetch_4k_images"];
+        NSMutableArray<SPKIGAlertAction *> *actions = [NSMutableArray array];
+        if (can4K) {
+            [actions addObject:[SPKIGAlertAction actionWithTitle:@"Max" style:SPKIGAlertActionStyleDefault handler:^{
+                performBatchDownloadWithQuality(@"max");
+            }]];
+        }
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"High" style:SPKIGAlertActionStyleDefault handler:^{
+            performBatchDownloadWithQuality(@"high");
+        }]];
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Medium" style:SPKIGAlertActionStyleDefault handler:^{
+            performBatchDownloadWithQuality(@"medium");
+        }]];
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Low" style:SPKIGAlertActionStyleDefault handler:^{
+            performBatchDownloadWithQuality(@"low");
+        }]];
+        [actions addObject:[SPKIGAlertAction actionWithTitle:@"Cancel" style:SPKIGAlertActionStyleCancel handler:nil]];
+
+        [SPKIGAlertPresenter presentActionSheetFromViewController:presenter
+                                                             title:@"Batch Download Quality"
+                                                           message:[NSString stringWithFormat:@"Select quality for all %lu items:", (unsigned long)downloadableEntries.count]
+                                                           actions:actions];
+        return YES;
+    }
+
+    performBatchDownloadWithQuality(nil);
+    return YES;
 }
 
 static BOOL SPKExecuteCommonAction(NSString *identifier,
@@ -2982,6 +3075,18 @@ static BOOL SPKExecuteStoryMentionsSheetAction(SPKActionButtonContext *context) 
     return YES;
 }
 
+static BOOL SPKIsDownloadOrCopyAction(NSString *identifier) {
+    return [identifier isEqualToString:kSPKActionDownloadLibrary] ||
+           [identifier isEqualToString:kSPKActionDownloadShare] ||
+           [identifier isEqualToString:kSPKActionDownloadGallery] ||
+           [identifier isEqualToString:kSPKActionCopyDownloadLink] ||
+           [identifier isEqualToString:kSPKActionDownloadAllLibrary] ||
+           [identifier isEqualToString:kSPKActionDownloadAllShare] ||
+           [identifier isEqualToString:kSPKActionDownloadAllGallery] ||
+           [identifier isEqualToString:kSPKActionDownloadAllClipboard] ||
+           [identifier isEqualToString:kSPKActionDownloadAllLinks];
+}
+
 BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *context, BOOL isDefaultTap) {
     if (identifier.length == 0 || !context)
         return NO;
@@ -3023,6 +3128,36 @@ BOOL SPKExecuteActionIdentifier(NSString *identifier, SPKActionButtonContext *co
     }
 
     id media = SPKResolveMediaForContext(context);
+
+    BOOL isVideo = [SPKMediaQualityManager mediaObjectIsVideo:media];
+    NSString *photoQuality = [SPKUtils getStringPref:@"downloads_photo_quality"] ?: @"high";
+    BOOL isBulkAction = SPKIsBulkChildActionIdentifier(identifier);
+    BOOL shouldFetch4K = [SPKUtils getBoolPref:@"downloads_fetch_4k_images"] && 
+                         !isVideo && 
+                         ([photoQuality isEqualToString:@"max"] || ([photoQuality isEqualToString:@"always_ask"] && !isBulkAction));
+
+    if (SPKIsDownloadOrCopyAction(identifier) && shouldFetch4K) {
+        NSString *topPK = SPKMediaPKForMediaObject(media);
+        if (topPK.length > 0 && ![SPKMediaQualityManager hasWebPhotoCandidatesFetchedForPK:topPK]) {
+            if (isDefaultTap && !SPKActionIdentifierOpensPreview(identifier)) {
+                SPKPausePlaybackForPreviewContext(context);
+            }
+            if (SPKNotificationIsEnabled(identifier)) {
+                SPKNotify(identifier, @"Fetching 4K candidates...", nil, @"web", SPKNotificationToneInfo);
+            }
+            [SPKInstagramAPI fetchWebMediaInfoForPK:topPK completion:^(NSDictionary *response, NSError *error) {
+                [SPKMediaQualityManager markWebPhotoCandidatesFetchedForPK:topPK];
+                if (response) {
+                    [SPKMediaQualityManager cacheWebCandidatesFromResponse:response];
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    SPKExecuteActionIdentifier(identifier, context, isDefaultTap);
+                });
+            }];
+            return YES;
+        }
+    }
+
     NSArray<SPKResolvedMediaEntry *> *entries = SPKEntriesFromMedia(media);
     if (SPKIsBulkChildActionIdentifier(identifier)) {
         id bulkMedia = SPKResolveBulkMediaForContext(context);
@@ -3265,7 +3400,8 @@ static NSArray<UIMenuElement *> *SPKBuildBulkMenuChildren(SPKActionButtonConfigu
                                                                                                                     NSArray<SPKResolvedMediaEntry *> *selectedEntries = [tapBulkEntries objectsAtIndexes:selectedIndexes];
                                                                                                                     if (selectedEntries.count == 0)
                                                                                                                         return;
-                                                                                                                    NSArray<SPKDownloadItemRequest *> *selectedItems = SPKBulkDownloadItemsFromEntries(selectedEntries, context.source, tapBulkUsername, tapBulkMedia);
+                                                                                                                    SPKDownloadDestination dest = [destinationIdentifier isEqualToString:kSPKActionDownloadAllGallery] ? SPKDownloadDestinationGallery : SPKDownloadDestinationPhotos;
+                                                                                                                    NSArray<SPKDownloadItemRequest *> *selectedItems = SPKBulkDownloadItemsFromEntries(selectedEntries, context.source, tapBulkUsername, tapBulkMedia, nil, dest);
                                                                                                                     UIViewController *presenter = SPKActionContextPresenter(context);
                                                                                                                     UIView *anchorView = SPKActionContextAnchorView(context);
                                                                                                                     SPKDownloadSourceSurface surface = [SPKDownloadHelpers sourceSurfaceForActionButtonSource:context.source];

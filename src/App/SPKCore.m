@@ -137,6 +137,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"feed_disable_bg_refresh" : @(NO),
         @"general_cache_auto_clear" : @"never",
         @"downloads_enhanced_media_resolution" : @(YES),
+        @"downloads_fetch_4k_images" : @(NO),
         @"downloads_detect_duplicates" : @(YES),
         @"downloads_max_concurrent" : @(2),
         @"downloads_history_limit" : @(100),

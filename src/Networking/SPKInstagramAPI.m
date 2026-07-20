@@ -2,6 +2,8 @@
 
 #import "SPKInstagramAPI.h"
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>
+#import "../Utils.h"
 #import <objc/message.h>
 #import <sys/sysctl.h>
 
@@ -238,6 +240,210 @@ static void spkPerformRequest(NSMutableURLRequest *request, SPKAPICompletion com
                          if (completion)
                              completion(url.length > 0 ? url : nil, error);
                      }];
+}
+
+static NSString *spkNormalizePK(NSString *pk) {
+    if (pk.length == 0)
+        return nil;
+    NSRange range = [pk rangeOfString:@"_"];
+    if (range.location != NSNotFound) {
+        return [pk substringToIndex:range.location];
+    }
+    return pk;
+}
+
++ (void)fetchWebMediaInfoForPK:(NSString *)mediaPK
+                    completion:(nullable SPKAPICompletion)completion {
+    if (mediaPK.length == 0) {
+        if (completion) {
+            completion(nil, [NSError errorWithDomain:@"SPKInstagramAPI" code:1 userInfo:@{NSLocalizedDescriptionKey: @"Empty PK"}]);
+        }
+        return;
+    }
+    
+    NSString *normPK = spkNormalizePK(mediaPK);
+    
+    static NSMutableDictionary<NSString *, NSMutableArray<SPKAPICompletion> *> *pendingCompletions = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        pendingCompletions = [NSMutableDictionary dictionary];
+    });
+
+    @synchronized (pendingCompletions) {
+        NSMutableArray<SPKAPICompletion> *callbacks = pendingCompletions[normPK];
+        if (callbacks) {
+            if (completion) {
+                [callbacks addObject:completion];
+            }
+            return;
+        }
+        callbacks = [NSMutableArray array];
+        if (completion) {
+            [callbacks addObject:completion];
+        }
+        pendingCompletions[normPK] = callbacks;
+    }
+    
+    // WKHTTPCookieStore must be accessed on the main thread
+    dispatch_async(dispatch_get_main_queue(), ^{
+        WKHTTPCookieStore *cookieStore = [WKWebsiteDataStore defaultDataStore].httpCookieStore;
+        [cookieStore getAllCookies:^(NSArray<NSHTTPCookie *> *webkitCookies) {
+            
+            NSString *urlString = [NSString stringWithFormat:@"https://www.instagram.com/api/v1/media/%@/info/", normPK];
+            NSURL *url = [NSURL URLWithString:urlString];
+            NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+            request.HTTPMethod = @"GET";
+
+            // Mimic the web client headers
+            [request setValue:@"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" forHTTPHeaderField:@"User-Agent"];
+            [request setValue:@"936619743392459" forHTTPHeaderField:@"X-IG-App-ID"];
+            [request setValue:@"XMLHttpRequest" forHTTPHeaderField:@"X-Requested-With"];
+            [request setValue:@"https://www.instagram.com/" forHTTPHeaderField:@"Referer"];
+
+            // Merge cookies from both shared HTTP cookie storage and WebKit cookie store
+            NSMutableDictionary<NSString *, NSString *> *cookieDict = [NSMutableDictionary dictionary];
+            for (NSHTTPCookie *cookie in [[NSHTTPCookieStorage sharedHTTPCookieStorage] cookiesForURL:url]) {
+                if ([cookie.domain containsString:@"instagram.com"]) {
+                    cookieDict[cookie.name] = cookie.value;
+                }
+            }
+            for (NSHTTPCookie *cookie in webkitCookies) {
+                if ([cookie.domain containsString:@"instagram.com"]) {
+                    cookieDict[cookie.name] = cookie.value;
+                }
+            }
+
+            // Extract sessionid and ds_user_id from the mobile Authorization bearer token
+            NSString *authHeader = spkAuthHeader();
+            if ([authHeader hasPrefix:@"Bearer IGT:"]) {
+                NSRange range = [authHeader rangeOfString:@":" options:NSBackwardsSearch];
+                if (range.location != NSNotFound && range.location + 1 < authHeader.length) {
+                    NSString *base64Part = [authHeader substringFromIndex:range.location + 1];
+                    while (base64Part.length % 4 != 0) {
+                        base64Part = [base64Part stringByAppendingString:@"="];
+                    }
+                    NSData *data = [[NSData alloc] initWithBase64EncodedString:base64Part options:NSDataBase64DecodingIgnoreUnknownCharacters];
+                    if (data) {
+                        id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                        if ([parsed isKindOfClass:[NSDictionary class]]) {
+                            NSDictionary *json = (NSDictionary *)parsed;
+                            NSString *sessionIDValue = json[@"sessionid"];
+                            NSString *dsUserIDValue = json[@"ds_user_id"];
+                            if (sessionIDValue.length > 0) {
+                                cookieDict[@"sessionid"] = sessionIDValue;
+                            }
+                            if (dsUserIDValue.length > 0) {
+                                cookieDict[@"ds_user_id"] = dsUserIDValue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback in case we found it as a merged cookie named "authorization"
+            if (cookieDict[@"authorization"] && !cookieDict[@"sessionid"]) {
+                NSString *authCookieVal = cookieDict[@"authorization"];
+                if ([authCookieVal hasPrefix:@"Bearer IGT:"]) {
+                    NSRange range = [authCookieVal rangeOfString:@":" options:NSBackwardsSearch];
+                    if (range.location != NSNotFound && range.location + 1 < authCookieVal.length) {
+                        NSString *base64Part = [authCookieVal substringFromIndex:range.location + 1];
+                        while (base64Part.length % 4 != 0) {
+                            base64Part = [base64Part stringByAppendingString:@"="];
+                        }
+                        NSData *data = [[NSData alloc] initWithBase64EncodedString:base64Part options:NSDataBase64DecodingIgnoreUnknownCharacters];
+                        if (data) {
+                            id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                            if ([parsed isKindOfClass:[NSDictionary class]]) {
+                                NSDictionary *json = (NSDictionary *)parsed;
+                                if (json[@"sessionid"]) cookieDict[@"sessionid"] = json[@"sessionid"];
+                                if (json[@"ds_user_id"]) cookieDict[@"ds_user_id"] = json[@"ds_user_id"];
+                            }
+                        }
+                    }
+                }
+            }
+
+            NSMutableArray<NSString *> *cookieHeaders = [NSMutableArray array];
+            NSString *csrfToken = cookieDict[@"csrftoken"];
+            for (NSString *name in cookieDict) {
+                if ([name isEqualToString:@"authorization"]) {
+                    continue; // Skip mobile-only authorization cookie
+                }
+                [cookieHeaders addObject:[NSString stringWithFormat:@"%@=%@", name, cookieDict[name]]];
+            }
+
+            if (cookieHeaders.count > 0) {
+                [request setValue:[cookieHeaders componentsJoinedByString:@"; "] forHTTPHeaderField:@"Cookie"];
+            }
+            if (csrfToken.length > 0) {
+                [request setValue:csrfToken forHTTPHeaderField:@"X-CSRFToken"];
+            }
+
+#ifdef SPK_DEV
+            SPKLog(@"Downloads", @"[4K Debug] Cookies merged count: %lu", (unsigned long)cookieDict.count);
+            for (NSString *name in cookieDict) {
+                SPKLog(@"Downloads", @"[4K Debug] Merged Cookie: %@ = %@", name, cookieDict[name]);
+            }
+            SPKLog(@"Downloads", @"[4K Debug] Request headers: %@", request.allHTTPHeaderFields);
+#else
+            SPKLog(@"Downloads", @"[4K] Merged cookies count: %lu", (unsigned long)cookieDict.count);
+#endif
+
+            NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
+                                                                         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                                                                             NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+                                                                             NSInteger statusCode = httpResponse.statusCode;
+                                                                             SPKLog(@"Downloads", @"[4K] fetchWebMediaInfoForPK request finished. Status: %ld", (long)statusCode);
+#ifdef SPK_DEV
+                                                                             if (error) {
+                                                                                 SPKLog(@"Downloads", @"[4K Debug] Request error: %@", error);
+                                                                             }
+                                                                             if (httpResponse) {
+                                                                                 SPKLog(@"Downloads", @"[4K Debug] Response headers: %@", httpResponse.allHeaderFields);
+                                                                             }
+#endif
+
+                                                                             NSDictionary *parsedResponse = nil;
+                                                                             if (data.length > 0) {
+                                                                                 @try {
+                                                                                     id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                                                                                     if ([parsed isKindOfClass:[NSDictionary class]]) {
+                                                                                         parsedResponse = (NSDictionary *)parsed;
+                                                                                     } else {
+#ifdef SPK_DEV
+                                                                                         NSString *rawString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                                                                         SPKLog(@"Downloads", @"[4K Debug] Response data is not a dictionary. Raw data snippet: %@", 
+                                                                                                (rawString.length > 1000 ? [rawString substringToIndex:1000] : rawString));
+#endif
+                                                                                     }
+                                                                                 } @catch (__unused NSException *exception) {
+#ifdef SPK_DEV
+                                                                                     NSString *rawString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                                                                     SPKLog(@"Downloads", @"[4K Debug] JSON parsing exception. Raw data snippet: %@", 
+                                                                                            (rawString.length > 1000 ? [rawString substringToIndex:1000] : rawString));
+#endif
+                                                                                 }
+                                                                             } else {
+#ifdef SPK_DEV
+                                                                                 SPKLog(@"Downloads", @"[4K Debug] Response data is empty");
+#endif
+                                                                             }
+                                                                             
+                                                                             NSArray<SPKAPICompletion> *callbacksToInvoke = nil;
+                                                                             @synchronized (pendingCompletions) {
+                                                                                 callbacksToInvoke = [pendingCompletions[normPK] copy];
+                                                                                 [pendingCompletions removeObjectForKey:normPK];
+                                                                             }
+                                                                             
+                                                                             dispatch_async(dispatch_get_main_queue(), ^{
+                                                                                 for (SPKAPICompletion cb in callbacksToInvoke) {
+                                                                                     cb(parsedResponse, error);
+                                                                                 }
+                                                                             });
+                                                                         }];
+            [task resume];
+        }];
+    });
 }
 
 @end

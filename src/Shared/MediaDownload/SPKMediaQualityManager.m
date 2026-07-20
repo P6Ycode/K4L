@@ -51,6 +51,7 @@ typedef NS_ENUM(NSInteger, SPKMediaOptionKind) {
 @property (nonatomic, copy, nullable) NSString *codec;
 @property (nonatomic, copy, nullable) NSString *audioCodec;
 @property (nonatomic) BOOL selectable;
+@property (nonatomic) BOOL isWeb;
 @end
 
 @implementation SPKMediaOption
@@ -70,6 +71,7 @@ typedef NS_ENUM(NSInteger, SPKMediaOptionKind) {
 @property (nonatomic) NSTimeInterval duration;
 @property (nonatomic, strong, nullable) SPKMediaOption *fallbackOption;
 @property (nonatomic, copy) NSArray<SPKMediaOption *> *photoOptions;
+@property (nonatomic, copy) NSArray<SPKMediaOptionSection *> *photoSections;
 @property (nonatomic, copy) NSArray<SPKMediaOption *> *progressiveVideoOptions;
 @property (nonatomic, copy) NSArray<SPKMediaOption *> *mergedDashOptions;
 @property (nonatomic, copy) NSArray<SPKMediaOption *> *audioDashOptions;
@@ -133,6 +135,27 @@ static NSURL *SPKMediaURLFromValue(id value) {
     return nil;
 }
 
+static NSMutableDictionary<NSString *, NSArray<NSDictionary *> *> *SPKWebPhotoCandidatesCache;
+static NSMutableSet<NSString *> *SPKWebPhotoCandidatesFetchedPKs;
+static dispatch_once_t SPKWebPhotoCandidatesOnceToken;
+
+static void SPKInitializeWebPhotoCandidatesCacheIfNeeded(void) {
+    dispatch_once(&SPKWebPhotoCandidatesOnceToken, ^{
+        SPKWebPhotoCandidatesCache = [NSMutableDictionary dictionary];
+        SPKWebPhotoCandidatesFetchedPKs = [NSMutableSet set];
+    });
+}
+
+static NSString *SPKNormalizePK(NSString *pk) {
+    if (pk.length == 0)
+        return nil;
+    NSRange range = [pk rangeOfString:@"_"];
+    if (range.location != NSNotFound) {
+        return [pk substringToIndex:range.location];
+    }
+    return pk;
+}
+
 static NSInteger SPKMediaIntegerValue(id value) {
     if ([value respondsToSelector:@selector(integerValue)]) {
         return [value integerValue];
@@ -183,26 +206,37 @@ static NSNumber *SPKMediaFirstNumberFromValues(NSArray *values) {
 }
 
 static NSNumber *SPKMediaExtractCandidateFileSize(id rawValue) {
-    if ([rawValue respondsToSelector:@selector(longLongValue)] &&
-        [rawValue longLongValue] > 0) {
-        return @([rawValue longLongValue]);
-    }
+    if (!rawValue) return nil;
+
     if ([rawValue isKindOfClass:[NSArray class]]) {
-        for (id item in [(NSArray *)rawValue reverseObjectEnumerator]) {
-            NSNumber *nested = SPKMediaExtractCandidateFileSize(item);
-            if (nested.longLongValue > 0) {
-                return nested;
+        id last = [(NSArray *)rawValue lastObject];
+        if ([last respondsToSelector:@selector(longLongValue)]) {
+            long long val = [last longLongValue];
+            if (val > 0) {
+                // Progressive JPEG scan size arrays (estimated_scans_sizes) are reported in bits by IG
+                return @(val / 8);
             }
         }
+    }
+
+    long long sizeVal = 0;
+    if ([rawValue respondsToSelector:@selector(longLongValue)]) {
+        sizeVal = [rawValue longLongValue];
     } else if ([rawValue isKindOfClass:[NSDictionary class]]) {
-        NSDictionary *dictionary = (NSDictionary *)rawValue;
+        NSDictionary *dict = (NSDictionary *)rawValue;
         NSNumber *nested = SPKMediaFirstNumberFromValues(@[
-            dictionary[@"value"] ?: @0, dictionary[@"size"] ?: @0,
-            dictionary[@"file_size"] ?: @0, dictionary[@"bytes"] ?: @0
+            dict[@"value"] ?: @0, dict[@"size"] ?: @0,
+            dict[@"file_size"] ?: @0, dict[@"bytes"] ?: @0
         ]);
-        if (nested.longLongValue > 0) {
-            return nested;
+        sizeVal = nested.longLongValue;
+    }
+
+    if (sizeVal > 0) {
+        // IG photo estimates > 4,000,000 are reported in bits
+        if (sizeVal > 4000000) {
+            sizeVal = sizeVal / 8;
         }
+        return @(sizeVal);
     }
     return nil;
 }
@@ -412,6 +446,7 @@ SPKMediaSortedVariantsFromVersions(NSArray *versions) {
             bandwidthValue = dictionary[@"bandwidth"];
             fileSizeValue = SPKMediaExtractCandidateFileSize(dictionary[@"file_size"] ?: dictionary[@"filesize"]            ?
                                                                                      : dictionary[@"estimated_file_size"]   ?
+                                                                                     : dictionary[@"scans_sizes"]           ?
                                                                                      : dictionary[@"estimated_scans_sizes"] ?
                                                                                                                             : dictionary[@"size"]);
         } else {
@@ -462,20 +497,15 @@ SPKMediaSortedVariantsFromVersions(NSArray *versions) {
             fileSizeValue = SPKMediaExtractCandidateFileSize(
                 SPKMediaObjectForSelector(version, @"fileSize")
                     ?: SPKMediaObjectForSelector(version, @"estimatedFileSize")
-                       ?
-                   : SPKMediaObjectForSelector(version, @"estimatedScansSizes")
-                       ?
-                   : SPKMediaKVCObject(version, @"fileSize")
-                       ?
-                   : SPKMediaKVCObject(version, @"estimatedFileSize")
-                       ?
-                   : SPKMediaKVCObject(version, @"estimatedScansSizes")
-                       ?
-                   : SPKMediaKVCObject(version, @"size")
-                       ?
-                   : SPKMediaIvarValue(version, "_fileSize")
-                       ?
-                       : SPKMediaIvarValue(version, "_estimatedFileSize"));
+                    ?: SPKMediaObjectForSelector(version, @"scansSizes")
+                    ?: SPKMediaObjectForSelector(version, @"estimatedScansSizes")
+                    ?: SPKMediaKVCObject(version, @"fileSize")
+                    ?: SPKMediaKVCObject(version, @"estimatedFileSize")
+                    ?: SPKMediaKVCObject(version, @"scansSizes")
+                    ?: SPKMediaKVCObject(version, @"estimatedScansSizes")
+                    ?: SPKMediaKVCObject(version, @"size")
+                    ?: SPKMediaIvarValue(version, "_fileSize")
+                    ?: SPKMediaIvarValue(version, "_estimatedFileSize"));
         }
 
         NSURL *url = SPKMediaURLFromValue(rawURL);
@@ -495,6 +525,36 @@ SPKMediaSortedVariantsFromVersions(NSArray *versions) {
 static NSArray<NSDictionary *> *
 SPKMediaPhotoVariantDictionaries(id mediaObject) {
     NSMutableArray<NSDictionary *> *variants = [NSMutableArray array];
+
+    NSString *mediaPK = nil;
+    for (NSString *selectorName in @[ @"pk", @"mediaID", @"id" ]) {
+        id value = SPKMediaObjectForSelector(mediaObject, selectorName)
+                       ?: SPKMediaKVCObject(mediaObject, selectorName);
+        if ([value isKindOfClass:[NSString class]] && [value length] > 0) {
+            mediaPK = value;
+            break;
+        }
+        if ([value respondsToSelector:@selector(stringValue)]) {
+            mediaPK = [value stringValue];
+            if (mediaPK.length > 0)
+                break;
+        }
+    }
+
+    if (mediaPK.length > 0) {
+        SPKInitializeWebPhotoCandidatesCacheIfNeeded();
+        NSString *norm = SPKNormalizePK(mediaPK);
+        NSArray *webCandidates = SPKWebPhotoCandidatesCache[norm];
+        if ([webCandidates isKindOfClass:[NSArray class]]) {
+            NSArray *webVariants = SPKMediaSortedVariantsFromVersions(webCandidates);
+            for (NSDictionary *v in webVariants) {
+                NSMutableDictionary *m = [v mutableCopy];
+                m[@"isWeb"] = @YES;
+                [variants addObject:m];
+            }
+        }
+    }
+
     id imageVersions = SPKMediaFieldCacheValue(mediaObject, @"image_versions2");
     id candidates = [imageVersions isKindOfClass:[NSDictionary class]]
                         ? ((NSDictionary *)imageVersions)[@"candidates"]
@@ -503,16 +563,25 @@ SPKMediaPhotoVariantDictionaries(id mediaObject) {
         candidates = SPKMediaFieldCacheValue(mediaObject, @"candidates");
     }
     if ([candidates isKindOfClass:[NSArray class]]) {
-        [variants
-            addObjectsFromArray:SPKMediaSortedVariantsFromVersions(candidates)];
+        NSArray *mobileVariants = SPKMediaSortedVariantsFromVersions(candidates);
+        for (NSDictionary *v in mobileVariants) {
+            NSMutableDictionary *m = [v mutableCopy];
+            m[@"isWeb"] = @NO;
+            [variants addObject:m];
+        }
     }
 
     id photoObject = SPKMediaObjectForSelector(mediaObject, @"photo")
                          ?: SPKMediaObjectForSelector(mediaObject, @"rawPhoto");
     if (photoObject) {
-        [variants
-            addObjectsFromArray:SPKMediaSortedVariantsFromVersions(
-                                    SPKMediaImageVersionsFromPhoto(photoObject))];
+        NSArray *photoVariants = SPKMediaSortedVariantsFromVersions(SPKMediaImageVersionsFromPhoto(photoObject));
+        for (NSDictionary *v in photoVariants) {
+            NSMutableDictionary *m = [v mutableCopy];
+            if (!m[@"isWeb"]) {
+                m[@"isWeb"] = @NO;
+            }
+            [variants addObject:m];
+        }
     }
     return SPKMediaNormalizedAndSortedVariants(variants);
 }
@@ -611,10 +680,8 @@ static NSString *SPKMediaMegapixelString(NSInteger width, NSInteger height) {
     if (mp <= 0.0)
         return nil;
     if (mp < 0.1)
-        return @"<0.1 MP";
-    if (mp >= 10.0)
-        return [NSString stringWithFormat:@"%.0f MP", mp];
-    return [NSString stringWithFormat:@"%.1f MP", mp];
+        return @"<0.1 Megapixels";
+    return [NSString stringWithFormat:@"%.1f Megapixels", mp];
 }
 
 static NSString *SPKMediaAspectRatioString(NSInteger width, NSInteger height) {
@@ -659,7 +726,7 @@ static NSString *SPKMediaPhotoTierLabel(NSInteger longEdge,
         return nil;
     double fraction = (double)longEdge / (double)maxLongEdge;
     if (fraction >= 0.98)
-        return @"Full";
+        return @"Max";
     if (fraction >= 0.6)
         return @"High";
     if (fraction >= 0.35)
@@ -715,45 +782,105 @@ SPKMediaBuildPhotoOptions(id mediaObject, NSURL *fallbackURL,
                           NSTimeInterval duration) {
     NSMutableArray<SPKMediaOption *> *options = [NSMutableArray array];
     NSMutableSet<NSString *> *seen = [NSMutableSet set];
+    NSMutableSet<NSString *> *seenResolutions = [NSMutableSet set];
 
     NSArray<NSDictionary *> *variants =
         SPKMediaPhotoVariantDictionaries(mediaObject);
-    // Variants arrive sorted largest-first; the leader anchors the tier scale.
+
+    // Identify max long edge and canonical aspect ratio from the leader
     NSInteger maxLongEdge = 0;
+    double mainAspect = 0.0;
     for (NSDictionary *variant in variants) {
-        NSInteger longEdge = MAX([variant[@"width"] integerValue],
-                                 [variant[@"height"] integerValue]);
-        maxLongEdge = MAX(maxLongEdge, longEdge);
+        NSInteger w = [variant[@"width"] integerValue];
+        NSInteger h = [variant[@"height"] integerValue];
+        NSInteger longEdge = MAX(w, h);
+        if (longEdge > maxLongEdge) {
+            maxLongEdge = longEdge;
+            if (w > 0 && h > 0) {
+                mainAspect = (double)w / (double)h;
+            }
+        }
+    }
+
+    // Identify max long edge for mobile variants
+    NSInteger maxMobileLongEdge = 0;
+    for (NSDictionary *variant in variants) {
+        if (![variant[@"isWeb"] boolValue]) {
+            NSInteger w = [variant[@"width"] integerValue];
+            NSInteger h = [variant[@"height"] integerValue];
+            NSInteger longEdge = MAX(w, h);
+            if (longEdge > maxMobileLongEdge) {
+                maxMobileLongEdge = longEdge;
+            }
+        }
     }
 
     for (NSDictionary *variant in variants) {
         NSURL *url = variant[@"url"];
         if (!url.absoluteString.length || [seen containsObject:url.absoluteString])
             continue;
+
+        NSInteger width = [variant[@"width"] integerValue];
+        NSInteger height = [variant[@"height"] integerValue];
+
+        // 1. Aspect Ratio Filter: exclude cropped variants (e.g. 1:1 grid thumbs on non-1:1 photos)
+        if (mainAspect > 0.0 && width > 0 && height > 0) {
+            double aspect = (double)width / (double)height;
+            double aspectDiff = fabs(aspect - mainAspect) / mainAspect;
+            if (aspectDiff > 0.05) {
+                continue;
+            }
+        }
+
+        BOOL isWeb = [variant[@"isWeb"] boolValue];
+
+        // 2. Resolution Deduplication: per source (web vs mobile)
+        NSString *resKey = (width > 0 && height > 0)
+            ? [NSString stringWithFormat:@"%@-%ldx%ld", isWeb ? @"web" : @"mobile", (long)width, (long)height]
+            : nil;
+        if (resKey.length > 0 && [seenResolutions containsObject:resKey]) {
+            continue;
+        }
+        if (resKey.length > 0) {
+            [seenResolutions addObject:resKey];
+        }
+
         [seen addObject:url.absoluteString];
 
+        NSInteger fileSizeBytes = [variant[@"fileSizeBytes"] integerValue];
         SPKMediaOption *option = [[SPKMediaOption alloc] init];
         option.kind = SPKMediaOptionKindPhotoProgressive;
         option.primaryURL = url;
-        option.width = [variant[@"width"] integerValue];
-        option.height = [variant[@"height"] integerValue];
-        option.fileSizeBytes = [variant[@"fileSizeBytes"] integerValue];
+        option.width = width;
+        option.height = height;
+        option.fileSizeBytes = fileSizeBytes;
         option.duration = duration;
         option.codec = SPKMediaPhotoFormatFromURL(url);
+        option.isWeb = isWeb;
+
         NSString *resolution =
-            (option.width > 0 && option.height > 0)
-                ? [NSString stringWithFormat:@"%ld×%ld", (long)option.width,
-                                             (long)option.height]
-                : (SPKMediaResolutionLabel(option.width, option.height)
-                       ?: @"Image");
-        NSString *tier = SPKMediaPhotoTierLabel(
-            MAX(option.width, option.height), maxLongEdge);
+            (width > 0 && height > 0)
+                ? [NSString stringWithFormat:@"%ld×%ld", (long)width, (long)height]
+                : (SPKMediaResolutionLabel(width, height) ?: @"Image");
+
+        NSString *tier = nil;
+        if (isWeb) {
+            tier = @"Max";
+        } else if (maxMobileLongEdge > 0) {
+            double fraction = (double)MAX(width, height) / (double)maxMobileLongEdge;
+            if (fraction >= 0.9) {
+                tier = @"High";
+            } else if (fraction >= 0.5) {
+                tier = @"Medium";
+            } else {
+                tier = @"Low";
+            }
+        }
+
         option.title = tier.length > 0
-                           ? [NSString stringWithFormat:@"%@ · %@", tier,
-                                                        resolution]
+                           ? [NSString stringWithFormat:@"%@ · %@", tier, resolution]
                            : resolution;
-        option.subtitle = SPKMediaPhotoSubtitle(option.width, option.height,
-                                                option.fileSizeBytes);
+        option.subtitle = SPKMediaPhotoSubtitle(width, height, option.fileSizeBytes);
         option.selectable = YES;
         option.qualityInfo = SPKMediaQualityInfoForOption(option);
         [options addObject:option];
@@ -997,6 +1124,28 @@ static SPKMediaAnalysis *SPKMediaAnalyze(id mediaObject, NSURL *photoURL,
     NSArray<SPKMediaOption *> *audioOptions = SPKMediaBuildAudioDashOptions(
         dashAudio, analysis.duration, includeAudioOptions);
 
+    NSMutableArray<SPKMediaOption *> *webPhotoOptions = [NSMutableArray array];
+    NSMutableArray<SPKMediaOption *> *mobilePhotoOptions = [NSMutableArray array];
+    for (SPKMediaOption *opt in photoOptions) {
+        if (opt.isWeb) {
+            [webPhotoOptions addObject:opt];
+        } else {
+            [mobilePhotoOptions addObject:opt];
+        }
+    }
+
+    NSMutableArray<SPKMediaOptionSection *> *photoSections = [NSMutableArray array];
+    if (webPhotoOptions.count > 0) {
+        [photoSections addObject:SPKMediaSection(@"Web API", webPhotoOptions)];
+    }
+    if (mobilePhotoOptions.count > 0) {
+        [photoSections addObject:SPKMediaSection(@"Mobile API", mobilePhotoOptions)];
+    }
+    if (photoSections.count == 0 && photoOptions.count > 0) {
+        [photoSections addObject:SPKMediaSection(@"Photos", photoOptions)];
+    }
+    analysis.photoSections = photoSections;
+
     analysis.photoOptions = photoOptions;
     analysis.progressiveVideoOptions = progressiveVideoOptions;
     analysis.mergedDashOptions = mergedOptions;
@@ -1074,7 +1223,17 @@ static SPKMediaOption *SPKMediaResolveDefaultOption(SPKMediaAnalysis *analysis,
         if ([quality isEqualToString:@"always_ask"]) {
             return nil;
         }
-        return SPKMediaTieredOption(analysis.photoOptions, quality) ?: analysis.photoOptions.firstObject;
+        if ([quality isEqualToString:@"max"]) {
+            return analysis.photoOptions.firstObject;
+        }
+        NSMutableArray<SPKMediaOption *> *mobileOptions = [NSMutableArray array];
+        for (SPKMediaOption *opt in analysis.photoOptions) {
+            if (!opt.isWeb) {
+                [mobileOptions addObject:opt];
+            }
+        }
+        NSArray<SPKMediaOption *> *targetOptions = (mobileOptions.count > 0) ? mobileOptions : analysis.photoOptions;
+        return SPKMediaTieredOption(targetOptions, quality) ?: targetOptions.firstObject;
     }
 
     if (!analysis.ffmpegAvailable) {
@@ -1979,9 +2138,7 @@ static NSString *SPKMediaCodecBadge(NSString *codec) {
     if (self.analysis.isVideo) {
         return self.analysis.videoSections;
     }
-    return self.analysis.photoOptions.count > 0
-               ? @[ SPKMediaSection(@"Photos", self.analysis.photoOptions) ]
-               : @[];
+    return self.analysis.photoSections ?: @[];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
@@ -2069,7 +2226,7 @@ static NSString *SPKMediaCodecBadge(NSString *codec) {
 
 - (void)previewOption:(SPKMediaOption *)option {
     if (option.kind == SPKMediaOptionKindPhotoProgressive) {
-        [SPKFullScreenMediaPlayer showRemoteImageURL:option.primaryURL];
+        [SPKFullScreenMediaPlayer showRemoteImageURLPreview:option.primaryURL];
         return;
     }
     if (option.kind == SPKMediaOptionKindAudioDash) {
@@ -2144,7 +2301,7 @@ static NSString *SPKMediaCodecBadge(NSString *codec) {
                                identifier:nil
                                   handler:^(__unused UIAction *action) {
                                       [SPKFullScreenMediaPlayer
-                                          showRemoteImageURL:option.primaryURL];
+                                          showRemoteImageURLPreview:option.primaryURL];
                                   }]];
     } else if (option.kind == SPKMediaOptionKindAudioDash) {
         [children
@@ -2828,6 +2985,16 @@ static void SPKMediaPerformOptionDownload(
     return [SPKUtils getVideoUrlForMedia:mediaObject] != nil;
 }
 
++ (NSURL *)resolvedURLForMediaObject:(id)mediaObject
+                            photoURL:(NSURL *)photoURL
+                            videoURL:(NSURL *)videoURL
+                     qualityOverride:(NSString *)qualityOverride
+                         destination:(SPKDownloadDestination)destination {
+    SPKMediaAnalysis *analysis = SPKMediaAnalyze(mediaObject, photoURL, videoURL, destination, NO);
+    SPKMediaOption *option = SPKMediaResolveDefaultOption(analysis, qualityOverride);
+    return option.primaryURL ?: photoURL ?: videoURL;
+}
+
 + (UIViewController *)encodingSettingsViewController {
     return [[SPKMediaEncodingSettingsViewController alloc] init];
 }
@@ -2836,6 +3003,82 @@ static void SPKMediaPerformOptionDownload(
     SPKMediaEncodingSettingsViewController *controller =
         [[SPKMediaEncodingSettingsViewController alloc] init];
     return [controller searchSections] ?: @[];
+}
+
++ (BOOL)hasWebPhotoCandidatesFetchedForPK:(NSString *)pk {
+    SPKInitializeWebPhotoCandidatesCacheIfNeeded();
+    NSString *norm = SPKNormalizePK(pk);
+    return norm.length > 0 && [SPKWebPhotoCandidatesFetchedPKs containsObject:norm];
+}
+
++ (void)markWebPhotoCandidatesFetchedForPK:(NSString *)pk {
+    SPKInitializeWebPhotoCandidatesCacheIfNeeded();
+    NSString *norm = SPKNormalizePK(pk);
+    if (norm.length > 0) {
+        [SPKWebPhotoCandidatesFetchedPKs addObject:norm];
+    }
+}
+
++ (nullable NSArray<NSDictionary *> *)webPhotoCandidatesForPK:(NSString *)pk {
+    SPKInitializeWebPhotoCandidatesCacheIfNeeded();
+    NSString *norm = SPKNormalizePK(pk);
+    return norm.length > 0 ? SPKWebPhotoCandidatesCache[norm] : nil;
+}
+
++ (void)cacheWebCandidatesFromResponse:(NSDictionary *)response {
+    if (![response isKindOfClass:[NSDictionary class]]) {
+        return;
+    }
+    NSArray *items = response[@"items"];
+    if (![items isKindOfClass:[NSArray class]] || items.count == 0) {
+        return;
+    }
+    NSDictionary *item = items[0];
+    if (![item isKindOfClass:[NSDictionary class]]) {
+        return;
+    }
+
+    SPKInitializeWebPhotoCandidatesCacheIfNeeded();
+
+    NSString *topPK = nil;
+    id rawTopPK = item[@"pk"] ?: item[@"id"] ?: item[@"media_id"];
+    if ([rawTopPK isKindOfClass:[NSString class]]) {
+        topPK = rawTopPK;
+    } else if ([rawTopPK respondsToSelector:@selector(stringValue)]) {
+        topPK = [rawTopPK stringValue];
+    }
+
+    NSArray *carouselMedia = item[@"carousel_media"];
+    if ([carouselMedia isKindOfClass:[NSArray class]] && carouselMedia.count > 0) {
+        for (NSDictionary *subItem in carouselMedia) {
+            if (![subItem isKindOfClass:[NSDictionary class]])
+                continue;
+            NSString *subPK = nil;
+            id rawSubPK = subItem[@"pk"] ?: subItem[@"id"];
+            if ([rawSubPK isKindOfClass:[NSString class]]) {
+                subPK = rawSubPK;
+            } else if ([rawSubPK respondsToSelector:@selector(stringValue)]) {
+                subPK = [rawSubPK stringValue];
+            }
+            id imageVersions = subItem[@"image_versions2"];
+            id candidates = [imageVersions isKindOfClass:[NSDictionary class]] ? imageVersions[@"candidates"] : nil;
+            if ([candidates isKindOfClass:[NSArray class]] && subPK.length > 0) {
+                NSString *normSub = SPKNormalizePK(subPK);
+                if (normSub.length > 0) {
+                    SPKWebPhotoCandidatesCache[normSub] = candidates;
+                }
+            }
+        }
+    } else {
+        id imageVersions = item[@"image_versions2"];
+        id candidates = [imageVersions isKindOfClass:[NSDictionary class]] ? imageVersions[@"candidates"] : nil;
+        if ([candidates isKindOfClass:[NSArray class]] && topPK.length > 0) {
+            NSString *normTop = SPKNormalizePK(topPK);
+            if (normTop.length > 0) {
+                SPKWebPhotoCandidatesCache[normTop] = candidates;
+            }
+        }
+    }
 }
 
 @end

@@ -77,6 +77,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// viewers) and correctly false for photos.
 + (BOOL)mediaObjectIsVideo:(nullable id)mediaObject;
 
++ (nullable NSURL *)resolvedURLForMediaObject:(nullable id)mediaObject
+                                     photoURL:(nullable NSURL *)photoURL
+                                     videoURL:(nullable NSURL *)videoURL
+                              qualityOverride:(nullable NSString *)qualityOverride
+                                  destination:(SPKDownloadDestination)destination;
+
 + (UIViewController *)encodingSettingsViewController;
 + (NSArray *)encodingSettingsSearchSections;
 
@@ -102,6 +108,11 @@ NS_ASSUME_NONNULL_BEGIN
                         cancelOut:
                             (void (^)(dispatch_block_t _Nullable cancelBlock))
                                 cancelOut;
+
++ (BOOL)hasWebPhotoCandidatesFetchedForPK:(NSString *)pk;
++ (void)markWebPhotoCandidatesFetchedForPK:(NSString *)pk;
++ (nullable NSArray<NSDictionary *> *)webPhotoCandidatesForPK:(NSString *)pk;
++ (void)cacheWebCandidatesFromResponse:(NSDictionary *)response;
 
 @end
 

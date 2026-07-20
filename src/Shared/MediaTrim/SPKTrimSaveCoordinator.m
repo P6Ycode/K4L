@@ -214,7 +214,7 @@
 
 // Encodes an edited image to a unique temp JPEG. Returns nil on failure.
 + (NSURL *)writeEditedImageToTemp:(UIImage *)image {
-    NSData *data = image ? UIImageJPEGRepresentation(image, 0.95) : nil;
+    NSData *data = image ? UIImageJPEGRepresentation(image, 0.85) : nil;
     if (!data)
         return nil;
     NSString *name = [[[NSProcessInfo processInfo] globallyUniqueString] stringByAppendingPathExtension:@"jpg"];

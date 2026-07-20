@@ -27,6 +27,9 @@ typedef void (^SPKAPIStatusesCompletion)(NSDictionary *_Nullable statuses, NSErr
 + (void)resolveProfilePicURLForPK:(NSString *)pk
                        completion:(void (^)(NSString *_Nullable url, NSError *_Nullable error))completion;
 
++ (void)fetchWebMediaInfoForPK:(NSString *)mediaPK
+                    completion:(nullable SPKAPICompletion)completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

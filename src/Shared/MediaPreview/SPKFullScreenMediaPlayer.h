@@ -85,6 +85,8 @@ typedef void (^SPKMediaPreviewPlaybackBlock)(void);
             resumePlayback:(nullable SPKMediaPreviewPlaybackBlock)resumePlayback;
 /// Profile / avatar long-press: sets Gallery source + optional username for “Save to Gallery”.
 + (void)showRemoteImageURL:(NSURL *)url profileUsername:(nullable NSString *)username;
+/// Read-only preview without bottom action toolbar (used by options sheet).
++ (void)showRemoteImageURLPreview:(NSURL *)url;
 
 @end
 

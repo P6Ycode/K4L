@@ -335,6 +335,10 @@
                                                   action:child.action
                                             propertyList:child.propertyList];
 
+        if ([child.propertyList[@"value"] isEqualToString:@"max"] && ![SPKUtils getBoolPref:@"downloads_fetch_4k_images"]) {
+            command.attributes = UIMenuElementAttributesDisabled;
+        }
+
         if ([child.propertyList[@"value"] isEqualToString:saved]) {
             command.state = YES;
 

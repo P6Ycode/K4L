@@ -38,7 +38,7 @@ static NSURL *SPKTrimWriteCGImage(CGImageRef image, NSString *basename) {
     }
 
     NSURL *jpgURL = [NSURL fileURLWithPath:[tmp stringByAppendingPathComponent:[basename stringByAppendingPathExtension:@"jpg"]]];
-    NSData *data = UIImageJPEGRepresentation([UIImage imageWithCGImage:image], 0.95);
+    NSData *data = UIImageJPEGRepresentation([UIImage imageWithCGImage:image], 0.85);
     if (data && [data writeToURL:jpgURL atomically:YES])
         return jpgURL;
     return nil;

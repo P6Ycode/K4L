@@ -291,6 +291,7 @@ static NSDictionary<NSString *, SPKAssetDescriptor *> *SPKAssetOverrides(void) {
             @"volume_off" : @{@"candidates" : @[ @"ig_icon_volume_off_pano_outline_24", @"ig_icon_volume_off_outline_24" ]},
             @"warning" : @{@"candidates" : @[ @"ig_icon_warning_pano_outline_24", @"ig_icon_warning_outline_24" ]},
             @"warning_filled" : @{@"candidates" : @[ @"ig_icon_warning_pano_filled_24", @"ig_icon_warning_filled_24" ]},
+            @"web" : @{@"candidates" : @[ @"globe_Outline_24" ]},
             @"xmark" : @{@"candidates" : @[ @"ig_icon_x_pano_outline_24" ]},
             @"zoom" : @{@"candidates" : @[ @"ig_icon_fullscreen_outline_24" ]}
         };

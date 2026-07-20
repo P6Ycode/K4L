@@ -585,7 +585,7 @@ static NSString *SPKTrimFormatTime(NSTimeInterval seconds) {
 }
 
 - (void)applyEditedFrame:(UIImage *)edited {
-    NSData *data = edited ? UIImageJPEGRepresentation(edited, 0.95) : nil;
+    NSData *data = edited ? UIImageJPEGRepresentation(edited, 0.85) : nil;
     if (!data)
         return;
     [self clearPendingEditedFrame];

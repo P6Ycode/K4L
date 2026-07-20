@@ -725,10 +725,13 @@ static UIImage *SPKPhotoEditorMirror(UIImage *image, BOOL horizontal, BOOL verti
                                       CGRectGetWidth(_cropRect) / zoom,
                                       CGRectGetHeight(_cropRect) / zoom);
 
-    UIGraphicsBeginImageContextWithOptions(source.size, YES, source.scale);
-    [source drawInRect:(CGRect){CGPointZero, source.size}];
-    UIImage *normalized = UIGraphicsGetImageFromCurrentImageContext() ?: source;
-    UIGraphicsEndImageContext();
+    UIImage *normalized = source;
+    if (source.imageOrientation != UIImageOrientationUp) {
+        UIGraphicsBeginImageContextWithOptions(source.size, YES, source.scale);
+        [source drawInRect:(CGRect){CGPointZero, source.size}];
+        normalized = UIGraphicsGetImageFromCurrentImageContext() ?: source;
+        UIGraphicsEndImageContext();
+    }
     if (!normalized.CGImage)
         return source;
 

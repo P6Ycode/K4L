@@ -327,7 +327,9 @@ UIMenu *SPKMediaVideoQualityMenu(void) {
 UIMenu *SPKMediaPhotoQualityMenu(void) {
     return [UIMenu menuWithChildren:@[
         SPKMenuCommand(@"Always Ask", nil, nil, @"downloads_photo_quality", @"always_ask", NO),
+        SPKMenuCommand(@"Max", nil, nil, @"downloads_photo_quality", @"max", NO),
         SPKMenuCommand(@"High", nil, nil, @"downloads_photo_quality", @"high", NO),
+        SPKMenuCommand(@"Medium", nil, nil, @"downloads_photo_quality", @"medium", NO),
         SPKMenuCommand(@"Low", nil, nil, @"downloads_photo_quality", @"low", NO)
     ]];
 }
