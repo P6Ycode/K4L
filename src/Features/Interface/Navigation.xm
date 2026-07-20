@@ -16,6 +16,23 @@ static NSString *SPKSelectorForLaunchTabPreference(NSString *preference) {
     return nil;
 }
 
+static NSString *SPKSelectorForSurfaceIntent(IGMainAppSurfaceIntent *surface) {
+    if (!surface || ![surface isKindOfClass:%c(IGMainAppSurfaceIntent)])
+        return nil;
+    NSString *tab = [surface tabStringFromSurfaceIntent];
+    if ([tab isEqualToString:@"FEED"])
+        return @"_timelineButtonPressed";
+    if ([tab isEqualToString:@"CLIPS"])
+        return @"_discoverVideoButtonPressed";
+    if ([tab isEqualToString:@"DIRECT"])
+        return @"_directInboxButtonPressed";
+    if ([tab isEqualToString:@"SEARCH"])
+        return @"_exploreButtonPressed";
+    if ([tab isEqualToString:@"PROFILE"])
+        return @"_profileButtonPressed";
+    return nil;
+}
+
 BOOL isSurfaceShown(IGMainAppSurfaceIntent *surface) {
     if (SPKStabilityGuardIsSafeStartupMode()) {
         return YES;
@@ -96,11 +113,11 @@ static BOOL SPKIsMessagesOnlyMode(void) {
 
 %hook IGTabBarController
 - (void)viewDidLoad {
+    %orig;
     NSArray *surfaces = [SPKUtils getIvarForObj:self name:"_tabBarSurfaces"];
     if (surfaces) {
         [SPKUtils setIvarForObj:self name:"_tabBarSurfaces" value:filterSurfacesArray(surfaces)];
     }
-    %orig;
 }
 
 - (void)viewDidLayoutSubviews {
@@ -121,7 +138,50 @@ static BOOL SPKIsMessagesOnlyMode(void) {
         return;
     appliedLaunchTab = YES;
 
-    NSString *selectorName = SPKSelectorForLaunchTabPreference([SPKUtils getStringPref:@"interface_launch_tab"]);
+    NSString *launchPref = [SPKUtils getStringPref:@"interface_launch_tab"];
+    NSString *selectorName = SPKSelectorForLaunchTabPreference(launchPref);
+
+    NSArray *rawSurfaces = [SPKUtils getIvarForObj:self name:"_tabBarSurfaces"];
+    NSArray *enabledSurfaces = filterSurfacesArray(rawSurfaces);
+
+    BOOL feedHidden = [SPKUtils getBoolPref:@"interface_hide_feed_tab"];
+
+    if ([launchPref isEqualToString:@"default"]) {
+        BOOL feedIsEnabled = NO;
+        for (IGMainAppSurfaceIntent *s in enabledSurfaces) {
+            if ([[s tabStringFromSurfaceIntent] isEqualToString:@"FEED"]) {
+                feedIsEnabled = YES;
+                break;
+            }
+        }
+        if ((!feedIsEnabled || feedHidden) && enabledSurfaces.count > 0) {
+            selectorName = SPKSelectorForSurfaceIntent(enabledSurfaces.firstObject);
+        } else if (feedHidden) {
+            // Fallback preference check if surface array is unavailable
+            if (![SPKUtils getBoolPref:@"interface_hide_msgs_tab"]) {
+                selectorName = @"_directInboxButtonPressed";
+            } else if (![SPKUtils getBoolPref:@"interface_hide_reels_tab"]) {
+                selectorName = @"_discoverVideoButtonPressed";
+            } else if (![SPKUtils getBoolPref:@"interface_hide_explore_tab"]) {
+                selectorName = @"_exploreButtonPressed";
+            } else if (![SPKUtils getBoolPref:@"interface_hide_profile_tab"]) {
+                selectorName = @"_profileButtonPressed";
+            }
+        }
+    } else if (selectorName.length > 0) {
+        BOOL chosenIsEnabled = NO;
+        for (IGMainAppSurfaceIntent *s in enabledSurfaces) {
+            NSString *sel = SPKSelectorForSurfaceIntent(s);
+            if ([sel isEqualToString:selectorName]) {
+                chosenIsEnabled = YES;
+                break;
+            }
+        }
+        if (!chosenIsEnabled && enabledSurfaces.count > 0) {
+            selectorName = SPKSelectorForSurfaceIntent(enabledSurfaces.firstObject);
+        }
+    }
+
     SEL selector = selectorName.length > 0 ? NSSelectorFromString(selectorName) : nil;
     if (selector && [self respondsToSelector:selector]) {
         ((void (*)(id, SEL))objc_msgSend)(self, selector);
