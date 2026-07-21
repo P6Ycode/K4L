@@ -146,12 +146,16 @@ On systems without Liquid Glass, the tab bar section is replaced by a focused to
 - **Unlock Story Preview**: Unlocks the Instagram Plus "Story Preview" — long-pressing a story shows the real preview (photo, video, auto-advance) instead of the blurred upgrade upsell, without appearing on the viewer list. Also removes the "Try Instagram Plus" row from the long-press menu. Works from the feed story tray and DMs.
 - **Hide Viewer List Plus Button**: Hides the Instagram Plus button in your story's viewer list.
 
+### Creation
+- **Allow Videos in Photo Sticker**: Allows selecting video files in addition to photos when using the native photo sticker in Stories.
+- **Show Gallery Upload Button**: Adds a direct **Sparkle Gallery** button in the photo sticker picker to attach media saved in Sparkle as stickers.
+- **Use Detailed Color Picker**: Long-press the eyedropper for finer text-color control.
+
 ### Other
 - **Search Viewer List**: Adds a search button to your own story's viewer list. Tapping it fetches the complete viewer list and opens a sheet where you can search by username or name and filter by follow relationship (All / Following / Not Following). A fully Sparkle-native alternative to the Instagram Plus viewer search.
-- **Hide Story Midcards** Removes the "Join a trending" / "Add Yours" promo cards from the stories tray. 
+- **Hide Story Midcards**: Removes the "Join a trending" / "Add Yours" promo cards from the stories tray. 
 - **Show Story Mentions**: Adds a mentions button listing mentioned users.
 - **Show Poll Vote Counts**: Shows vote counts next to poll options.
-- **Use Detailed Color Picker**: Long-press the eyedropper for finer text-color control.
 
 ---
 

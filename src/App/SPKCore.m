@@ -103,6 +103,8 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"general_preview_show_metadata" : @(YES),
         @"general_action_btn_show_date" : @(NO),
         @"gallery_preview_show_metadata" : @(YES),
+        @"stories_allow_video_sticker" : @(NO),
+        @"stories_gallery_upload_sticker" : @(NO),
         @"stories_hide_join_trending" : @(NO),
         @"stories_mentions_btn" : @(NO),
         @"stories_unlock_preview" : @(NO),

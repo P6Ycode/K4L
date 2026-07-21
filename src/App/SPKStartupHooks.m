@@ -99,6 +99,7 @@ FOUNDATION_EXPORT void SPKInstallUnlockStoryPreviewHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallUnlockMessagePreviewHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallHideViewerPlusButtonHooksIfEnabled(void);
 FOUNDATION_EXPORT void SPKInstallSearchStoryViewersHooksIfEnabled(void);
+FOUNDATION_EXPORT void SPKInstallStoryVideoStickerHooksIfEnabled(void);
 
 // Master kill switch: when YES, suppress all feature hook installation, but
 // keep the home long-press shortcut so users can still reach Settings to turn
@@ -185,6 +186,7 @@ void SPKInstallStorySurfaceHooksIfNeeded(void) {
     SPKInstallUnlockStoryPreviewHooksIfEnabled();
     SPKInstallHideViewerPlusButtonHooksIfEnabled();
     SPKInstallSearchStoryViewersHooksIfEnabled();
+    SPKInstallStoryVideoStickerHooksIfEnabled();
 }
 
 void SPKInstallReelsSurfaceHooksIfNeeded(void) {

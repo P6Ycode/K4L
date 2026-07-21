@@ -126,6 +126,21 @@ static NSArray *SPKStoriesSettingsSections(void) {
                         @"1. Unlock \"Story Preview\": the story long-press menu shows the actual story without appearing on the viewer list.\n"
                         @"2. Hide the Instagram Plus button in your story's viewer list."),
 
+        SPKTopicSection(@"Creation", @[
+            [SPKSetting switchCellWithTitle:@"Allow Videos in Photo Sticker"
+                                       icon:SPKSettingsIcon(@"video")
+                                defaultsKey:@"stories_allow_video_sticker"],
+            [SPKSetting switchCellWithTitle:@"Show Gallery Upload Button"
+                                       icon:SPKSettingsIcon(@"sparkle_gallery")
+                                defaultsKey:@"stories_gallery_upload_sticker"],
+            [SPKSetting switchCellWithTitle:@"Use Detailed Color Picker"
+                                       icon:SPKSettingsIcon(@"eyedropper")
+                                defaultsKey:@"stories_detailed_color_picker"]
+        ],
+                        @"1. Allow selecting videos from your library in the story photo sticker.\n"
+                        @"2. Use media from Sparkle Gallery as stickers.\n"
+                        @"3. Long press on the eyedropper tool in stories to customize text color more precisely."),
+
         SPKTopicSection(@"Other", @[
             [SPKSetting switchCellWithTitle:@"Search Viewer List"
                                        icon:SPKSettingsIcon(@"search")
@@ -139,15 +154,11 @@ static NSArray *SPKStoriesSettingsSections(void) {
             [SPKSetting switchCellWithTitle:@"Show Poll Vote Counts"
                                        icon:SPKSettingsIcon(@"poll")
                                 defaultsKey:@"stories_poll_vote_counts"],
-            [SPKSetting switchCellWithTitle:@"Use Detailed Color Picker"
-                                       icon:SPKSettingsIcon(@"eyedropper")
-                                defaultsKey:@"stories_detailed_color_picker"]
         ],
                         @"1. Add a search button to your story's viewer list to search and filter anyone who viewed it.\n"
                         @"2. Hide the the \"Join a trending\" / \"Add Yours\" promo cards from stories.\n"
                         @"3. Enabling this will add a button above the bottom story bar, where you can see all mentioned users.\n"
-                        @"4. Display the vote counts for each option the poll has.\n"
-                        @"5. Long press on the eyedropper tool in stories to customize text color more precisely.")
+                        @"4. Display the vote counts for each option the poll has.")
     ];
 }
 

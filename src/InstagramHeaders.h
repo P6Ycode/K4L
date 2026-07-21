@@ -1,5 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <CoreMedia/CoreMedia.h>
+#import <AVFoundation/AVFoundation.h>
 #include <objc/NSObject.h>
 
 #ifdef __cplusplus
@@ -574,6 +576,52 @@
 @end
 
 @interface IGDirectMessageContentMutation : NSObject
+@end
+
+@interface IGStickerGalleryViewController : UIViewController
+@property (retain, nonatomic) NSArray *preferredMediaTypes;
+@end
+
+@interface IGGalleryDataSource : NSObject
+@property (retain, nonatomic) NSArray *preferredMediaTypes;
+@end
+
+@interface IGGalleryAssetProvider : NSObject
+@property (retain, nonatomic) NSArray *preferredMediaTypes;
+@end
+
+@interface IGStoryGalleryConfiguration : NSObject
+@property (readonly, copy, nonatomic) NSArray *preferredMediaTypes;
+@end
+
+@interface IGGalleryImageStickerView : UIView
+- (id)initWithImage:(id)image showStyleEducation:(_Bool)education isCroppingEnabled:(_Bool)enabled;
+@end
+
+@interface IGVideoClip : NSObject
+@property (nonatomic) CMTime endTime;
+@property (nonatomic) CMTimeRange compositionTimeRange;
+@property (nonatomic) CGRect cropRect;
+@property (nonatomic) CGSize renderSize;
+- (id)initWithAsset:(id)asset position:(long long)position sourceType:(long long)type;
+- (id)initWithAsset:(id)asset position:(long long)position sourceType:(long long)type shouldBeSquare:(_Bool)square;
+@end
+
+@interface IGGalleryVideoStickerModel : NSObject
+- (id)initWithVideoClip:(id)clip;
+@end
+
+@interface IGGalleryVideoStickerView : UIView
+- (id)initWithModel:(id)model;
+@end
+
+@interface IGStoryMediaCompositionEditingViewController : UIViewController
+@property (readonly, nonatomic) id stickerController;
+- (void)didAddSticker:(id)sticker;
+- (void)setEditingControlsOverlayViewHidden:(_Bool)hidden animated:(_Bool)animated;
+@end
+
+@interface IGStoryStickerTrayViewController : UIViewController
 @end
 
 /////////////////////////////////////////////////////////////////////////////
