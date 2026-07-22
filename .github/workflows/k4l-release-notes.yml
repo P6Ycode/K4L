@@ -51,10 +51,12 @@ jobs:
 
           - Reel and Story videos no longer lose their completed DASH file before saving to Photos or Gallery.
           - Missing completed files now produce a clearer retry/log message.
+          - Reel and Story videos are stored as MP4 video items in K4L Gallery instead of being misclassified as audio.
 
           ## Removed
 
           - Recent Activity for other profiles, because Instagram rate limits prevent reliable full-list scans.
+          - All standalone audio downloads, audio-only quality options, audio uploads, and audio trimming. Videos still keep their normal sound.
           - Disable Scrolling Reels, Prevent Doom Scrolling, and Doom Scrolling Limit.
 
           ## Compatibility
