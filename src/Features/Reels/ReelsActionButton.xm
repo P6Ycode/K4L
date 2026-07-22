@@ -16,6 +16,80 @@ static const void *kSPKReelsActionButtonCarouselIndexKey = &kSPKReelsActionButto
 static CGFloat const kSPKReelsActionButtonSize = 44.0;
 static CGFloat const kSPKReelsActionButtonBottomOffset = -5.0;
 
+// Instagram changes the native reel-UFI tint when the current media enters or
+// leaves HDR/EDR. Reuse that tint instead of pinning Sparkle's icon to white.
+static UIColor *SPKReelsNativeUFIColor(UIView *verticalUFIView) {
+    if (!verticalUFIView)
+        return UIColor.whiteColor;
+
+    id likeButton = nil;
+    SEL selector = @selector(ufiLikeButton);
+    if ([verticalUFIView respondsToSelector:selector]) {
+        likeButton = ((id (*)(id, SEL))objc_msgSend)(verticalUFIView, selector);
+    }
+
+    if (![likeButton isKindOfClass:[UIButton class]])
+        return UIColor.whiteColor;
+
+    UIButton *like = (UIButton *)likeButton;
+    UIColor *tint = like.imageView.tintColor ?: like.tintColor;
+    return tint ?: UIColor.whiteColor;
+}
+
+static void SPKReelsEnableExtendedRangeLayer(CALayer *layer) {
+    if (!layer)
+        return;
+
+    // The iOS 16.2 SDK used by Sparkle does not declare this newer CALayer
+    // property, so use the runtime selector when the installed OS supports it.
+    SEL selector = NSSelectorFromString(@"setWantsExtendedDynamicRangeContent:");
+    if ([layer respondsToSelector:selector])
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(layer, selector, YES);
+}
+
+static void SPKApplyReelsNativeUFIColor(UIButton *button, UIColor *color) {
+    if (![button isKindOfClass:[UIButton class]])
+        return;
+
+    color = color ?: UIColor.whiteColor;
+    // Instagram's UFI icon is EDR-capable. Sparkle's icon is nested inside
+    // SPKChromeCanvas, so opt the custom layers into the same compositing path.
+    SPKReelsEnableExtendedRangeLayer(button.layer);
+    button.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
+    button.tintColor = color;
+
+    UIImageView *buttonImageView = button.imageView;
+    if (buttonImageView) {
+        SPKReelsEnableExtendedRangeLayer(buttonImageView.layer);
+        buttonImageView.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
+        buttonImageView.tintColor = color;
+        UIImage *image = buttonImageView.image;
+        if (image && image.renderingMode != UIImageRenderingModeAlwaysTemplate)
+            buttonImageView.image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+
+    // Sparkle action buttons use a private icon view so bundled Instagram icons
+    // and SF Symbols share the same chrome. Keep that path in sync as well.
+    if ([button isKindOfClass:[SPKChromeButton class]]) {
+        SPKChromeButton *chromeButton = (SPKChromeButton *)button;
+        chromeButton.iconTint = color;
+        SPKReelsEnableExtendedRangeLayer(chromeButton.iconView.layer);
+        chromeButton.iconView.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
+        chromeButton.iconView.tintColor = color;
+        UIImage *image = chromeButton.iconView.image;
+        if (image && image.renderingMode != UIImageRenderingModeAlwaysTemplate)
+            chromeButton.iconView.image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+
+        // The icon is hosted in the secure canvas and can have one or more
+        // intermediate views between the UIImageView and the button layer.
+        UIView *ancestor = chromeButton.iconView.superview;
+        for (NSInteger depth = 0; ancestor && depth < 4; depth++) {
+            SPKReelsEnableExtendedRangeLayer(ancestor.layer);
+            ancestor = ancestor.superview;
+        }
+    }
+}
+
 // MARK: - View hierarchy helpers
 
 // MARK: - Deterministic resolution from IGUnifiedVideoCollectionView (Layer 2)
@@ -383,6 +457,11 @@ void SPKInstallReelsActionButton(UIView *verticalUFIView) {
         return;
     }
 
+    // This must run before the layout/media early return: HDR/EDR changes can
+    // update Instagram's like tint without changing the reel or our constraints.
+    if (button)
+        SPKApplyReelsNativeUFIColor(button, SPKReelsNativeUFIColor(verticalUFIView));
+
     // Resolve current media to detect whether we need to reconfigure
     id currentMedia = SPKReelsMediaProvider(verticalUFIView);
     NSInteger currentCarouselIdx = SPKReelsCurrentIndexForContext(verticalUFIView);
@@ -434,6 +513,7 @@ void SPKInstallReelsActionButton(UIView *verticalUFIView) {
     verticalUFIView.layer.masksToBounds = NO;
     [verticalUFIView bringSubviewToFront:button];
     SPKApplyButtonStyle(button, SPKActionButtonSourceReels);
+    SPKApplyReelsNativeUFIColor(button, SPKReelsNativeUFIColor(verticalUFIView));
 }
 
 %group SPKReelsActionButtonHooks

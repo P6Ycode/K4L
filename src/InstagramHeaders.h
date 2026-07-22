@@ -485,6 +485,8 @@
 @end
 
 @interface IGSundialViewerVerticalUFI : UIView
+// Native like control used as the source of the reel UFI's HDR/EDR tint.
+@property (readonly, nonatomic) UIButton *ufiLikeButton;
 - (void)_didTapLikeButton:(id)arg1;
 - (void)_didTapRepostButton:(id)arg1;
 // IG 436+ renamed handlers (no underscore prefix, no argument).

@@ -123,8 +123,9 @@ static void SPKStabilizeReelsActionButtonIcon(UIButton *button) {
         return;
 
     SPKChromeButton *chromeButton = (SPKChromeButton *)button;
-    chromeButton.iconTint = SPKActionButtonTintForSource(SPKActionButtonSourceReels);
-    chromeButton.iconView.tintColor = chromeButton.iconTint;
+    // Do not reset the tint here. ReelsActionButton.xm mirrors Instagram's
+    // native UFI tint (including HDR/EDR) and this helper runs during every
+    // iOS 26 context-menu preview/open/close transition.
     chromeButton.iconView.hidden = NO;
     chromeButton.iconView.alpha = 1.0;
     chromeButton.iconView.layer.opacity = 1.0;
@@ -172,13 +173,6 @@ static UITargetedPreview *SPKReelsActionButtonMenuPreview(UIButton *button) {
     previewView.userInteractionEnabled = NO;
     previewView.backgroundColor = UIColor.clearColor;
     previewView.clipsToBounds = NO;
-
-    UIView *bubbleView = [[UIView alloc] initWithFrame:bounds];
-    bubbleView.userInteractionEnabled = NO;
-    bubbleView.backgroundColor = [UIColor blackColor];
-    bubbleView.layer.cornerRadius = MIN(CGRectGetWidth(bounds), CGRectGetHeight(bounds)) / 2.0;
-    bubbleView.clipsToBounds = YES;
-    [previewView addSubview:bubbleView];
 
     UIPreviewParameters *parameters = [[UIPreviewParameters alloc] init];
     parameters.backgroundColor = UIColor.clearColor;
@@ -1932,7 +1926,11 @@ static void SPKSetButtonVisualImage(UIButton *button, UIImage *image, SPKActionB
             chromeButton.iconView.contentMode = UIViewContentModeCenter;
         }
         chromeButton.iconView.image = templatedImage;
-        chromeButton.iconTint = SPKActionButtonTintForSource(source);
+        // ReelsActionButton mirrors Instagram's live UFI tint, including HDR/EDR.
+        // Preserve it when settings rebuild the default-action image; other
+        // surfaces continue to receive their normal source tint here.
+        if (source != SPKActionButtonSourceReels)
+            chromeButton.iconTint = SPKActionButtonTintForSource(source);
         [button setImage:nil forState:UIControlStateNormal];
         return;
     }
