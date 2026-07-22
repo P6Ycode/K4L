@@ -190,6 +190,72 @@ jobs:
           - Export/import of Settings, Gallery, Deleted Messages, and Profile Analyzer data.
           - Full or per-account settings reset.
           
+          ## How the main features work
+
+          ### Recent Activity
+
+          Open another person's profile and tap the K4L profile action button. **Recent Activity** opens by default. Tap **Scan Now** or pull down to refresh. The first scan saves a local baseline and intentionally reports no changes. Every later manual scan compares the current followers/following lists with the prior scan and creates dated follow/unfollow entries. The displayed time is when K4L detected the change, not an exact Instagram event time.
+
+          ### Action buttons
+
+          A normal tap runs the default action selected for that surface. A long press opens the full menu. **Configure Actions** lets you reorder actions, move them between sections, rename sections, select icons, collapse sections, or disable actions. Feed, Reels, Stories, Profiles, Messages, and Instants each have their own configuration.
+
+          ### Full-quality downloads
+
+          For a photo, K4L compares Instagram's official image candidates and selects the largest available dimensions. For video, it selects the best official video representation and audio representation. When Instagram serves video and audio separately, K4L downloads both and first tries to combine them without re-encoding. If their codecs cannot be stored directly in MP4, K4L converts them using the configured encoding settings.
+
+          ### Carousel and batch downloads
+
+          **Download All** saves every downloadable item in its original carousel order. **Select Media** opens a grid where individual photos and videos can be selected before choosing Photos, Gallery, Share, Copy, or another enabled destination. The Downloads page shows the overall job and each item's progress; failed items can be retried separately.
+
+          ### Anonymous stories and highlights
+
+          K4L blocks Instagram's automatic seen-receipt callback while manual-seen mode applies. Public, accessible private, and Close Friends stories can therefore be watched without automatically entering the viewer list. The eye button deliberately marks the current story seen when wanted. Included/Excluded user lists can restore normal behavior for selected accounts.
+
+          ### Story timestamps
+
+          The overlay reads the current story's original Instagram timestamp and displays it in local date/time format. Active stories also receive a live countdown calculated from their expiration timestamp or standard 24-hour lifetime. Highlight items keep their original posted time and show that they do not expire.
+
+          ### Highlight update dot
+
+          K4L reads Instagram's unseen state for each profile highlight. A blue dot is drawn beneath a highlight with new unseen items. Instagram's seen state clears the dot after those new items are viewed, and another highlight update makes it return.
+
+          ### K4L Gallery
+
+          Saving to **Gallery** stores a private local copy inside Instagram's app data rather than the system Photos library. Gallery folders, favorites, metadata, editing, trimming, search, sorting, passcode/biometric lock, and account filters organize those copies. Deleting a Gallery item deletes that local Gallery copy; it does not delete the original Instagram post.
+
+          ### Download manager
+
+          Each download action becomes one history row. The manager shows active, queued, failed, and recent jobs, limits parallel work, retains a staged preview, detects known duplicates, and allows retry or cancellation. Clearing finished history removes staged K4L download data but does not remove media already saved to Photos or Gallery.
+
+          ### Deleted-message recovery
+
+          When enabled, K4L snapshots message metadata before Instagram removes an unsent message. **Keep Deleted Messages** leaves a marked copy in the thread when possible, while **Deleted Messages Log** stores a browsable local history. The media recovery cache temporarily preserves supported ephemeral media so an unsent item can still be recovered. Nothing is uploaded by K4L.
+
+          ### Original Profile Analyzer
+
+          The analyzer scans the signed-in account's followers and following lists, stores local snapshots, and calculates mutuals, accounts not following back, accounts you do not follow back, follower gains/losses, following changes, and profile updates. Searches, sorting, profile opening, and inline follow/unfollow are available from its lists. The 13,000-connection limit reduces Instagram rate-limit risk.
+
+          ### Message seen controls
+
+          Manual chat-seen mode prevents automatic read receipts for selected chats and adds an eye control. The control can sit in the navigation bar or above the composer. Optional triggers mark seen when sending, replying, reacting, or typing. Included/Excluded chat lists set exceptions per Instagram account.
+
+          ### Visual-message and screenshot controls
+
+          View-once limitations can be relaxed so supported visual messages behave like ordinary viewer items. Screenshot-detection switches suppress Instagram's capture callbacks for visual messages, Vanish Mode, or Instants where the corresponding option is enabled.
+
+          ### Editing and trimming
+
+          **Edit & Save** downloads the selected photo and opens crop, rotate, flip, and aspect tools before choosing a destination. **Trim & Save** opens video filmstrip controls or an audio waveform, renders only the selected range, and then saves or shares the result. Editing a Gallery item can replace the local original or create a copy depending on Gallery settings.
+
+          ### Per-account settings and local data
+
+          With per-account settings enabled, each logged-in Instagram account receives its own K4L preferences and applicable history. Gallery, Deleted Messages, Profile Analyzer, Recent Activity, cached profile pictures, and download data remain inside Instagram's local app container. Export/Import creates a ZIP backup of the selected K4L data.
+
+          ### Interface and safety tools
+
+          Tab controls choose the launch tab, tab order, swipe behavior, and visible tabs. Liquid Glass options use Instagram/iOS presentation APIs where available. **Hide UI on Capture** removes K4L overlay controls from captured output. The master disable and safe-start controls provide recovery if an optional hook causes launch problems.
+
           ## Removed from K4L
           
           - Disable Scrolling Reels.
