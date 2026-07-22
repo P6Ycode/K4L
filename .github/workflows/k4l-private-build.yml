@@ -68,10 +68,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p main/packages
-          gh release download input-ipa --repo "$GITHUB_REPOSITORY" --pattern "*.ipa" --dir main/packages
-          INPUT_IPA="$(find main/packages -maxdepth 1 -name '*.ipa' | head -n 1)"
-          test -n "$INPUT_IPA"
-          mv "$INPUT_IPA" main/packages/com.burbn.instagram.ipa
+          ASSET_API_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[] | .assets[] | select(.name | endswith(".ipa")) | .url' | head -n 1)"
+          if [ -z "$ASSET_API_URL" ]; then
+            echo "::error::No .ipa release asset was found in this private repository."
+            exit 1
+          fi
+          gh api -H "Accept: application/octet-stream" "$ASSET_API_URL" > main/packages/com.burbn.instagram.ipa
+          unzip -t main/packages/com.burbn.instagram.ipa >/dev/null
         env:
           GH_TOKEN: ${{ github.token }}
 
