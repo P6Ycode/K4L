@@ -347,7 +347,8 @@ static NSString *SPKHeaderButtonConfigSignature(NSArray<SPKHeaderDestination *> 
     NSMutableArray<NSString *> *ids = [NSMutableArray array];
     for (SPKHeaderDestination *destination in enabled)
         [ids addObject:destination.identifier];
-    return [NSString stringWithFormat:@"%@|%@", [ids componentsJoinedByString:@","], defaultAction ?: @""];
+    NSString *menuIcon = [SPKUtils getStringPref:@"general_action_btn_default_menu_icon"];
+    return [NSString stringWithFormat:@"%@|%@|%@", [ids componentsJoinedByString:@","], defaultAction ?: @"", menuIcon ?: @""];
 }
 
 - (void)spk_configureHeaderActionButton:(SPKFeedHeaderActionButton *)button {
@@ -391,7 +392,9 @@ static NSString *SPKHeaderButtonConfigSignature(NSArray<SPKHeaderDestination *> 
     } else {
         // Tap = open menu, glyph = the Sparkle menu icon.
         button.showsMenuAsPrimaryAction = YES;
-        [button setIconResource:kSPKHeaderMenuIconName pointSize:kSPKHeaderButtonGlyph];
+        NSString *menuIcon = [SPKUtils getStringPref:@"general_action_btn_default_menu_icon"];
+        if (menuIcon.length == 0) menuIcon = kSPKHeaderMenuIconName;
+        [button setIconResource:menuIcon pointSize:kSPKHeaderButtonGlyph];
     }
 
     objc_setAssociatedObject(button, kSPKHeaderButtonConfigSignatureAssocKey,
