@@ -190,6 +190,9 @@ static NSArray *SPKMessagesSettingsSections(void) {
             [SPKSetting switchCellWithTitle:@"Hide Video Call Button"
                                        icon:SPKSettingsIcon(@"video")
                                 defaultsKey:@"msgs_hide_video_call_btn"],
+            [SPKSetting switchCellWithTitle:@"Hide Flag Button"
+                                       icon:SPKSettingsIcon(@"flag")
+                                defaultsKey:@"msgs_hide_flag_btn"],
             [SPKSetting switchCellWithTitle:@"No Suggested Chats"
                                        icon:SPKSettingsIcon(@"question")
                                 defaultsKey:@"msgs_hide_suggested_chats"],
@@ -200,7 +203,8 @@ static NSArray *SPKMessagesSettingsSections(void) {
                         @"3. Removes the Reels Blend button from the inbox.\n"
                         @"4. Hides the audio call button in the chat header.\n"
                         @"5. Hides the video call button in the chat header.\n"
-                        @"6. Removes suggested chats from the inbox."),
+                        @"6. Hides the flag button in the chat header.\n"
+                        @"7. Removes suggested chats from the inbox."),
         SPKTopicSection(@"Visual Messages", @[
             [SPKSetting switchCellWithTitle:@"Manually Mark Seen"
                                        icon:SPKSettingsIcon(@"eye")

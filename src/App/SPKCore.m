@@ -55,6 +55,7 @@ static NSDictionary *SPKFeatureDefaults(void) {
         @"msgs_confirm_refresh" : @(NO),
         @"msgs_hide_audio_call_btn" : @(NO),
         @"msgs_hide_video_call_btn" : @(NO),
+        @"msgs_hide_flag_btn" : @(NO),
         @"msgs_advance_visual_on_seen" : @(NO),
         @"msgs_stop_visual_auto_advance" : @(NO),
         @"feed_confirm_post_like" : @(NO),
