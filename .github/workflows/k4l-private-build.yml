@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: macos-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout private K4L repository
@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p main/packages
-          ASSET_API_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[] | .assets[] | select(.name | endswith(".ipa")) | .url' | head -n 1)"
+          ASSET_API_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[] | .assets[] | select(.name | endswith(".ipa")) | select(.name != "K4L.ipa") | .url' | head -n 1)"
           if [ -z "$ASSET_API_URL" ]; then
             echo "::error::No .ipa release asset was found in this private repository."
             exit 1
@@ -107,13 +107,26 @@ jobs:
         run: |
           cd main
           ./build.sh ipa --release
-          ls -lh packages/K4L*_IG_v*.ipa
+          OUTPUT_IPA="$(find packages -maxdepth 1 -name 'K4L*_IG_v*.ipa' | head -n 1)"
+          test -n "$OUTPUT_IPA"
+          cp "$OUTPUT_IPA" packages/K4L.ipa
+          ls -lh packages/K4L.ipa
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Upload K4L IPA
         uses: actions/upload-artifact@v4
         with:
-          name: K4L-v1.2.0-Instagram-439
-          path: main/packages/K4L*_IG_v*.ipa
+          name: K4L
+          path: main/packages/K4L.ipa
           if-no-files-found: error
+
+      - name: Publish private K4L release
+        shell: bash
+        run: |
+          if ! gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create k4l-latest --repo "$GITHUB_REPOSITORY" --title "K4L" --notes "K4L v1.2.0 for Instagram 439.0.0. Built privately for sideloading with Sideloadly."
+          fi
+          gh release upload k4l-latest main/packages/K4L.ipa --repo "$GITHUB_REPOSITORY" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
