@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - k4l-custom
+    paths-ignore:
+      - '.release-notes/**'
+      - '.github/workflows/k4l-release-notes.yml'
   workflow_dispatch:
 
 concurrency:
