@@ -26,188 +26,43 @@ jobs:
           gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null
           cat > /tmp/k4l-release-notes.md <<'NOTES'
           # K4L v1.2.0 — Instagram 439.0.0
-          
-          ## K4L additions
-          
-          - Red-and-black **K4L** branding: red K, black 4, red L, with dark-mode contrast.
-          - The iPhone home-screen app name remains **Instagram**.
-          - **Recent Activity** is the default tap action on another person's profile.
-          - Manual **Scan Now** and pull-to-refresh profile scans.
-          - First scan creates a baseline; later scans detect:
-            - People who followed or unfollowed the profile.
-            - People the profile started following or unfollowed.
-          - Activity entries include display name, username, avatar, and detection timestamp.
-          - Scans work with public profiles and private profiles the signed-in account can access.
-          - Recent Activity data stays local and is capped at 13,000 total connections to reduce rate-limit risk.
-          - Exact posted date and time on every active story.
-          - Live HH:MM:SS countdown until each active story expires.
-          - Highlights show their original posted time and no expiration.
-          - Blue update dot under a highlight containing unseen new items; it clears after viewing and returns after another update.
-          - Anonymous viewing is enabled by default for accessible public, private, and Close Friends stories and highlights.
-          
-          ## K4L download and quality improvements
-          
-          - Highest official Instagram photo CDN variant for posts, stories, highlights, and reels.
-          - Highest available official video stream plus best available audio stream.
-          - Full-quality photos, videos, and photo-style reels.
-          - Mixed photo/video carousel support.
-          - **Download All** for complete carousels.
-          - **Select Media** for downloading only chosen carousel items.
-          - Original carousel order is preserved.
-          - Per-item progress, retry, and failure handling.
-          - DASH video/audio is merged using stream-copy first, preserving original bytes, frame rate, aspect ratio, duration, and quality when MP4 supports the codecs.
-          - Conversion is used only when the selected official streams cannot be placed directly into MP4.
-          - No added K4L watermark.
-          
-          ## Retained action-button and media features
-          
-          - Configurable action buttons for Feed, Reels, Stories, Profiles, Messages, and Instants.
-          - Configurable default tap action and long-press action menus.
-          - Editable menu sections, icons, order, names, and collapsible behavior.
-          - Save to Photos, Share, Copy Media, Copy Link, Save to K4L Gallery, Expand, Trim & Save, and Edit & Save.
-          - Audio extraction/download, sharing, Gallery saving, playback, and URL copying where audio is available.
-          - Full-screen photo/video/audio previews.
-          - Long-press feed and profile media expansion.
-          - Video and audio trimming with filmstrip/waveform controls.
-          - Photo cropping, rotation, flipping, and aspect-ratio editing.
-          - Native Live Text selection on supported static images.
-          
-          ## Retained private K4L Gallery
-          
-          - Private on-device Gallery with images, videos, audio, folders, favorites, metadata, search, sorting, and filtering.
-          - Grid/list layouts, adjustable grid density, source labels, usernames, and durations.
-          - Open the original Story, Reel, Post, or Profile from saved media.
-          - Rename, move, share, trim, edit, favorite, and delete Gallery items.
-          - Optional Gallery passcode plus Face ID or Touch ID.
-          - Per-account Gallery filtering and account reassignment.
-          - Hidden-source filters, duplicate tracking, storage totals, and bulk deletion.
-          - Quick Gallery access from a configurable Instagram tab.
-          
-          ## Retained download manager
-          
-          - Download queue with All, Active, Queued, Failed, and Recent filters.
-          - Multi-item job expansion and individual-item retry.
-          - Aggregate download progress pill.
-          - Duplicate-download detection.
-          - One to four parallel downloads.
-          - Configurable download-history limit and staged previews.
-          - Enhanced media resolution and selectable photo/video quality.
-          - Advanced encoding codec, bitrate, CRF, preset, resolution, and audio controls.
-          - FFmpeg encoding logs.
-          - Audio page download button and configurable audio action.
-          
-          ## Retained story features
-          
-          - Story action button and configurable menu.
-          - Manual seen mode with eye button.
-          - Per-account Included and Excluded user lists for seen receipts.
-          - Mark seen on like or reply.
-          - Stop automatic story advance.
-          - Advance after eye button, like, or reply.
-          - Confirm story like, quick reaction, and sticker interaction.
-          - Unlock Story Preview without appearing on the viewer list where supported.
-          - Hide the viewer-list Plus button.
-          - Search your story viewer list with relationship filters.
-          - Hide story midcards such as Join a Trending and Add Yours.
-          - Show story mentions and poll vote counts.
-          - Detailed story text color picker.
-          
-          ## Retained feed and reels features
-          
-          - Feed and Reels action buttons.
-          - Configurable Feed header shortcut to Settings, Profile Analyzer, Gallery, Deleted Messages, or Downloads.
-          - For You or chronological Following feed.
-          - Hide feed/reels ads, shopping prompts, suggested posts, suggested reels, suggested accounts, suggested Threads, story tray, or the entire feed.
-          - Hide feed/reels headers, repost buttons, and engagement counts.
-          - Disable feed video autoplay and start expanded videos muted.
-          - Disable Home-tab refresh or background feed refresh.
-          - Reels tap controls, progress scrubber, auto-unmute control, and tab-refresh control.
-          - Confirm likes, double-taps, reposts, reel refresh, and posting comments.
-          - Swipe to close comments, copy comment text/media, download photo/GIF comments, hide comment commerce/Gifts, and upload a Gallery photo in comments.
-          
-          ## Retained Messages and privacy features
-          
-          - Message action button for visual and permanent chat media.
-          - Manual chat-seen mode with movable eye button.
-          - Included and Excluded chat lists plus mark-seen triggers.
-          - Keep remotely deleted messages visible.
-          - Deleted-message and removed-reaction log.
-          - Media recovery cache for unsent view-once/view-twice photos, videos, GIFs, and stickers.
-          - Self-refreshing cached profile pictures.
-          - Confirm Inbox refresh before preserved content can be dropped.
-          - Exact Last Active date/time formatting.
-          - Hide typing status, Reels Blend, audio call, video call, suggested chats, Notes tray, or Friends Map.
-          - Disable view-once restrictions and screenshot detection for visual messages.
-          - Disable Vanish Mode swipe-up and screenshot detection.
-          - Download Notes audio and copy Note text.
-          - Download, upload, and trim voice/audio messages.
-          - Send a K4L Gallery photo into a chat.
-          - Confirm calls, reactions, voice messages, follow requests, theme changes, double-taps, and Vanish Mode.
-          
-          ## Retained Instants features
-          
-          - Instants action button with photo/video and multi-item support.
-          - Screenshot and screen-recording bypass.
-          - Disable Instants creation.
-          - Skip the camera after viewing the final Instant.
-          - Disable Camera Control capture.
-          - Upload to Instants from Photos, Files, or K4L Gallery.
-          - Confirm Instant reactions.
-          
-          ## Retained profile and analyzer features
-          
-          - Profile action button with copy ID, username, name, biography, and profile link actions.
-          - View, share, save, or expand profile pictures.
-          - Following-you indicator with icon/text and optional color.
-          - Hide profile Notes bubble or Threads button.
-          - Confirm follow and unfollow.
-          - Original self Profile Analyzer:
-            - Mutual followers.
-            - Not following you back.
-            - People you do not follow back.
-            - New/lost followers.
-            - Your following/unfollowing history.
-            - Username, name, and profile-photo changes.
-            - Search, sorting, profile opening, and inline follow/unfollow.
-          - Locally tracked visited profiles with visit counts and timestamps.
-          
-          ## Retained interface, privacy, and utility features
-          
-          - Per-account K4L settings.
-          - Hide ads across Feed, Stories, Reels, and Explore.
-          - Hide Meta AI across Direct, Explore/Search, comments, creation tools, and global UI.
-          - Hide suggested users across multiple surfaces.
-          - Copy text, remove tracking from shared links, hold Share to copy links, and stop recent-search storage.
-          - Configurable launch tab, tab order, tab swiping, and hidden tabs.
-          - Explore-grid and trending-search hiding.
-          - Open an Instagram clipboard link by long-pressing Explore.
-          - Hide K4L overlays from screenshots, recordings, and mirroring.
-          - iOS 26 Liquid Glass support, progressive blur, and floating-tab behavior.
-          - Alternate app icons, configurable action-menu icon, haptic controls, and cache clearing.
-          - Configurable K4L notification appearance, haptics, duration, and per-feature visibility.
-          - Quick settings access, master disable switch, onboarding/What's New replay, safe-start reset, Settings passcode with Face ID/Touch ID, TestFlight-popup hiding, duplicate-notification fix, and Instagram safe-mode control.
-          - Storage usage by feature.
-          - Export/import of Settings, Gallery, Deleted Messages, and Profile Analyzer data.
-          - Full or per-account settings reset.
-          
-          ## Removed from K4L
-          
-          - Disable Scrolling Reels.
-          - Prevent Doom Scrolling.
-          - Doom Scrolling Limit.
-          
-          ## Compatibility and packaging
-          
-          - Built from decrypted Instagram **439.0.0**.
+
+          ## Added and improved
+
+          - Red-and-black K4L branding while the Home Screen name stays Instagram.
+          - Highest available official quality for post, carousel, Reel, Story, and Highlight downloads.
+          - Batch **Download All** and **Select Media** for mixed photo/video carousels.
+          - Anonymous viewing for accessible public, private, Close Friends, and Highlight stories.
+          - Exact story posting time with compact remaining time such as **23h** or **45m remaining**.
+          - Blue unseen-update dot beneath Highlights containing new items.
+          - Original-quality DASH video/audio merging without re-encoding when supported.
+
+          ## Retained Sparkle features
+
+          - Configurable action buttons and menus for Feed, Reels, Stories, Profiles, Messages, and Instants.
+          - Save to Photos, Share, Clipboard, or the private on-device K4L Gallery.
+          - Download history, progress, retry, duplicate detection, quality selection, and encoding controls.
+          - Gallery folders, favorites, search, editing, trimming, metadata, account filters, and biometric lock.
+          - Self Profile Analyzer, following-you indicators, visited profiles, and profile actions.
+          - Manual Story/Message seen controls, deleted-message recovery, and screenshot/privacy options.
+          - Feed, Reels, ads, suggestions, tabs, interface, confirmation, backup, and per-account settings tools.
+
+          ## Fixed
+
+          - Reel and Story videos no longer lose their completed DASH file before saving to Photos or Gallery.
+          - Missing completed files now produce a clearer retry/log message.
+
+          ## Removed
+
+          - Recent Activity for other profiles, because Instagram rate limits prevent reliable full-list scans.
+          - Disable Scrolling Reels, Prevent Doom Scrolling, and Doom Scrolling Limit.
+
+          ## Compatibility
+
+          - Private **K4L.ipa** for Sideloadly, built from decrypted Instagram 439.0.0.
           - Intended for iPhone 15 Pro on iOS 26.1 and iPhone 16 Pro Max on iOS 27 beta 4.
-          - Packaged as **K4L.ipa** for Sideloadly.
-          - Two encrypted Instagram Camera Control extensions are removed during packaging because they cannot be re-signed.
-          - Other Instagram extensions are preserved.
-          - The source remains based on Sparkle and retains its GPLv3 licensing/credit.
-          
-          ## Recent Activity accuracy
-          
-          Instagram does not provide the exact moment somebody followed or unfollowed. K4L records when the change was detected and the interval between two manual scans. It cannot inspect lists the signed-in account is not permitted to access.
+          - Two encrypted Camera Control extensions are removed during packaging; other extensions remain.
+          - Based on Sparkle with its GPLv3 licensing and credit preserved.
           NOTES
           gh release edit k4l-latest --repo "$GITHUB_REPOSITORY" --notes-file /tmp/k4l-release-notes.md
         env:
