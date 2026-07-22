@@ -1,0 +1,266 @@
+--- a/src/App/SPKCore.m
++++ b/src/App/SPKCore.m
+@@ -99,7 +99,7 @@
+         @"msgs_action_btn_chat_media" : @(NO),
+         @"msgs_action_btn_default_action" : @"none",
+         @"profile_action_btn" : @(YES),
+-        @"profile_action_btn_default_action" : @"profile_recent_activity",
++        @"profile_action_btn_default_action" : @"none",
+         @"profile_highlight_update_dot" : @(YES),
+         @"feed_long_press_expand" : @(NO),
+         @"feed_expanded_vid_start_muted" : @(NO),
+--- a/src/Features/Profile/ProfileActionButton.xm
++++ b/src/Features/Profile/ProfileActionButton.xm
+@@ -278,8 +278,7 @@
+                                        __unused id media,
+                                        NSArray *entries,
+                                        __unused NSInteger currentIndex) {
+-        if ([identifier isEqualToString:kSPKActionProfileCopyInfo] ||
+-            [identifier isEqualToString:kSPKActionProfileRecentActivity])
++        if ([identifier isEqualToString:kSPKActionProfileCopyInfo])
+             return YES;
+         if ([identifier isEqualToString:kSPKActionOpenTopicSettings])
+             return YES;
+--- a/src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerService.h
++++ b/src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerService.h
+@@ -41,13 +41,6 @@
+ - (void)runForSelfWithHeaderInfo:(nullable SPKPAHeaderInfo)headerInfo
+                         progress:(nullable SPKPAProgress)progress
+                       completion:(nullable SPKPACompletion)completion;
+-// Runs the same manual snapshot/diff scan for another profile the signed-in
+-// account is allowed to inspect. Private profiles that are not accessible fail
+-// without changing the previous snapshot.
+-- (void)runForUserPK:(NSString *)userPK
+-          headerInfo:(nullable SPKPAHeaderInfo)headerInfo
+-            progress:(nullable SPKPAProgress)progress
+-          completion:(nullable SPKPACompletion)completion;
+ - (void)cancel;
+ 
+ @end
+--- a/src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerService.m
++++ b/src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerService.m
+@@ -90,19 +90,6 @@
+ - (void)runForSelfWithHeaderInfo:(SPKPAHeaderInfo)headerInfo
+                         progress:(SPKPAProgress)progress
+                       completion:(SPKPACompletion)completion {
+-    NSString *selfPK = [SPKUtils currentUserPK];
+-    if (!selfPK.length) {
+-        if (completion)
+-            completion(nil, [self errorWithCode:SPKProfileAnalyzerErrorNoSession message:@"No active Instagram session found"]);
+-        return;
+-    }
+-    [self runForUserPK:selfPK headerInfo:headerInfo progress:progress completion:completion];
+-}
+-
+-- (void)runForUserPK:(NSString *)userPK
+-          headerInfo:(SPKPAHeaderInfo)headerInfo
+-            progress:(SPKPAProgress)progress
+-          completion:(SPKPACompletion)completion {
+     if (self.isRunning) {
+         if (completion)
+             completion(nil, [self errorWithCode:SPKProfileAnalyzerErrorAlreadyRunning
+@@ -112,8 +99,8 @@
+     self.isRunning = YES;
+     self.cancelled = NO;
+ 
+-    NSString *targetPK = [userPK copy];
+-    if (!targetPK.length || ![SPKUtils currentUserPK].length) {
++    NSString *selfPK = [SPKUtils currentUserPK];
++    if (!selfPK.length) {
+         [self finishWithSnapshot:nil
+                            error:[self errorWithCode:SPKProfileAnalyzerErrorNoSession message:@"No active Instagram session found"]
+                       completion:completion];
+@@ -124,7 +111,7 @@
+     [self reportProgress:progress status:@"Fetching profile info..." fraction:0.02];
+ 
+     [SPKInstagramAPI sendRequestWithMethod:@"GET"
+-                                      path:[NSString stringWithFormat:@"users/%@/info/", targetPK]
++                                      path:[NSString stringWithFormat:@"users/%@/info/", selfPK]
+                                       body:nil
+                                 completion:^(NSDictionary *resp, NSError *error) {
+                                     typeof(self) strongSelf = weakSelf;
+@@ -155,7 +142,7 @@
+                                     }
+ 
+                                     SPKProfileAnalyzerSnapshot *snap = [SPKProfileAnalyzerSnapshot new];
+-                                    snap.selfPK = targetPK;
++                                    snap.selfPK = selfPK;
+                                     snap.selfUsername = user[@"username"];
+                                     snap.selfFullName = user[@"full_name"];
+                                     snap.selfProfilePicURL = user[@"profile_pic_url"];
+@@ -169,13 +156,13 @@
+ 
+                                     // Cache the header so the dashboard can paint identity even before the
+                                     // scan completes, then notify the caller for an immediate header paint.
+-                                    [SPKProfileAnalyzerStorage saveHeaderInfo:user forUserPK:targetPK];
++                                    [SPKProfileAnalyzerStorage saveHeaderInfo:user forUserPK:selfPK];
+                                     if (headerInfo)
+                                         dispatch_async(dispatch_get_main_queue(), ^{
+                                             headerInfo(user);
+                                         });
+ 
+-                                    [strongSelf fetchFollowersForPK:targetPK snapshot:snap progress:progress completion:completion];
++                                    [strongSelf fetchFollowersForPK:selfPK snapshot:snap progress:progress completion:completion];
+                                 }];
+ }
+ 
+--- a/src/Shared/ActionButton/ActionButtonCore.h
++++ b/src/Shared/ActionButton/ActionButtonCore.h
+@@ -48,7 +48,6 @@
+ FOUNDATION_EXPORT NSString *const kSPKActionProfileCopyName;
+ FOUNDATION_EXPORT NSString *const kSPKActionProfileCopyBio;
+ FOUNDATION_EXPORT NSString *const kSPKActionProfileCopyLink;
+-FOUNDATION_EXPORT NSString *const kSPKActionProfileRecentActivity;
+ FOUNDATION_EXPORT NSString *const SPKActionButtonConfigurationDidChangeNotification;
+ 
+ @interface SPKActionMenuButton : SPKChromeButton
+--- a/src/Shared/ActionButton/ActionButtonCore.xm
++++ b/src/Shared/ActionButton/ActionButtonCore.xm
+@@ -4,7 +4,6 @@
+ 
+ #import "../../AssetUtils.h"
+ #import "../../Features/Messages/DeletedMessagesLog/SPKDeletedMessagesViewController.h"
+-#import "../../Features/Profile/RecentActivity/SPKRecentActivityViewController.h"
+ #import "../../InstagramHeaders.h"
+ #import "../../Networking/SPKInstagramAPI.h"
+ #import "../../Settings/SPKPreferences.h"
+@@ -65,7 +64,6 @@
+ NSString *const kSPKActionProfileCopyName = @"profile_copy_name";
+ NSString *const kSPKActionProfileCopyBio = @"profile_copy_bio";
+ NSString *const kSPKActionProfileCopyLink = @"profile_copy_link";
+-NSString *const kSPKActionProfileRecentActivity = @"profile_recent_activity";
+ NSString *const SPKActionButtonConfigurationDidChangeNotification = @"SPKActionButtonConfigurationDidChangeNotification";
+ 
+ static const void *kSPKActionButtonContextAssocKey = &kSPKActionButtonContextAssocKey;
+@@ -2138,9 +2136,6 @@
+     if ([identifier isEqualToString:kSPKActionStoryMentionsSheet]) {
+         return context.source == SPKActionButtonSourceStories && SPKStoryMediaHasMentions(media);
+     }
+-    if (context.source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionProfileRecentActivity]) {
+-        return SPKProfileUserPK(media).length > 0;
+-    }
+     if (context.source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionProfileCopyInfo]) {
+         return media != nil;
+     }
+@@ -2913,18 +2908,6 @@
+     if ([identifier isEqualToString:kSPKActionStoryMentionsSheet]) {
+         return SPKExecuteStoryMentionsSheetAction(context);
+     }
+-    if (context.source == SPKActionButtonSourceProfile && [identifier isEqualToString:kSPKActionProfileRecentActivity]) {
+-        id user = SPKResolveMediaForContext(context);
+-        NSString *userPK = SPKProfileUserPK(user);
+-        if (!userPK.length) {
+-            SPKNotify(identifier, @"Profile unavailable", nil, @"error_filled", SPKNotificationToneError);
+-            return YES;
+-        }
+-        [SPKRecentActivityViewController presentForUserPK:userPK
+-                                                username:SPKProfileUsername(user)
+-                                          fromController:SPKActionContextPresenter(context)];
+-        return YES;
+-    }
+     if (context.source == SPKActionButtonSourceProfile && SPKIsProfileCopyActionIdentifier(identifier)) {
+         return SPKExecuteProfileCopyAction(identifier, context);
+     }
+--- a/src/Shared/ActionButton/SPKActionButtonConfiguration.m
++++ b/src/Shared/ActionButton/SPKActionButtonConfiguration.m
+@@ -128,7 +128,6 @@
+         ];
+     case SPKActionButtonSourceProfile:
+         return @[
+-            kSPKActionProfileRecentActivity,
+             kSPKActionDownloadLibrary,
+             kSPKActionDownloadShare,
+             kSPKActionCopyDownloadLink,
+@@ -263,7 +262,7 @@
+     } else if (source == SPKActionButtonSourceDirect) {
+         moreActions = @[ kSPKActionDeletedMessagesLog, kSPKActionOpenTopicSettings ];
+     } else if (source == SPKActionButtonSourceProfile) {
+-        moreActions = @[ kSPKActionProfileRecentActivity, kSPKActionToggleProfileStorySeenUserRule, kSPKActionToggleProfileMessagesSeenUserRule, kSPKActionOpenTopicSettings ];
++        moreActions = @[ kSPKActionToggleProfileStorySeenUserRule, kSPKActionToggleProfileMessagesSeenUserRule, kSPKActionOpenTopicSettings ];
+     } else {
+         moreActions = @[ kSPKActionOpenTopicSettings ];
+     }
+--- a/src/Shared/ActionButton/SPKActionDescriptor.m
++++ b/src/Shared/ActionButton/SPKActionDescriptor.m
+@@ -105,9 +105,6 @@
+             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionProfileCopyInfo
+                                                     title:@"Copy Info"
+                                                  iconName:@"info"],
+-            [SPKActionDescriptor descriptorWithIdentifier:kSPKActionProfileRecentActivity
+-                                                    title:@"Recent Activity"
+-                                                 iconName:@"clock"],
+             [SPKActionDescriptor descriptorWithIdentifier:kSPKActionProfileCopyID
+                                                     title:@"Copy ID"
+                                                  iconName:@"key"],
+--- a/src/Shared/Downloads/SPKDownloadDestinationWriter.m
++++ b/src/Shared/Downloads/SPKDownloadDestinationWriter.m
+@@ -85,6 +85,20 @@
+                  presenter:(UIViewController *)presenter
+                 anchorView:(UIView *)anchorView
+                 completion:(SPKDownloadDestinationCompletion)completion {
++    BOOL isDirectory = NO;
++    BOOL sourceExists = stagedPath.length > 0 &&
++                        [[NSFileManager defaultManager] fileExistsAtPath:stagedPath
++                                                            isDirectory:&isDirectory] &&
++                        !isDirectory;
++    if (!sourceExists) {
++        if (completion) {
++            completion(nil, nil,
++                       SPKDownloadError(SPKDownloadErrorFileMoveFailed,
++                                        @"The completed download file is missing.",
++                                        @"Retry the download. If it happens again, export the FFmpeg logs."));
++        }
++        return;
++    }
+     NSURL *fileURL = [NSURL fileURLWithPath:stagedPath];
+     SPKGallerySaveMetadata *metadata = itemRequest.metadata ?: request.metadata;
+     switch (request.destination) {
+--- a/src/Shared/MediaDownload/SPKMediaFFmpeg.m
++++ b/src/Shared/MediaDownload/SPKMediaFFmpeg.m
+@@ -1641,7 +1641,11 @@
+         @"stage" : audioFileURL ? @"Merging at original quality" : @"Saving original video",
+         @"arguments" : streamCopyArgs,
+         @"mainOutputURL" : outputURL,
+-        @"cleanupPaths" : @[ outputURL.path ?: @"" ]
++        // outputURL is the successful result handed to the download scheduler.
++        // Do not include it in per-attempt cleanup: validateAndFinalize runs
++        // cleanup before invoking completion. Failed attempts are still safely
++        // removed when the next attempt begins (or by the caller on cancel).
++        @"cleanupPaths" : @[]
+     }];
+ 
+     BOOL useAdvanced = [SPKUtils getBoolPref:@"downloads_adv_encoding"];
+--- a/src/Features/Stories/StoryTimeInfo.xm
++++ b/src/Features/Stories/StoryTimeInfo.xm
+@@ -62,12 +62,17 @@
+     NSString *posted = [formatter stringFromDate:self.takenDate];
+ 
+     NSString *remaining = @"Highlight • no expiration";
+-    if (self.expirationDate && [self.expirationDate timeIntervalSinceNow] > 0) {
++    if (self.expirationDate) {
+         NSInteger seconds = MAX(0, (NSInteger)floor([self.expirationDate timeIntervalSinceNow]));
+-        NSInteger hours = seconds / 3600;
+-        NSInteger minutes = (seconds % 3600) / 60;
+-        NSInteger secs = seconds % 60;
+-        remaining = [NSString stringWithFormat:@"%02ld:%02ld:%02ld remaining", (long)hours, (long)minutes, (long)secs];
++        if (seconds >= 3600) {
++            remaining = [NSString stringWithFormat:@"%ldh remaining", (long)(seconds / 3600)];
++        } else if (seconds >= 60) {
++            remaining = [NSString stringWithFormat:@"%ldm remaining", (long)(seconds / 60)];
++        } else if (seconds > 0) {
++            remaining = @"Less than 1m remaining";
++        } else {
++            remaining = @"Expired";
++        }
+     }
+     self.label.text = [NSString stringWithFormat:@"Posted %@  •  %@", posted, remaining];
+ }
+@@ -106,7 +111,7 @@
+ 
+         dispatch_queue_t queue = dispatch_get_main_queue();
+         state.timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
+-        dispatch_source_set_timer(state.timer, DISPATCH_TIME_NOW, NSEC_PER_SEC, NSEC_PER_MSEC * 100);
++        dispatch_source_set_timer(state.timer, DISPATCH_TIME_NOW, 30 * NSEC_PER_SEC, NSEC_PER_SEC);
+         __weak SPKStoryTimeState *weakState = state;
+         dispatch_source_set_event_handler(state.timer, ^{
+             [weakState updateText];
