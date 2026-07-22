@@ -208,7 +208,7 @@ jobs:
           ## Recent Activity accuracy
           
           Instagram does not provide the exact moment somebody followed or unfollowed. K4L records when the change was detected and the interval between two manual scans. It cannot inspect lists the signed-in account is not permitted to access.
-                    NOTES
+          NOTES
           gh release edit k4l-latest --repo "$GITHUB_REPOSITORY" --notes-file /tmp/k4l-release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}
