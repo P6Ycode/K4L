@@ -1,2 +1,1 @@
-Publish the complete K4L v1.2.0 feature inventory, including all retained Sparkle features plus custom additions, improvements, defaults, removals, packaging notes, and limitations.
-Release-notes workflow syntax verified and retriggered.
+Publish the concise K4L v1.2.0 release summary with current fixes and removals.
