@@ -1,1 +1,1 @@
-Publish the concise K4L v1.2.0 release summary with current fixes and removals.
+Publish the concise K4L v1.2.0 notes with the Gallery video fix and standalone-audio removal.
