@@ -1,0 +1,79 @@
+name: Update private K4L release notes
+
+on:
+  push:
+    branches:
+      - k4l-custom
+    paths:
+      - '.release-notes/**'
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Wait for K4L release and update notes
+        shell: bash
+        run: |
+          for attempt in $(seq 1 90); do
+            if gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 20
+          done
+          gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null
+          cat > /tmp/k4l-release-notes.md <<'NOTES'
+          # K4L v1.2.0 — Instagram 439.0.0
+
+          ## Added
+
+          - Red-and-black K4L branding.
+          - **Recent Activity** button on other profiles.
+          - Manual profile scans using **Scan Now** or pull-to-refresh.
+          - First scan creates a baseline; later scans detect:
+            - Who followed or unfollowed that profile.
+            - Who that profile followed or unfollowed.
+          - Activity rows include display name, username, avatar, and detection timestamp.
+          - Exact story posting date and time.
+          - Live story expiration countdown for every active story.
+          - Highlights show their original posting time with no expiration.
+          - Blue dot under an updated highlight until its new items are viewed.
+
+          ## Improved
+
+          - Highest official Instagram photo variant for posts, stories, highlights, and reels.
+          - Highest available video and audio streams.
+          - DASH video/audio uses stream-copy first to preserve original quality, frame rate, aspect ratio, and duration.
+          - Conversion is used only when the selected official streams cannot be placed directly in MP4.
+          - Full-quality batch downloading for mixed photo/video carousel posts.
+          - **Download All** and **Select Media** retain original carousel order with per-item progress and retry handling.
+
+          ## Enabled
+
+          - Anonymous viewing for accessible public, private, and Close Friends stories.
+          - Anonymous highlight viewing.
+          - Instagram home-screen app name remains **Instagram**.
+          - The K4L settings/tweak identity uses red K, black 4, and red L.
+
+          ## Removed
+
+          - Disable Scrolling Reels.
+          - Prevent Doom Scrolling.
+          - Doom Scrolling Limit.
+
+          ## Compatibility
+
+          - Built from decrypted Instagram **439.0.0**.
+          - Intended for iPhone 15 Pro on iOS 26.1 and iPhone 16 Pro Max on iOS 27 beta 4.
+          - Packaged as **K4L.ipa** for signing and installation with Sideloadly.
+          - Two encrypted Instagram Camera Control extensions are removed during packaging; other extensions are preserved.
+
+          ## Recent Activity accuracy
+
+          Instagram does not provide the exact moment somebody followed or unfollowed. K4L records when a change was detected and the interval between manual scans. Scans work only for profiles and lists the signed-in account is permitted to access.
+          NOTES
+          gh release edit k4l-latest --repo "$GITHUB_REPOSITORY" --notes-file /tmp/k4l-release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
