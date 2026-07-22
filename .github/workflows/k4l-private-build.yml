@@ -26,8 +26,8 @@ jobs:
       - name: Apply K4L source changes
         shell: bash
         run: |
-          base64 --decode main/.k4l/k4l-changes.patch.gz.b64 | gzip -dc | git -C main apply --binary -
-          base64 --decode main/.k4l/k4l-new-files.tar.gz.b64 | tar -xzf - -C main
+          python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-changes.patch.gz.b64','rb').read()))" | gzip -dc | git -C main apply --binary -
+          python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-new-files.tar.gz.b64','rb').read()))" | tar -xzf - -C main
           rm -rf main/.k4l
           git -C main diff --check
 
