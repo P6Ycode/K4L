@@ -24,15 +24,12 @@ jobs:
           from pathlib import Path
           path = Path('.github/workflows/k4l-private-build.yml')
           text = path.read_text()
-          hotfix = """          git -C main apply --check --binary .k4l/k4l-ios27-photos-hotfix.patch
-          git -C main apply --binary .k4l/k4l-ios27-photos-hotfix.patch
-"""
+          hotfix = "          git -C main apply --check --binary .k4l/k4l-ios27-photos-hotfix.patch\n          git -C main apply --binary .k4l/k4l-ios27-photos-hotfix.patch\n"
           marker = "          rm -rf main/.k4l\n"
           if hotfix not in text:
               if marker not in text:
                   raise SystemExit('Could not find the .k4l cleanup marker')
-              text = text.replace(marker, hotfix + marker, 1)
-              path.write_text(text)
+              path.write_text(text.replace(marker, hotfix + marker, 1))
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
