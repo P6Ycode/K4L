@@ -54,7 +54,7 @@ jobs:
           path: main
           submodules: recursive
 
-      - name: Apply K4L source changes and iOS 27 Photos fix
+      - name: Apply K4L source changes and current fixes
         shell: bash
         run: |
           set -euo pipefail
@@ -73,8 +73,13 @@ jobs:
             "$PATCH_FILE"
 
           python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-new-files.tar.gz.b64','rb').read()))" | tar -xzf - -C main
-          git -C main apply --check --binary .k4l/k4l-ios27-photos-hotfix.patch
-          git -C main apply --binary .k4l/k4l-ios27-photos-hotfix.patch
+
+          git -C main apply --recount --check --binary .k4l/k4l-ios27-photos-hotfix.patch
+          git -C main apply --recount --binary .k4l/k4l-ios27-photos-hotfix.patch
+
+          git -C main apply --recount --check --binary .k4l-diagnostics/pending-testflight-popup-fix.patch
+          git -C main apply --recount --binary .k4l-diagnostics/pending-testflight-popup-fix.patch
+
           rm -rf main/.k4l
           git -C main diff --check
 
@@ -192,7 +197,7 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE_TAG="k4l-latest"
-          RELEASE_NOTES="K4L v1.2.1 for Instagram 439.0.0. Fixes Gallery Share → Save Video and Download Video on iOS 27 by preparing a native Photos-compatible video export."
+          RELEASE_NOTES="K4L v1.2.1 for Instagram 439.0.0. Fixes Gallery Share → Save Video and Download Video on iOS 27, and strengthens the sideloaded TestFlight popup suppression with a one-time default migration."
 
           unzip -t main/packages/K4L.ipa >/dev/null
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
