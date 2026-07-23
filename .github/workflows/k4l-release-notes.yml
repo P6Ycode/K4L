@@ -1,0 +1,71 @@
+name: Update private K4L release notes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.release-notes/**'
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Wait for K4L release and update notes
+        shell: bash
+        run: |
+          for attempt in $(seq 1 90); do
+            if gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 20
+          done
+          gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null
+          cat > /tmp/k4l-release-notes.md <<'NOTES'
+          # K4L v1.2.0 — Instagram 439.0.0
+
+          ## Added and improved
+
+          - Red-and-black K4L branding while the Home Screen name stays Instagram.
+          - Highest available official quality for post, carousel, Reel, Story, and Highlight downloads.
+          - Batch **Download All** and **Select Media** for mixed photo/video carousels.
+          - Anonymous viewing for accessible public, private, Close Friends, and Highlight stories.
+          - Exact story posting time with compact remaining time such as **23h** or **45m remaining**.
+          - Blue unseen-update dot beneath Highlights containing new items.
+          - Original-quality DASH video/audio merging without re-encoding when supported.
+
+          ## Retained Sparkle features
+
+          - Configurable action buttons and menus for Feed, Reels, Stories, Profiles, Messages, and Instants.
+          - Save to Photos, Share, Clipboard, or the private on-device K4L Gallery.
+          - Download history, progress, retry, duplicate detection, quality selection, and encoding controls.
+          - Gallery folders, favorites, search, editing, trimming, metadata, account filters, and biometric lock.
+          - Self Profile Analyzer, following-you indicators, visited profiles, and profile actions.
+          - Manual Story/Message seen controls, deleted-message recovery, and screenshot/privacy options.
+          - Feed, Reels, ads, suggestions, tabs, interface, confirmation, backup, and per-account settings tools.
+
+          ## Fixed
+
+          - Reel and Story videos no longer lose their completed DASH file before saving to Photos or Gallery.
+          - Missing completed files now produce a clearer retry/log message.
+          - Reel and Story videos are stored as MP4 video items in K4L Gallery instead of being misclassified as audio.
+
+          ## Removed
+
+          - Recent Activity for other profiles, because Instagram rate limits prevent reliable full-list scans.
+          - All standalone audio downloads, audio-only quality options, audio uploads, and audio trimming. Videos still keep their normal sound.
+          - Disable Scrolling Reels, Prevent Doom Scrolling, and Doom Scrolling Limit.
+
+          ## Compatibility
+
+          - Private **K4L.ipa** for Sideloadly, built from decrypted Instagram 439.0.0.
+          - Intended for iPhone 15 Pro on iOS 26.1 and iPhone 16 Pro Max on iOS 27 beta 4.
+          - Two encrypted Camera Control extensions are removed during packaging; other extensions remain.
+          - Based on Sparkle with its GPLv3 licensing and credit preserved.
+          NOTES
+          gh release edit k4l-latest --repo "$GITHUB_REPOSITORY" --notes-file /tmp/k4l-release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
