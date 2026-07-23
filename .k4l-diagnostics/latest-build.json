@@ -1,24 +1,18 @@
 {
-  "generated_at": "2026-07-23T15:44:17.487Z",
+  "generated_at": "2026-07-23T16:18:32.731Z",
   "run": {
-    "id": 30021383169,
+    "id": 30024039602,
     "status": "in_progress",
     "conclusion": null,
-    "head_sha": "dd407077a85db3845bc35707e640b9fddeba6bbe",
-    "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30021383169",
+    "head_sha": "aab152d0cc42ca8bd9b9de9dfc90964d98703213",
+    "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024039602",
     "jobs": [
       {
-        "id": 89254682969,
+        "id": 89263798237,
         "name": "build",
         "status": "in_progress",
         "conclusion": null,
         "steps": [
-          {
-            "number": 1,
-            "name": "Set up job",
-            "status": "completed",
-            "conclusion": "success"
-          },
           {
             "number": 2,
             "name": "Cancel older duplicate K4L runs",
@@ -151,8 +145,8 @@
       "assets": [
         {
           "name": "K4L.ipa",
-          "size": 266985145,
-          "updated_at": "2026-07-23T15:44:13Z",
+          "size": 266985194,
+          "updated_at": "2026-07-23T16:18:28Z",
           "browser_download_url": "https://github.com/P6Ycode/K4L/releases/download/k4l-latest/K4L.ipa"
         }
       ]
