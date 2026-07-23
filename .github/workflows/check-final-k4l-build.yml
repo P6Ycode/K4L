@@ -1,0 +1,99 @@
+name: Check final K4L build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/check-final-k4l-build.trigger'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record newest K4L run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              { owner, repo, per_page: 100 }
+            );
+            const selected = runs
+              .filter(run => run.path === '.github/workflows/k4l-private-build.yml')
+              .slice(0, 5);
+            const output = [];
+            for (const run of selected) {
+              const jobs = await github.rest.actions.listJobsForWorkflowRun({
+                owner, repo, run_id: run.id, per_page: 100
+              });
+              output.push({
+                id: run.id,
+                status: run.status,
+                conclusion: run.conclusion,
+                head_sha: run.head_sha,
+                html_url: run.html_url,
+                jobs: jobs.data.jobs.map(job => ({
+                  id: job.id,
+                  name: job.name,
+                  status: job.status,
+                  conclusion: job.conclusion,
+                  steps: job.steps || []
+                }))
+              });
+            }
+            const body = JSON.stringify({
+              generated_at: new Date().toISOString(),
+              runs: output
+            }, null, 2) + '\n';
+            let sha;
+            try {
+              const current = await github.rest.repos.getContent({
+                owner, repo,
+                path: '.k4l-diagnostics/final-build-status.json',
+                ref: 'main'
+              });
+              if (!Array.isArray(current.data)) sha = current.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner, repo,
+              path: '.k4l-diagnostics/final-build-status.json',
+              branch: 'main',
+              message: 'record final K4L build status',
+              content: Buffer.from(body).toString('base64'),
+              ...(sha ? { sha } : {})
+            });
+
+      - name: Remove status helper
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            for (const path of [
+              '.github/workflows/check-final-k4l-build.yml',
+              '.github/workflows/check-final-k4l-build.trigger'
+            ]) {
+              try {
+                const current = await github.rest.repos.getContent({
+                  owner, repo, path, ref: 'main'
+                });
+                if (!Array.isArray(current.data)) {
+                  await github.rest.repos.deleteFile({
+                    owner, repo, path,
+                    branch: 'main',
+                    sha: current.data.sha,
+                    message: 'remove final K4L build status helper'
+                  });
+                }
+              } catch (error) {
+                if (error.status !== 404) core.warning(`${path}: ${error.message}`);
+              }
+            }
