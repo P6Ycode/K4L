@@ -1,0 +1,60 @@
+2026-07-23T17:05:56.5623120Z [1msrc/Shared/MediaTrim/../Downloads/SPKDownloadDestinationWriter.h:21:51: [0m[0;1;36mnote: [0mto match this '('[0m
+2026-07-23T17:05:56.5652630Z    21 |                               completion:(void (^)(NSURL *_Nullable preparedURL,[0m
+2026-07-23T17:05:56.5657420Z       | [0;1;32m                                                  ^
+2026-07-23T17:05:56.5680750Z [0m2 errors generated.
+2026-07-23T17:05:56.5681190Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimResult.m (arm64)…[m
+2026-07-23T17:05:56.5682320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimSaveCoordinator.m.689e71dc.o] Error 1
+2026-07-23T17:05:56.5683950Z make[3]: *** Waiting for unfinished jobs....
+2026-07-23T17:05:56.6863060Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T17:05:56.6871760Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T17:05:56.6885590Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T17:05:56.6899650Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T17:05:56.6918410Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T17:05:56.6959270Z ##[error]Process completed with exit code 2.
+2026-07-23T17:05:56.7095830Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+---
+2026-07-23T17:05:56.5652630Z    21 |                               completion:(void (^)(NSURL *_Nullable preparedURL,[0m
+2026-07-23T17:05:56.5657420Z       | [0;1;32m                                                  ^
+2026-07-23T17:05:56.5680750Z [0m2 errors generated.
+2026-07-23T17:05:56.5681190Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimResult.m (arm64)…[m
+2026-07-23T17:05:56.5682320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimSaveCoordinator.m.689e71dc.o] Error 1
+2026-07-23T17:05:56.5683950Z make[3]: *** Waiting for unfinished jobs....
+2026-07-23T17:05:56.6863060Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T17:05:56.6871760Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T17:05:56.6885590Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T17:05:56.6899650Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T17:05:56.6918410Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T17:05:56.6959270Z ##[error]Process completed with exit code 2.
+2026-07-23T17:05:56.7095830Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T17:05:56.7097050Z ##[group]Run actions/github-script@v7
+---
+2026-07-23T17:05:56.5681190Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimResult.m (arm64)…[m
+2026-07-23T17:05:56.5682320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimSaveCoordinator.m.689e71dc.o] Error 1
+2026-07-23T17:05:56.5683950Z make[3]: *** Waiting for unfinished jobs....
+2026-07-23T17:05:56.6863060Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T17:05:56.6871760Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T17:05:56.6885590Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T17:05:56.6899650Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T17:05:56.6918410Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T17:05:56.6959270Z ##[error]Process completed with exit code 2.
+2026-07-23T17:05:56.7095830Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T17:05:56.7097050Z ##[group]Run actions/github-script@v7
+2026-07-23T17:05:56.7097250Z with:
+2026-07-23T17:05:56.7101180Z   script: const { owner, repo } = context.repo;
+const runId = Number(context.runId);
+---
+2026-07-23T17:05:56.5682320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimSaveCoordinator.m.689e71dc.o] Error 1
+2026-07-23T17:05:56.5683950Z make[3]: *** Waiting for unfinished jobs....
+2026-07-23T17:05:56.6863060Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T17:05:56.6871760Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T17:05:56.6885590Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T17:05:56.6899650Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T17:05:56.6918410Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T17:05:56.6959270Z ##[error]Process completed with exit code 2.
+2026-07-23T17:05:56.7095830Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T17:05:56.7097050Z ##[group]Run actions/github-script@v7
+2026-07-23T17:05:56.7097250Z with:
+2026-07-23T17:05:56.7101180Z   script: const { owner, repo } = context.repo;
+const runId = Number(context.runId);
+const run = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+---
