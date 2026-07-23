@@ -1,3 +1,4 @@
+# Restored from the last successful K4L IPA build workflow.
 name: Build private K4L IPA
 
 on:
