@@ -74,11 +74,8 @@ jobs:
 
           python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-new-files.tar.gz.b64','rb').read()))" | tar -xzf - -C main
 
-          git -C main apply --recount --check --binary .k4l/k4l-ios27-photos-hotfix.patch
-          git -C main apply --recount --binary .k4l/k4l-ios27-photos-hotfix.patch
-
-          git -C main apply --recount --check --binary .k4l-diagnostics/pending-testflight-popup-fix.patch
-          git -C main apply --recount --binary .k4l-diagnostics/pending-testflight-popup-fix.patch
+          git -C main apply --check --binary .k4l-diagnostics/k4l-current-fixes.patch
+          git -C main apply --binary .k4l-diagnostics/k4l-current-fixes.patch
 
           rm -rf main/.k4l
           git -C main diff --check
