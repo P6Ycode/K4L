@@ -1,2 +1,2 @@
-Trigger one K4L IPA rebuild with the iOS 27 Photos compatibility fix and the TestFlight popup fix.
-Publish only after patch validation, compilation, IPA validation, and artifact upload succeed.
+Trigger one K4L IPA rebuild using the validated combined current-fixes patch.
+Include the iOS 27 Photos export fix and the sideloaded TestFlight popup fix.
