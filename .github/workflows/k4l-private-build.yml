@@ -80,17 +80,83 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('main/src/Shared/Downloads/SPKDownloadDestinationWriter.h')
-          text = path.read_text()
-          replacements = {
+
+          header_path = Path('main/src/Shared/Downloads/SPKDownloadDestinationWriter.h')
+          text = header_path.read_text()
+          for old, new in {
               '\n+                              completion:': '\n                              completion:',
               '\n+                          presenter:': '\n                          presenter:',
               '\n+                         anchorView:': '\n                         anchorView:',
               '\n+                         completion:': '\n                         completion:',
-          }
-          for old, new in replacements.items():
+          }.items():
               text = text.replace(old, new)
-          path.write_text(text)
+
+          typedefs = (
+              'typedef void (^SPKPreparedVideoCompletion)('
+              'NSURL * _Nullable, BOOL, NSError * _Nullable);\n'
+              'typedef void (^SPKShareSheetCompletion)(NSError * _Nullable);\n\n'
+          )
+          if 'typedef void (^SPKPreparedVideoCompletion)' not in text:
+              text = text.replace(
+                  '@interface SPKDownloadDestinationWriter : NSObject\n',
+                  typedefs + '@interface SPKDownloadDestinationWriter : NSObject\n',
+                  1,
+              )
+
+          lines = text.splitlines()
+          out = []
+          i = 0
+          while i < len(lines):
+              line = lines[i]
+              if line.startswith('+ (void)preparePhotoCompatibleVideoAtURL:'):
+                  out.append(line)
+                  out.append('                              completion:(SPKPreparedVideoCompletion)completion;')
+                  i += 1
+                  while i < len(lines) and not lines[i].rstrip().endswith('))completion;'):
+                      i += 1
+                  i += 1
+                  continue
+              if line.startswith('+ (void)presentShareSheetForFileURL:'):
+                  out.append(line)
+                  out.append('                          presenter:(nullable UIViewController *)presenter')
+                  out.append('                         anchorView:(nullable UIView *)anchorView')
+                  out.append('                         completion:(nullable SPKShareSheetCompletion)completion;')
+                  i += 1
+                  while i < len(lines) and not lines[i].rstrip().endswith('))completion;'):
+                      i += 1
+                  i += 1
+                  continue
+              out.append(line)
+              i += 1
+          header_path.write_text('\n'.join(out) + '\n')
+
+          impl_path = Path('main/src/Shared/Downloads/SPKDownloadDestinationWriter.m')
+          lines = impl_path.read_text().splitlines()
+          out = []
+          i = 0
+          while i < len(lines):
+              line = lines[i]
+              if line.startswith('+ (void)preparePhotoCompatibleVideoAtURL:'):
+                  out.append(line)
+                  out.append('                              completion:(SPKPreparedVideoCompletion)completion {')
+                  i += 1
+                  while i < len(lines) and not lines[i].rstrip().endswith('))completion {'):
+                      i += 1
+                  i += 1
+                  continue
+              if line.startswith('+ (void)presentShareSheetForFileURL:'):
+                  out.append(line)
+                  out.append('                          presenter:(UIViewController *)presenter')
+                  out.append('                         anchorView:(UIView *)anchorView')
+                  out.append('                         completion:(SPKShareSheetCompletion)completion {')
+                  i += 1
+                  while i < len(lines) and not lines[i].rstrip().endswith('))completion {'):
+                      i += 1
+                  i += 1
+                  continue
+              out.append(line)
+              i += 1
+          impl_path.write_text('\n'.join(out) + '\n')
           PY
 
           rm -rf main/.k4l
