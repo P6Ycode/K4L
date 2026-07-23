@@ -1,2 +1,2 @@
-Trigger one K4L IPA rebuild with the latest source fixes.
-Only the dedicated IPA workflow is enabled; older duplicate runs are cancelled by the build itself.
+Trigger one K4L IPA rebuild with the latest source fixes and reliable release publishing.
+Build request: 2026-07-23 latest corrected workflow.
