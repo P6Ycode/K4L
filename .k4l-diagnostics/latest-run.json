@@ -1,0 +1,607 @@
+{
+  "generated_at": "2026-07-23T15:24:41.597Z",
+  "runs": [
+    {
+      "id": 29928435230,
+      "name": "Build private K4L IPA",
+      "path": ".github/workflows/k4l-private-build.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "d54d0aaa41078099483123bb259526357215a52a",
+      "created_at": "2026-07-22T14:24:26Z",
+      "updated_at": "2026-07-22T14:31:49Z",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/29928435230",
+      "jobs": [
+        {
+          "id": 88951507799,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 2,
+              "name": "Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 3,
+              "name": "Apply K4L source changes",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 4,
+              "name": "Install build dependencies",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 5,
+              "name": "Use GNU Make",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 6,
+              "name": "Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 7,
+              "name": "Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 8,
+              "name": "Download iOS SDK",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "number": 9,
+              "name": "Download private Instagram input IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 10,
+              "name": "Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 11,
+              "name": "Prepare FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 12,
+              "name": "Install IPA injection tools",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 13,
+              "name": "Build and inject K4L",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 14,
+              "name": "Upload K4L IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 15,
+              "name": "Publish private K4L release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 27,
+              "name": "Post Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 28,
+              "name": "Post Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 29,
+              "name": "Post Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 30,
+              "name": "Post Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 31,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 29915638330,
+      "name": "Build private K4L IPA",
+      "path": ".github/workflows/k4l-private-build.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "ea8a2c73ecb8df16d0b6f0dc0cce4dd852a80b07",
+      "created_at": "2026-07-22T11:25:23Z",
+      "updated_at": "2026-07-22T11:30:34Z",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/29915638330",
+      "jobs": [
+        {
+          "id": 88908725385,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 2,
+              "name": "Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 3,
+              "name": "Apply K4L source changes",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 4,
+              "name": "Install build dependencies",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 5,
+              "name": "Use GNU Make",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 6,
+              "name": "Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 7,
+              "name": "Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 8,
+              "name": "Download iOS SDK",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "number": 9,
+              "name": "Download private Instagram input IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 10,
+              "name": "Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 11,
+              "name": "Prepare FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 12,
+              "name": "Install IPA injection tools",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 13,
+              "name": "Build and inject K4L",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 14,
+              "name": "Upload K4L IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 15,
+              "name": "Publish private K4L release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 27,
+              "name": "Post Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 28,
+              "name": "Post Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 29,
+              "name": "Post Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 30,
+              "name": "Post Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 31,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 29912491990,
+      "name": "Build private K4L IPA",
+      "path": ".github/workflows/k4l-private-build.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "e63f08c58aeaff2f7e0e304b657eae01807fc596",
+      "created_at": "2026-07-22T10:35:28Z",
+      "updated_at": "2026-07-22T10:43:45Z",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/29912491990",
+      "jobs": [
+        {
+          "id": 88898459168,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 2,
+              "name": "Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 3,
+              "name": "Apply K4L source changes",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 4,
+              "name": "Install build dependencies",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 5,
+              "name": "Use GNU Make",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 6,
+              "name": "Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 7,
+              "name": "Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 8,
+              "name": "Download iOS SDK",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "number": 9,
+              "name": "Download private Instagram input IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 10,
+              "name": "Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 11,
+              "name": "Prepare FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 12,
+              "name": "Install IPA injection tools",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 13,
+              "name": "Build and inject K4L",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 14,
+              "name": "Upload K4L IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 15,
+              "name": "Publish private K4L release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 27,
+              "name": "Post Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 28,
+              "name": "Post Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 29,
+              "name": "Post Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 30,
+              "name": "Post Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 31,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 29911363079,
+      "name": "Build private K4L IPA",
+      "path": ".github/workflows/k4l-private-build.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "069d2db6a8dbc54c5cba7452061dd9d18b3f8189",
+      "created_at": "2026-07-22T10:17:48Z",
+      "updated_at": "2026-07-22T10:33:32Z",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/29911363079",
+      "jobs": [
+        {
+          "id": 88894811722,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 2,
+              "name": "Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 3,
+              "name": "Apply K4L source changes",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 4,
+              "name": "Install build dependencies",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 5,
+              "name": "Use GNU Make",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 6,
+              "name": "Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 7,
+              "name": "Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 8,
+              "name": "Download iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 9,
+              "name": "Download private Instagram input IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 10,
+              "name": "Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 11,
+              "name": "Prepare FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 12,
+              "name": "Install IPA injection tools",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 13,
+              "name": "Build and inject K4L",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 14,
+              "name": "Upload K4L IPA",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 25,
+              "name": "Post Cache FFmpeg frameworks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 26,
+              "name": "Post Cache iOS SDK",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 27,
+              "name": "Post Set up Theos",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 28,
+              "name": "Post Checkout private K4L repository",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "number": 29,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "releases": [
+    {
+      "id": 357943734,
+      "tag_name": "k4l-latest",
+      "name": "K4L",
+      "draft": false,
+      "prerelease": false,
+      "created_at": "2026-07-14T01:18:28Z",
+      "published_at": "2026-07-22T10:43:25Z",
+      "html_url": "https://github.com/P6Ycode/K4L/releases/tag/k4l-latest",
+      "assets": [
+        {
+          "id": 486050561,
+          "name": "K4L.ipa",
+          "size": 266985148,
+          "updated_at": "2026-07-22T14:31:41Z",
+          "browser_download_url": "https://github.com/P6Ycode/K4L/releases/download/k4l-latest/K4L.ipa"
+        }
+      ]
+    },
+    {
+      "id": 357921224,
+      "tag_name": "input-ipa",
+      "name": "Input IPA",
+      "draft": false,
+      "prerelease": false,
+      "created_at": "2026-07-14T01:18:28Z",
+      "published_at": "2026-07-22T10:05:23Z",
+      "html_url": "https://github.com/P6Ycode/K4L/releases/tag/input-ipa",
+      "assets": [
+        {
+          "id": 485800982,
+          "name": "com.burbn.instagram_439.0.0_decrypted.ipa",
+          "size": 286044898,
+          "updated_at": "2026-07-22T10:05:18Z",
+          "browser_download_url": "https://github.com/P6Ycode/K4L/releases/download/input-ipa/com.burbn.instagram_439.0.0_decrypted.ipa"
+        }
+      ]
+    }
+  ]
+}
