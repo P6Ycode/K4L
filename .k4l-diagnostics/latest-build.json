@@ -1,153 +1,137 @@
 {
-  "generated_at": "2026-07-23T17:05:58.193Z",
+  "generated_at": "2026-07-23T17:16:06.270Z",
   "run": {
-    "id": 30027488892,
+    "id": 30028210230,
     "status": "in_progress",
     "conclusion": null,
-    "head_sha": "01caa31b542b4f8ee46f400cbd89451bb494c5e5",
-    "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30027488892"
+    "head_sha": "88631bbed911bd82e8edb1827fef705b5797f362",
+    "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30028210230"
   },
   "jobs": [
     {
-      "id": 89275522700,
+      "id": 89277929475,
       "name": "build",
       "status": "in_progress",
       "conclusion": null,
       "steps": [
         {
-          "name": "Set up job",
-          "status": "completed",
-          "conclusion": "success",
-          "number": 1,
-          "started_at": "2026-07-23T16:59:38Z",
-          "completed_at": "2026-07-23T16:59:40Z"
-        },
-        {
           "name": "Cancel older duplicate K4L runs",
           "status": "completed",
           "conclusion": "success",
           "number": 2,
-          "started_at": "2026-07-23T16:59:40Z",
-          "completed_at": "2026-07-23T16:59:44Z"
+          "started_at": "2026-07-23T17:09:35Z",
+          "completed_at": "2026-07-23T17:09:39Z"
         },
         {
           "name": "Checkout private K4L repository",
           "status": "completed",
           "conclusion": "success",
           "number": 3,
-          "started_at": "2026-07-23T16:59:44Z",
-          "completed_at": "2026-07-23T17:01:08Z"
+          "started_at": "2026-07-23T17:09:39Z",
+          "completed_at": "2026-07-23T17:09:46Z"
         },
         {
           "name": "Apply K4L source changes and current fixes",
           "status": "completed",
           "conclusion": "success",
           "number": 4,
-          "started_at": "2026-07-23T17:01:08Z",
-          "completed_at": "2026-07-23T17:01:08Z"
+          "started_at": "2026-07-23T17:09:46Z",
+          "completed_at": "2026-07-23T17:09:46Z"
         },
         {
           "name": "Install build dependencies",
           "status": "completed",
           "conclusion": "success",
           "number": 5,
-          "started_at": "2026-07-23T17:01:08Z",
-          "completed_at": "2026-07-23T17:03:00Z"
+          "started_at": "2026-07-23T17:09:46Z",
+          "completed_at": "2026-07-23T17:09:54Z"
         },
         {
           "name": "Use GNU Make",
           "status": "completed",
           "conclusion": "success",
           "number": 6,
-          "started_at": "2026-07-23T17:03:00Z",
-          "completed_at": "2026-07-23T17:03:01Z"
+          "started_at": "2026-07-23T17:09:54Z",
+          "completed_at": "2026-07-23T17:09:54Z"
         },
         {
           "name": "Set up Theos",
           "status": "completed",
           "conclusion": "success",
           "number": 7,
-          "started_at": "2026-07-23T17:03:01Z",
-          "completed_at": "2026-07-23T17:03:20Z"
+          "started_at": "2026-07-23T17:09:54Z",
+          "completed_at": "2026-07-23T17:10:03Z"
         },
         {
           "name": "Cache iOS SDK",
           "status": "completed",
           "conclusion": "success",
           "number": 8,
-          "started_at": "2026-07-23T17:03:20Z",
-          "completed_at": "2026-07-23T17:03:24Z"
+          "started_at": "2026-07-23T17:10:03Z",
+          "completed_at": "2026-07-23T17:10:07Z"
         },
         {
           "name": "Download iOS SDK",
           "status": "completed",
           "conclusion": "skipped",
           "number": 9,
-          "started_at": "2026-07-23T17:03:24Z",
-          "completed_at": "2026-07-23T17:03:24Z"
+          "started_at": "2026-07-23T17:10:07Z",
+          "completed_at": "2026-07-23T17:10:07Z"
         },
         {
           "name": "Download decrypted Instagram input IPA",
           "status": "completed",
           "conclusion": "success",
           "number": 10,
-          "started_at": "2026-07-23T17:03:24Z",
-          "completed_at": "2026-07-23T17:03:34Z"
+          "started_at": "2026-07-23T17:10:07Z",
+          "completed_at": "2026-07-23T17:10:15Z"
         },
         {
           "name": "Cache FFmpeg frameworks",
           "status": "completed",
           "conclusion": "success",
           "number": 11,
-          "started_at": "2026-07-23T17:03:34Z",
-          "completed_at": "2026-07-23T17:03:47Z"
+          "started_at": "2026-07-23T17:10:15Z",
+          "completed_at": "2026-07-23T17:10:26Z"
         },
         {
           "name": "Prepare FFmpeg frameworks",
           "status": "completed",
           "conclusion": "success",
           "number": 12,
-          "started_at": "2026-07-23T17:03:47Z",
-          "completed_at": "2026-07-23T17:03:47Z"
+          "started_at": "2026-07-23T17:10:26Z",
+          "completed_at": "2026-07-23T17:10:27Z"
         },
         {
           "name": "Install IPA injection tools",
           "status": "completed",
           "conclusion": "success",
           "number": 13,
-          "started_at": "2026-07-23T17:03:47Z",
-          "completed_at": "2026-07-23T17:03:56Z"
+          "started_at": "2026-07-23T17:10:27Z",
+          "completed_at": "2026-07-23T17:10:36Z"
         },
         {
           "name": "Build and validate K4L IPA",
           "status": "completed",
-          "conclusion": "failure",
+          "conclusion": "success",
           "number": 14,
-          "started_at": "2026-07-23T17:03:56Z",
-          "completed_at": "2026-07-23T17:05:56Z"
+          "started_at": "2026-07-23T17:10:36Z",
+          "completed_at": "2026-07-23T17:15:34Z"
         },
         {
           "name": "Upload K4L IPA artifact",
           "status": "completed",
-          "conclusion": "skipped",
+          "conclusion": "success",
           "number": 15,
-          "started_at": "2026-07-23T17:05:56Z",
-          "completed_at": "2026-07-23T17:05:56Z"
+          "started_at": "2026-07-23T17:15:34Z",
+          "completed_at": "2026-07-23T17:15:42Z"
         },
         {
           "name": "Publish updated K4L IPA release",
-          "status": "completed",
-          "conclusion": "skipped",
-          "number": 16,
-          "started_at": "2026-07-23T17:05:56Z",
-          "completed_at": "2026-07-23T17:05:56Z"
-        },
-        {
-          "name": "Record K4L build result",
           "status": "in_progress",
           "conclusion": null,
-          "number": 17,
-          "started_at": "2026-07-23T17:05:56Z",
+          "number": 16,
+          "started_at": "2026-07-23T17:15:42Z",
           "completed_at": null
         },
         {
@@ -191,8 +175,8 @@
     "assets": [
       {
         "name": "K4L.ipa",
-        "size": 266985194,
-        "updated_at": "2026-07-23T16:18:28Z",
+        "size": 266989225,
+        "updated_at": "2026-07-23T17:16:04Z",
         "browser_download_url": "https://github.com/P6Ycode/K4L/releases/download/k4l-latest/K4L.ipa"
       }
     ]
