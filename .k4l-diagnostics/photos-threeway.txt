@@ -1,0 +1,62 @@
+Checking patch src/Shared/Downloads/SPKDownloadDestinationWriter.h...
+error: while searching for:
+
++ (BOOL)isVideoFileAtURL:(NSURL *)fileURL;
++ (BOOL)isAudioFileAtURL:(NSURL *)fileURL;
++ (void)saveFileURLToPhotos:(NSURL *)fileURL
+                    metadata:(nullable SPKGallerySaveMetadata *)metadata
+                  completion:(void (^)(BOOL success,
+
+error: patch failed: src/Shared/Downloads/SPKDownloadDestinationWriter.h:19
+Falling back to direct application...
+error: while searching for:
+
++ (BOOL)isVideoFileAtURL:(NSURL *)fileURL;
++ (BOOL)isAudioFileAtURL:(NSURL *)fileURL;
++ (void)saveFileURLToPhotos:(NSURL *)fileURL
+                    metadata:(nullable SPKGallerySaveMetadata *)metadata
+                  completion:(void (^)(BOOL success,
+
+error: patch failed: src/Shared/Downloads/SPKDownloadDestinationWriter.h:19
+error: src/Shared/Downloads/SPKDownloadDestinationWriter.h: patch does not apply
+Checking patch src/Shared/Downloads/SPKDownloadDestinationWriter.m...
+Hunk #1 succeeded at 6 (offset -1 lines).
+Hunk #2 succeeded at 34 (offset -3 lines).
+Applied patch to 'src/Shared/Downloads/SPKDownloadDestinationWriter.m' with conflicts.
+Checking patch src/Shared/Gallery/SPKGalleryViewController.m...
+Hunk #1 succeeded at 3 (offset -2 lines).
+Hunk #2 succeeded at 1461 (offset 12 lines).
+error: while searching for:
+                                               identifier:nil
+                                                  handler:^(UIAction *a) {
+                                                      NSURL *url = [file fileURL];
+                                                      UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ url ] applicationActivities:nil];
+                                                      [weakSelf presentViewController:acVC animated:YES completion:nil];
+                                                  }];
+
+    UIAction *openOriginalAction = nil;
+
+error: patch failed: src/Shared/Gallery/SPKGalleryViewController.m:1611
+Falling back to direct application...
+Hunk #1 succeeded at 3 (offset -2 lines).
+Hunk #2 succeeded at 1461 (offset 12 lines).
+error: while searching for:
+                                               identifier:nil
+                                                  handler:^(UIAction *a) {
+                                                      NSURL *url = [file fileURL];
+                                                      UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ url ] applicationActivities:nil];
+                                                      [weakSelf presentViewController:acVC animated:YES completion:nil];
+                                                  }];
+
+    UIAction *openOriginalAction = nil;
+
+error: patch failed: src/Shared/Gallery/SPKGalleryViewController.m:1611
+error: src/Shared/Gallery/SPKGalleryViewController.m: patch does not apply
+Checking patch src/Shared/MediaPreview/SPKFullScreenMediaPlayer.m...
+Hunk #1 succeeded at 7 (offset -2 lines).
+Applied patch to 'src/Shared/MediaPreview/SPKFullScreenMediaPlayer.m' cleanly.
+THREEWAY_EXIT=1
+
+=== STATUS ===
+
+=== DIFF CHECK ===
