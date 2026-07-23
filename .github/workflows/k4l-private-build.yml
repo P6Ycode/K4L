@@ -1,4 +1,4 @@
-# Restored from the last successful K4L IPA build workflow.
+# Rebuild trigger: latest K4L fixes.
 name: Build private K4L IPA
 
 on:
