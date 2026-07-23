@@ -1,4 +1,3 @@
-# Rebuild trigger: latest K4L fixes.
 name: Build private K4L IPA
 
 on:
@@ -74,7 +73,7 @@ jobs:
           mkdir -p main/packages
           ASSET_API_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[] | .assets[] | select(.name | endswith(".ipa")) | select(.name != "K4L.ipa") | .url' | head -n 1)"
           if [ -z "$ASSET_API_URL" ]; then
-            echo "::error::No .ipa release asset was found in this private repository."
+            echo "::error::No decrypted Instagram IPA release asset was found."
             exit 1
           fi
           gh api -H "Accept: application/octet-stream" "$ASSET_API_URL" > main/packages/com.burbn.instagram.ipa
@@ -106,30 +105,52 @@ jobs:
           chmod +x main/ipapatch
           echo "${{ github.workspace }}/main" >> "$GITHUB_PATH"
 
-      - name: Build and inject K4L
+      - name: Build and validate K4L IPA
         shell: bash
         run: |
           cd main
+
+          # This workflow is IPA-only. Remove stale package outputs so a deb
+          # can never be mistaken for the final artifact.
+          rm -f packages/K4L.ipa packages/*.deb
+
           ./build.sh ipa --release
-          OUTPUT_IPA="$(find packages -maxdepth 1 -name 'K4L*_IG_v*.ipa' | head -n 1)"
-          test -n "$OUTPUT_IPA"
+
+          # build.sh names the generated file Sparkle_*_IG_v*.ipa. Select that
+          # fresh IPA and publish it under the private K4L name.
+          OUTPUT_IPA="$(find packages -maxdepth 1 -type f -name 'Sparkle*_IG_v*.ipa' -print | sort | tail -n 1)"
+          if [ -z "$OUTPUT_IPA" ]; then
+            echo "::error::The IPA build completed without producing a Sparkle_*_IG_v*.ipa file."
+            find packages -maxdepth 1 -type f -print
+            exit 1
+          fi
+
+          unzip -t "$OUTPUT_IPA" >/dev/null
+          if ! unzip -Z1 "$OUTPUT_IPA" | grep -Eq '^Payload/[^/]+\.app/'; then
+            echo "::error::Generated file is not a valid application IPA."
+            exit 1
+          fi
+
           cp "$OUTPUT_IPA" packages/K4L.ipa
-          ls -lh packages/K4L.ipa
+          rm -f packages/*.deb
+          unzip -t packages/K4L.ipa >/dev/null
+          ls -lh "$OUTPUT_IPA" packages/K4L.ipa
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Upload K4L IPA
         uses: actions/upload-artifact@v4
         with:
-          name: K4L
+          name: K4L-IPA
           path: main/packages/K4L.ipa
           if-no-files-found: error
 
-      - name: Publish private K4L release
+      - name: Publish private K4L IPA release
         shell: bash
         run: |
+          unzip -t main/packages/K4L.ipa >/dev/null
           if ! gh release view k4l-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create k4l-latest --repo "$GITHUB_REPOSITORY" --title "K4L" --notes "K4L v1.2.0 for Instagram 439.0.0. Built privately for sideloading with Sideloadly."
+            gh release create k4l-latest --repo "$GITHUB_REPOSITORY" --title "K4L" --notes "K4L v1.2.0 for Instagram 439.0.0. Built as an IPA for sideloading with Sideloadly."
           fi
           gh release upload k4l-latest main/packages/K4L.ipa --repo "$GITHUB_REPOSITORY" --clobber
         env:
