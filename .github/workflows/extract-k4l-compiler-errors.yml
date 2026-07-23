@@ -1,0 +1,92 @@
+name: Extract K4L compiler errors
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/extract-k4l-compiler-errors.trigger'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download failed build log and extract errors
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_ID: '89273941401'
+        run: |
+          set -euo pipefail
+          mkdir -p .k4l-diagnostics
+          gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$JOB_ID/logs" > /tmp/k4l-job.log
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('/tmp/k4l-job.log').read_text(errors='replace').splitlines()
+          needles = (' error:', 'fatal error:', 'undefined symbols', 'linker command failed', 'clang:', 'make[')
+          picked = []
+          for i, line in enumerate(lines):
+              lower = line.lower()
+              if any(n in lower for n in needles):
+                  start = max(0, i - 4)
+                  end = min(len(lines), i + 7)
+                  block = lines[start:end]
+                  if block not in picked:
+                      picked.append(block)
+          out = []
+          for block in picked:
+              out.extend(block)
+              out.append('---')
+          if not out:
+              out = lines[-250:]
+          Path('.k4l-diagnostics/compiler-errors.txt').write_text('\n'.join(out) + '\n')
+          PY
+
+      - name: Store compiler errors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const path = '.k4l-diagnostics/compiler-errors.txt';
+            const body = fs.readFileSync(path);
+            let sha;
+            try {
+              const existing = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });
+              if (!Array.isArray(existing.data)) sha = existing.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner, repo, path, branch: 'main',
+              message: 'record K4L compiler errors',
+              content: body.toString('base64'),
+              ...(sha ? { sha } : {})
+            });
+
+      - name: Remove one-time extractor
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            for (const path of [
+              '.github/workflows/extract-k4l-compiler-errors.yml',
+              '.github/workflows/extract-k4l-compiler-errors.trigger'
+            ]) {
+              try {
+                const current = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });
+                if (!Array.isArray(current.data)) {
+                  await github.rest.repos.deleteFile({
+                    owner, repo, path, branch: 'main', sha: current.data.sha,
+                    message: 'remove one-time K4L compiler error extractor'
+                  });
+                }
+              } catch (error) {
+                if (error.status !== 404) core.warning(`${path}: ${error.message}`);
+              }
+            }
