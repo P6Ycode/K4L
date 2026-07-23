@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - '.release-notes/**'
       - '.github/workflows/**'
+      - '.k4l-diagnostics/**'
   workflow_dispatch:
 
 concurrency:
@@ -76,8 +77,6 @@ jobs:
           PATCH_FILE="$RUNNER_TEMP/k4l-changes.patch"
           python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-changes.patch.gz.b64','rb').read()))" | gzip -dc > "$PATCH_FILE"
 
-          # The bundled patch contains old workflow edits. Workflows are now
-          # maintained directly in this repository, so apply only app/source changes.
           git -C main apply --check --binary \
             --exclude=.github/workflows/buildapp.yml \
             --exclude=.github/workflows/k4l-private-build.yml \
@@ -168,7 +167,6 @@ jobs:
         shell: bash
         run: |
           cd main
-
           rm -f packages/K4L.ipa packages/*.deb packages/Sparkle*_IG_v*.ipa
           ./build.sh ipa --release
 
@@ -202,6 +200,7 @@ jobs:
       - name: Publish K4L IPA-only release
         shell: bash
         run: |
+          set -euo pipefail
           RELEASE_TAG="k4l-latest"
           RELEASE_NOTES="K4L v1.2.0 for Instagram 439.0.0. IPA-only build for sideloading with Sideloadly."
 
@@ -210,26 +209,19 @@ jobs:
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" \
               --repo "$GITHUB_REPOSITORY" \
+              --target main \
               --title "K4L IPA" \
               --notes "$RELEASE_NOTES"
           fi
-
-          RELEASE_ID="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.id')"
-
-          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" \
-            --paginate --jq '.[].id' | while read -r ASSET_ID; do
-              [ -n "$ASSET_ID" ] && gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID"
-            done
 
           gh release upload "$RELEASE_TAG" main/packages/K4L.ipa \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
 
-          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
-            -f name="K4L IPA" \
-            -f body="$RELEASE_NOTES" \
-            -F draft=false \
-            -F prerelease=false \
-            -f make_latest=true
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "K4L IPA" \
+            --notes "$RELEASE_NOTES" \
+            --latest
         env:
           GH_TOKEN: ${{ github.token }}
