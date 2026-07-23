@@ -1,0 +1,60 @@
+2026-07-23T16:55:43.9618520Z    24 | + (void)presentShareSheetForFileURL:(NSURL *)fileURL[0m
+2026-07-23T16:55:43.9665240Z       | [0;1;32m                                                    ^
+2026-07-23T16:55:43.9690680Z [0m      | [0;32m                                                    ;
+2026-07-23T16:55:43.9735440Z [0m2 errors generated.
+2026-07-23T16:55:43.9753510Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimSaveCoordinator.m.689e71dc.o] Error 1
+2026-07-23T16:55:43.9790520Z make[3]: *** Waiting for unfinished jobs....
+2026-07-23T16:55:43.9835030Z In file included from src/Shared/MediaTrim/SPKTrimEntry.m:9:
+2026-07-23T16:55:43.9836710Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEntry.m (arm64)…[m
+2026-07-23T16:55:43.9841480Z [1msrc/Shared/MediaTrim/../Downloads/SPKDownloadDestinationWriter.h:20:58: [0m[0;1;31merror: [0m[1mexpected ';' after method prototype[0m
+2026-07-23T16:55:43.9843060Z    20 | + (void)preparePhotoCompatibleVideoAtURL:(NSURL *)fileURL[0m
+2026-07-23T16:55:43.9843770Z       | [0;1;32m                                                         ^
+---
+2026-07-23T16:55:43.9665240Z       | [0;1;32m                                                    ^
+2026-07-23T16:55:43.9690680Z [0m      | [0;32m                                                    ;
+2026-07-23T16:55:43.9735440Z [0m2 errors generated.
+2026-07-23T16:55:43.9753510Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimSaveCoordinator.m.689e71dc.o] Error 1
+2026-07-23T16:55:43.9790520Z make[3]: *** Waiting for unfinished jobs....
+2026-07-23T16:55:43.9835030Z In file included from src/Shared/MediaTrim/SPKTrimEntry.m:9:
+2026-07-23T16:55:43.9836710Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEntry.m (arm64)…[m
+2026-07-23T16:55:43.9841480Z [1msrc/Shared/MediaTrim/../Downloads/SPKDownloadDestinationWriter.h:20:58: [0m[0;1;31merror: [0m[1mexpected ';' after method prototype[0m
+2026-07-23T16:55:43.9843060Z    20 | + (void)preparePhotoCompatibleVideoAtURL:(NSURL *)fileURL[0m
+2026-07-23T16:55:43.9843770Z       | [0;1;32m                                                         ^
+2026-07-23T16:55:43.9844290Z [0m      | [0;32m                                                         ;
+---
+2026-07-23T16:55:43.9845920Z    24 | + (void)presentShareSheetForFileURL:(NSURL *)fileURL[0m
+2026-07-23T16:55:43.9846420Z       | [0;1;32m                                                    ^
+2026-07-23T16:55:43.9846940Z [0m      | [0;32m                                                    ;
+2026-07-23T16:55:43.9847630Z [0m2 errors generated.
+2026-07-23T16:55:43.9848320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimEntry.m.689e71dc.o] Error 1
+2026-07-23T16:55:44.0516690Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T16:55:44.0524740Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T16:55:44.0531820Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T16:55:44.0611450Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T16:55:44.0672060Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T16:55:44.0707580Z ##[error]Process completed with exit code 2.
+---
+2026-07-23T16:55:43.9847630Z [0m2 errors generated.
+2026-07-23T16:55:43.9848320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimEntry.m.689e71dc.o] Error 1
+2026-07-23T16:55:44.0516690Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T16:55:44.0524740Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T16:55:44.0531820Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T16:55:44.0611450Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T16:55:44.0672060Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T16:55:44.0707580Z ##[error]Process completed with exit code 2.
+2026-07-23T16:55:44.0843500Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T16:55:44.0844640Z ##[group]Run actions/github-script@v7
+2026-07-23T16:55:44.0844870Z with:
+---
+2026-07-23T16:55:43.9848320Z make[3]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/rules.mk:305: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/MediaTrim/SPKTrimEntry.m.689e71dc.o] Error 1
+2026-07-23T16:55:44.0516690Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T16:55:44.0524740Z rm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/Account/SPKAccountSwitchHook.xm.mm /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/src/Shared/ActionButton/ActionButtonCore.xm.mm
+2026-07-23T16:55:44.0531820Z make[2]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:52: /Users/runner/work/K4L/K4L/main/.theos/obj/arm64/K4L.dylib] Error 2
+2026-07-23T16:55:44.0611450Z make[1]: *** [/Users/runner/work/K4L/K4L/theos/makefiles/instance/library.mk:37: internal-library-all_] Error 2
+2026-07-23T16:55:44.0672060Z make: *** [/Users/runner/work/K4L/K4L/theos/makefiles/master/rules.mk:146: K4L.all.tweak.variables] Error 2
+2026-07-23T16:55:44.0707580Z ##[error]Process completed with exit code 2.
+2026-07-23T16:55:44.0843500Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T16:55:44.0844640Z ##[group]Run actions/github-script@v7
+2026-07-23T16:55:44.0844870Z with:
+2026-07-23T16:55:44.0848890Z   script: const { owner, repo } = context.repo;
+---
