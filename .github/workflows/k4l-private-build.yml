@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - '.release-notes/**'
       - '.github/workflows/**'
+      - '.github/scripts/**'
       - '.k4l-diagnostics/**'
   workflow_dispatch:
 
@@ -76,6 +77,21 @@ jobs:
 
           git -C main apply --check --binary .k4l-diagnostics/k4l-current-fixes.patch
           git -C main apply --binary .k4l-diagnostics/k4l-current-fixes.patch
+
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('main/src/Shared/Downloads/SPKDownloadDestinationWriter.h')
+          text = path.read_text()
+          replacements = {
+              '\n+                              completion:': '\n                              completion:',
+              '\n+                          presenter:': '\n                          presenter:',
+              '\n+                         anchorView:': '\n                         anchorView:',
+              '\n+                         completion:': '\n                         completion:',
+          }
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
 
           rm -rf main/.k4l
           git -C main diff --check
