@@ -1,2 +1,2 @@
 Apply the iOS 27 Photos compatibility patch in the main IPA workflow.
-Run the robust line-based insertion.
+Run after correcting the workflow YAML.
