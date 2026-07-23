@@ -6,7 +6,7 @@ on:
       - main
     paths-ignore:
       - '.release-notes/**'
-      - '.github/workflows/k4l-release-notes.yml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 concurrency:
