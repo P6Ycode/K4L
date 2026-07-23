@@ -1,0 +1,464 @@
+K4L failed job: 89251891200
+Generated: 2026-07-23T15:35:21Z
+
+=== ERROR MATCHES ===
+62:  } catch (error) {
+63:    core.warning(`Could not cancel run ${run.id}: ${error.message}`);
+567:2026-07-23T15:27:37.4764120Z [36;1m  echo "::error::No decrypted Instagram IPA was found in the input-ipa release."[0m
+649:2026-07-23T15:28:01.2332320Z [36;1m  echo "::error::The build did not produce a Sparkle_*_IG_v*.ipa file."[0m
+1074:2026-07-23T15:33:46.3038050Z ##[error]The build did not produce a Sparkle_*_IG_v*.ipa file.
+1077:2026-07-23T15:33:46.3079260Z ##[error]Process completed with exit code 1.
+1134:} catch (error) {
+1135:  if (error.status !== 404) throw error;
+
+=== FINAL 450 LOG LINES ===
+2026-07-23T15:29:31.0008500Z [0;32m==> [1;39mCompiling src/App/SPKStabilityGuard.m (arm64)…[m
+2026-07-23T15:29:31.0499580Z [0;32m==> [1;39mCompiling src/App/SPKFlexLoader.m (arm64)…[m
+2026-07-23T15:29:31.1143080Z [0;32m==> [1;39mCompiling src/App/SPKCore.m (arm64)…[m
+2026-07-23T15:29:31.1352190Z [0;32m==> [1;39mCompiling src/App/SPKStartupProfiler.m (arm64)…[m
+2026-07-23T15:29:31.2998150Z [0;32m==> [1;39mCompiling src/Networking/SPKInstagramAPI.m (arm64)…[m
+2026-07-23T15:29:31.5105680Z [0;32m==> [1;39mCompiling src/Tweak.x (arm64)…[m
+2026-07-23T15:29:34.1281570Z [0;32m==> [1;39mCompiling src/App/AppBootstrap.xm (arm64)…[m
+2026-07-23T15:29:34.2763370Z [0;32m==> [1;39mCompiling src/Features/Interface/OpenLinkFromClipboard.xm (arm64)…[m
+2026-07-23T15:29:34.3267050Z [0;32m==> [1;39mCompiling src/Features/Interface/LiquidGlass.xm (arm64)…[m
+2026-07-23T15:29:34.4523370Z [0;32m==> [1;39mCompiling src/Features/Interface/HideTrendingSearches.x (arm64)…[m
+2026-07-23T15:29:34.5851690Z [0;32m==> [1;39mCompiling src/Features/Interface/HideExploreGrid.xm (arm64)…[m
+2026-07-23T15:29:34.6458330Z [0;32m==> [1;39mCompiling src/Features/Tools/FixDuplicateNotifications.x (arm64)…[m
+2026-07-23T15:29:34.6660650Z [0;32m==> [1;39mCompiling src/Features/Interface/Navigation.xm (arm64)…[m
+2026-07-23T15:29:34.7069930Z [0;32m==> [1;39mCompiling src/Features/Tools/HideTestFlightPopup.x (arm64)…[m
+2026-07-23T15:29:34.7876810Z [0;32m==> [1;39mCompiling src/Features/Messages/DMInteractionConfirm.xm (arm64)…[m
+2026-07-23T15:29:34.8282980Z [0;32m==> [1;39mCompiling src/Features/Messages/ChangeThemeConfirm.x (arm64)…[m
+2026-07-23T15:29:34.9088360Z [0;32m==> [1;39mCompiling src/Features/Messages/HideFriendsMap.x (arm64)…[m
+2026-07-23T15:29:34.9492210Z [0;32m==> [1;39mCompiling src/Features/Messages/CallConfirm.x (arm64)…[m
+2026-07-23T15:29:34.9794380Z [0;32m==> [1;39mCompiling src/Features/Tools/SettingsShortcuts.x (arm64)…[m
+2026-07-23T15:29:35.0902310Z [0;32m==> [1;39mCompiling src/Features/Messages/FullLastActive.x (arm64)…[m
+2026-07-23T15:29:35.1004740Z [0;32m==> [1;39mCompiling src/Features/Messages/VisualMsgModifier.x (arm64)…[m
+2026-07-23T15:29:35.1205840Z [0;32m==> [1;39mCompiling src/Features/Messages/ConfirmSend.xm (arm64)…[m
+2026-07-23T15:29:35.1910740Z [0;32m==> [1;39mCompiling src/Features/Messages/DisableTypingStatus.x (arm64)…[m
+2026-07-23T15:29:35.2213420Z [0;32m==> [1;39mCompiling src/Features/Messages/DMAudioMsgConfirm.x (arm64)…[m
+2026-07-23T15:29:35.3219400Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesAvatarView.m (arm64)…[m
+2026-07-23T15:29:35.3561900Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesFilter.m (arm64)…[m
+2026-07-23T15:29:35.6031140Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesUserDetailViewController.m (arm64)…[m
+2026-07-23T15:29:35.6535120Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesViewController.m (arm64)…[m
+2026-07-23T15:29:35.7480520Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesModels.m (arm64)…[m
+2026-07-23T15:29:35.8185220Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesStorageViewController.m (arm64)…[m
+2026-07-23T15:29:35.8944520Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesChipBar.m (arm64)…[m
+2026-07-23T15:29:35.9092170Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesStorage.m (arm64)…[m
+2026-07-23T15:29:35.9198130Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesDate.m (arm64)…[m
+2026-07-23T15:29:36.0633380Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesSenderCell.m (arm64)…[m
+2026-07-23T15:29:36.1855700Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessageBubbleCell.m (arm64)…[m
+2026-07-23T15:29:36.2560550Z [0;32m==> [1;39mCompiling src/Features/Messages/CreateGroupButtonControls.xm (arm64)…[m
+2026-07-23T15:29:36.7483210Z [0;32m==> [1;39mCompiling src/Features/Messages/NotesActions.xm (arm64)…[m
+2026-07-23T15:29:36.9001410Z [0;32m==> [1;39mCompiling src/Features/Messages/DMAudioDownload.xm (arm64)…[m
+2026-07-23T15:29:36.9102910Z [0;32m==> [1;39mCompiling src/Features/Messages/FollowRequestConfirm.xm (arm64)…[m
+2026-07-23T15:29:37.0108850Z [0;32m==> [1;39mCompiling src/Features/Messages/DisableDMStorySeen.x (arm64)…[m
+2026-07-23T15:29:37.0509710Z [0;32m==> [1;39mCompiling src/Features/Messages/DMRefreshConfirm.xm (arm64)…[m
+2026-07-23T15:29:37.1013350Z [0;32m==> [1;39mCompiling src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesCapture.m (arm64)…[m
+2026-07-23T15:29:37.1416490Z [0;32m==> [1;39mCompiling src/Features/Messages/VanishModeConfirm.x (arm64)…[m
+2026-07-23T15:29:37.1781150Z [0;32m==> [1;39mCompiling src/Features/Messages/NoSuggestedChats.x (arm64)…[m
+2026-07-23T15:29:37.4190430Z [0;32m==> [1;39mCompiling src/Features/Messages/DirectVisualSeenButtons.x (arm64)…[m
+2026-07-23T15:29:37.6100270Z [0;32m==> [1;39mCompiling src/Features/Messages/AggregatedMediaActionButton.xm (arm64)…[m
+2026-07-23T15:29:38.0438310Z [0;32m==> [1;39mCompiling src/Features/Messages/MessageSeenButtons.x (arm64)…[m
+2026-07-23T15:29:38.0538700Z [0;32m==> [1;39mCompiling src/Features/Messages/KeepDeletedMessages.x (arm64)…[m
+2026-07-23T15:29:38.2146640Z [0;32m==> [1;39mCompiling src/Features/Messages/HideCallButtons.xm (arm64)…[m
+2026-07-23T15:29:38.2249000Z [0;32m==> [1;39mCompiling src/Features/Messages/DisableInstantsCreation.x (arm64)…[m
+2026-07-23T15:29:38.2762070Z [0;32m==> [1;39mCompiling src/Features/Messages/MessagesActionButton.xm (arm64)…[m
+2026-07-23T15:29:38.3567470Z [0;32m==> [1;39mCompiling src/Features/General/HideMetrics.x (arm64)…[m
+2026-07-23T15:29:38.4371200Z [0;32m==> [1;39mCompiling src/Features/General/NoSuggestedUsers.x (arm64)…[m
+2026-07-23T15:29:38.4893490Z [0;32m==> [1;39mCompiling src/Features/General/CopyDescription.x (arm64)…[m
+2026-07-23T15:29:38.5897930Z [0;32m==> [1;39mCompiling src/Features/General/SharedLinkCleanup.xm (arm64)…[m
+2026-07-23T15:29:38.6299820Z [0;32m==> [1;39mCompiling src/Features/General/FollowConfirm.x (arm64)…[m
+2026-07-23T15:29:38.7504550Z [0;32m==> [1;39mCompiling src/Features/General/CaptureHiding.xm (arm64)…[m
+2026-07-23T15:29:38.7907180Z [0;32m==> [1;39mCompiling src/Features/General/DetailedColorPicker.xm (arm64)…[m
+2026-07-23T15:29:38.8610440Z [0;32m==> [1;39mCompiling src/Features/General/DisableHaptics.x (arm64)…[m
+2026-07-23T15:29:38.9815050Z [0;32m==> [1;39mCompiling src/Features/General/NoRecentSearches.x (arm64)…[m
+2026-07-23T15:29:39.0619380Z [0;32m==> [1;39mCompiling src/Features/General/AudioPageDownload.xm (arm64)…[m
+2026-07-23T15:29:39.0922570Z [0;32m==> [1;39mCompiling src/Features/General/SearchBarIconRemap.x (arm64)…[m
+2026-07-23T15:29:39.2230190Z [0;32m==> [1;39mCompiling src/Features/General/EnhancedMediaResolution.xm (arm64)…[m
+2026-07-23T15:29:39.3544410Z [0;32m==> [1;39mCompiling src/Features/Reels/ReelsPlayback.xm (arm64)…[m
+2026-07-23T15:29:39.3647330Z [0;32m==> [1;39mCompiling src/Features/General/HideMetaAI.xm (arm64)…[m
+2026-07-23T15:29:39.4165890Z [0;32m==> [1;39mCompiling src/Features/Reels/DisableScrollingReels.x (arm64)…[m
+2026-07-23T15:29:39.4906150Z [0;32m==> [1;39mCompiling src/Features/Reels/HideReelsHeader.x (arm64)…[m
+2026-07-23T15:29:39.6306530Z [0;32m==> [1;39mCompiling src/Features/General/ShareLongPressCopy.xm (arm64)…[m
+2026-07-23T15:29:39.9927620Z [0;32m==> [1;39mCompiling src/Features/Instants/InstantsAllowScreenshot.xm (arm64)…[m
+2026-07-23T15:29:40.1795460Z [0;32m==> [1;39mCompiling src/Features/Reels/ReelsActionButton.xm (arm64)…[m
+2026-07-23T15:29:40.4007250Z [0;32m==> [1;39mCompiling src/Features/Instants/InstantsActionButton.xm (arm64)…[m
+2026-07-23T15:29:40.6435530Z [0;32m==> [1;39mCompiling src/Features/Instants/InstantsReactionConfirm.xm (arm64)…[m
+2026-07-23T15:29:40.9353410Z [0;32m==> [1;39mCompiling src/Features/Stories/StoryTimeInfo.xm (arm64)…[m
+2026-07-23T15:29:41.2498620Z [0;32m==> [1;39mCompiling src/Features/Stories/StoriesActionButton.xm (arm64)…[m
+2026-07-23T15:29:41.4685030Z [0;32m==> [1;39mCompiling src/Features/Stories/UnlockStoryPreview.x (arm64)…[m
+2026-07-23T15:29:41.7416500Z [0;32m==> [1;39mCompiling src/Features/Stories/HideJoinTrending.x (arm64)…[m
+2026-07-23T15:29:41.8028060Z [0;32m==> [1;39mCompiling src/Features/Stories/SeenButtons.x (arm64)…[m
+2026-07-23T15:29:42.1330750Z [0;32m==> [1;39mCompiling src/Features/Stories/StorySeenButtons.x (arm64)…[m
+2026-07-23T15:29:42.2545230Z [0;32m==> [1;39mCompiling src/Features/Stories/StickerInteractConfirm.x (arm64)…[m
+2026-07-23T15:29:42.8324680Z [0;32m==> [1;39mCompiling src/Features/Stories/StoryPollVoteCounts.xm (arm64)…[m
+2026-07-23T15:29:42.9754050Z [0;32m==> [1;39mCompiling src/Features/Stories/HideViewerPlusButton.x (arm64)…[m
+2026-07-23T15:29:43.0859810Z [0;32m==> [1;39mCompiling src/Features/Stories/DisableStorySeen.x (arm64)…[m
+2026-07-23T15:29:43.3130330Z [0;32m==> [1;39mCompiling src/Features/Stories/SearchStoryViewers.x (arm64)…[m
+2026-07-23T15:29:43.4363090Z [0;32m==> [1;39mCompiling src/Features/Instants/InstantsResolver.xm (arm64)…[m
+2026-07-23T15:29:43.7103910Z [0;32m==> [1;39mCompiling src/Features/Stories/StoryMentionsButton.x (arm64)…[m
+2026-07-23T15:29:43.8831480Z [0;32m==> [1;39mCompiling src/Features/Instants/InstantsGalleryUpload.xm (arm64)…[m
+2026-07-23T15:29:44.0633020Z [0;32m==> [1;39mCompiling src/Features/Stories/StoryMentions.x (arm64)…[m
+2026-07-23T15:29:44.0735330Z [0;32m==> [1;39mCompiling src/Features/Profile/FollowIndicator.x (arm64)…[m
+2026-07-23T15:29:44.3273010Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerModels.m (arm64)…[m
+2026-07-23T15:29:44.3990460Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerService.m (arm64)…[m
+2026-07-23T15:29:44.5102370Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerVisitTracker.x (arm64)…[m
+2026-07-23T15:29:44.9450940Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerStorage.m (arm64)…[m
+2026-07-23T15:29:45.0861040Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerListViewController.m (arm64)…[m
+2026-07-23T15:29:45.2098160Z [0;32m==> [1;39mCompiling src/Features/Profile/HighlightUpdateIndicator.xm (arm64)…[m
+2026-07-23T15:29:45.2198440Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileAnalyzer/SPKProfileAnalyzerViewController.m (arm64)…[m
+2026-07-23T15:29:45.4234810Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileHeaderControls.xm (arm64)…[m
+2026-07-23T15:29:45.4346270Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfilePhotoZoom.x (arm64)…[m
+2026-07-23T15:29:45.7309840Z [0;32m==> [1;39mCompiling src/Features/Feed/HideCommentGiftsButton.xm (arm64)…[m
+2026-07-23T15:29:45.8144550Z [0;32m==> [1;39mCompiling src/Features/Feed/CommentComposerGalleryUpload.xm (arm64)…[m
+2026-07-23T15:29:45.9388270Z [0;32m==> [1;39mCompiling src/Features/Feed/HideRepostButton.xm (arm64)…[m
+2026-07-23T15:29:46.1396720Z [0;32m==> [1;39mCompiling src/Features/Profile/ProfileActionButton.xm (arm64)…[m
+2026-07-23T15:29:46.1599020Z [0;32m==> [1;39mCompiling src/Features/Feed/DisableBackgroundRefresh.x (arm64)…[m
+2026-07-23T15:29:46.3633760Z [0;32m==> [1;39mCompiling src/Features/Feed/SwipeCloseComments.xm (arm64)…[m
+2026-07-23T15:29:46.3898170Z [0;32m==> [1;39mCompiling src/Features/Feed/HideFeedItems.xm (arm64)…[m
+2026-07-23T15:29:46.4637420Z [0;32m==> [1;39mCompiling src/Features/Feed/HeaderActionButton.xm (arm64)…[m
+2026-07-23T15:29:46.4805080Z [0;32m==> [1;39mCompiling src/Features/Feed/PostCommentConfirm.x (arm64)…[m
+2026-07-23T15:29:46.5743330Z [0;32m==> [1;39mCompiling src/Features/Feed/DisableHomeButtonRefresh.x (arm64)…[m
+2026-07-23T15:29:46.6223220Z [0;32m==> [1;39mCompiling src/Features/Feed/DisableFeedAutoplay.x (arm64)…[m
+2026-07-23T15:29:46.7458520Z [0;32m==> [1;39mCompiling src/Features/Feed/DisableAppIconGesture.x (arm64)…[m
+2026-07-23T15:29:46.8133840Z [0;32m==> [1;39mCompiling src/Features/Feed/HideThreads.x (arm64)…[m
+2026-07-23T15:29:46.8350920Z [0;32m==> [1;39mCompiling src/Features/Feed/CommentActions.xm (arm64)…[m
+2026-07-23T15:29:46.9358940Z [0;32m==> [1;39mCompiling src/Features/Feed/HideStoryTray.x (arm64)…[m
+2026-07-23T15:29:47.0867170Z [0;32m==> [1;39mCompiling src/Features/Feed/FollowingFeed.xm (arm64)…[m
+2026-07-23T15:29:47.2173120Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimRenderer.m (arm64)…[m
+2026-07-23T15:29:47.2998040Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimConfiguration.m (arm64)…[m
+2026-07-23T15:29:47.3299180Z [0;32m==> [1;39mCompiling src/Features/Feed/LikeConfirm.x (arm64)…[m
+2026-07-23T15:29:47.3802550Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimSourcePlan.m (arm64)…[m
+2026-07-23T15:29:47.5110890Z [0;32m==> [1;39mCompiling src/Features/Feed/FeedActionButton.xm (arm64)…[m
+2026-07-23T15:29:47.5913690Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimResult.m (arm64)…[m
+2026-07-23T15:29:47.6515770Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimSaveCoordinator.m (arm64)…[m
+2026-07-23T15:29:47.6817930Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEditorViewController.m (arm64)…[m
+2026-07-23T15:29:47.8105760Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimEntry.m (arm64)…[m
+2026-07-23T15:29:47.8518510Z [0;32m==> [1;39mCompiling src/Shared/MediaUpload/SPKMediaDMUploadCoordinator.m (arm64)…[m
+2026-07-23T15:29:47.9324070Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKSwitch.m (arm64)…[m
+2026-07-23T15:29:47.9525090Z [0;32m==> [1;39mCompiling src/Shared/MediaTrim/SPKTrimScrubberView.m (arm64)…[m
+2026-07-23T15:29:48.0529890Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKProgressPillButton.m (arm64)…[m
+2026-07-23T15:29:48.1384910Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKMediaChrome.m (arm64)…[m
+2026-07-23T15:29:48.2517060Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKGlassButton.m (arm64)…[m
+2026-07-23T15:29:48.3364540Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKNotificationCenter.m (arm64)…[m
+2026-07-23T15:29:48.5554380Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKUserListViewController.m (arm64)…[m
+2026-07-23T15:29:48.5655940Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKNotificationPillView.m (arm64)…[m
+2026-07-23T15:29:48.5776620Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKIGAlertPresenter.m (arm64)…[m
+2026-07-23T15:29:48.6791540Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKChipGlass.m (arm64)…[m
+2026-07-23T15:29:48.7238100Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKChipBar.m (arm64)…[m
+2026-07-23T15:29:48.7453580Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKChrome.m (arm64)…[m
+2026-07-23T15:29:48.8033800Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKBrandLogoView.m (arm64)…[m
+2026-07-23T15:29:48.8448490Z [0;32m==> [1;39mCompiling src/Shared/Settings/SPKSettingsLockManager.m (arm64)…[m
+2026-07-23T15:29:48.8851610Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKImageFormat.m (arm64)…[m
+2026-07-23T15:29:48.9666690Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKMediaItem.m (arm64)…[m
+2026-07-23T15:29:48.9869850Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKMediaPreviewInfoOverlay.m (arm64)…[m
+2026-07-23T15:29:49.0573490Z [0;32m==> [1;39mCompiling src/Shared/UI/SPKPagedSheetViewController.m (arm64)…[m
+2026-07-23T15:29:49.1797820Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKFullScreenImageViewController.m (arm64)…[m
+2026-07-23T15:29:49.2457200Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKMediaCacheManager.m (arm64)…[m
+2026-07-23T15:29:49.3826710Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKFullScreenVideoViewController.m (arm64)…[m
+2026-07-23T15:29:49.4733240Z [0;32m==> [1;39mCompiling src/Shared/ActionButton/SPKActionButtonConfiguration.m (arm64)…[m
+2026-07-23T15:29:49.5036300Z [0;32m==> [1;39mCompiling src/Shared/ActionButton/SPKActionDescriptor.m (arm64)…[m
+2026-07-23T15:29:49.8788800Z [0;32m==> [1;39mCompiling src/Shared/ActionButton/ActionButtonLookupUtils.m (arm64)…[m
+2026-07-23T15:29:49.9338660Z [0;32m==> [1;39mCompiling src/Shared/MediaPreview/SPKFullScreenMediaPlayer.m (arm64)…[m
+2026-07-23T15:29:49.9540880Z [0;32m==> [1;39mCompiling src/Shared/ActionButton/SPKActionMenuSection.m (arm64)…[m
+2026-07-23T15:29:50.0579610Z [0;32m==> [1;39mCompiling src/Shared/Messages/SPKDirectUserResolver.m (arm64)…[m
+2026-07-23T15:29:50.1497980Z [0;32m==> [1;39mCompiling src/Shared/ActionButton/SPKBulkMediaSelectionViewController.m (arm64)…[m
+2026-07-23T15:29:50.3325820Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryOriginController.m (arm64)…[m
+2026-07-23T15:29:50.4685230Z [0;32m==> [1;39mCompiling src/Shared/Messages/SPKDirectSeenContext.m (arm64)…[m
+2026-07-23T15:29:50.5467270Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryFileDetailsViewController.m (arm64)…[m
+2026-07-23T15:29:50.6692040Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGallerySortViewController.m (arm64)…[m
+2026-07-23T15:29:50.6794150Z [0;32m==> [1;39mCompiling src/Shared/ActionButton/ActionButtonCore.xm (arm64)…[m
+2026-07-23T15:29:50.7745230Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryPaths.m (arm64)…[m
+2026-07-23T15:29:50.8941100Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryFile.m (arm64)…[m
+2026-07-23T15:29:50.9271660Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryPickerViewController.m (arm64)…[m
+2026-07-23T15:29:50.9684110Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGallerySettingsViewController.m (arm64)…[m
+2026-07-23T15:29:51.1609380Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryFilterViewController.m (arm64)…[m
+2026-07-23T15:29:51.1714010Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryManager.m (arm64)…[m
+2026-07-23T15:29:51.2245000Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryCoreDataStack.m (arm64)…[m
+2026-07-23T15:29:51.3520090Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryGridCell.m (arm64)…[m
+2026-07-23T15:29:51.3903910Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryListCollectionCell.m (arm64)…[m
+2026-07-23T15:29:51.4307900Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryDeleteViewController.m (arm64)…[m
+2026-07-23T15:29:51.5047590Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryFolderCell.m (arm64)…[m
+2026-07-23T15:29:51.6391660Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryUserPickerViewController.m (arm64)…[m
+2026-07-23T15:29:51.7232160Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryLockViewController.m (arm64)…[m
+2026-07-23T15:29:51.7337190Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryHiddenSources.m (arm64)…[m
+2026-07-23T15:29:51.8316560Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGallerySaveMetadata.m (arm64)…[m
+2026-07-23T15:29:51.8929990Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryFolderChipBar.m (arm64)…[m
+2026-07-23T15:29:51.9031630Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryGridDensity.m (arm64)…[m
+2026-07-23T15:29:52.0346480Z [0;32m==> [1;39mCompiling src/Shared/Gallery/SPKGalleryViewController.m (arm64)…[m
+2026-07-23T15:29:52.0487200Z [0;32m==> [1;39mCompiling src/Shared/PhotoEdit/SPKPhotoEditEntry.m (arm64)…[m
+2026-07-23T15:29:52.1527810Z [0;32m==> [1;39mCompiling src/Shared/SPKStoragePaths.m (arm64)…[m
+2026-07-23T15:29:52.1629230Z [0;32m==> [1;39mCompiling src/Shared/PhotoEdit/SPKPhotoEditorViewController.m (arm64)…[m
+2026-07-23T15:29:52.2677790Z [0;32m==> [1;39mCompiling src/Shared/Stories/SPKStoryButtonPlacement.m (arm64)…[m
+2026-07-23T15:29:52.3388700Z [0;32m==> [1;39mCompiling src/Shared/Stories/SPKStoryViewersFetcher.m (arm64)…[m
+2026-07-23T15:29:52.3893070Z [0;32m==> [1;39mCompiling src/Shared/Stories/SPKStoryContext.m (arm64)…[m
+2026-07-23T15:29:52.4873560Z [0;32m==> [1;39mCompiling src/Shared/Audio/SPKAudioItem.m (arm64)…[m
+2026-07-23T15:29:52.5035680Z [0;32m==> [1;39mCompiling src/Shared/Stories/SPKStoryViewersSearchViewController.m (arm64)…[m
+2026-07-23T15:29:52.5803930Z [0;32m==> [1;39mCompiling src/Shared/Audio/SPKAudioDMUploadCoordinator.m (arm64)…[m
+2026-07-23T15:29:52.6329060Z [0;32m==> [1;39mCompiling src/Shared/MediaDownload/SPKDashParser.m (arm64)…[m
+2026-07-23T15:29:52.8884040Z [0;32m==> [1;39mCompiling src/Shared/Audio/SPKAudioDownloadCoordinator.m (arm64)…[m
+2026-07-23T15:29:53.0230180Z [0;32m==> [1;39mCompiling src/Shared/Account/SPKAccountManager.m (arm64)…[m
+2026-07-23T15:29:53.0792020Z [0;32m==> [1;39mCompiling src/Shared/MediaDownload/SPKMediaFFmpeg.m (arm64)…[m
+2026-07-23T15:29:53.1729730Z [0;32m==> [1;39mCompiling src/Shared/Account/SPKAccountSwitchHook.xm (arm64)…[m
+2026-07-23T15:29:53.2244070Z [0;32m==> [1;39mCompiling src/Shared/Avatars/SPKAvatarView.m (arm64)…[m
+2026-07-23T15:29:53.3421960Z [0;32m==> [1;39mCompiling src/Shared/Avatars/SPKAvatarCache.m (arm64)…[m
+2026-07-23T15:29:53.3523450Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadJob.m (arm64)…[m
+2026-07-23T15:29:53.4428960Z [0;32m==> [1;39mCompiling src/Shared/MediaDownload/SPKMediaQualityManager.m (arm64)…[m
+2026-07-23T15:29:53.5677280Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadDuplicatePolicy.m (arm64)…[m
+2026-07-23T15:29:53.6506750Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadPresenter.m (arm64)…[m
+2026-07-23T15:29:53.6763730Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadItem.m (arm64)…[m
+2026-07-23T15:29:53.7360270Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadsHistoryViewController.m (arm64)…[m
+2026-07-23T15:29:53.8017910Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadsSettingsViewController.m (arm64)…[m
+2026-07-23T15:29:53.8119580Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadStore.m (arm64)…[m
+2026-07-23T15:29:53.8743880Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadTransfer.m (arm64)…[m
+2026-07-23T15:29:53.9707590Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadService.m (arm64)…[m
+2026-07-23T15:29:53.9911160Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadDestinationWriter.m (arm64)…[m
+2026-07-23T15:29:54.1071470Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadHelpers.m (arm64)…[m
+2026-07-23T15:29:54.1487110Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadRequest.m (arm64)…[m
+2026-07-23T15:29:54.1916840Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadTypes.m (arm64)…[m
+2026-07-23T15:29:54.2844470Z [0;32m==> [1;39mCompiling src/Shared/Downloads/SPKDownloadScheduler.m (arm64)…[m
+2026-07-23T15:29:54.3851310Z [0;32m==> [1;39mCompiling src/AssetUtils.m (arm64)…[m
+2026-07-23T15:29:54.6566880Z [0;32m==> [1;39mCompiling src/Utils.m (arm64)…[m
+2026-07-23T15:29:55.1252180Z ld: warning: -multiply_defined is obsolete
+2026-07-23T15:29:55.1253600Z [0;33m==> [1;39mLinking tweak K4L (arm64)…[m
+2026-07-23T15:29:55.1355220Z warning: no debug symbols in executable (-arch arm64)
+2026-07-23T15:29:55.1356240Z [0;34m==> [1;39mGenerating debug symbols for K4L…[m
+2026-07-23T15:29:55.1457950Z [0;34m==> [1;39mStripping K4L (arm64)…[m
+2026-07-23T15:29:55.2413080Z [0;34m==> [1;39mSigning K4L…[m
+2026-07-23T15:29:55.2515880Z [1m[32mBuilding SPKSideloadFix.dylib...[0m
+2026-07-23T15:29:55.2617510Z make: Entering directory '/Users/runner/work/K4L/K4L/main/modules/SPKSideloadFix'
+2026-07-23T15:30:01.6773850Z [1;31m> [1;3;39mMaking all for tweak SPKSideloadFix…[m
+2026-07-23T15:30:02.9464940Z [0;31m==> [1;39mPreprocessing src/SideloadFix.xm…[m
+2026-07-23T15:30:03.0072930Z [0;31m==> [1;39mPreprocessing src/SecRebinds.xm…[m
+2026-07-23T15:30:03.3264130Z [0;32m==> [1;39mCompiling fishhook/fishhook.c (arm64)…[m
+2026-07-23T15:30:04.8132000Z [0;32m==> [1;39mCompiling src/SPKSideloadFix.mm (arm64)…[m
+2026-07-23T15:30:04.9831640Z [0;32m==> [1;39mCompiling src/SecRebinds.xm (arm64)…[m
+2026-07-23T15:30:05.0210030Z [0;32m==> [1;39mCompiling src/SideloadFix.xm (arm64)…[m
+2026-07-23T15:30:05.0764690Z [0;32m==> [1;39mCompiling src/Paths.mm (arm64)…[m
+2026-07-23T15:30:05.2693460Z ld: warning: -multiply_defined is obsolete
+2026-07-23T15:30:05.2694230Z [0;33m==> [1;39mLinking tweak SPKSideloadFix (arm64)…[m
+2026-07-23T15:30:05.2695600Z [0;34m==> [1;39mGenerating debug symbols for SPKSideloadFix…[m
+2026-07-23T15:30:05.2702320Z [0;34m==> [1;39mStripping SPKSideloadFix (arm64)…[m
+2026-07-23T15:30:05.3024720Z [0;34m==> [1;39mSigning SPKSideloadFix…[m
+2026-07-23T15:30:05.3037780Z make: Leaving directory '/Users/runner/work/K4L/K4L/main/modules/SPKSideloadFix'
+2026-07-23T15:30:05.5898010Z [1m[32mInjecting FFmpeg frameworks...[0m
+2026-07-23T15:30:40.6059200Z [1m[32mEmbedding Safari extension...[0m
+2026-07-23T15:31:19.4028740Z [1m[32mRemoving encrypted Camera Control extensions...[0m
+2026-07-23T15:31:56.4922840Z [1m[32mInjecting K4L app icons...[0m
+2026-07-23T15:31:56.8502850Z   Added 3 K4L alternate icon entries to Info.plist
+2026-07-23T15:32:21.5902760Z [1m[32mCreating the IPA file...[0m
+2026-07-23T15:33:31.6122760Z [*] extracting ipa..
+2026-07-23T15:33:31.6126890Z [*] extracted ipa
+2026-07-23T15:33:31.6127790Z [*] fixed common dependency in K4L.dylib: /Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate -> @rpath/CydiaSubstrate.framework/CydiaSubstrate
+2026-07-23T15:33:31.6128620Z [*] injected K4L.dylib
+2026-07-23T15:33:31.6128930Z [*] auto-injected CydiaSubstrate.framework
+2026-07-23T15:33:31.6129360Z [*] restored entitlements
+2026-07-23T15:33:31.6129710Z [*] changed minimum version to "15.0"
+2026-07-23T15:33:31.6130030Z [*] removed UISupportedDevices
+2026-07-23T15:33:31.6130430Z [*] enabled documents support
+2026-07-23T15:33:31.6134020Z [*] thinned [96m8[0m item(s)
+2026-07-23T15:33:31.6134330Z [*] generating ipa with compression level 9..
+2026-07-23T15:33:31.6134930Z [*] generated ipa at /Users/runner/work/K4L/K4L/main/packages/K4L_no-flex_v1.2.0_IG_v439.0.0.ipa
+2026-07-23T15:33:31.6135480Z [*] deleting temporary directory..
+2026-07-23T15:33:31.6379180Z [1m[32mPatching IPA for sideloading...[0m
+2026-07-23T15:33:31.7075690Z [34mINFO[0m --inplace specified, will overwrite input
+2026-07-23T15:33:31.7162990Z [34mINFO[0m extracting and injecting..
+2026-07-23T15:33:31.7306940Z [34mINFO[0m injecting into InstagramShareExtension ..
+2026-07-23T15:33:31.8844330Z [34mINFO[0m injecting into InstagramWidgetExtension ..
+2026-07-23T15:33:31.9435460Z [34mINFO[0m injecting into InstagramNotificationContentExtension ..
+2026-07-23T15:33:32.0320250Z [34mINFO[0m injecting into InstagramNotificationExtension ..
+2026-07-23T15:33:32.0625780Z [34mINFO[0m injecting into InstagramWidgetExtensionLiveActivities ..
+2026-07-23T15:33:32.0652700Z [34mINFO[0m injecting into InstagramBroadcastSampleHandlerExtension ..
+2026-07-23T15:33:32.0668790Z [34mINFO[0m injecting into OpenInstagramSafariExtension ..
+2026-07-23T15:33:34.4723220Z [34mINFO[0m injecting into Instagram ..
+2026-07-23T15:33:36.4013680Z [34mINFO[0m adding files back to ipa..
+2026-07-23T15:33:46.2893970Z [1m[32mDone, we hope you enjoy K4L![0m
+2026-07-23T15:33:46.2895340Z 
+2026-07-23T15:33:46.2895900Z Output IPA: /Users/runner/work/K4L/K4L/main/packages/K4L_no-flex_v1.2.0_IG_v439.0.0.ipa
+2026-07-23T15:33:46.3038050Z ##[error]The build did not produce a Sparkle_*_IG_v*.ipa file.
+2026-07-23T15:33:46.3067040Z packages/K4L_no-flex_v1.2.0_IG_v439.0.0.ipa
+2026-07-23T15:33:46.3067870Z packages/com.burbn.instagram.ipa
+2026-07-23T15:33:46.3079260Z ##[error]Process completed with exit code 1.
+2026-07-23T15:33:46.3230520Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T15:33:46.3231750Z ##[group]Run actions/github-script@v7
+2026-07-23T15:33:46.3232240Z with:
+2026-07-23T15:33:46.3237230Z   script: const { owner, repo } = context.repo;
+const branch = 'main';
+const outputPath = '.k4l-diagnostics/latest-build.json';
+const runId = Number(context.runId);
+
+const run = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+const jobsResponse = await github.rest.actions.listJobsForWorkflowRun({
+  owner,
+  repo,
+  run_id: runId,
+  per_page: 100
+});
+const releasesResponse = await github.rest.repos.listReleases({ owner, repo, per_page: 20 });
+
+const data = {
+  generated_at: new Date().toISOString(),
+  run: {
+    id: run.data.id,
+    status: run.data.status,
+    conclusion: run.data.conclusion,
+    head_sha: run.data.head_sha,
+    html_url: run.data.html_url,
+    jobs: jobsResponse.data.jobs.map(job => ({
+      id: job.id,
+      name: job.name,
+      status: job.status,
+      conclusion: job.conclusion,
+      steps: (job.steps || []).map(step => ({
+        number: step.number,
+        name: step.name,
+        status: step.status,
+        conclusion: step.conclusion
+      }))
+    }))
+  },
+  releases: releasesResponse.data.map(release => ({
+    tag_name: release.tag_name,
+    name: release.name,
+    published_at: release.published_at,
+    assets: release.assets.map(asset => ({
+      name: asset.name,
+      size: asset.size,
+      updated_at: asset.updated_at,
+      browser_download_url: asset.browser_download_url
+    }))
+  }))
+};
+
+const body = JSON.stringify(data, null, 2) + '\n';
+let sha;
+try {
+  const existing = await github.rest.repos.getContent({ owner, repo, path: outputPath, ref: branch });
+  if (!Array.isArray(existing.data)) sha = existing.data.sha;
+} catch (error) {
+  if (error.status !== 404) throw error;
+}
+
+await github.rest.repos.createOrUpdateFileContents({
+  owner,
+  repo,
+  path: outputPath,
+  branch,
+  message: `record K4L build result for run ${runId}`,
+  content: Buffer.from(body).toString('base64'),
+  ...(sha ? { sha } : {})
+});
+
+2026-07-23T15:33:46.3255290Z   github-token: ***
+2026-07-23T15:33:46.3255750Z   debug: false
+2026-07-23T15:33:46.3256040Z   user-agent: actions/github-script
+2026-07-23T15:33:46.3256510Z   result-encoding: json
+2026-07-23T15:33:46.3256950Z   retries: 0
+2026-07-23T15:33:46.3257190Z   retry-exempt-status-codes: 400,401,403,404,422
+2026-07-23T15:33:46.3257700Z ##[endgroup]
+2026-07-23T15:33:49.3240260Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T15:33:49.3241290Z Post job cleanup.
+2026-07-23T15:33:49.4850630Z [command]/opt/homebrew/bin/git version
+2026-07-23T15:33:49.5256670Z git version 2.55.0
+2026-07-23T15:33:49.5280610Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/7e2672b5-1664-4931-aaee-993d32c79201/.gitconfig'
+2026-07-23T15:33:49.5295800Z Temporarily overriding HOME='/Users/runner/work/_temp/7e2672b5-1664-4931-aaee-993d32c79201' before making global git config changes
+2026-07-23T15:33:49.5299860Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-23T15:33:49.5300680Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/K4L/K4L/theos
+2026-07-23T15:33:49.5485510Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-23T15:33:49.5584610Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-23T15:33:49.6891750Z Entering 'vendor/dm.pl'
+2026-07-23T15:33:49.7153850Z Entering 'vendor/include'
+2026-07-23T15:33:49.7423930Z Entering 'vendor/lib'
+2026-07-23T15:33:49.7695490Z Entering 'vendor/logos'
+2026-07-23T15:33:49.7965300Z Entering 'vendor/nic'
+2026-07-23T15:33:49.8233620Z Entering 'vendor/orion'
+2026-07-23T15:33:49.8511490Z Entering 'vendor/orion/fishhook'
+2026-07-23T15:33:49.8805010Z Entering 'vendor/swift-support'
+2026-07-23T15:33:49.9069420Z Entering 'vendor/templates'
+2026-07-23T15:33:49.9321200Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-23T15:33:49.9386650Z http.https://github.com/.extraheader
+2026-07-23T15:33:49.9394150Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-07-23T15:33:49.9470570Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-23T15:33:50.0633500Z Entering 'vendor/dm.pl'
+2026-07-23T15:33:50.0791080Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.0941910Z Entering 'vendor/include'
+2026-07-23T15:33:50.1110190Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.1276020Z Entering 'vendor/lib'
+2026-07-23T15:33:50.1438480Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.1583680Z Entering 'vendor/logos'
+2026-07-23T15:33:50.1753740Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.1898310Z Entering 'vendor/nic'
+2026-07-23T15:33:50.2063640Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.2214520Z Entering 'vendor/orion'
+2026-07-23T15:33:50.2386770Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.2537740Z Entering 'vendor/orion/fishhook'
+2026-07-23T15:33:50.2697220Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.2845120Z Entering 'vendor/swift-support'
+2026-07-23T15:33:50.3017500Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.3182000Z Entering 'vendor/templates'
+2026-07-23T15:33:50.3351710Z http.https://github.com/.extraheader
+2026-07-23T15:33:50.3513460Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.3584320Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-23T15:33:50.4489240Z Entering 'vendor/dm.pl'
+2026-07-23T15:33:50.4606150Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/dm.pl/config	remote.origin.url
+2026-07-23T15:33:50.4681560Z Entering 'vendor/include'
+2026-07-23T15:33:50.4793400Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/include/config	remote.origin.url
+2026-07-23T15:33:50.4867350Z Entering 'vendor/lib'
+2026-07-23T15:33:50.4983710Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/lib/config	remote.origin.url
+2026-07-23T15:33:50.5066120Z Entering 'vendor/logos'
+2026-07-23T15:33:50.5179380Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/logos/config	remote.origin.url
+2026-07-23T15:33:50.5259290Z Entering 'vendor/nic'
+2026-07-23T15:33:50.5376020Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/nic/config	remote.origin.url
+2026-07-23T15:33:50.5455360Z Entering 'vendor/orion'
+2026-07-23T15:33:50.5574270Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/orion/config	remote.origin.url
+2026-07-23T15:33:50.5648450Z Entering 'vendor/orion/fishhook'
+2026-07-23T15:33:50.5770470Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/orion/modules/fishhook/config	remote.origin.url
+2026-07-23T15:33:50.5854100Z Entering 'vendor/swift-support'
+2026-07-23T15:33:50.5970720Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/swift-support/config	remote.origin.url
+2026-07-23T15:33:50.6077170Z Entering 'vendor/templates'
+2026-07-23T15:33:50.6216290Z file:/Users/runner/work/K4L/K4L/theos/.git/modules/vendor/templates/config	remote.origin.url
+2026-07-23T15:33:50.6314870Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/dm.pl/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.6456540Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/include/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.6546860Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/lib/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.6635920Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/logos/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.6823820Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/nic/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.6901310Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/orion/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.6981900Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/orion/modules/fishhook/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.7107400Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/swift-support/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.7192120Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/theos/.git/modules/vendor/templates/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:50.7515120Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-23T15:33:50.7516340Z Post job cleanup.
+2026-07-23T15:33:50.9040670Z [command]/opt/homebrew/bin/git version
+2026-07-23T15:33:50.9105980Z git version 2.55.0
+2026-07-23T15:33:50.9125370Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/94cedb1c-a78c-4ed5-80a2-62d8ed1b3d57/.gitconfig'
+2026-07-23T15:33:50.9132030Z Temporarily overriding HOME='/Users/runner/work/_temp/94cedb1c-a78c-4ed5-80a2-62d8ed1b3d57' before making global git config changes
+2026-07-23T15:33:50.9133100Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-23T15:33:50.9136180Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/K4L/K4L/main
+2026-07-23T15:33:50.9232970Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-23T15:33:50.9299640Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-23T15:33:51.0272280Z Entering 'modules/FLEXing'
+2026-07-23T15:33:51.0548280Z Entering 'modules/FLEXing/libflex/FLEX'
+2026-07-23T15:33:51.0802370Z Entering 'modules/FLEXing/libreflex/Reflex'
+2026-07-23T15:33:51.1080550Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-23T15:33:51.1149660Z http.https://github.com/.extraheader
+2026-07-23T15:33:51.1156380Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-07-23T15:33:51.1245750Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-23T15:33:51.2963060Z Entering 'modules/FLEXing'
+2026-07-23T15:33:51.3274060Z http.https://github.com/.extraheader
+2026-07-23T15:33:51.3593070Z Entering 'modules/FLEXing/libflex/FLEX'
+2026-07-23T15:33:51.3936100Z http.https://github.com/.extraheader
+2026-07-23T15:33:51.4166770Z Entering 'modules/FLEXing/libreflex/Reflex'
+2026-07-23T15:33:51.4398170Z http.https://github.com/.extraheader
+2026-07-23T15:33:51.4605780Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:51.4702190Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-23T15:33:51.5864300Z Entering 'modules/FLEXing'
+2026-07-23T15:33:51.5990560Z file:/Users/runner/work/K4L/K4L/main/.git/modules/modules/FLEXing/config	remote.origin.url
+2026-07-23T15:33:51.6066700Z Entering 'modules/FLEXing/libflex/FLEX'
+2026-07-23T15:33:51.6183620Z file:/Users/runner/work/K4L/K4L/main/.git/modules/modules/FLEXing/modules/libflex/FLEX/config	remote.origin.url
+2026-07-23T15:33:51.6261730Z Entering 'modules/FLEXing/libreflex/Reflex'
+2026-07-23T15:33:51.6380020Z file:/Users/runner/work/K4L/K4L/main/.git/modules/modules/FLEXing/modules/libreflex/Reflex/config	remote.origin.url
+2026-07-23T15:33:51.6480050Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/main/.git/modules/modules/FLEXing/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:51.6552920Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/main/.git/modules/modules/FLEXing/modules/libflex/FLEX/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:51.6629060Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/K4L/K4L/main/.git/modules/modules/FLEXing/modules/libreflex/Reflex/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-23T15:33:51.6795550Z Cleaning up orphan processes
+2026-07-23T15:33:53.6967470Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@v4, actions/github-script@v7. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
