@@ -1,2 +1,2 @@
-Trigger one K4L IPA rebuild with the latest source fixes and reliable release publishing.
-Build request: 2026-07-23 latest corrected workflow.
+Trigger one K4L IPA rebuild after fixing K4L output filename detection.
+Build request: publish the corrected K4L.ipa release.
