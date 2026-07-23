@@ -1,0 +1,48 @@
+=== PHOTOS PATCH ===
+Checking patch src/Shared/Downloads/SPKDownloadDestinationWriter.h...
+error: while searching for:
+
++ (BOOL)isVideoFileAtURL:(NSURL *)fileURL;
++ (BOOL)isAudioFileAtURL:(NSURL *)fileURL;
++ (void)saveFileURLToPhotos:(NSURL *)fileURL
+                    metadata:(nullable SPKGallerySaveMetadata *)metadata
+                  completion:(void (^)(BOOL success,
+
+error: patch failed: src/Shared/Downloads/SPKDownloadDestinationWriter.h:19
+error: src/Shared/Downloads/SPKDownloadDestinationWriter.h: patch does not apply
+Checking patch src/Shared/Downloads/SPKDownloadDestinationWriter.m...
+error: while searching for:
+#import "../UI/SPKNotificationCenter.h"
+#import "SPKDownloadDuplicatePolicy.h"
+#import <Photos/Photos.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+
+@implementation SPKDownloadDestinationWriter
+
++ (BOOL)isVideoFileAtURL:(NSURL *)fileURL {
+
+error: patch failed: src/Shared/Downloads/SPKDownloadDestinationWriter.m:7
+error: src/Shared/Downloads/SPKDownloadDestinationWriter.m: patch does not apply
+Checking patch src/Shared/Gallery/SPKGalleryViewController.m...
+Hunk #1 succeeded at 3 (offset -2 lines).
+Hunk #2 succeeded at 1461 (offset 12 lines).
+error: while searching for:
+                                               identifier:nil
+                                                  handler:^(UIAction *a) {
+                                                      NSURL *url = [file fileURL];
+                                                      UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ url ] applicationActivities:nil];
+                                                      [weakSelf presentViewController:acVC animated:YES completion:nil];
+                                                  }];
+
+    UIAction *openOriginalAction = nil;
+
+error: patch failed: src/Shared/Gallery/SPKGalleryViewController.m:1611
+error: src/Shared/Gallery/SPKGalleryViewController.m: patch does not apply
+Checking patch src/Shared/MediaPreview/SPKFullScreenMediaPlayer.m...
+Hunk #1 succeeded at 7 (offset -2 lines).
+Hunk #2 succeeded at 2301 (offset -12 lines).
+PHOTOS_EXIT=1
+
+=== TESTFLIGHT PATCH ===
+Checking patch src/Features/Tools/HideTestFlightPopup.x...
+TESTFLIGHT_EXIT=0
