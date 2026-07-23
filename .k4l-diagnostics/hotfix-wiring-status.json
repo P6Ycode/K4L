@@ -1,0 +1,109 @@
+{
+  "generated_at": "2026-07-23T16:15:49.217Z",
+  "runs": [
+    {
+      "id": 30024325701,
+      "name": "Check hotfix wiring status",
+      "path": ".github/workflows/check-hotfix-wiring-status.yml",
+      "status": "in_progress",
+      "conclusion": null,
+      "head_sha": "7c7b63c602b188db5a712beaec23833bbf95a527",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024325701",
+      "jobs": [
+        {
+          "id": 89264766991,
+          "name": "check",
+          "status": "in_progress",
+          "conclusion": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/github-script@v7",
+              "status": "in_progress",
+              "conclusion": null
+            },
+            {
+              "name": "Run actions/github-script@v7",
+              "status": "pending",
+              "conclusion": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 30024322840,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "7c7b63c602b188db5a712beaec23833bbf95a527",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024322840",
+      "jobs": []
+    },
+    {
+      "id": 30024313141,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "78f9c26574b947ec2d80c4635a7bbefe27633639",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024313141",
+      "jobs": []
+    },
+    {
+      "id": 30024237521,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "b872dd6d8ebbc597e48f4117db5d4ac20d61b02e",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024237521",
+      "jobs": []
+    },
+    {
+      "id": 30024227165,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "7992d58457f69b2a47c8368d722237736128d05b",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024227165",
+      "jobs": []
+    },
+    {
+      "id": 30024181131,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "78a1b15629329845172c74d4f43063484438193e",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024181131",
+      "jobs": []
+    },
+    {
+      "id": 30024096206,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "3a30cf415d5575fd8b3b65c294b2f9efaca4ea08",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024096206",
+      "jobs": []
+    },
+    {
+      "id": 30024088416,
+      "name": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "path": ".github/workflows/wire-ios27-photos-hotfix.yml",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "0158762469d2b5ed7cd0a1c4333b6b25838a676f",
+      "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30024088416",
+      "jobs": []
+    }
+  ]
+}
