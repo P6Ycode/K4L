@@ -1,0 +1,82 @@
+=== GALLERY FILES ===
+src/Features/Feed/CommentComposerGalleryUpload.xm
+src/Features/Instants/InstantsGalleryUpload.xm
+src/Features/Stories/HideViewerPlusButton.x
+src/Features/Stories/SearchStoryViewers.x
+src/Features/Stories/UnlockStoryPreview.x
+src/Settings/Topics/SPKGallerySettingsProvider.h
+src/Settings/Topics/SPKGallerySettingsProvider.m
+src/Shared/Gallery/SPKGalleryCoreDataStack.h
+src/Shared/Gallery/SPKGalleryCoreDataStack.m
+src/Shared/Gallery/SPKGalleryDeleteViewController.h
+src/Shared/Gallery/SPKGalleryDeleteViewController.m
+src/Shared/Gallery/SPKGalleryFile.h
+src/Shared/Gallery/SPKGalleryFile.m
+src/Shared/Gallery/SPKGalleryFileDetailsViewController.h
+src/Shared/Gallery/SPKGalleryFileDetailsViewController.m
+src/Shared/Gallery/SPKGalleryFilterViewController.h
+src/Shared/Gallery/SPKGalleryFilterViewController.m
+src/Shared/Gallery/SPKGalleryFolderCell.h
+src/Shared/Gallery/SPKGalleryFolderCell.m
+src/Shared/Gallery/SPKGalleryFolderChipBar.h
+src/Shared/Gallery/SPKGalleryFolderChipBar.m
+src/Shared/Gallery/SPKGalleryGridCell.h
+src/Shared/Gallery/SPKGalleryGridCell.m
+src/Shared/Gallery/SPKGalleryGridDensity.h
+src/Shared/Gallery/SPKGalleryGridDensity.m
+src/Shared/Gallery/SPKGalleryHiddenSources.h
+src/Shared/Gallery/SPKGalleryHiddenSources.m
+src/Shared/Gallery/SPKGalleryListCollectionCell.h
+src/Shared/Gallery/SPKGalleryListCollectionCell.m
+src/Shared/Gallery/SPKGalleryLockViewController.h
+src/Shared/Gallery/SPKGalleryLockViewController.m
+src/Shared/Gallery/SPKGalleryManager.h
+src/Shared/Gallery/SPKGalleryManager.m
+src/Shared/Gallery/SPKGalleryOriginController.h
+src/Shared/Gallery/SPKGalleryOriginController.m
+src/Shared/Gallery/SPKGalleryPaths.h
+src/Shared/Gallery/SPKGalleryPaths.m
+src/Shared/Gallery/SPKGalleryPickerViewController.h
+src/Shared/Gallery/SPKGalleryPickerViewController.m
+src/Shared/Gallery/SPKGallerySaveMetadata.h
+src/Shared/Gallery/SPKGallerySaveMetadata.m
+src/Shared/Gallery/SPKGallerySettingsViewController.h
+src/Shared/Gallery/SPKGallerySettingsViewController.m
+src/Shared/Gallery/SPKGallerySortViewController.h
+src/Shared/Gallery/SPKGallerySortViewController.m
+src/Shared/Gallery/SPKGalleryUserPickerViewController.h
+src/Shared/Gallery/SPKGalleryUserPickerViewController.m
+src/Shared/Gallery/SPKGalleryViewController.h
+src/Shared/Gallery/SPKGalleryViewController.m
+src/Shared/MediaPreview/SPKMediaPreviewInfoOverlay.h
+src/Shared/MediaPreview/SPKMediaPreviewInfoOverlay.m
+src/Shared/Stories/SPKStoryViewersFetcher.h
+src/Shared/Stories/SPKStoryViewersFetcher.m
+src/Shared/Stories/SPKStoryViewersSearchViewController.h
+src/Shared/Stories/SPKStoryViewersSearchViewController.m
+
+=== ACTION MATCHES ===
+src/Settings/SPKSettingsTransferManager.m:1037:                [SPKUtils showShareVC:archiveURL];
+src/Shared/Downloads/SPKDownloadPresenter.m:269:    UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:urls applicationActivities:nil];
+src/Shared/Downloads/SPKDownloadDuplicatePolicy.m:208:    [[PHPhotoLibrary sharedPhotoLibrary]
+src/Shared/Downloads/SPKDownloadDestinationWriter.m:39:    [[PHPhotoLibrary sharedPhotoLibrary]
+src/Shared/Downloads/SPKDownloadDestinationWriter.m:44:                    creationRequestForAssetFromVideoAtFileURL:fileURL];
+src/Shared/Downloads/SPKDownloadDestinationWriter.m:47:                    creationRequestForAssetFromImageAtFileURL:fileURL];
+src/Shared/Downloads/SPKDownloadDestinationWriter.m:188:            UIActivityViewController *vc =
+src/Shared/Downloads/SPKDownloadDestinationWriter.m:189:                [[UIActivityViewController alloc] initWithActivityItems:@[ fileURL ]
+src/Shared/Downloads/SPKDownloadDestinationWriter.m:198:            [SPKUtils showShareVC:fileURL];
+src/Shared/MediaPreview/SPKFullScreenMediaPlayer.m:2348:        UIActivityViewController *acVC = [[UIActivityViewController alloc]
+src/Shared/MediaDownload/SPKMediaQualityManager.m:1518:                                        action:@selector(saveTapped)];
+src/Shared/MediaDownload/SPKMediaQualityManager.m:1526:- (void)saveTapped {
+src/Shared/MediaDownload/SPKMediaQualityManager.m:1537:    [self saveTapped];
+src/Shared/MediaDownload/SPKMediaFFmpeg.m:1296:    UIBarButtonItem *shareItem = SPKMediaChromeTopBarButtonItem(@"share", self, @selector(shareTapped));
+src/Shared/MediaDownload/SPKMediaFFmpeg.m:1320:- (void)shareTapped {
+src/Shared/MediaDownload/SPKMediaFFmpeg.m:1323:        [SPKUtils showShareVC:[NSURL fileURLWithPath:path]];
+src/Shared/MediaDownload/SPKMediaFFmpeg.m:1424:    [SPKUtils showShareVC:[NSURL fileURLWithPath:exportPath]];
+src/Shared/Gallery/SPKGalleryViewController.m:1468:    UIActivityViewController *controller = [[UIActivityViewController alloc] initWithActivityItems:urls applicationActivities:nil];
+src/Shared/Gallery/SPKGalleryViewController.m:1616:                                                  UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ url ] applicationActivities:nil];
+src/Shared/MediaTrim/SPKTrimSaveCoordinator.m:316:            UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[ rendered ]
+src/Features/Messages/DeletedMessagesLog/SPKDeletedMessagesUserDetailViewController.m:703:                                                      UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[ mediaURL ] applicationActivities:nil];
+src/Utils.m:1079:+ (void)showShareVC:(id)item {
+src/Utils.m:1080:    UIActivityViewController *acVC = [[UIActivityViewController alloc] initWithActivityItems:@[ item ] applicationActivities:nil];
+src/Utils.h:122:+ (void)showShareVC:(id)item;
