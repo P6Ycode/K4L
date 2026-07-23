@@ -164,12 +164,15 @@ jobs:
         run: |
           set -euo pipefail
           cd main
-          rm -f packages/K4L.ipa packages/*.deb packages/Sparkle*_IG_v*.ipa
+          rm -f packages/K4L.ipa packages/*.deb packages/Sparkle*_IG_v*.ipa packages/K4L_*_IG_v*.ipa
           ./build.sh ipa --release
 
-          OUTPUT_IPA="$(find packages -maxdepth 1 -type f -name 'Sparkle*_IG_v*.ipa' -print | sort | tail -n 1)"
+          OUTPUT_IPA="$(find packages -maxdepth 1 -type f -name 'K4L*_IG_v*.ipa' -print | sort | tail -n 1)"
           if [ -z "$OUTPUT_IPA" ]; then
-            echo "::error::The build did not produce a Sparkle_*_IG_v*.ipa file."
+            OUTPUT_IPA="$(find packages -maxdepth 1 -type f -name 'Sparkle*_IG_v*.ipa' -print | sort | tail -n 1)"
+          fi
+          if [ -z "$OUTPUT_IPA" ]; then
+            echo "::error::The build completed without producing a K4L IPA."
             find packages -maxdepth 1 -type f -print
             exit 1
           fi
