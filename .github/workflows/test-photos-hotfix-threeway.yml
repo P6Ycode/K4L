@@ -1,0 +1,83 @@
+name: Test Photos hotfix three-way merge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/test-photos-hotfix-threeway.trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Test three-way merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          PATCH_FILE="$RUNNER_TEMP/k4l-changes.patch"
+          OUT="$RUNNER_TEMP/photos-threeway.txt"
+          python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('.k4l/k4l-changes.patch.gz.b64','rb').read()))" | gzip -dc > "$PATCH_FILE"
+          git apply --binary \
+            --exclude=.github/workflows/buildapp.yml \
+            --exclude=.github/workflows/k4l-private-build.yml \
+            --exclude=.github/workflows/k4l-release-notes.yml \
+            "$PATCH_FILE"
+          python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('.k4l/k4l-new-files.tar.gz.b64','rb').read()))" | tar -xzf - -C .
+          git config user.name 'K4L Merge Test'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'temporary post-K4L baseline'
+
+          set +e
+          {
+            git apply --3way --recount --verbose .k4l/k4l-ios27-photos-hotfix.patch
+            CODE=$?
+            echo "THREEWAY_EXIT=$CODE"
+            echo
+            echo '=== STATUS ==='
+            git status --short
+            echo
+            echo '=== DIFF CHECK ==='
+            git diff --check
+          } > "$OUT" 2>&1
+          set -e
+
+      - name: Store merge test
+        uses: actions/github-script@v7
+        env:
+          OUT_PATH: ${{ runner.temp }}/photos-threeway.txt
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const path = '.k4l-diagnostics/photos-threeway.txt';
+            const body = fs.readFileSync(process.env.OUT_PATH);
+            let sha;
+            try {
+              const existing = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });
+              if (!Array.isArray(existing.data)) sha = existing.data.sha;
+            } catch (error) { if (error.status !== 404) throw error; }
+            await github.rest.repos.createOrUpdateFileContents({ owner, repo, path, branch: 'main', message: 'record Photos hotfix three-way test', content: body.toString('base64'), ...(sha ? { sha } : {}) });
+
+      - name: Remove one-time merge test
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            for (const path of ['.github/workflows/test-photos-hotfix-threeway.yml', '.github/workflows/test-photos-hotfix-threeway.trigger']) {
+              try {
+                const response = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });
+                if (!Array.isArray(response.data)) await github.rest.repos.deleteFile({ owner, repo, path, branch: 'main', sha: response.data.sha, message: 'remove Photos hotfix three-way merge test' });
+              } catch (error) { if (error.status !== 404) core.warning(`${path}: ${error.message}`); }
+            }
