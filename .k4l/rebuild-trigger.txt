@@ -1,1 +1,2 @@
-Trigger one clean K4L IPA rebuild after workflow and release cleanup.
+Trigger one clean K4L IPA rebuild with the latest source fixes and IPA-only release workflow.
+Build request: 2026-07-23 06:34 America/New_York.
