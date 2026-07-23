@@ -15,11 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Apply hotfix from the main IPA workflow
         shell: bash
         run: |
           set -euo pipefail
+          git pull --rebase origin main
           python3 - <<'PY'
           from pathlib import Path
           path = Path('.github/workflows/k4l-private-build.yml')
@@ -36,10 +40,12 @@ jobs:
           git add .github/workflows/k4l-private-build.yml
           if ! git diff --cached --quiet; then
             git commit -m 'apply iOS 27 Photos hotfix in IPA builds'
-            git push
+            git pull --rebase origin main
+            git push origin main
           fi
 
       - name: Remove one-time wiring files
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
