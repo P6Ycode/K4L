@@ -1,2 +1,2 @@
-Trigger one K4L IPA rebuild after fixing K4L output filename detection.
-Build request: publish the corrected K4L.ipa release.
+Trigger one K4L IPA rebuild with the iOS 27 Photos compatibility fix.
+Test Gallery Share → Save Video and Download Video.
