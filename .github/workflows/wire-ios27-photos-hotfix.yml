@@ -24,19 +24,15 @@ jobs:
           from pathlib import Path
           path = Path('.github/workflows/k4l-private-build.yml')
           text = path.read_text()
-          needle = '''          python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-new-files.tar.gz.b64','rb').read()))" | tar -xzf - -C main
-          rm -rf main/.k4l
-'''
-          replacement = '''          python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(open('main/.k4l/k4l-new-files.tar.gz.b64','rb').read()))" | tar -xzf - -C main
-          git -C main apply --check --binary .k4l/k4l-ios27-photos-hotfix.patch
+          hotfix = """          git -C main apply --check --binary .k4l/k4l-ios27-photos-hotfix.patch
           git -C main apply --binary .k4l/k4l-ios27-photos-hotfix.patch
-          rm -rf main/.k4l
-'''
-          if replacement in text:
-              raise SystemExit(0)
-          if needle not in text:
-              raise SystemExit('Expected K4L patch block was not found')
-          path.write_text(text.replace(needle, replacement, 1))
+"""
+          marker = "          rm -rf main/.k4l\n"
+          if hotfix not in text:
+              if marker not in text:
+                  raise SystemExit('Could not find the .k4l cleanup marker')
+              text = text.replace(marker, hotfix + marker, 1)
+              path.write_text(text)
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
