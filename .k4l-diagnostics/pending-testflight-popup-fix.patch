@@ -1,0 +1,52 @@
+diff --git a/src/Features/Tools/HideTestFlightPopup.x b/src/Features/Tools/HideTestFlightPopup.x
+--- a/src/Features/Tools/HideTestFlightPopup.x
++++ b/src/Features/Tools/HideTestFlightPopup.x
+@@ -1,22 +1,44 @@
+ #import "../../Utils.h"
+ 
+ #import <Foundation/Foundation.h>
++
++static NSString *const kSPKHideTestFlightPopupMigrationKey =
++    @"tools_hide_testflight_popup_sideload_default_v2";
+ 
+ %group SPKHideTestFlightNagReceipt
+ %hook NSBundle
+ 
+ - (NSURL *)appStoreReceiptURL {
+     NSURL *url = %orig;
+-    if (self == NSBundle.mainBundle && [url.lastPathComponent isEqualToString:@"sandboxReceipt"]) {
+-        return [[url URLByDeletingLastPathComponent] URLByAppendingPathComponent:@"receipt"];
++    if (self != NSBundle.mainBundle) {
++        return url;
+     }
+-    return url;
++
++    // Instagram identifies TestFlight/beta installs from the main bundle's
++    // receipt URL. Sideloading tools and newer iOS versions do not always return
++    // a URL ending in "sandboxReceipt" (and may return nil), so normalize every
++    // sideloaded main-bundle receipt URL to a regular App Store-style name.
++    NSURL *directory = url
++                           ? url.URLByDeletingLastPathComponent
++                           : [self.bundleURL URLByAppendingPathComponent:@"StoreKit"
++                                                            isDirectory:YES];
++    return [directory URLByAppendingPathComponent:@"receipt"];
+ }
+ 
+ %end
+ %end
+ 
+ %ctor {
++#if SPK_SIDELOAD
++    // v1.1.0 changed the default to enabled, but NSUserDefaults registration
++    // does not replace an older saved OFF value. Turn it on once for existing
++    // sideloaded installations, then keep honoring the user's toggle afterward.
++    if (![SPKPreferenceObjectForKey(kSPKHideTestFlightPopupMigrationKey) boolValue]) {
++        SPKPreferenceSetObject(@YES, @"tools_hide_testflight_popup");
++        SPKPreferenceSetObject(@YES, kSPKHideTestFlightPopupMigrationKey);
++    }
++#endif
++
+     if ([SPKUtils getBoolPref:@"tools_hide_testflight_popup"]) {
+         %init(SPKHideTestFlightNagReceipt);
+     }
+ }
