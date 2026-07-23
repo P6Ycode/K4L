@@ -1,18 +1,24 @@
 {
-  "generated_at": "2026-07-23T15:33:48.053Z",
+  "generated_at": "2026-07-23T15:44:17.487Z",
   "run": {
-    "id": 30020573040,
+    "id": 30021383169,
     "status": "in_progress",
     "conclusion": null,
-    "head_sha": "976816605694f24513b074da0a7f797f74ccef36",
-    "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30020573040",
+    "head_sha": "dd407077a85db3845bc35707e640b9fddeba6bbe",
+    "html_url": "https://github.com/P6Ycode/K4L/actions/runs/30021383169",
     "jobs": [
       {
-        "id": 89251891200,
+        "id": 89254682969,
         "name": "build",
         "status": "in_progress",
         "conclusion": null,
         "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
           {
             "number": 2,
             "name": "Cancel older duplicate K4L runs",
@@ -89,19 +95,19 @@
             "number": 14,
             "name": "Build and validate K4L IPA",
             "status": "completed",
-            "conclusion": "failure"
+            "conclusion": "success"
           },
           {
             "number": 15,
             "name": "Upload K4L IPA artifact",
             "status": "completed",
-            "conclusion": "skipped"
+            "conclusion": "success"
           },
           {
             "number": 16,
             "name": "Publish updated K4L IPA release",
             "status": "completed",
-            "conclusion": "skipped"
+            "conclusion": "success"
           },
           {
             "number": 17,
@@ -140,13 +146,13 @@
   "releases": [
     {
       "tag_name": "k4l-latest",
-      "name": "K4L",
+      "name": "K4L IPA",
       "published_at": "2026-07-22T10:43:25Z",
       "assets": [
         {
           "name": "K4L.ipa",
-          "size": 266985148,
-          "updated_at": "2026-07-22T14:31:41Z",
+          "size": 266985145,
+          "updated_at": "2026-07-23T15:44:13Z",
           "browser_download_url": "https://github.com/P6Ycode/K4L/releases/download/k4l-latest/K4L.ipa"
         }
       ]
