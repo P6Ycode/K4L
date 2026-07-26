@@ -4,6 +4,14 @@ THEOS_PACKAGE_SCHEME = rootless
 
 include $(THEOS)/makefiles/common.mk
 
+K4L_CORE_FILES = \
+	Core/Features/K4LFeature.m \
+	Core/ProcessRoles/K4LProcessRole.m \
+	Core/Models/K4LValueModels.m \
+	Core/Preferences/K4LPreferenceModels.m \
+	Core/Capabilities/K4LCapabilities.m \
+	Core/RuntimeState/K4LRuntimeState.m
+
 TWEAK_NAME = K4LSnap K4LSnapSpringBoard
 
 K4LSnap_ARCHS = arm64 arm64e
@@ -41,9 +49,9 @@ k4lsnapctl_CFLAGS = -fobjc-arc -fblocks -Wall -Wextra -Werror=return-type
 k4lsnapctl_FRAMEWORKS = Foundation
 k4lsnapctl_INSTALL_PATH = /usr/local/bin
 
-# Source files are admitted only by their owning roadmap steps. Empty source lists
-# are deliberate in Step 3: no inert constructors, fake services, or placeholder
-# implementations are permitted merely to make a target link.
+# Shared Core source is declared once and is attached to a target only when that
+# target's first complete production entry point is admitted. Source lists stay
+# empty here so Step 6 does not manufacture inert dylibs, bundles, or tools.
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 include $(THEOS_MAKE_PATH)/bundle.mk
