@@ -12,21 +12,21 @@ K4L is a clean-room, ground-up reconstruction of the production mechanics recove
 
 Phase II is active on `rebuild/foundation`.
 
-Steps 3 and 4 established the production package targets, rootless install boundaries, source ownership and dependency walls.
+Steps 3 through 5 established the package targets, rootless install boundaries, source ownership, dependency walls, and the 90-row mechanics gate.
 
-Step 5 imports the full 90-row implementation gate under [`docs/ledger/`](docs/ledger/INDEX.md). No runtime feature, hook, daemon mechanic, preference row, test system, logging system or licensing system has been implemented. Target source lists remain empty until their owning roadmap steps admit complete production mechanics.
+Step 6 adds the first production source: immutable Core feature, process-role, value, preference-policy, capability, and runtime-state contracts. No hook, persistence engine, daemon mechanic, preference interface, test system, logging system, or licensing system has been implemented.
 
-Step 6 must not begin until Step 5 is reviewed and confirmed.
+Step 7 must not begin until Step 6 is reviewed and confirmed.
 
 ## Project boundaries
 
-The rebuild contains no licensing, activation, subscriptions, receipt validation, device binding, trial logic, remote entitlement checks or licensing-shaped feature gates.
+The rebuild contains no licensing, activation, subscriptions, receipt validation, device binding, trial logic, remote entitlement checks, or licensing-shaped feature gates.
 
-During implementation it also contains no test targets, mock features, placeholder hooks, observation-only features, debug menus, diagnostic overlays or logging/tracing framework. Compilation, device testing and temporary targeted tracing begin only after the complete production tweak is assembled.
+During implementation it also contains no test targets, mock features, placeholder hooks, observation-only features, debug menus, diagnostic overlays, or logging/tracing framework. Compilation, device testing, and temporary targeted tracing begin only after the complete production tweak is assembled.
 
 ## Evidence
 
-The private evidence bundle is maintained outside the repository. Its artifact hashes, authority order and integrity rules are pinned in [`docs/EVIDENCE_MANIFEST.md`](docs/EVIDENCE_MANIFEST.md).
+The private evidence bundle is maintained outside the repository. Its artifact hashes, authority order, and integrity rules are pinned in [`docs/EVIDENCE_MANIFEST.md`](docs/EVIDENCE_MANIFEST.md).
 
 ## Package targets
 
@@ -47,6 +47,10 @@ SpringBoard owns the resolved SpringBoard classes. `Hooks/BackBoard` remains res
 - 1 blocked XPC boundary.
 
 The supplied Snapchat IPA resolves the private class/selector boundary for version 14.15.0 build 14.15.0.48. Runtime behavior is not claimed as device-verified.
+
+## Core contracts
+
+The first production source is documented in [`docs/CORE_CONTRACTS.md`](docs/CORE_CONTRACTS.md). Core defaults fail closed, rejects unknown feature identifiers, preserves account/friend/category policy precedence, separates genuine battery state from overrides, and grants private Snapchat capabilities only to the exact pinned build.
 
 ## Development flow
 
