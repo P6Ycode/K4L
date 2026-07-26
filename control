@@ -1,0 +1,9 @@
+Package: com.p6ycode.k4l
+Name: K4L
+Version: 0.1.0~foundation
+Architecture: iphoneos-arm64
+Description: Clean-room reconstruction of the evidence-backed Hush mechanics for Snapchat 14.15.0.48.
+Section: Tweaks
+Depends: firmware (>= 15.0), mobilesubstrate, preferenceloader
+Maintainer: P6Ycode
+Author: P6Ycode
