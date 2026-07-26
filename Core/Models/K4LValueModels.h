@@ -68,12 +68,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) K4LMediaSaveDestination destination;
 @property (nonatomic, copy, readonly, nullable) NSString *customDirectory;
 @property (nonatomic, readonly) BOOL createsSenderDirectory;
+@property (nonatomic, readonly) BOOL createsSenderAlbum;
 @property (nonatomic, readonly) NSUInteger retentionDays;
 
 + (instancetype)disabledPolicy;
 - (nullable instancetype)initWithDestination:(K4LMediaSaveDestination)destination
                              customDirectory:(nullable NSString *)customDirectory
                       createsSenderDirectory:(BOOL)createsSenderDirectory
+                          createsSenderAlbum:(BOOL)createsSenderAlbum
                                retentionDays:(NSUInteger)retentionDays NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
