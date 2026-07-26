@@ -16,6 +16,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
                                 altitude:(double)altitude
                       horizontalAccuracy:(double)horizontalAccuracy
                         verticalAccuracy:(double)verticalAccuracy
+                    restoresAfterRestart:(BOOL)restoresAfterRestart
                                timestamp:(NSDate *)timestamp {
     if (!isfinite(latitude) || !isfinite(longitude) || !isfinite(altitude) ||
         !isfinite(horizontalAccuracy) || !isfinite(verticalAccuracy) ||
@@ -32,6 +33,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
         _altitude = altitude;
         _horizontalAccuracy = horizontalAccuracy;
         _verticalAccuracy = verticalAccuracy;
+        _restoresAfterRestart = restoresAfterRestart;
         _timestamp = [timestamp copy];
     }
     return self;
@@ -47,6 +49,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
                         altitude:[coder decodeDoubleForKey:@"altitude"]
               horizontalAccuracy:[coder decodeDoubleForKey:@"horizontalAccuracy"]
                 verticalAccuracy:[coder decodeDoubleForKey:@"verticalAccuracy"]
+            restoresAfterRestart:[coder decodeBoolForKey:@"restoresAfterRestart"]
                        timestamp:timestamp];
 }
 
@@ -56,6 +59,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
     [coder encodeDouble:self.altitude forKey:@"altitude"];
     [coder encodeDouble:self.horizontalAccuracy forKey:@"horizontalAccuracy"];
     [coder encodeDouble:self.verticalAccuracy forKey:@"verticalAccuracy"];
+    [coder encodeBool:self.restoresAfterRestart forKey:@"restoresAfterRestart"];
     [coder encodeObject:self.timestamp forKey:@"timestamp"];
 }
 
@@ -198,12 +202,14 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
     return [[self alloc] initWithDestination:K4LMediaSaveDestinationNone
                             customDirectory:nil
                      createsSenderDirectory:NO
+                         createsSenderAlbum:NO
                               retentionDays:0];
 }
 
 - (nullable instancetype)initWithDestination:(K4LMediaSaveDestination)destination
                              customDirectory:(nullable NSString *)customDirectory
                       createsSenderDirectory:(BOOL)createsSenderDirectory
+                          createsSenderAlbum:(BOOL)createsSenderAlbum
                                retentionDays:(NSUInteger)retentionDays {
     if (destination < K4LMediaSaveDestinationNone ||
         destination > K4LMediaSaveDestinationCustomDirectory) {
@@ -225,6 +231,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
         _destination = destination;
         _customDirectory = [normalizedDirectory copy];
         _createsSenderDirectory = createsSenderDirectory;
+        _createsSenderAlbum = createsSenderAlbum;
         _retentionDays = retentionDays;
     }
     return self;
@@ -240,6 +247,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
     return [self initWithDestination:[coder decodeIntegerForKey:@"destination"]
                      customDirectory:directory
               createsSenderDirectory:[coder decodeBoolForKey:@"createsSenderDirectory"]
+                  createsSenderAlbum:[coder decodeBoolForKey:@"createsSenderAlbum"]
                        retentionDays:(NSUInteger)retention];
 }
 
@@ -247,6 +255,7 @@ static BOOL K4LTriStateIsValidValue(K4LTriState state) {
     [coder encodeInteger:self.destination forKey:@"destination"];
     [coder encodeObject:self.customDirectory forKey:@"customDirectory"];
     [coder encodeBool:self.createsSenderDirectory forKey:@"createsSenderDirectory"];
+    [coder encodeBool:self.createsSenderAlbum forKey:@"createsSenderAlbum"];
     [coder encodeInteger:(NSInteger)self.retentionDays forKey:@"retentionDays"];
 }
 
