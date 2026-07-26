@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) double altitude;
 @property (nonatomic, readonly) double horizontalAccuracy;
 @property (nonatomic, readonly) double verticalAccuracy;
+@property (nonatomic, readonly) BOOL restoresAfterRestart;
 @property (nonatomic, copy, readonly) NSDate *timestamp;
 
 - (nullable instancetype)initWithLatitude:(double)latitude
@@ -17,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
                                 altitude:(double)altitude
                       horizontalAccuracy:(double)horizontalAccuracy
                         verticalAccuracy:(double)verticalAccuracy
+                    restoresAfterRestart:(BOOL)restoresAfterRestart
                                timestamp:(NSDate *)timestamp NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
