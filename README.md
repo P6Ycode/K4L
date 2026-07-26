@@ -11,11 +11,14 @@ recovered from the Hush package and the pinned Snapchat application:
 
 ## Current phase
 
-Phase I establishes evidence integrity, rebuild rules, and repository history.
-There is no tweak, daemon, preference bundle, helper, package target, feature,
-test system, or logging system in this repository yet.
+Phase II is active on `rebuild/foundation`.
 
-Production source begins only after Phase I is confirmed.
+Step 3 defines the production package targets and rootless install boundaries.
+No tweak feature, hook, daemon mechanic, preference row, test system, logging
+system, or licensing system has been implemented. Target source lists remain
+empty until their owning roadmap steps admit complete production mechanics.
+
+Step 4 must not begin until Step 3 is reviewed and confirmed.
 
 ## Project boundaries
 
@@ -33,6 +36,12 @@ targeted tracing begin only after the complete production tweak is assembled.
 The private evidence bundle is maintained outside the repository. Its artifact
 hashes, authority order, and integrity rules are pinned in
 [`docs/EVIDENCE_MANIFEST.md`](docs/EVIDENCE_MANIFEST.md).
+
+## Package targets
+
+The declared target matrix and ownership boundaries are documented in
+[`Packaging/TARGETS.md`](Packaging/TARGETS.md), with logical rootless paths in
+[`Packaging/ROOTLESS_LAYOUT.md`](Packaging/ROOTLESS_LAYOUT.md).
 
 ## Development flow
 
