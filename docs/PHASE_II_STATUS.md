@@ -1,7 +1,6 @@
 # Phase II Status
 
-Phase II recreates the production package and source ownership architecture.
-Work remains one roadmap step at a time.
+Phase II recreates the production package architecture, source ownership and implementation gate. Work remains one roadmap step at a time.
 
 ## Step 3 — Create package targets
 
@@ -16,54 +15,22 @@ Declared production targets:
 - `k4lsnapctl` control helper;
 - `com.p6ycode.k4lsnapd` launchd job identity.
 
-The Makefile contains target metadata and deliberately empty source lists.
-Production source is admitted only by its owning roadmap step. No inert
-constructors, no-op services, fake adapters, or placeholder executables were
-created.
-
-Package metadata establishes:
-
-- Debian package identifier `com.p6ycode.k4l`;
-- rootless package scheme;
-- minimum iOS 15.0;
-- arm64/arm64e tweak, bundle, and helper targets;
-- arm64 daemon target;
-- dependencies on MobileSubstrate and PreferenceLoader;
-- logical rootless install locations.
-
-Deferred to their owning steps:
-
-- tweak filters;
-- preference resources and registration;
-- daemon entitlements;
-- launchd property-list contents;
-- maintainer scripts;
-- Choicy/app-injection configuration;
-- migration and uninstall behavior.
+The Makefile contains target metadata and deliberately empty source lists. No inert constructors, no-op services, fake adapters or placeholder executables were created.
 
 ## Step 4 — Establish production source ownership
 
-Status: **SOURCE COMPLETE — AWAITING CONFIRMATION**
+Status: **CONFIRMED WITH BACKBOARD CORRECTION**
 
-The canonical logical source tree now assigns one owner to:
+The canonical logical source tree assigns one owner to shared Core, typed IPC, process hooks, daemon mechanics, media, preferences, tools and packaging.
 
-- shared Core contracts;
-- typed IPC contracts and client transport;
-- SpringBoard, ScreenshotServices, ReplayKit, media-server, audio, camera, power
-  and Snapchat hook families;
-- daemon command, location, container, keychain, database, SQL-trigger, Valdi,
-  media-archive, backup, maintenance and lifecycle mechanics;
-- media import, processing, vault, preview, durable send and export mechanics;
-- PreferenceLoader, control helper and package assets.
+Correction applied during Step 5:
 
-`Hooks/ReplayKit` is explicitly included because ReplayKit is a distinct
-recovered mechanic family.
+- `Hooks/BackBoard` is retained as the production ownership boundary for exact mechanics that execute in `backboardd`;
+- `backboardd` remains a proven primary-filter process;
+- resolved `SB*`, `FBScene`, lock-screen, home-button and switcher selectors remain owned by SpringBoard;
+- no BackBoard source is admitted until its event-tap/HID contract is mapped.
 
-No production `Hooks/BackBoard` owner is created. The historical Hush filter is
-preserved as evidence, but the resolved gesture, lock-screen, home-button and
-switcher classes belong to SpringBoard.
-
-Dependency direction is fixed:
+Dependency direction remains:
 
 ```text
 Core
@@ -73,17 +40,43 @@ IPC contracts/client
 Hooks / Prefs / Tools / Media / Daemon
 ```
 
-Injected targets may not link daemon handlers, SQL, Valdi, keychain, container,
-media-vault or media-processing implementation. Camera and audio callbacks may
-not perform disk, SQLite, decoding or synchronous IPC work.
+Injected targets may not link daemon handlers, SQL, Valdi, keychain, container, media-vault or media-processing implementation. Camera and audio callbacks may not perform disk, SQLite, decoding or synchronous IPC work.
 
-The source tree remains logical only. No empty directories, source files,
-features, tests, logging, tracing, licensing, filters, entitlements or scripts
-were created.
+## Step 5 — Import the mechanics implementation gate
 
-No compilation, packaging, installation, testing, logging, or tracing was
-performed.
+Status: **SOURCE COMPLETE — AWAITING CONFIRMATION**
+
+The 90 recovered mechanics are normalized into six repository ledger shards under `docs/ledger/`.
+
+Ledger totals:
+
+- 85 `ADMITTED`;
+- 4 `EXCLUDED`;
+- 1 `BLOCKED`.
+
+Source totals:
+
+- 2 `SOURCE COMPLETE` package-architecture rows;
+- 83 `NOT STARTED` admitted rows;
+- 5 `BLOCKED` excluded or unresolved rows.
+
+Explicit exclusions:
+
+- preference/UI residue without a working backend;
+- `screenshotSpam`;
+- reverse-engineering coverage as a production mechanic;
+- compiler-erased original source text.
+
+The sole blocked runtime boundary is the incomplete general XPC contract. No guessed XPC implementation is allowed.
+
+The Snapchat 14.15.0.48 IPA supersedes the previous external-binary block for private selectors. Exact classes, selectors and Objective-C type encodings are now proven for that pinned build; call order and object semantics remain final-device questions.
+
+`INJ-001` preserves the BackBoard process/filter evidence and records the exact remaining question about the event-tap/HID mechanic.
+
+No production feature source, filter, entitlement, preference row, daemon handler, test, logger, trace, placeholder or licensing system was created.
+
+No compilation, packaging, installation, testing, logging or tracing was performed.
 
 ## Phase boundary
 
-Step 5 must not begin until Step 4 is reviewed and confirmed.
+Step 6 must not begin until Step 5 is reviewed and confirmed.
