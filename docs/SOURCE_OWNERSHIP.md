@@ -1,9 +1,6 @@
 # Production Source Ownership
 
-Phase II Step 4 assigns every production responsibility to one source home and
-one process owner. This is a source contract, not a directory scaffold. A
-physical directory is created only when its first complete production mechanic
-is admitted by the mechanics ledger.
+Phase II Step 4 assigns every production responsibility to one source home and one process owner. This is a source contract, not a directory scaffold. A physical directory is created only when its first complete production mechanic is admitted by the implementation ledger.
 
 ## Canonical logical tree
 
@@ -27,6 +24,7 @@ IPC/
 Hooks/
   Bootstrap/
   SpringBoard/
+  BackBoard/
   ScreenshotServices/
   ReplayKit/
   MediaServer/
@@ -64,18 +62,18 @@ Packaging/
 docs/
 ```
 
-`Hooks/ReplayKit/` is explicit because ReplayKit is a distinct recovered
-mechanic family with its own selectors, state machine, sample handling, and
-restoration behavior.
+`Hooks/ReplayKit/` is explicit because ReplayKit is a distinct recovered mechanic family with its own selectors, state machine, sample handling and restoration behavior.
+
+`Hooks/BackBoard/` is an ownership boundary for mechanics that actually execute in `backboardd`. It does not own the resolved SpringBoard view-controller, lock-screen, home-button or switcher selectors.
 
 ## Shared production ownership
 
 | Logical home | Owns | Must not own |
 |---|---|---|
 | `Core/Features` | Stable feature identifiers and feature-family metadata | Preference persistence, hooks, daemon execution, UI |
-| `Core/Preferences` | Typed immutable preference contracts and policy values | Property-list I/O implementation inside callbacks, UI controllers |
+| `Core/Preferences` | Typed immutable preference contracts and policy values | Property-list I/O inside callbacks, UI controllers |
 | `Core/RuntimeState` | Immutable foreground, lock, capture, recording, location, power, daemon and Snapchat capability state | Process hooks, logging, persistence engines |
-| `Core/ProcessRoles` | Process-role identifiers and exact role resolution contracts | Hook installation or process-specific framework use |
+| `Core/ProcessRoles` | Process-role identifiers and exact role resolution contracts, including BackBoard | Hook installation or process-specific framework use |
 | `Core/Notifications` | Typed names and payload contracts for evidence-backed state propagation | Diagnostic or tracing notifications |
 | `Core/Models` | Cross-component value objects | Privileged operations or framework-heavy processing |
 | `Core/Capabilities` | Exact iOS and Snapchat capability contracts | Broad version guesses or private hook installation |
@@ -83,7 +81,7 @@ restoration behavior.
 | `IPC/Results` | Typed product result and error models | Logging and diagnostic history |
 | `IPC/DaemonClient` | Shared client API used by hooks, preferences and helper | Daemon-side privileged implementation |
 | `IPC/FileTransport` | Versioned command/result/status file transport | Feature policy and privileged mechanics |
-| `IPC/XPCBoundary` | A future exact XPC contract only after evidence admits it | Placeholder or guessed XPC implementation |
+| `IPC/XPCBoundary` | An exact XPC contract only after evidence admits it | Placeholder or guessed XPC implementation |
 | `Media/*` | Media models, import, processing, vault, preview, durable send state and export | Process hooks, privileged container/keychain access, Snapchat-private hooks |
 | `Prefs/` | PreferenceLoader interface for completed production backends | Hook, SQL, Valdi, daemon or media-processing implementation |
 | `Tools/` | User-invoked typed daemon commands and package lifecycle entry points | Privileged implementation or duplicated daemon handlers |
@@ -93,7 +91,8 @@ restoration behavior.
 
 | Original process or surface | K4L target | Source owner | Recovered mechanic families |
 |---|---|---|---|
-| SpringBoard | `K4LSnapSpringBoard` | `Hooks/Bootstrap`, `Hooks/SpringBoard`, SpringBoard-facing portions of `Hooks/ScreenshotServices`, `Hooks/ReplayKit`, and `Hooks/Power` | Foreground state, switcher/home cleanup, lock state, screenshot action filtering, ReplayKit, battery presentation |
+| SpringBoard | `K4LSnapSpringBoard` | `Hooks/Bootstrap`, `Hooks/SpringBoard`, SpringBoard-facing portions of `Hooks/ScreenshotServices`, `Hooks/ReplayKit` and `Hooks/Power` | Foreground state, switcher/home cleanup, lock state, screenshot action filtering, ReplayKit, battery presentation |
+| backboardd | `K4LSnap` | `Hooks/Bootstrap`, `Hooks/BackBoard` | Proven process/filter boundary and BackBoard event-tap/HID artifacts; exact runtime mechanic remains to be mapped before source admission |
 | ScreenshotServicesService | `K4LSnap` | `Hooks/Bootstrap`, `Hooks/ScreenshotServices` | Snapshot suppression and encoded screenshot archive |
 | mediaserverd | `K4LSnap` | `Hooks/Bootstrap`, `Hooks/MediaServer`, `Hooks/CameraCapture`, `Hooks/AudioMixer` | Camera sample interception, audio IOProc wrapping and media-service recovery |
 | audiomxd | `K4LSnap` | `Hooks/Bootstrap`, `Hooks/AudioMixer` | CoreAudio IOProc lifecycle and stream-usage observation |
@@ -101,9 +100,20 @@ restoration behavior.
 | powerd | `K4LSnap` | `Hooks/Bootstrap`, `Hooks/Power` | IOPS dictionary and native power-state mechanics |
 | Snapchat 14.15.0.48 | dedicated secondary injection | `Hooks/Bootstrap`, `Hooks/Snapchat` | Pinned private classes/selectors, replay, save/unsave, Story receipts, typing/viewing policy and private handoff surfaces |
 
-A target may compile shared `Core` and narrow `IPC/DaemonClient` contracts. It may
-not compile another process owner's implementation merely because the symbols
-are convenient.
+A target may compile shared `Core` and narrow `IPC/DaemonClient` contracts. It may not compile another process owner's implementation merely because the symbols are convenient.
+
+## SpringBoard and BackBoard separation
+
+The resolved selectors on `SBDeckSwitcherViewController`, `SBFluidSwitcherViewController`, `SBHomeHardwareButton`, `SBMainSwitcherViewController`, `SBLockScreenManager` and `FBScene` execute in SpringBoard and remain owned by `Hooks/SpringBoard` or their SpringBoard-facing feature module.
+
+The recovered Hush filter also explicitly targeted `backboardd`, and the package contains BackBoard event-tap/HID artifacts. That proves a BackBoard process boundary, but not that the SpringBoard selectors belong there.
+
+K4L therefore preserves both owners:
+
+- `Hooks/SpringBoard` for the resolved SpringBoard classes;
+- `Hooks/BackBoard` for exact event-tap/HID mechanics once their ledger contract is mapped.
+
+No BackBoard source is admitted merely because the filter exists. The owner is preserved so the mechanic is not erased or incorrectly shoved into SpringBoard.
 
 ## Daemon ownership
 
@@ -122,39 +132,21 @@ are convenient.
 | `Daemon/Maintenance` | Pruning, reconciliation and repair mechanics admitted by evidence |
 | `Daemon/Lifecycle` | Install, upgrade, removal and restoration operations owned by the daemon/helper contract |
 
-The daemon is the only owner of privileged container, keychain, Snapchat SQLite,
-Valdi mutation, and privileged archive operations. Injected processes request
-those operations through typed IPC; they never link the daemon implementation.
+The daemon is the only owner of privileged container, keychain, Snapchat SQLite, Valdi mutation and privileged archive operations. Injected processes request those operations through typed IPC; they never link daemon implementation.
 
 ## Media ownership
 
-`Media/` is production domain code that may be linked only where the owning
-feature requires it:
+`Media/` is production domain code linked only where the owning feature requires it:
 
 - `K4LSnapPrefs` may use import, processing, preview and vault interfaces;
 - `k4lsnapd` may use vault, archive, backup and reconciliation services;
-- injected system and Snapchat targets may exchange durable item identifiers and
-  typed metadata through Core/IPC, but do not link the media vault or processing
-  implementation.
+- injected system and Snapchat targets exchange durable item identifiers and typed metadata through Core/IPC, but do not link the media vault or processing implementation.
 
-This keeps SQLite, Photos, AVFoundation export, thumbnails and filesystem work
-out of real-time hook processes.
-
-## BackBoard correction
-
-The recovered Hush filter listed `backboardd`, but the resolved gesture,
-home-button, lock-screen and switcher classes are SpringBoard classes. K4L does
-not create a production `Hooks/BackBoard` owner and does not inject into
-`backboardd` unless later evidence proves a distinct behavior that cannot be
-owned by SpringBoard.
-
-Historical filter evidence remains in the mechanics ledger. Historical process
-presence is not permission to invent a current module.
+This keeps SQLite, Photos, AVFoundation export, thumbnails and filesystem work out of real-time hook processes.
 
 ## Admission rule
 
-No directory or source file is created from this map alone. Its first source is
-admitted only when:
+No directory or source file is created from this map alone. Its first source is admitted only when:
 
 1. the governing mechanic is present in the evidence bundle;
 2. the production behavior is complete;
