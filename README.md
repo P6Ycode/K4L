@@ -13,12 +13,13 @@ recovered from the Hush package and the pinned Snapchat application:
 
 Phase II is active on `rebuild/foundation`.
 
-Step 3 defines the production package targets and rootless install boundaries.
-No tweak feature, hook, daemon mechanic, preference row, test system, logging
-system, or licensing system has been implemented. Target source lists remain
-empty until their owning roadmap steps admit complete production mechanics.
+Step 3 defined the production package targets and rootless install boundaries.
+Step 4 defines the canonical source ownership and dependency map. No tweak
+feature, hook, daemon mechanic, preference row, test system, logging system, or
+licensing system has been implemented. Target source lists remain empty until
+their owning roadmap steps admit complete production mechanics.
 
-Step 4 must not begin until Step 3 is reviewed and confirmed.
+Step 5 must not begin until Step 4 is reviewed and confirmed.
 
 ## Project boundaries
 
@@ -42,6 +43,13 @@ hashes, authority order, and integrity rules are pinned in
 The declared target matrix and ownership boundaries are documented in
 [`Packaging/TARGETS.md`](Packaging/TARGETS.md), with logical rootless paths in
 [`Packaging/ROOTLESS_LAYOUT.md`](Packaging/ROOTLESS_LAYOUT.md).
+
+## Source ownership
+
+The canonical logical source tree and process ownership are fixed in
+[`docs/SOURCE_OWNERSHIP.md`](docs/SOURCE_OWNERSHIP.md). Allowed dependency
+directions and forbidden cross-component imports are fixed in
+[`docs/DEPENDENCY_BOUNDARIES.md`](docs/DEPENDENCY_BOUNDARIES.md).
 
 ## Development flow
 
